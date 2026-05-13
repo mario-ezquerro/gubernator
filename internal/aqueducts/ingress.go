@@ -33,7 +33,7 @@ func GenerateCaddyfile() {
 					if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
 						// e.g., web.mystack.gbnt
 						internalDNS := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
-						content += fmt.Sprintf("%s {\n\treverse_proxy %s:80\n}\n\n", val, internalDNS)
+						content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s:80\n}\n\n", val, internalDNS)
 					}
 				}
 			}

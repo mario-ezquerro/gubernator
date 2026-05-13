@@ -174,14 +174,14 @@ To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same direct
 
 Gubernator includes a secure, built-in Web UI to visualize the state of your cluster. It is disabled by default to keep the binary lightweight and secure.
 
-To activate the Web UI on **port 4001**, you must pass two environment variables when starting the Manager:
+To activate the Web UI on **port 4001**, you must pass the `GBNT_WEB=true` flag and credentials when starting the Manager:
 ```bash
-GBNT_WEB_USER=admin GBNT_WEB_PASSWORD=supersecreto ./gbnt serve
+GBNT_WEB=true GBNT_WEB_USER=admin GBNT_WEB_PASSWORD=supersecreto ./gbnt serve
 ```
 Or, if running via Docker:
 ```bash
 docker run -d -p 4000:4000 -p 4001:4001 \
-  -e GBNT_WEB_USER=admin -e GBNT_WEB_PASSWORD=supersecreto \
+  -e GBNT_WEB=true -e GBNT_WEB_USER=admin -e GBNT_WEB_PASSWORD=supersecreto \
   gubernator:latest serve
 ```
 

@@ -15,11 +15,17 @@ import (
 var fs embed.FS
 
 func StartDashboard() {
+	webEnabled := os.Getenv("GBNT_WEB")
 	user := os.Getenv("GBNT_WEB_USER")
 	pass := os.Getenv("GBNT_WEB_PASSWORD")
 
+	if webEnabled != "true" {
+		log.Println("Web Dashboard disabled. Set GBNT_WEB=true, GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable.")
+		return
+	}
+	
 	if user == "" || pass == "" {
-		log.Println("Web Dashboard disabled. Set GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable on port 4001.")
+		log.Println("Web Dashboard is enabled but missing credentials. Provide GBNT_WEB_USER and GBNT_WEB_PASSWORD.")
 		return
 	}
 
