@@ -9,6 +9,9 @@ services:
     ports:
       - "4000:4000" # API, Telemetry, Swagger
       - "4001:4001" # Web UI
+    environment:
+      - GBNT_WEB_USER=admin
+      - GBNT_WEB_PASSWORD=admin
     working_dir: /app/data
     command: ["/app/gbnt", "serve"]
 
