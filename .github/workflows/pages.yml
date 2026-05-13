@@ -34,4 +34,7 @@ jobs:
             
       - run: pip install mkdocs-material 
       
-      - run: mkdocs gh-deploy --force
+      - run: |
+          VERSION=$(cat VERSION)
+          sed -i "s/site_name: Gubernator Orchestrator/site_name: Gubernator Orchestrator (${VERSION})/g" mkdocs.yml
+          mkdocs gh-deploy --force
