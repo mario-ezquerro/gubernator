@@ -1,6 +1,9 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /app
+
+# Install build dependencies for go-sqlite3 (CGO)
+RUN apk add --no-cache gcc musl-dev
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -9,8 +12,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gbnt ./cmd/gbnt
+# Build the binary with CGO enabled
+RUN CGO_ENABLED=1 GOOS=linux go build -o gbnt ./cmd/gbnt
 
 FROM alpine:latest
 
