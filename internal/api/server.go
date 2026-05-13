@@ -24,13 +24,13 @@ func Start() {
 	// Start Background Healthchecks & Metrics Updater
 	go startWatchtowers()
 
+	// Start Web Dashboard on port 4001 (if env vars are set)
+	go web.StartDashboard()
+
 	r := gin.Default()
 
 	// Register Prometheus Telemetry
 	r.GET("/metrics", telemetry.MetricsHandler())
-
-	// Register Web Dashboard (under /ui)
-	web.RegisterDashboardRoutes(r)
 
 	// v1 group
 	v1 := r.Group("/v1")

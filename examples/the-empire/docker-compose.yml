@@ -7,7 +7,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/app/data # Shared volume for SQLite, Hosts, and Caddyfile
     ports:
-      - "4000:4000" # API, Telemetry, and Web UI
+      - "4000:4000" # API, Telemetry, Swagger
+      - "4001:4001" # Web UI
     working_dir: /app/data
     command: ["/app/gbnt", "serve"]
 

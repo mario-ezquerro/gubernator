@@ -14,14 +14,17 @@ import (
 //go:embed templates/* static/*
 var fs embed.FS
 
-func RegisterDashboardRoutes(r *gin.Engine) {
+func StartDashboard() {
 	user := os.Getenv("GBNT_WEB_USER")
 	pass := os.Getenv("GBNT_WEB_PASSWORD")
 
 	if user == "" || pass == "" {
-		log.Println("Web Dashboard disabled. Set GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable.")
+		log.Println("Web Dashboard disabled. Set GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable on port 4001.")
 		return
 	}
+
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.Default()
 
 	// Load HTML templates from embedded filesystem
 	templ := template.Must(template.New("").ParseFS(fs, "templates/*.html"))
@@ -30,8 +33,8 @@ func RegisterDashboardRoutes(r *gin.Engine) {
 	// Serve static files
 	r.StaticFS("/static", http.FS(fs))
 
-	// Setup Basic Auth under /ui
-	authorized := r.Group("/ui", gin.BasicAuth(gin.Accounts{
+	// Setup Basic Auth
+	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 		user: pass,
 	}))
 
@@ -45,7 +48,10 @@ func RegisterDashboardRoutes(r *gin.Engine) {
 		api.DELETE("/task/:id", deleteTaskHandler)
 	}
 
-	log.Println("Web Dashboard enabled at /ui")
+	log.Println("Starting Web Dashboard on :4001")
+	if err := r.Run(":4001"); err != nil {
+		log.Fatalf("Failed to start Web Dashboard: %v", err)
+	}
 }
 
 func dashboardHandler(c *gin.Context) {
