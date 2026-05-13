@@ -39,6 +39,7 @@ nav:
   - CLI Reference: cli.md
   - Architecture: architecture.md
   - API & SDK: api.md
+  - Examples: examples.md
 
 markdown_extensions:
   - admonition
