@@ -168,6 +168,23 @@ When a task starts, the worker extracts its internal Docker IP. Gubernator then 
 
 To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same directory alongside the Manager, and they will pick up these auto-generated routing tables!
 
+### Web Dashboard (The Forum)
+
+Gubernator includes a secure, built-in Web UI to visualize the state of your cluster. It is disabled by default to keep the binary lightweight and secure.
+
+To activate the Web UI on **port 4001**, you must pass the `GBNT_WEB=true` flag and credentials when starting the Manager:
+```bash
+GBNT_WEB=true GBNT_WEB_USER=admin GBNT_WEB_PASSWORD=supersecreto ./gbnt serve
+```
+Or, if running via Docker:
+```bash
+docker run -d -p 4000:4000 -p 4001:4001 \
+  -e GBNT_WEB=true -e GBNT_WEB_USER=admin -e GBNT_WEB_PASSWORD=supersecreto \
+  gubernator:latest serve
+```
+
+Access the dashboard at `http://localhost:4001` and authenticate with the credentials you provided to manage nodes, view running containers, and stop tasks dynamically!
+
 ---
 
 ## 📚 API Documentation (Swagger)
