@@ -1,0 +1,27 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.labels.gbnt.node.role == worker"
+          - "ingress.host == prometheus"
+
+  grafana:
+    image: grafana/grafana:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.labels.gbnt.node.role == worker"
+          - "ingress.host == grafana"
+
+  loki:
+    image: grafana/loki:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.labels.gbnt.node.role == worker"
+          - "ingress.host == loki"
