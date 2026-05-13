@@ -7,11 +7,19 @@
     <link rel="stylesheet" href="/static/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+<style>
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: var(--card-bg); padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; border: 1px solid var(--border); }
+    .close-btn { float: right; cursor: pointer; font-size: 24px; color: var(--text-secondary); }
+    .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; margin-right: 5px; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-info { background: var(--accent); color: white; }
+</style>
 <body>
     <div class="app-container">
         <header class="header">
             <div class="logo">
-                <img src="/static/static/icono.svg" alt="Gubernator Logo">
+                <img src="/static/static/gubernator-icon.png" alt="Gubernator Logo">
                 <h1>Gubernator</h1>
                 <span class="badge">Manager</span>
             </div>
@@ -81,6 +89,16 @@
             </section>
         </main>
     </div>
+
+    <!-- Modal for viewing compose -->
+    <div id="compose-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeComposeModal()">&times;</span>
+            <h2>Stack Compose File</h2>
+            <textarea id="compose-textarea" readonly style="width: 100%; height: 300px; margin-top: 15px; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); padding: 10px; font-family: monospace;"></textarea>
+        </div>
+    </div>
+
     <script src="/static/static/app.js"></script>
 </body>
 </html>

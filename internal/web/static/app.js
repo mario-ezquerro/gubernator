@@ -8,7 +8,10 @@ async function fetchData() {
     }
 }
 
+let globalStacks = [];
+
 function renderDashboard(data) {
+    globalStacks = data.stacks;
     // Render Stats
     const statsHtml = `
         <div class="stat-card"><h3>Nodes</h3><div class="value">${data.nodes.length}</div></div>
@@ -25,7 +28,10 @@ function renderDashboard(data) {
             <td>${s.id.substring(0,8)}</td>
             <td><strong>${s.name}</strong></td>
             <td>${new Date(s.created_at).toLocaleString()}</td>
-            <td><button class="btn btn-danger" onclick="deleteStack('${s.id}')">Delete</button></td>
+            <td>
+                <button class="btn btn-info" onclick="viewCompose('${s.id}')">View YAML</button>
+                <button class="btn btn-danger" onclick="deleteStack('${s.id}')">Delete</button>
+            </td>
         </tr>
     `).join('');
 
@@ -71,6 +77,18 @@ async function stopTask(id) {
         await fetch('/api/task/'+id, { method: 'DELETE' });
         fetchData();
     } catch (e) { alert("Failed to stop task"); }
+}
+
+function viewCompose(id) {
+    const stack = globalStacks.find(s => s.id === id);
+    if(stack) {
+        document.getElementById('compose-textarea').value = stack.raw_compose_file;
+        document.getElementById('compose-modal').style.display = 'flex';
+    }
+}
+
+function closeComposeModal() {
+    document.getElementById('compose-modal').style.display = 'none';
 }
 
 // Initial fetch and poll every 5 seconds
