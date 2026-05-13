@@ -1,0 +1,132 @@
+=== RUN   TestNodeListEmpty
+2026/05/13 19:30:27 Database connection established
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.022ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="nodes"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.092ms] [34;1m[rows:0][0m CREATE TABLE `nodes` (`id` varchar(255),`ip` varchar(255) NOT NULL,`role` varchar(50) NOT NULL,`status` varchar(50) NOT NULL,`labels_raw` json,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="cluster_configs"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.041ms] [34;1m[rows:0][0m CREATE TABLE `cluster_configs` (`id` varchar(50),`join_token` varchar(255) NOT NULL,PRIMARY KEY (`id`))
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="stacks"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.035ms] [34;1m[rows:0][0m CREATE TABLE `stacks` (`id` varchar(255),`name` varchar(255) NOT NULL,`raw_compose_file` text,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.005ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="services"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.038ms] [34;1m[rows:0][0m CREATE TABLE `services` (`id` varchar(255),`stack_id` varchar(255) NOT NULL,`name` varchar(255) NOT NULL,`image` varchar(255) NOT NULL,`desired_replicas` integer,`constraints_raw` json,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.021ms] [34;1m[rows:0][0m CREATE INDEX `idx_services_stack_id` ON `services`(`stack_id`)
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.005ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="tasks"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.035ms] [34;1m[rows:0][0m CREATE TABLE `tasks` (`id` varchar(255),`service_id` varchar(255) NOT NULL,`node_id` varchar(255) NOT NULL,`status` varchar(50) NOT NULL,`container_ip` varchar(50),`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.020ms] [34;1m[rows:0][0m CREATE INDEX `idx_tasks_node_id` ON `tasks`(`node_id`)
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.017ms] [34;1m[rows:0][0m CREATE INDEX `idx_tasks_service_id` ON `tasks`(`service_id`)
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:62
+[0m[33m[0.024ms] [34;1m[rows:1][0m SELECT count(*) FROM `nodes`
+2026/05/13 19:30:27 Seeding initial Manager node into the database...
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:77
+[0m[33m[0.112ms] [34;1m[rows:1][0m INSERT INTO `nodes` (`id`,`ip`,`role`,`status`,`labels_raw`,`created_at`,`updated_at`) VALUES ("node-local-manager","127.0.0.1","manager","active","{""gbnt.node.role"":""manager"",""gbnt.node.zone"":""local""}","2026-05-13 19:30:27.911","2026-05-13 19:30:27.911")
+2026/05/13 19:30:27 Initial Manager node seeded successfully.
+
+2026/05/13 19:30:27 [31;1m/Users/mario/repositorios/gubernator/internal/db/db.go:41 [35;1mrecord not found
+[0m[33m[0.013ms] [34;1m[rows:0][0m SELECT * FROM `cluster_configs` WHERE id = "global" ORDER BY `cluster_configs`.`id` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:49
+[0m[33m[0.014ms] [34;1m[rows:1][0m INSERT INTO `cluster_configs` (`id`,`join_token`) VALUES ("global","14f151d57797d1758c38dd1843666dd4")
+2026/05/13 19:30:27 Generated new cluster Join Token.
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/api/server.go:94
+[0m[33m[0.045ms] [34;1m[rows:1][0m SELECT * FROM `nodes`
+[GIN] 2026/05/13 - 19:30:27 | 200 | 184.084µs |                 | GET      "/v1/node/ls"
+    api_test.go:43: Expected body to be [], got {"nodes":[{"id":"node-local-manager","ip":"127.0.0.1","role":"manager","status":"active","labels":{"gbnt.node.role":"manager","gbnt.node.zone":"local"},"created_at":"2026-05-13T19:30:27.911206+02:00","updated_at":"2026-05-13T19:30:27.911206+02:00"}]}
+--- FAIL: TestNodeListEmpty (0.00s)
+=== RUN   TestNodeInspectNotFound
+2026/05/13 19:30:27 Database connection established
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.008ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="nodes"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.048ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "nodes" AND sql IS NOT NULL order by type = "table" desc
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.008ms] [34;1m[rows:-][0m SELECT * FROM `nodes` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.007ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="cluster_configs"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.021ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "cluster_configs" AND sql IS NOT NULL order by type = "table" desc
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT * FROM `cluster_configs` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="stacks"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.016ms] [34;1m[rows:1][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "stacks" AND sql IS NOT NULL order by type = "table" desc
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT * FROM `stacks` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.005ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="services"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.016ms] [34;1m[rows:2][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "services" AND sql IS NOT NULL order by type = "table" desc
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.007ms] [34;1m[rows:-][0m SELECT * FROM `services` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.008ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "services" AND name = "idx_services_stack_id"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.006ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type='table' AND name="tasks"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.017ms] [34;1m[rows:3][0m SELECT sql FROM sqlite_master WHERE type IN ("table","index") AND tbl_name = "tasks" AND sql IS NOT NULL order by type = "table" desc
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.007ms] [34;1m[rows:-][0m SELECT * FROM `tasks` LIMIT 1
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.007ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "tasks" AND name = "idx_tasks_service_id"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:29
+[0m[33m[0.007ms] [34;1m[rows:-][0m SELECT count(*) FROM sqlite_master WHERE type = "index" AND tbl_name = "tasks" AND name = "idx_tasks_node_id"
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:62
+[0m[33m[0.009ms] [34;1m[rows:1][0m SELECT count(*) FROM `nodes`
+
+2026/05/13 19:30:27 [32m/Users/mario/repositorios/gubernator/internal/db/db.go:41
+[0m[33m[0.015ms] [34;1m[rows:1][0m SELECT * FROM `cluster_configs` WHERE id = "global" ORDER BY `cluster_configs`.`id` LIMIT 1
+
+2026/05/13 19:30:27 [31;1m/Users/mario/repositorios/gubernator/internal/api/node_crud.go:20 [35;1mrecord not found
+[0m[33m[0.013ms] [34;1m[rows:0][0m SELECT * FROM `nodes` WHERE id = "nonexistent" ORDER BY `nodes`.`id` LIMIT 1
+[GIN] 2026/05/13 - 19:30:27 | 404 | 29.917µs |                 | GET      "/v1/node/nonexistent"
+--- PASS: TestNodeInspectNotFound (0.00s)
+FAIL
+FAIL	github.com/mario-ezquerro/gubernator/internal/api	0.421s
+FAIL
