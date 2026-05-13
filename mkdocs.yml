@@ -36,6 +36,7 @@ extra_css:
 
 nav:
   - Home: index.md
+  - CLI Reference: cli.md
   - Architecture: architecture.md
   - API & SDK: api.md
 
