@@ -1,0 +1,8 @@
+services:
+  web:
+    image: nginx:alpine
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.gbnt.node.role == worker

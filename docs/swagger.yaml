@@ -1,0 +1,272 @@
+basePath: /
+definitions:
+  github_com_mario-ezquerro_gubernator_internal_db.Node:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        description: Parsed labels for the application
+        type: object
+      role:
+        description: e.g., "manager", "worker"
+        type: string
+      status:
+        description: e.g., "active", "down", "drain"
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_mario-ezquerro_gubernator_internal_db.Task:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      node_id:
+        type: string
+      service_id:
+        type: string
+      status:
+        description: '"pending", "running", "dead"'
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_api.HeartbeatRequest:
+    properties:
+      id:
+        type: string
+    required:
+    - id
+    type: object
+  internal_api.JoinRequest:
+    properties:
+      id:
+        type: string
+      ip:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      token:
+        type: string
+    required:
+    - id
+    - ip
+    - token
+    type: object
+  internal_api.NodeListResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/github_com_mario-ezquerro_gubernator_internal_db.Node'
+        type: array
+    type: object
+  internal_api.StackDeployRequest:
+    properties:
+      compose_raw:
+        type: string
+      name:
+        type: string
+    required:
+    - compose_raw
+    - name
+    type: object
+  internal_api.TaskResponse:
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/internal_api.TaskWithImage'
+        type: array
+    type: object
+  internal_api.TaskStatusRequest:
+    properties:
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  internal_api.TaskWithImage:
+    properties:
+      image:
+        type: string
+      task:
+        $ref: '#/definitions/github_com_mario-ezquerro_gubernator_internal_db.Task'
+    type: object
+host: localhost:4000
+info:
+  contact: {}
+  description: This is the API Server for Gubernator orchestration.
+  title: Gubernator API
+  version: "1.0"
+paths:
+  /v1/cluster/token:
+    get:
+      description: Retrieve the current global join token (requires local access)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Cluster Join Token
+      tags:
+      - legion
+  /v1/node/heartbeat:
+    post:
+      consumes:
+      - application/json
+      description: Nodes call this to let the manager know they are alive
+      parameters:
+      - description: Heartbeat Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.HeartbeatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Node Heartbeat
+      tags:
+      - legion
+  /v1/node/join:
+    post:
+      consumes:
+      - application/json
+      description: Register a new worker node in the Gubernator cluster using a Join
+        Token
+      parameters:
+      - description: Join Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.JoinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Join the cluster
+      tags:
+      - legion
+  /v1/node/ls:
+    get:
+      description: Get a list of all nodes currently registered in the Gubernator
+        cluster from SQLite
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api.NodeListResponse'
+      summary: List all nodes
+      tags:
+      - nodes
+  /v1/node/tasks/{node_id}:
+    get:
+      description: Fetches pending tasks for the worker to execute
+      parameters:
+      - description: Node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_api.TaskResponse'
+      summary: Get assigned tasks for a node
+      tags:
+      - tasks
+  /v1/node/tasks/{task_id}/status:
+    post:
+      consumes:
+      - application/json
+      description: Worker reports back whether the task is running or failed
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Status Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.TaskStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update task status
+      tags:
+      - tasks
+  /v1/stack/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Parse a docker-compose yaml and schedule tasks to nodes
+      parameters:
+      - description: Stack Deploy Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api.StackDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deploy a Stack
+      tags:
+      - stack
+swagger: "2.0"

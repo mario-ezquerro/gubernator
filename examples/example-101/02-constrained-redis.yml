@@ -1,0 +1,9 @@
+services:
+  cache:
+    image: redis:alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.gbnt.node.role == worker
+          - node.labels.gbnt.node.zone == europe-1
