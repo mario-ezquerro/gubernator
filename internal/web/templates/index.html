@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="stylesheet" href="/static/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <h1>🏛️ Gubernator</h1>
+                <span class="badge">Manager</span>
+            </div>
+            <div class="user-info">
+                <span>Admin</span>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <div class="stats-row" id="stats">
+                <!-- Stats injected here -->
+            </div>
+
+            <div class="grid">
+                <section class="card">
+                    <h2>Legions (Stacks)</h2>
+                    <div class="table-container">
+                        <table id="stacks-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <h2>Centurions (Nodes)</h2>
+                    <div class="table-container">
+                        <table id="nodes-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>IP</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <section class="card full-width">
+                <h2>Cohorts & Tasks (Containers)</h2>
+                <div class="table-container">
+                    <table id="tasks-table">
+                        <thead>
+                            <tr>
+                                <th>Task ID</th>
+                                <th>Service</th>
+                                <th>Node</th>
+                                <th>Status</th>
+                                <th>IP</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/static/app.js"></script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import (
 	_ "github.com/mario-ezquerro/gubernator/docs"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
+	"github.com/mario-ezquerro/gubernator/internal/web"
 )
 
 // Start initializes the Gin router and starts the REST API server on port 4000.
@@ -25,6 +26,9 @@ func Start() {
 
 	// Start Background Healthchecks & Metrics Updater
 	go startWatchtowers()
+
+	// Start Web Dashboard (only active if GBNT_WEB_USER/GBNT_WEB_PASSWORD set)
+	go web.StartDashboard()
 
 	r := gin.Default()
 
