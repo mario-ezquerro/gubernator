@@ -1,6 +1,6 @@
 async function fetchData() {
     try {
-        const response = await fetch('/api/state');
+        const response = await fetch('/ui/api/state');
         const data = await response.json();
         renderDashboard(data);
     } catch (error) {
@@ -66,7 +66,7 @@ function renderDashboard(data) {
 async function deleteStack(id) {
     if(!confirm("Are you sure you want to delete this stack?")) return;
     try {
-        await fetch('/api/stack/'+id, { method: 'DELETE' });
+        await fetch('/ui/api/stack/'+id, { method: 'DELETE' });
         fetchData();
     } catch (e) { alert("Failed to delete stack"); }
 }
@@ -74,7 +74,7 @@ async function deleteStack(id) {
 async function stopTask(id) {
     if(!confirm("Are you sure you want to stop this task? (The service might recreate it)")) return;
     try {
-        await fetch('/api/task/'+id, { method: 'DELETE' });
+        await fetch('/ui/api/task/'+id, { method: 'DELETE' });
         fetchData();
     } catch (e) { alert("Failed to stop task"); }
 }

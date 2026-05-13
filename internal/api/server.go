@@ -21,16 +21,16 @@ func Start() {
 	// Initialize the Database
 	db.Init("gubernator.db")
 
-	// Start Telemetry / Prometheus server
-	go telemetry.StartMetricsServer()
-
 	// Start Background Healthchecks & Metrics Updater
 	go startWatchtowers()
 
-	// Start Web Dashboard (only active if GBNT_WEB_USER/GBNT_WEB_PASSWORD set)
-	go web.StartDashboard()
-
 	r := gin.Default()
+
+	// Register Prometheus Telemetry
+	r.GET("/metrics", telemetry.MetricsHandler())
+
+	// Register Web Dashboard (under /ui)
+	web.RegisterDashboardRoutes(r)
 
 	// v1 group
 	v1 := r.Group("/v1")

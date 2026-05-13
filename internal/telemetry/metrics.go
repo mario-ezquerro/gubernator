@@ -1,8 +1,7 @@
 package telemetry
 
 import (
-	"log"
-	"net/http"
+	"github.com/gin-gonic/gin"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,13 +24,10 @@ func init() {
 	prometheus.MustRegister(TotalTasks)
 }
 
-// StartMetricsServer starts a dedicated HTTP server for Prometheus scraping on port 4001.
-func StartMetricsServer() {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-
-	log.Println("Starting Gubernator Telemetry/Prometheus on :4001")
-	if err := http.ListenAndServe(":4001", mux); err != nil {
-		log.Fatalf("Failed to start telemetry server: %v", err)
+// MetricsHandler returns a gin.HandlerFunc for Prometheus scraping
+func MetricsHandler() gin.HandlerFunc {
+	h := promhttp.Handler()
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
 	}
 }
