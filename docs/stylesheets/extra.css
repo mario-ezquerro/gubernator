@@ -1,0 +1,7 @@
+/* Cuadrado de líneas blancas alrededor del logo superior */
+.md-header__button.md-logo img {
+    border: 2px solid white;
+    border-radius: 4px; /* Opcional: suaviza las esquinas */
+    padding: 2px; /* Opcional: deja algo de aire entre el logo y el borde */
+    background-color: transparent;
+}

@@ -29,6 +29,10 @@ theme:
     - navigation.instant
     - navigation.tracking
     - navigation.tabs
+    - toc.integrate
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Home: index.md
