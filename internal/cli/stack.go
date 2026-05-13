@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"text/tabwriter"
 
+	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/spf13/cobra"
 )
 
@@ -61,9 +63,76 @@ var stackDeployCmd = &cobra.Command{
 	},
 }
 
+var stackLsCmd = &cobra.Command{
+	Use:   "ls",
+	Short: "List stacks",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := http.Get("http://localhost:4000/v1/stack/ls")
+		if err != nil {
+			fmt.Printf("Failed to fetch stacks: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var stacks []db.Stack
+		json.NewDecoder(resp.Body).Decode(&stacks)
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "ID\tNAME\tDEPLOYED")
+		for _, s := range stacks {
+			fmt.Fprintf(w, "%s\t%s\t%s\n", s.ID[:8], s.Name, s.CreatedAt.Format("2006-01-02 15:04"))
+		}
+		w.Flush()
+	},
+}
+
+var stackServicesCmd = &cobra.Command{
+	Use:   "services [stack_id]",
+	Short: "List the services in the stack",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := http.Get("http://localhost:4000/v1/stack/" + args[0] + "/services")
+		if err != nil {
+			fmt.Printf("Failed to fetch services: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var services []db.Service
+		json.NewDecoder(resp.Body).Decode(&services)
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS")
+		for _, s := range services {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", s.ID[:8], s.Name, s.Image, s.DesiredReplicas)
+		}
+		w.Flush()
+	},
+}
+
+var stackRmCmd = &cobra.Command{
+	Use:   "rm [stack_id]",
+	Short: "Remove one or more stacks",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		req, _ := http.NewRequest("DELETE", "http://localhost:4000/v1/stack/"+args[0], nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Stack %s removed\n", args[0])
+		} else {
+			fmt.Printf("Failed to remove stack\n")
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(stackCmd)
 	stackCmd.AddCommand(stackDeployCmd)
+	stackCmd.AddCommand(stackLsCmd)
+	stackCmd.AddCommand(stackServicesCmd)
+	stackCmd.AddCommand(stackRmCmd)
 
-	stackDeployCmd.Flags().StringVarP(&composeFile, "compose", "c", "", "Path to the docker-compose.yml file")
+	stackDeployCmd.Flags().StringVarP(&composeFile, "compose-file", "c", "", "Path to a Compose file")
 }
+
+

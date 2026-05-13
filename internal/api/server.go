@@ -33,12 +33,18 @@ func Start() {
 	{
 		node := v1.Group("/node")
 		{
-			// The "node ls" endpoint retrieves the list of nodes from the DB
+			// Existing node logic
 			node.GET("/ls", NodeListHandler)
 			node.POST("/join", NodeJoinHandler)
 			node.POST("/heartbeat", NodeHeartbeatHandler)
 			node.GET("/tasks/:node_id", NodeTasksHandler)
 			node.POST("/tasks/:task_id/status", UpdateTaskStatusHandler)
+
+			// New CRUD node logic
+			node.GET("/:id", NodeInspectHandler)
+			node.POST("/:id/role", NodeRoleHandler)
+			node.POST("/:id/availability", NodeAvailabilityHandler)
+			node.POST("/:id/leave", NodeLeaveHandler)
 		}
 
 		cluster := v1.Group("/cluster")
@@ -49,6 +55,17 @@ func Start() {
 		stack := v1.Group("/stack")
 		{
 			stack.POST("/deploy", StackDeployHandler)
+			stack.GET("/ls", StackListHandler)
+			stack.GET("/:id/services", StackServicesHandler)
+			stack.DELETE("/:id", StackRmHandler)
+		}
+
+		service := v1.Group("/service")
+		{
+			service.GET("/ls", ServiceListHandler)
+			service.GET("/:id/tasks", ServiceTasksHandler)
+			service.DELETE("/:id", ServiceRmHandler)
+			service.POST("/:id/scale", ServiceScaleHandler)
 		}
 	}
 

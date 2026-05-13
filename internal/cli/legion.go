@@ -159,4 +159,49 @@ func init() {
 
 	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Token to authenticate with the Manager")
 	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000)")
+
+	legionCmd.AddCommand(legionJoinTokenCmd)
+	legionCmd.AddCommand(legionLeaveCmd)
+}
+
+var legionJoinTokenCmd = &cobra.Command{
+	Use:   "join-token",
+	Short: "Print the token needed to join the legion",
+	Run: func(cmd *cobra.Command, args []string) {
+		managerAddr := "localhost:4000" // Simple default
+		resp, err := http.Get(fmt.Sprintf("http://%s/v1/cluster/token", managerAddr))
+		if err != nil {
+			fmt.Printf("Failed to reach manager: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var data struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			fmt.Println("Failed to decode token")
+			return
+		}
+		fmt.Printf("To add a worker to this legion, run the following command:\n\n")
+		fmt.Printf("    gbnt legion join --token %s --manager <MANAGER-IP>:4000\n\n", data.Token)
+	},
+}
+
+var legionLeaveCmd = &cobra.Command{
+	Use:   "leave",
+	Short: "Leave the legion",
+	Run: func(cmd *cobra.Command, args []string) {
+		managerAddr := "localhost:4000" // Simple default
+		hostname, _ := os.Hostname()
+		nodeID := "node-" + hostname
+
+		resp, err := http.Post(fmt.Sprintf("http://%s/v1/node/%s/leave", managerAddr, nodeID), "application/json", nil)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			fmt.Printf("Failed to leave legion on manager. You might need to manually demote or remove.\n")
+		} else {
+			fmt.Println("Node successfully left the legion.")
+		}
+		os.Exit(0)
+	},
 }

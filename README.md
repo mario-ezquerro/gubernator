@@ -170,6 +170,35 @@ To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same direct
 
 ---
 
+## 🛠 Commands Reference (CLI)
+
+**The Legion (Cluster)**
+* `gbnt legion init` - Initialize a new cluster (Manager).
+* `gbnt legion join` - Join an existing cluster as a Worker.
+* `gbnt legion join-token` - Get the command to join a new node.
+* `gbnt legion leave` - Leave the cluster.
+
+**The Centurions (Nodes)**
+* `gbnt node ls` - List all nodes.
+* `gbnt node inspect [node_id]` - Show detailed info of a node.
+* `gbnt node promote [node_id]` - Promote a worker to manager.
+* `gbnt node demote [node_id]` - Demote a manager to worker.
+* `gbnt node update --availability [active|pause|drain] [node_id]` - Update node status.
+
+**The Commands (Stacks)**
+* `gbnt stack deploy -c [file.yml] [name]` - Deploy a compose stack.
+* `gbnt stack ls` - List deployed stacks.
+* `gbnt stack services [stack_id]` - List services within a stack.
+* `gbnt stack rm [stack_id]` - Remove a stack.
+
+**The Cohorts (Services)**
+* `gbnt service ls` - List all services.
+* `gbnt service ps [service_id]` - List tasks running for a service.
+* `gbnt service scale [service_id]=[replicas]` - Scale a service up/down.
+* `gbnt service rm [service_id]` - Delete a service.
+
+---
+
 ## 📚 API Documentation (Swagger)
 
 Gubernator features auto-generated Swagger documentation. 
@@ -189,3 +218,4 @@ From the Swagger UI, you can directly test endpoints like `GET /v1/node/ls`.
 - [x] **Phase 4: The Watchtowers** - Telemetry, Healthchecks.
 - [x] **Phase 5.1: The Executor** - Direct Docker daemon container spawning from Tasks.
 - [x] **Phase 5.2: The Aqueducts** - CoreDNS hosts generation, Caddyfile Ingress routing.
+- [x] **Phase 6: The Senate Mandate** - Full CLI and CRUD implementations (Node, Stack, Service commands).

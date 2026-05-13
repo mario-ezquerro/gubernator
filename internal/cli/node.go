@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,7 +60,80 @@ var nodeLsCmd = &cobra.Command{
 	},
 }
 
+var nodeInspectCmd = &cobra.Command{
+	Use:   "inspect [node_id]",
+	Short: "Display detailed information on one node",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := http.Get("http://localhost:4000/v1/node/" + args[0])
+		if err != nil {
+			fmt.Printf("Failed to contact API: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+		io.Copy(os.Stdout, resp.Body)
+		fmt.Println()
+	},
+}
+
+var nodePromoteCmd = &cobra.Command{
+	Use:   "promote [node_id]",
+	Short: "Promote a worker node to a manager in the legion",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		payload := `{"role":"manager"}`
+		resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Node %s promoted to a manager.\n", args[0])
+		} else {
+			fmt.Printf("Failed to promote node.\n")
+		}
+	},
+}
+
+var nodeDemoteCmd = &cobra.Command{
+	Use:   "demote [node_id]",
+	Short: "Demote a manager node to a worker in the legion",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		payload := `{"role":"worker"}`
+		resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Node %s demoted to a worker.\n", args[0])
+		} else {
+			fmt.Printf("Failed to demote node.\n")
+		}
+	},
+}
+
+var (
+	nodeAvailability string
+)
+
+var nodeUpdateCmd = &cobra.Command{
+	Use:   "update [node_id]",
+	Short: "Update a node",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if nodeAvailability != "" {
+			payload := fmt.Sprintf(`{"availability":"%s"}`, nodeAvailability)
+			resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/availability", "application/json", bytes.NewBufferString(payload))
+			if err == nil && resp.StatusCode == 200 {
+				fmt.Printf("Node %s availability updated to %s.\n", args[0], nodeAvailability)
+			} else {
+				fmt.Printf("Failed to update node availability.\n")
+			}
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodeLsCmd)
+	nodeCmd.AddCommand(nodeInspectCmd)
+	nodeCmd.AddCommand(nodePromoteCmd)
+	nodeCmd.AddCommand(nodeDemoteCmd)
+	nodeCmd.AddCommand(nodeUpdateCmd)
+	
+	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain)")
 }
