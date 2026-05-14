@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"text/tabwriter"
