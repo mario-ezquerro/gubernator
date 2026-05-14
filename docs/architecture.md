@@ -22,7 +22,7 @@ Gubernator is an orchestrator designed to provide the simplicity of Docker Swarm
    - **Caddy:** Acts as the automated Ingress proxy. Gubernator configures Caddy automatically based on service routing labels to expose services externally.
 
 4. **Observability (The Watchtowers)**
-   - OpenTelemetry metrics and Prometheus endpoints (Port 4001) for both the Manager and Workers.
+   - OpenTelemetry metrics, Healthchecks, and Swagger endpoints (Port 4002).
 
 ## Node Architecture (The Minimal Deployment)
 

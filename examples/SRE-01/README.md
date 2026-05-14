@@ -5,7 +5,7 @@ This example builds upon "The Empire" (Gubernator + CoreDNS + Caddy) and adds a 
 ## Components
 
 1. **The Core (Plano de Control)**:
-   - `gubernator-manager`: The API, Telemetry, and Web UI on port 4000/4001.
+   - `gubernator-manager`: The CLI (4000), Web UI (4001), and Telemetry/Swagger (4002).
    - `coredns`: Internal DNS resolution (port 5353).
    - `caddy`: Auto-HTTPS reverse proxy with `tls internal`.
 

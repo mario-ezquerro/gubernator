@@ -15,7 +15,7 @@ cd gubernator
 go build -o gbnt ./cmd/gbnt
 ./gbnt serve
 ```
-*(Leave this terminal running. It exposes the API on `:4000` and Telemetry on `:4001`)*
+*(Leave this terminal running. It exposes the CLI on `:4000`, Web UI on `:4001`, and Telemetry/Swagger on `:4002`)*
 
 ### 2. Initialize the Legion
 

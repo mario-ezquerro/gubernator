@@ -48,7 +48,7 @@ docker build -t gbnt:latest .
 ```
 
 **2. Run the Manager API via Docker:**
-Because Gubernator manages Docker containers, it needs access to the local Docker socket. We also expose ports `4000` (API), `4001` (Web UI), and `4002` (Telemetry).
+Because Gubernator manages Docker containers, it needs access to the local Docker socket. We also expose ports `4000` (CLI), `4001` (Web UI), and `4002` (API/Swagger, Health, and Telemetry).
 
 ```bash
 docker run -d \
