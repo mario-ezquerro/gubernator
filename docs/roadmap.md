@@ -1,4 +1,4 @@
-# 🗺 Gubernator Roadmap
+# Gubernator Roadmap
 
 This document outlines the journey of Gubernator's development, divided into "Campaigns" or "Phases".
 

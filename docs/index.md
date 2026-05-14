@@ -6,7 +6,7 @@ Themed around the **Roman Empire**, Gubernator aims to manage your containers ro
 
 ---
 
-## 🏛 Architecture Overview
+## Architecture Overview
 
 Gubernator operates using a single, portable binary (`gbnt`) that can run as either a Manager or a Worker. 
 * **API & CLI:** Built with Gin and Cobra.
@@ -18,13 +18,13 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Installation
 
 The `gbnt` CLI tool is compiled as a single, portable binary for Windows, macOS, and Linux.
 
-👉 **[See the Official Installation Guide](install.md)** to download and install the binary for your operating system.
+**[See the Official Installation Guide](install.md)** to download and install the binary for your operating system.
 
 If you prefer to compile from source (requires Go 1.24+ and CGO):
 ```bash
@@ -75,7 +75,7 @@ The server will output:
 
 ---
 
-## 💻 CLI Usage & Examples
+## CLI Usage & Examples
 
 Once the server is running, you can interact with the cluster using the `gbnt` CLI.
 
@@ -102,7 +102,7 @@ To form a cluster, you must initialize the "Legion" from the Manager node to ret
 ```
 *Output:*
 ```text
-🏛 Gubernator Legion Initialized!
+Gubernator Legion Initialized!
 
 To add a worker to this swarm, run the following command on the worker node:
   gbnt legion join --token <TOKEN_STRING> --manager <MANAGER-IP>:4000
@@ -139,7 +139,7 @@ Deploy the stack:
 
 *Output:*
 ```text
-🚀 Stack 'mystack' deployed successfully!
+Stack 'mystack' deployed successfully!
 The Governor has dispatched the Centurions to schedule the tasks.
 ```
 
@@ -192,19 +192,19 @@ Access the dashboard at `http://localhost:4001` and authenticate with the creden
 
 ---
 
-## 📚 API Documentation (Swagger)
+## API Documentation (Swagger)
 
 Gubernator features auto-generated Swagger documentation. 
 While `./gbnt serve` is running, navigate to the following URL in your browser:
 
-👉 **[http://localhost:4002/swagger/index.html](http://localhost:4002/swagger/index.html)**
+**[http://localhost:4002/swagger/index.html](http://localhost:4002/swagger/index.html)**
 
 From the Swagger UI, you can directly test endpoints like `GET /v1/node/ls`.
 
 ---
 
-## 🗺 Current Roadmap State
+## Current Roadmap State
 
 Gubernator's development is divided into "Campaigns". We've completed up to **Phase 8**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, and Asymmetric Port Security (4000/4001/4002).
 
-👉 **[View the complete Roadmap and completed features here](roadmap.md)**
+**[View the complete Roadmap and completed features here](roadmap.md)**

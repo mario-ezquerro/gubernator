@@ -6,7 +6,7 @@ Gubernator's CLI is heavily inspired by Docker Swarm and Nomad, providing an int
 
 ---
 
-## ⚙️ The Forum (Context Configuration)
+## The Forum (Context Configuration)
 
 The Gubernator CLI acts as a remote client (`gbntctl`). It stores connection contexts in `~/.gbntctl/config`.
 
@@ -18,7 +18,7 @@ The Gubernator CLI acts as a remote client (`gbntctl`). It stores connection con
 
 ---
 
-## 🏛 The Legion (Cluster Management)
+## The Legion (Cluster Management)
 
 Commands for managing the cluster lifecycle and joining nodes.
 
@@ -36,7 +36,7 @@ Commands for managing the cluster lifecycle and joining nodes.
 
 ---
 
-## 🛡 The Centurions (Node Management)
+## The Centurions (Node Management)
 
 Commands executed by the Manager to inspect and control the physical worker machines.
 
@@ -57,7 +57,7 @@ Commands executed by the Manager to inspect and control the physical worker mach
 
 ---
 
-## 📦 The Command (Stack Management)
+## The Command (Stack Management)
 
 Commands for deploying and managing complex multi-container applications via Docker Compose syntax.
 
@@ -75,7 +75,7 @@ Commands for deploying and managing complex multi-container applications via Doc
 
 ---
 
-## ⚔️ The Cohorts (Service Management)
+## The Cohorts (Service Management)
 
 Commands for managing individual services (which are usually created via Stacks).
 
