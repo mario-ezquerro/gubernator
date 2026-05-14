@@ -22,7 +22,7 @@ var nodeLsCmd = &cobra.Command{
 	Short: "List nodes in the swarm",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Call the API endpoint
-		resp, err := http.Get(GetAPIEndpoint() + "/v1/node/ls")
+		resp, err := DoAPIRequest("GET", "/v1/node/ls", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)

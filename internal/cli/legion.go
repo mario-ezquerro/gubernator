@@ -23,7 +23,7 @@ var legionInitCmd = &cobra.Command{
 	Short: "Initialize the cluster and show the join token",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Fetches the token from the local manager API
-		resp, err := http.Get(GetAPIEndpoint() + "/v1/cluster/token")
+		resp, err := DoAPIRequest("GET", "/v1/cluster/token", nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching local Manager: %v\n", err)
 			os.Exit(1)

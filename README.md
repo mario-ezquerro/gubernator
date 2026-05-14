@@ -41,15 +41,16 @@ docker build -t gbnt:latest .
 ```
 
 **2. Run the Manager API via Docker:**
-Because Gubernator manages Docker containers, it needs access to the local Docker socket. We also expose ports `4000` (API) and `4001` (Metrics/Prometheus).
+Because Gubernator manages Docker containers, it needs access to the local Docker socket. We also expose ports `4000` (API), `4001` (Web UI), and `4002` (Telemetry).
 
 ```bash
 docker run -d \
   --name gbnt-manager \
   -p 4000:4000 \
   -p 4001:4001 \
+  -p 4002:4002 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  gbnt:latest serve
+  marioezquerro/gubernator:latest serve
 ```
 
 **3. Run CLI Commands via Docker:**
@@ -152,11 +153,12 @@ The Governor has dispatched the Centurions to schedule the tasks.
 
 ### Telemetry & Metrics (The Watchtowers)
 
-Gubernator comes with built-in Prometheus metrics. When the manager starts, a dedicated telemetry server is exposed on port `4001`.
+Gubernator comes with built-in Prometheus metrics and health checks. When the manager starts, a dedicated telemetry server is exposed on port `4002`.
 
 You can view the raw metrics or point your Prometheus scraper to:
 ```bash
-curl http://localhost:4001/metrics
+curl http://localhost:4002/metrics
+curl http://localhost:4002/health
 ```
 
 *These metrics include real-time counts of nodes, tasks, and system performance.*
@@ -234,9 +236,9 @@ Access the dashboard at `http://localhost:4001` and authenticate with the creden
 Gubernator features auto-generated Swagger documentation. 
 While `./gbnt serve` is running, navigate to the following URL in your browser:
 
-👉 **[http://localhost:4000/swagger/index.html](http://localhost:4000/swagger/index.html)**
+👉 **[http://localhost:4002/swagger/index.html](http://localhost:4002/swagger/index.html)**
 
-From the Swagger UI, you can directly test endpoints like `GET /v1/node/ls`.
+From the Swagger UI, you can directly test endpoints.
 
 ---
 

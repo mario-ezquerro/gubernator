@@ -28,10 +28,25 @@ func Start() {
 	// Start Web Dashboard on port 4001 (if env vars are set)
 	go web.StartDashboard()
 
+	// Start Telemetry & Swagger on port 4002
+	go startTelemetryServer()
+
 	r := gin.Default()
 
-	// Register Prometheus Telemetry
-	r.GET("/metrics", telemetry.MetricsHandler())
+	// API Authentication Middleware
+	r.Use(func(c *gin.Context) {
+		expectedToken := os.Getenv("GBNT_API_TOKEN")
+		if expectedToken == "" {
+			expectedToken = "admin" // default fallback
+		}
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "Bearer "+expectedToken {
+			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized API access. Invalid or missing Bearer token."})
+			return
+		}
+		c.Next()
+	})
 
 	// v1 group
 	v1 := r.Group("/v1")
@@ -80,24 +95,26 @@ func Start() {
 		}
 	}
 
-	// Swagger documentation route
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	fmt.Println("\n=========================================================")
-	fmt.Println("🛡  GUBERNATOR MANAGER STARTED")
-	fmt.Println("To connect to this cluster remotely via CLI (gbntctl),")
-	fmt.Println("create or append to ~/.gbntctl/config with:")
-	fmt.Println("")
-	fmt.Println("current-context: default")
-	fmt.Println("contexts:")
-	fmt.Println("- name: default")
-	fmt.Println("  server: http://<MANAGER-IP>:4000")
-	fmt.Println("  token: admin")
-	fmt.Println("=========================================================\n")
-
 	log.Println("Starting Gubernator Manager API on :4000")
 	if err := r.Run(":4000"); err != nil {
 		log.Fatalf("Failed to start API server: %v", err)
+	}
+}
+
+// startTelemetryServer runs on port 4002 serving Swagger, Metrics and Healthchecks
+func startTelemetryServer() {
+	r := gin.Default()
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy"})
+	})
+
+	r.GET("/metrics", telemetry.MetricsHandler())
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	log.Println("Starting Telemetry, Health & Swagger API on :4002")
+	if err := r.Run(":4002"); err != nil {
+		log.Fatalf("Failed to start Telemetry server: %v", err)
 	}
 }
 

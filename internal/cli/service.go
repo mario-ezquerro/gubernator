@@ -21,7 +21,7 @@ var serviceLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List services",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get(GetAPIEndpoint() + "/v1/service/ls")
+		resp, err := DoAPIRequest("GET", "/v1/service/ls", nil)
 		if err != nil {
 			fmt.Printf("Failed to fetch services: %v\n", err)
 			return

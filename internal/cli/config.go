@@ -105,3 +105,34 @@ func GetAPIEndpoint() string {
 	// Fallback to localhost if no config exists
 	return "http://localhost:4000"
 }
+
+// DoAPIRequest securely sends an HTTP request to the active Manager
+func DoAPIRequest(method, path string, body io.Reader) (*http.Response, error) {
+	cfg := loadConfig()
+	var server, token string
+	for _, ctx := range cfg.Contexts {
+		if ctx.Name == cfg.CurrentContext {
+			server = ctx.Server
+			token = ctx.Token
+			break
+		}
+	}
+	if server == "" {
+		server = "http://localhost:4000"
+		token = "admin" // Default fallback
+	}
+
+	req, err := http.NewRequest(method, server+path, body)
+	if err != nil {
+		return nil, err
+	}
+	
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	return http.DefaultClient.Do(req)
+}

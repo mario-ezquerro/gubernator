@@ -20,7 +20,7 @@ var taskLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List all tasks",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get(GetAPIEndpoint() + "/v1/task/ls")
+		resp, err := DoAPIRequest("GET", "/v1/task/ls", nil)
 		if err != nil {
 			fmt.Printf("Failed to fetch tasks: %v\n", err)
 			return

@@ -45,7 +45,7 @@ var stackDeployCmd = &cobra.Command{
 		}
 
 		body, _ := json.Marshal(payload)
-		resp, err := http.Post(GetAPIEndpoint() + "/v1/stack/deploy", "application/json", bytes.NewBuffer(body))
+		resp, err := DoAPIRequest("POST", "/v1/stack/deploy", bytes.NewBuffer(body))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)
@@ -67,7 +67,7 @@ var stackLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List stacks",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get(GetAPIEndpoint() + "/v1/stack/ls")
+		resp, err := DoAPIRequest("GET", "/v1/stack/ls", nil)
 		if err != nil {
 			fmt.Printf("Failed to fetch stacks: %v\n", err)
 			return
