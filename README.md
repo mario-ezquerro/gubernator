@@ -1,4 +1,4 @@
-# <img src="gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
+# <img src="docs/gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
 [![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
 [![Docker Version](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue)](https://hub.docker.com/r/marioezquerro/gubernator)
@@ -253,4 +253,4 @@ From the Swagger UI, you can directly test endpoints.
 
 Gubernator's development is divided into "Campaigns". We've completed up to **Phase 8**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, and Asymmetric Port Security (4000/4001/4002).
 
-👉 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
+**[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
