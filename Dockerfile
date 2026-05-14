@@ -25,9 +25,10 @@ RUN apk --no-cache add ca-certificates tzdata sqlite
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
 
-# Expose API/Metrics/Swagger (4000) and Web UI (4001) ports
+# Expose API (4000), Web UI (4001), and Telemetry (4002) ports
 EXPOSE 4000
 EXPOSE 4001
+EXPOSE 4002
 
 # The gbnt binary is the entrypoint
 ENTRYPOINT ["/app/gbnt"]
