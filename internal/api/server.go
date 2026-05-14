@@ -71,6 +71,12 @@ func Start() {
 			service.DELETE("/:id", ServiceRmHandler)
 			service.POST("/:id/scale", ServiceScaleHandler)
 		}
+
+		task := v1.Group("/task")
+		{
+			task.GET("/ls", TaskListHandler)
+			task.DELETE("/:id", TaskRmHandler)
+		}
 	}
 
 	// Swagger documentation route

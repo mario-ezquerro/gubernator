@@ -91,3 +91,35 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
 }
+
+// @Summary List all tasks
+// @Description Get a list of all tasks
+// @Tags tasks
+// @Produce json
+// @Success 200 {array} db.Task
+// @Router /v1/task/ls [get]
+func TaskListHandler(c *gin.Context) {
+	var tasks []db.Task
+	if err := db.DB.Find(&tasks).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
+	c.JSON(http.StatusOK, tasks)
+}
+
+// @Summary Remove a task
+// @Description Delete a task by ID
+// @Tags tasks
+// @Produce json
+// @Param id path string true "Task ID"
+// @Success 200 {object} map[string]string
+// @Router /v1/task/{id} [delete]
+func TaskRmHandler(c *gin.Context) {
+	id := c.Param("id")
+	res := db.DB.Where("id = ?", id).Delete(&db.Task{})
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Task removed"})
+}
