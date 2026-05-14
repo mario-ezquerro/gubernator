@@ -1,5 +1,10 @@
 # <img src="gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
+[![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/go.mod)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/test.yml?branch=main&style=flat-square)](https://github.com/mario-ezquerro/gubernator/actions/workflows/test.yml)
+[![Docs Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/pages.yml?branch=main&label=docs&style=flat-square)](https://mario-ezquerro.github.io/gubernator/)
+
 Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicity of Docker Swarm** (native Compose support, easy cluster joining) with the **flexibility of Nomad** (task-based logic, labels for hardware/AI targeting).
 
 Themed around the **Roman Empire**, Gubernator aims to manage your containers robustly across a fleet of nodes ("Centurions") managed by a central API ("The Senate").
