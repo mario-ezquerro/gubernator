@@ -6,8 +6,9 @@ Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicit
 
 * **Language:** Go (Golang)
 * **State:** SQLite (Centralized on Manager, with local cache on Workers for resilience)
-* **API:** REST (Port 4000) + Automatic Swagger documentation (`http-swagger`)
-* **Observability:** OpenTelemetry + Prometheus (Port 4001)
+* **API:** Secured REST (Port 4000)
+* **Web UI:** Web Dashboard (Port 4001)
+* **Observability:** OpenTelemetry + Prometheus, Swagger, Healthchecks (Port 4002)
 * **Engine:** Docker Engine API interaction
 
 ## 🗺 Development Roadmap: The Road to Rome
@@ -36,9 +37,15 @@ The development is divided into "Campaigns" (Sprints):
 
 ### Phase 4: The Watchtowers (Observability & Health)
 *Goal: Telemetry and self-healing.*
-* **OpenTelemetry Integration:** Export metrics (CPU, RAM, Uptime) to port 4001.
+* **OpenTelemetry Integration:** Export metrics (CPU, RAM, Uptime) to port 4002.
 * **Healthchecks:** The Manager polls the `/health` of containers. If one falls, the Governor restarts it.
-* **Prometheus Scraper:** Ensure the 4001 output is formatted correctly for Prometheus discovery.
+* **Prometheus Scraper:** Ensure the 4002 output is formatted correctly for Prometheus discovery.
+
+### Phase 6-8: The Senate Mandate & Security
+*Goal: Complete API, CLI context management, and Asymmetric Security.*
+* **Full CLI Parity:** Implementation of full CRUD for Stacks, Services, Nodes, and Tasks.
+* **Security & Isolation:** Asymmetric architecture implementing Bearer tokens (`GBNT_API_TOKEN`) for Port 4000, Basic Auth for Port 4001, and exposing Port 4002 completely isolated for internal monitoring.
+* **Remote Contexts:** CLI authentication via `~/.gbntctl/config` with `gbnt config use-context`.
 
 ## 🛠 Enhanced Features (The "Nomad-Hybrid" Touch)
 
@@ -48,7 +55,7 @@ The development is divided into "Campaigns" (Sprints):
    * `gbnt.node.role=worker`
    * `gbnt.node.gpu=nvidia`
    * `gbnt.node.zone=europe-1`
-4. **Automatic Swagger:** Access `http://localhost:4000/swagger/index.html` for immediate documentation of the `gbnt` API.
+4. **Automatic Swagger:** Access `http://localhost:4002/swagger/index.html` for immediate documentation of the `gbnt` API.
 
 ## 📋 Initial Database Schema (SQLite)
 
@@ -77,9 +84,8 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 ### 2. High Availability / HA (The Senate)
 * **Distributed SQLite:** To eliminate the single point of failure (SPOF) of a single Manager, Gubernator can evolve to use **rqlite** or **dqlite** (SQLite over Raft). This allows for a multi-manager setup (e.g., 3 Managers) keeping the relational simplicity while providing fault tolerance.
 
-### 3. Security & Secrets (The Praetorian Guard)
-* **CLI Authentication:** The `gbnt` CLI will authenticate against the Manager's API (e.g., via JWT or API Keys) to prevent unauthorized deployments on port 4000.
-* **Secret Management:** A mechanism to securely inject passwords or certificates (e.g., encrypted variables stored in the SQLite DB) into containers, keeping them out of plaintext `docker-compose.yml` files.
+### 3. Secret Management (The Praetorian Guard)
+* **Secret Vault:** A mechanism to securely inject passwords or certificates (e.g., encrypted variables stored in the SQLite DB) into containers, keeping them out of plaintext `docker-compose.yml` files.
 
 ### 4. Volumes & Persistence (The Granaries)
 * **Storage Affinity:** The Scheduler will be aware of local persistent volumes. If a container with a bound local volume restarts, Gubernator will ensure it schedules back onto the exact same node where its physical data resides.

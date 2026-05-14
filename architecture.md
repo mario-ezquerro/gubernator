@@ -7,7 +7,8 @@ Gubernator is an orchestrator designed to provide the simplicity of Docker Swarm
 ### Core Components
 
 1. **Gubernator Manager (The Senate/Forum)**
-   - Exposes the REST API (Port 4000) for the `gbnt` CLI.
+   - Exposes the secured REST API (Port 4000) for the `gbnt` CLI.
+   - Hosts the Web UI Dashboard (Port 4001) for visual cluster management.
    - Maintains the global state of the cluster using **SQLite**.
    - Handles the Scheduling logic (matching labels and resources).
    - Monitors node heartbeats and container health.
@@ -22,7 +23,7 @@ Gubernator is an orchestrator designed to provide the simplicity of Docker Swarm
    - **Caddy:** Acts as the automated Ingress proxy. Gubernator configures Caddy automatically based on service routing labels to expose services externally.
 
 4. **Observability (The Watchtowers)**
-   - OpenTelemetry metrics, Healthchecks, and Swagger endpoints (Port 4002).
+   - OpenTelemetry metrics, Healthchecks, and Swagger endpoints are isolated on Port 4002 for secure internal scraping.
 
 ## Node Architecture (The Minimal Deployment)
 
@@ -58,7 +59,7 @@ The state is stored centrally in SQLite on the Manager, with tables mapping out 
 ## Workflow: Deploying a Stack
 
 1. **CLI Execution:** User runs `gbnt stack deploy -c compose.yml my_stack`.
-2. **API Reception:** Manager receives the Compose file via REST API (Port 4000).
+2. **API Reception:** Manager receives the Compose file via the secured REST API (Port 4000).
 3. **Parsing:** Manager parses the Compose file into Services.
 4. **Scheduling:** Manager matches service constraints (e.g., `gbnt.node.gpu=nvidia`) against Node labels.
 5. **Task Creation:** Tasks are written to the SQLite DB and assigned to specific Node IDs.
