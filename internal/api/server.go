@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -81,6 +82,18 @@ func Start() {
 
 	// Swagger documentation route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	fmt.Println("\n=========================================================")
+	fmt.Println("🛡  GUBERNATOR MANAGER STARTED")
+	fmt.Println("To connect to this cluster remotely via CLI (gbntctl),")
+	fmt.Println("create or append to ~/.gbntctl/config with:")
+	fmt.Println("")
+	fmt.Println("current-context: default")
+	fmt.Println("contexts:")
+	fmt.Println("- name: default")
+	fmt.Println("  server: http://<MANAGER-IP>:4000")
+	fmt.Println("  token: admin")
+	fmt.Println("=========================================================\n")
 
 	log.Println("Starting Gubernator Manager API on :4000")
 	if err := r.Run(":4000"); err != nil {

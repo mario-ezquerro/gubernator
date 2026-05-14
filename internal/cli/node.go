@@ -22,7 +22,7 @@ var nodeLsCmd = &cobra.Command{
 	Short: "List nodes in the swarm",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Call the API endpoint
-		resp, err := http.Get("http://localhost:4000/v1/node/ls")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/node/ls")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)
@@ -65,7 +65,7 @@ var nodeInspectCmd = &cobra.Command{
 	Short: "Display detailed information on one node",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/node/" + args[0])
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/node/" + args[0])
 		if err != nil {
 			fmt.Printf("Failed to contact API: %v\n", err)
 			return
@@ -82,7 +82,7 @@ var nodePromoteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		payload := `{"role":"manager"}`
-		resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
+		resp, err := http.Post(GetAPIEndpoint() + "/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Node %s promoted to a manager.\n", args[0])
 		} else {
@@ -97,7 +97,7 @@ var nodeDemoteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		payload := `{"role":"worker"}`
-		resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
+		resp, err := http.Post(GetAPIEndpoint() + "/v1/node/"+args[0]+"/role", "application/json", bytes.NewBufferString(payload))
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Node %s demoted to a worker.\n", args[0])
 		} else {
@@ -117,7 +117,7 @@ var nodeUpdateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if nodeAvailability != "" {
 			payload := fmt.Sprintf(`{"availability":"%s"}`, nodeAvailability)
-			resp, err := http.Post("http://localhost:4000/v1/node/"+args[0]+"/availability", "application/json", bytes.NewBufferString(payload))
+			resp, err := http.Post(GetAPIEndpoint() + "/v1/node/"+args[0]+"/availability", "application/json", bytes.NewBufferString(payload))
 			if err == nil && resp.StatusCode == 200 {
 				fmt.Printf("Node %s availability updated to %s.\n", args[0], nodeAvailability)
 			} else {

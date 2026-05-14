@@ -6,6 +6,18 @@ Gubernator's CLI is heavily inspired by Docker Swarm and Nomad, providing an int
 
 ---
 
+## ⚙️ The Forum (Context Configuration)
+
+The Gubernator CLI acts as a remote client (`gbntctl`). It stores connection contexts in `~/.gbntctl/config`.
+
+- **`gbnt config get-contexts`**
+  Lists all configured remote clusters and highlights the currently active one.
+
+- **`gbnt config use-context [name]`**
+  Switches the active connection context to another manager.
+
+---
+
 ## 🏛 The Legion (Cluster Management)
 
 Commands for managing the cluster lifecycle and joining nodes.

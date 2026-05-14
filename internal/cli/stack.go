@@ -45,7 +45,7 @@ var stackDeployCmd = &cobra.Command{
 		}
 
 		body, _ := json.Marshal(payload)
-		resp, err := http.Post("http://localhost:4000/v1/stack/deploy", "application/json", bytes.NewBuffer(body))
+		resp, err := http.Post(GetAPIEndpoint() + "/v1/stack/deploy", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)
@@ -67,7 +67,7 @@ var stackLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List stacks",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/stack/ls")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/stack/ls")
 		if err != nil {
 			fmt.Printf("Failed to fetch stacks: %v\n", err)
 			return
@@ -91,7 +91,7 @@ var stackServicesCmd = &cobra.Command{
 	Short: "List the services in the stack",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/stack/" + args[0] + "/services")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/stack/" + args[0] + "/services")
 		if err != nil {
 			fmt.Printf("Failed to fetch services: %v\n", err)
 			return
@@ -115,7 +115,7 @@ var stackRmCmd = &cobra.Command{
 	Short: "Remove one or more stacks",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req, _ := http.NewRequest("DELETE", "http://localhost:4000/v1/stack/"+args[0], nil)
+		req, _ := http.NewRequest("DELETE", GetAPIEndpoint() + "/v1/stack/"+args[0], nil)
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Stack %s removed\n", args[0])

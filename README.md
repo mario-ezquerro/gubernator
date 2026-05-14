@@ -68,12 +68,20 @@ The server will output:
 ```text
 [GIN-debug] Listening and serving HTTP on :4000
 ```
+It will also print a configuration snippet that you can use to connect remotely.
 
 ---
 
 ## 💻 CLI Usage & Examples
 
-Once the server is running, you can interact with the cluster using the `gbnt` CLI.
+By default, the CLI connects to `http://localhost:4000`. You can configure it to act as a remote `gbntctl` client by managing contexts.
+
+### Context Management (Remote CLI)
+
+Settings are stored in `~/.gbntctl/config` (similar to Kubeconfig).
+
+* **View contexts**: `gbnt config get-contexts`
+* **Switch context**: `gbnt config use-context <name>`
 
 ### List Nodes
 To see all nodes (Centurions) currently registered in the cluster:

@@ -21,7 +21,7 @@ var serviceLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List services",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/service/ls")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/service/ls")
 		if err != nil {
 			fmt.Printf("Failed to fetch services: %v\n", err)
 			return
@@ -45,7 +45,7 @@ var servicePsCmd = &cobra.Command{
 	Short: "List the tasks of one or more services",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/service/" + args[0] + "/tasks")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/service/" + args[0] + "/tasks")
 		if err != nil {
 			fmt.Printf("Failed to fetch tasks: %v\n", err)
 			return
@@ -69,7 +69,7 @@ var serviceRmCmd = &cobra.Command{
 	Short: "Remove one or more services",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req, _ := http.NewRequest("DELETE", "http://localhost:4000/v1/service/"+args[0], nil)
+		req, _ := http.NewRequest("DELETE", GetAPIEndpoint() + "/v1/service/"+args[0], nil)
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Service %s removed\n", args[0])
@@ -90,7 +90,7 @@ var serviceScaleCmd = &cobra.Command{
 		fmt.Sscanf(args[0], "%s=%d", &serviceID, &replicas)
 		
 		payload := fmt.Sprintf(`{"replicas":%d}`, replicas)
-		resp, err := http.Post("http://localhost:4000/v1/service/"+serviceID+"/scale", "application/json", bytes.NewBufferString(payload))
+		resp, err := http.Post(GetAPIEndpoint() + "/v1/service/"+serviceID+"/scale", "application/json", bytes.NewBufferString(payload))
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Service %s scaled to %d\n", serviceID, replicas)
 		} else {

@@ -20,7 +20,7 @@ var taskLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List all tasks",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4000/v1/task/ls")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/task/ls")
 		if err != nil {
 			fmt.Printf("Failed to fetch tasks: %v\n", err)
 			return
@@ -44,7 +44,7 @@ var taskRmCmd = &cobra.Command{
 	Short: "Remove a task",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req, _ := http.NewRequest("DELETE", "http://localhost:4000/v1/task/"+args[0], nil)
+		req, _ := http.NewRequest("DELETE", GetAPIEndpoint() + "/v1/task/"+args[0], nil)
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Task %s removed\n", args[0])

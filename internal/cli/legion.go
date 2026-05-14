@@ -23,7 +23,7 @@ var legionInitCmd = &cobra.Command{
 	Short: "Initialize the cluster and show the join token",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Fetches the token from the local manager API
-		resp, err := http.Get("http://localhost:4000/v1/cluster/token")
+		resp, err := http.Get(GetAPIEndpoint() + "/v1/cluster/token")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reaching local Manager: %v\n", err)
 			os.Exit(1)
@@ -75,7 +75,7 @@ var legionJoinCmd = &cobra.Command{
 		}
 
 		body, _ := json.Marshal(payload)
-		resp, err := http.Post(fmt.Sprintf("http://%s/v1/node/join", managerAddr), "application/json", bytes.NewBuffer(body))
+		resp, err := http.Post(fmt.Sprintf("%s/v1/node/join", managerAddr), "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
@@ -97,7 +97,7 @@ var legionJoinCmd = &cobra.Command{
 			for {
 				time.Sleep(10 * time.Second)
 				hbPayload, _ := json.Marshal(map[string]string{"id": nodeID})
-				http.Post(fmt.Sprintf("http://%s/v1/node/heartbeat", managerAddr), "application/json", bytes.NewBuffer(hbPayload))
+				http.Post(fmt.Sprintf("%s/v1/node/heartbeat", managerAddr), "application/json", bytes.NewBuffer(hbPayload))
 			}
 		}()
 
@@ -106,7 +106,7 @@ var legionJoinCmd = &cobra.Command{
 			time.Sleep(5 * time.Second)
 			
 			// Fetch tasks
-			resp, err := http.Get(fmt.Sprintf("http://%s/v1/node/tasks/%s", managerAddr, nodeID))
+			resp, err := http.Get(fmt.Sprintf("%s/v1/node/tasks/%s", managerAddr, nodeID))
 			if err != nil {
 				continue
 			}
@@ -144,7 +144,7 @@ var legionJoinCmd = &cobra.Command{
 						"status": "running",
 						"container_ip": ip,
 					})
-					http.Post(fmt.Sprintf("http://%s/v1/node/tasks/%s/status", managerAddr, t.Task.ID), "application/json", bytes.NewBuffer(statusPayload))
+					http.Post(fmt.Sprintf("%s/v1/node/tasks/%s/status", managerAddr, t.Task.ID), "application/json", bytes.NewBuffer(statusPayload))
 				}
 			}
 			resp.Body.Close()
@@ -168,8 +168,8 @@ var legionJoinTokenCmd = &cobra.Command{
 	Use:   "join-token",
 	Short: "Print the token needed to join the legion",
 	Run: func(cmd *cobra.Command, args []string) {
-		managerAddr := "localhost:4000" // Simple default
-		resp, err := http.Get(fmt.Sprintf("http://%s/v1/cluster/token", managerAddr))
+		managerAddr := GetAPIEndpoint() // Simple default
+		resp, err := http.Get(fmt.Sprintf("%s/v1/cluster/token", managerAddr))
 		if err != nil {
 			fmt.Printf("Failed to reach manager: %v\n", err)
 			return
@@ -192,11 +192,11 @@ var legionLeaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave the legion",
 	Run: func(cmd *cobra.Command, args []string) {
-		managerAddr := "localhost:4000" // Simple default
+		managerAddr := GetAPIEndpoint() // Simple default
 		hostname, _ := os.Hostname()
 		nodeID := "node-" + hostname
 
-		resp, err := http.Post(fmt.Sprintf("http://%s/v1/node/%s/leave", managerAddr, nodeID), "application/json", nil)
+		resp, err := http.Post(fmt.Sprintf("%s/v1/node/%s/leave", managerAddr, nodeID), "application/json", nil)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			fmt.Printf("Failed to leave legion on manager. You might need to manually demote or remove.\n")
 		} else {
