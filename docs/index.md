@@ -1,9 +1,11 @@
 # <img src="gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
 [![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
+[![Docker Version](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue)](https://hub.docker.com/r/marioezquerro/gubernator)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/test.yml?branch=main&style=flat-square)](https://github.com/mario-ezquerro/gubernator/actions/workflows/test.yml)
-[![Docs Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/pages.yml?branch=main&label=docs&style=flat-square)](https://mario-ezquerro.github.io/gubernator/)
+[![Documentation](https://img.shields.io/badge/docs-MkDocs-blue?style=flat-square)](https://mario-ezquerro.github.io/gubernator/)
 
 Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicity of Docker Swarm** (native Compose support, easy cluster joining) with the **flexibility of Nomad** (task-based logic, labels for hardware/AI targeting).
 
