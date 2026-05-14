@@ -22,8 +22,11 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 
 ### Installation
 
-Currently, Gubernator is compiled directly from source. You will need **Go 1.24+**.
+The `gbnt` CLI tool is compiled as a single, portable binary for Windows, macOS, and Linux.
 
+👉 **[See the Official Installation Guide](https://mario-ezquerro.github.io/gubernator/install/)** to download and install the binary for your operating system.
+
+If you prefer to compile from source (requires Go 1.24+ and CGO):
 ```bash
 git clone https://github.com/mario-ezquerro/gubernator.git
 cd gubernator
