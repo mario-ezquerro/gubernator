@@ -1,7 +1,7 @@
 # <img src="docs/gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
 [![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
-[![Docker Version](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue)](https://hub.docker.com/r/marioezquerro/gubernator)
+[![Docker Image](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/repository/docker/marioezquerro/gubernator/general)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/go.mod)
 [![License](https://img.shields.io/github/license/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/test.yml?branch=main&style=flat-square)](https://github.com/mario-ezquerro/gubernator/actions/workflows/test.yml)
