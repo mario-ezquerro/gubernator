@@ -209,10 +209,7 @@ From the Swagger UI, you can directly test endpoints like `GET /v1/node/ls`.
 ---
 
 ## 🗺 Current Roadmap State
-- [x] **Phase 1: The Foundation ("Veni" Sprint)** - CLI setup, Gin API, Swagger, Dockerfile.
-- [x] **Phase 1.5: The Granaries Foundation** - SQLite state persistence, GORM ORM integration, API hooking.
-- [x] **Phase 2: The Legion** - Clustering, Join Tokens, Heartbeats.
-- [x] **Phase 3: The Command** - Compose Stack Parser, Labels.
-- [x] **Phase 4: The Watchtowers** - Telemetry, Healthchecks.
-- [x] **Phase 5.1: The Executor** - Direct Docker daemon container spawning from Tasks.
-- [x] **Phase 5.2: The Aqueducts** - CoreDNS hosts generation, Caddyfile Ingress routing.
+
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 8**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, and Asymmetric Port Security (4000/4001/4002).
+
+👉 **[View the complete Roadmap and completed features here](roadmap.md)**

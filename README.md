@@ -11,7 +11,7 @@ Themed around the **Roman Empire**, Gubernator aims to manage your containers ro
 
 ---
 
-## 🏛 Architecture Overview
+##  Architecture Overview
 
 Gubernator operates using a single, portable binary (`gbnt`) that can run as either a Manager or a Worker. 
 * **API & CLI:** Built with Gin and Cobra.
@@ -23,13 +23,13 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Installation
 
 The `gbnt` CLI tool is compiled as a single, portable binary for Windows, macOS, and Linux.
 
-👉 **[See the Official Installation Guide](https://mario-ezquerro.github.io/gubernator/install/)** to download and install the binary for your operating system.
+ **[See the Official Installation Guide](https://mario-ezquerro.github.io/gubernator/install/)** to download and install the binary for your operating system.
 
 If you prefer to compile from source (requires Go 1.24+ and CGO):
 ```bash
@@ -81,7 +81,7 @@ It will also print a configuration snippet that you can use to connect remotely.
 
 ---
 
-## 💻 CLI Usage & Examples
+##  CLI Usage & Examples
 
 By default, the CLI connects to `http://localhost:4000`. You can configure it to act as a remote `gbntctl` client by managing contexts.
 
@@ -115,7 +115,7 @@ To form a cluster, you must initialize the "Legion" from the Manager node to ret
 ```
 *Output:*
 ```text
-🏛 Gubernator Legion Initialized!
+ Gubernator Legion Initialized!
 
 To add a worker to this swarm, run the following command on the worker node:
   gbnt legion join --token <TOKEN_STRING> --manager <MANAGER-IP>:4000
@@ -152,7 +152,7 @@ Deploy the stack:
 
 *Output:*
 ```text
-🚀 Stack 'mystack' deployed successfully!
+ Stack 'mystack' deployed successfully!
 The Governor has dispatched the Centurions to schedule the tasks.
 ```
 
@@ -188,7 +188,7 @@ To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same direct
 
 ---
 
-## 🌐 Web UI Dashboard
+##  Web UI Dashboard
 
 Gubernator includes a secure, built-in Web UI to visualize the state of your cluster. It is disabled by default to keep the binary lightweight and secure.
 
@@ -207,7 +207,7 @@ Access the dashboard at `http://localhost:4001` and authenticate with the creden
 
 ---
 
-## 🛠 Commands Reference (CLI)
+##  Commands Reference (CLI)
 
 **The Legion (Cluster)**
 * `gbnt legion init` - Initialize a new cluster (Manager).
@@ -236,23 +236,19 @@ Access the dashboard at `http://localhost:4001` and authenticate with the creden
 
 ---
 
-## 📚 API Documentation (Swagger)
+##  API Documentation (Swagger)
 
 Gubernator features auto-generated Swagger documentation. 
 While `./gbnt serve` is running, navigate to the following URL in your browser:
 
-👉 **[http://localhost:4002/swagger/index.html](http://localhost:4002/swagger/index.html)**
+ **[http://localhost:4002/swagger/index.html](http://localhost:4002/swagger/index.html)**
 
 From the Swagger UI, you can directly test endpoints.
 
 ---
 
-## 🗺 Current Roadmap State
-- [x] **Phase 1: The Foundation ("Veni" Sprint)** - CLI setup, Gin API, Swagger, Dockerfile.
-- [x] **Phase 1.5: The Granaries Foundation** - SQLite state persistence, GORM ORM integration, API hooking.
-- [x] **Phase 2: The Legion** - Clustering, Join Tokens, Heartbeats.
-- [x] **Phase 3: The Command** - Compose Stack Parser, Labels.
-- [x] **Phase 4: The Watchtowers** - Telemetry, Healthchecks.
-- [x] **Phase 5.1: The Executor** - Direct Docker daemon container spawning from Tasks.
-- [x] **Phase 5.2: The Aqueducts** - CoreDNS hosts generation, Caddyfile Ingress routing.
-- [x] **Phase 6: The Senate Mandate** - Full CLI and CRUD implementations (Node, Stack, Service commands).
+##  Current Roadmap State
+
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 8**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, and Asymmetric Port Security (4000/4001/4002).
+
+👉 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
