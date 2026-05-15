@@ -33,3 +33,6 @@ go.work.sum
 
 # Logs and outputs
 test_output.txt
+
+.DS_Store
+
