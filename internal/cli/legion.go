@@ -75,7 +75,12 @@ var legionJoinCmd = &cobra.Command{
 		}
 
 		body, _ := json.Marshal(payload)
-		resp, err := http.Post(fmt.Sprintf("%s/v1/node/join", managerAddr), "application/json", bytes.NewBuffer(body))
+		// Ensure managerAddr has a scheme
+		addr := managerAddr
+		if len(addr) > 0 && addr[:4] != "http" {
+			addr = "http://" + addr
+		}
+		resp, err := http.Post(fmt.Sprintf("%s/v1/node/join", addr), "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
@@ -158,7 +163,7 @@ func init() {
 	legionCmd.AddCommand(legionJoinCmd)
 
 	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Token to authenticate with the Manager")
-	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000)")
+	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000 or http://192.168.1.100:4000)")
 
 	legionCmd.AddCommand(legionJoinTokenCmd)
 	legionCmd.AddCommand(legionLeaveCmd)
@@ -168,8 +173,7 @@ var legionJoinTokenCmd = &cobra.Command{
 	Use:   "join-token",
 	Short: "Print the token needed to join the legion",
 	Run: func(cmd *cobra.Command, args []string) {
-		managerAddr := GetAPIEndpoint() // Simple default
-		resp, err := http.Get(fmt.Sprintf("%s/v1/cluster/token", managerAddr))
+		resp, err := DoAPIRequest("GET", "/v1/cluster/token", nil)
 		if err != nil {
 			fmt.Printf("Failed to reach manager: %v\n", err)
 			return
@@ -192,11 +196,10 @@ var legionLeaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Leave the legion",
 	Run: func(cmd *cobra.Command, args []string) {
-		managerAddr := GetAPIEndpoint() // Simple default
 		hostname, _ := os.Hostname()
 		nodeID := "node-" + hostname
 
-		resp, err := http.Post(fmt.Sprintf("%s/v1/node/%s/leave", managerAddr, nodeID), "application/json", nil)
+		resp, err := DoAPIRequest("POST", "/v1/node/"+nodeID+"/leave", nil)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			fmt.Printf("Failed to leave legion on manager. You might need to manually demote or remove.\n")
 		} else {

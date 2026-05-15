@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"text/tabwriter"
 
@@ -44,8 +43,7 @@ var taskRmCmd = &cobra.Command{
 	Short: "Remove a task",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		req, _ := http.NewRequest("DELETE", GetAPIEndpoint() + "/v1/task/"+args[0], nil)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := DoAPIRequest("DELETE", "/v1/task/"+args[0], nil)
 		if err == nil && resp.StatusCode == 200 {
 			fmt.Printf("Task %s removed\n", args[0])
 		} else {

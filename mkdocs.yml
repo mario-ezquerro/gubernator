@@ -38,7 +38,9 @@ nav:
   - Home: index.md
   - Roadmap: roadmap.md
   - Installation: install.md
-  - CLI Reference: cli.md
+  - CLI Reference:
+    - Overview: cli.md
+    - Full Command Reference: cli-full.md
   - Architecture: architecture.md
   - API & SDK: api.md
   - Examples: examples.md
