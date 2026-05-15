@@ -1,7 +1,8 @@
 site_name: Gubernator Orchestrator
-site_description: A lightweight, hybrid container orchestrator built in Go.
+site_description: A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.
 site_author: Mario Ezquerro
 repo_url: https://github.com/mario-ezquerro/gubernator
+repo_name: mario-ezquerro/gubernator
 
 theme:
   name: material
@@ -11,25 +12,30 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: indigo
-      accent: indigo
+      accent: deep purple
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
-      accent: indigo
+      accent: deep purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   font:
-    text: Roboto
-    code: Roboto Mono
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.instant
     - navigation.tracking
     - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
     - toc.integrate
+    - content.code.copy
+    - content.code.annotate
 
 extra_css:
   - stylesheets/extra.css
@@ -43,7 +49,12 @@ nav:
     - Full Command Reference: cli-full.md
   - Architecture: architecture.md
   - API & SDK: api.md
-  - Examples: examples.md
+  - Web UI Dashboard: web-ui.md
+  - Examples:
+    - Overview: examples.md
+    - "101: Getting Started": example-101.md
+    - "The Empire: Cluster + Ingress": example-empire.md
+    - "SRE-01: Full Observability": example-sre01.md
 
 markdown_extensions:
   - admonition
@@ -55,4 +66,8 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
   - tables
+  - attr_list
+  - md_in_html

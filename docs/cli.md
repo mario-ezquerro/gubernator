@@ -62,7 +62,7 @@ Commands executed by the Manager to inspect and control the physical worker mach
 Commands for deploying and managing complex multi-container applications via Docker Compose syntax.
 
 - **`gbnt stack deploy -c [docker-compose.yml] [stack_name]`**
-  Deploys or updates an entire stack of services based on a Compose file. Supports parsing `deploy.placement.constraints` for targeted scheduling.
+  Deploys or updates an entire stack of services based on a Compose file. Parses `image`, `ports`, `environment`, `volumes`, `command`, `deploy.replicas`, and `deploy.placement.constraints`. Containers start automatically via the built-in local executor (no separate worker needed for single-node mode).
 
 - **`gbnt stack ls`**
   Lists all currently deployed stacks across the cluster.
@@ -71,7 +71,7 @@ Commands for deploying and managing complex multi-container applications via Doc
   Lists all the individual services that belong to a specific deployed stack.
 
 - **`gbnt stack rm [stack_id]`**
-  Removes a stack completely, cascading the deletion to stop and remove all associated services and tasks.
+  Removes a stack completely: stops and removes all running Docker containers (`docker stop` + `docker rm`), then deletes tasks, services, and the stack record from the database.
 
 ---
 
