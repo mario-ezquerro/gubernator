@@ -1,10 +1,7 @@
 services:
   whoami:
     image: traefik/whoami
+    ports:
+      - "8082:80"
     deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.gbnt.node.role == worker
-          # The magic label that tells Gubernator to configure Caddy
-          - ingress.host == whoami.gubernator.local
+      replicas: 2

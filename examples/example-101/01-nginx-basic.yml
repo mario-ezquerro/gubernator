@@ -1,8 +1,7 @@
 services:
-  web:
+  web-nginx:
     image: nginx:alpine
+    ports:
+      - "8080:80"
     deploy:
-      replicas: 2
-      placement:
-        constraints:
-          - node.labels.gbnt.node.role == worker
+      replicas: 1
