@@ -58,45 +58,63 @@ type Stack struct {
 
 // Service represents a specific service defined inside a Stack.
 type Service struct {
-	ID             string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	StackID        string    `gorm:"type:varchar(255);index;not null" json:"stack_id"`
-	Name           string    `gorm:"type:varchar(255);not null" json:"name"`
-	Image          string    `gorm:"type:varchar(255);not null" json:"image"`
-	DesiredReplicas int      `json:"desired_replicas"`
-	ConstraintsRaw []byte    `gorm:"type:json" json:"-"`
-	Constraints    []string  `gorm:"-" json:"constraints"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID              string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	StackID         string    `gorm:"type:varchar(255);index;not null" json:"stack_id"`
+	Name            string    `gorm:"type:varchar(255);not null" json:"name"`
+	Image           string    `gorm:"type:varchar(255);not null" json:"image"`
+	DesiredReplicas int       `json:"desired_replicas"`
+	ConstraintsRaw  []byte    `gorm:"type:json" json:"-"`
+	Constraints     []string  `gorm:"-" json:"constraints"`
+	PortsRaw        []byte    `gorm:"type:json" json:"-"`
+	Ports           []string  `gorm:"-" json:"ports"`       // e.g. ["8080:80", "443:443"]
+	EnvRaw          []byte    `gorm:"type:json" json:"-"`
+	Env             []string  `gorm:"-" json:"env"`         // e.g. ["FOO=bar"]
+	VolumesRaw      []byte    `gorm:"type:json" json:"-"`
+	Volumes         []string  `gorm:"-" json:"volumes"`     // e.g. ["/host:/container"]
+	Command         string    `gorm:"type:text" json:"command"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // Task represents a running container instance of a Service assigned to a Node.
 type Task struct {
-	ID          string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	ServiceID   string    `gorm:"type:varchar(255);index;not null" json:"service_id"`
-	NodeID      string    `gorm:"type:varchar(255);index;not null" json:"node_id"`
-	Status      string    `gorm:"type:varchar(50);not null" json:"status"` // "pending", "running", "dead"
-	ContainerIP string    `gorm:"type:varchar(50)" json:"container_ip"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID            string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	ServiceID     string    `gorm:"type:varchar(255);index;not null" json:"service_id"`
+	NodeID        string    `gorm:"type:varchar(255);index;not null" json:"node_id"`
+	Status        string    `gorm:"type:varchar(50);not null" json:"status"` // "pending", "running", "dead"
+	ContainerIP   string    `gorm:"type:varchar(50)" json:"container_ip"`
+	ContainerName string    `gorm:"type:varchar(255)" json:"container_name"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-// Hooks for Service to handle JSON serialization of Constraints
 func (s *Service) BeforeSave(tx *gorm.DB) (err error) {
-	if s.Constraints == nil {
-		s.ConstraintsRaw = []byte("[]")
-		return nil
+	marshalField := func(v interface{}, nilVal []byte) []byte {
+		if v == nil {
+			return nilVal
+		}
+		b, _ := json.Marshal(v)
+		return b
 	}
-	bytes, err := json.Marshal(s.Constraints)
-	if err == nil {
-		s.ConstraintsRaw = bytes
-	}
-	return err
+	s.ConstraintsRaw = marshalField(s.Constraints, []byte("[]"))
+	s.PortsRaw = marshalField(s.Ports, []byte("[]"))
+	s.EnvRaw = marshalField(s.Env, []byte("[]"))
+	s.VolumesRaw = marshalField(s.Volumes, []byte("[]"))
+	return nil
 }
 
 func (s *Service) AfterFind(tx *gorm.DB) (err error) {
-	if len(s.ConstraintsRaw) > 0 {
-		return json.Unmarshal(s.ConstraintsRaw, &s.Constraints)
+	unmarshal := func(raw []byte, out interface{}) {
+		if len(raw) > 0 {
+			json.Unmarshal(raw, out)
+		}
 	}
-	s.Constraints = make([]string, 0)
+	unmarshal(s.ConstraintsRaw, &s.Constraints)
+	unmarshal(s.PortsRaw, &s.Ports)
+	unmarshal(s.EnvRaw, &s.Env)
+	unmarshal(s.VolumesRaw, &s.Volumes)
+	if s.Constraints == nil {
+		s.Constraints = make([]string, 0)
+	}
 	return nil
 }

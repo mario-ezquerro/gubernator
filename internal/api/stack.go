@@ -16,10 +16,17 @@ type ComposeFile struct {
 	Services map[string]ComposeService `yaml:"services"`
 }
 
+// ComposeService maps a docker-compose service definition, capturing all
+// fields needed to run a container: image, replicas, ports, env, volumes, command, placement.
 type ComposeService struct {
-	Image  string `yaml:"image"`
-	Deploy struct {
-		Replicas    int `yaml:"replicas"`
+	Image       string            `yaml:"image"`
+	Ports       []string          `yaml:"ports"`       // e.g. ["8080:80"]
+	Environment []string          `yaml:"environment"` // e.g. ["FOO=bar"] or map form
+	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
+	Volumes     []string          `yaml:"volumes"`  // e.g. ["./data:/app/data"]
+	Command     string            `yaml:"command"`  // optional command override
+	Deploy      struct {
+		Replicas  int `yaml:"replicas"`
 		Placement struct {
 			Constraints []string `yaml:"constraints"`
 		} `yaml:"placement"`
@@ -77,10 +84,14 @@ func StackDeployHandler(c *gin.Context) {
 			Image:           srvDef.Image,
 			DesiredReplicas: replicas,
 			Constraints:     srvDef.Deploy.Placement.Constraints,
+			Ports:           srvDef.Ports,
+			Env:             srvDef.Environment,
+			Volumes:         srvDef.Volumes,
+			Command:         srvDef.Command,
 		}
 		db.DB.Create(&service)
 
-		// Scheduler MVP logic: assign Tasks to Nodes based on Constraints
+		// Scheduler: assign Tasks to Nodes based on Constraints
 		scheduleService(&service)
 	}
 
@@ -104,7 +115,7 @@ func scheduleService(service *db.Service) {
 				if len(parts) == 2 {
 					key := strings.TrimPrefix(strings.TrimSpace(parts[0]), "node.labels.")
 					val := strings.TrimSpace(parts[1])
-					
+
 					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
 						matchesAll = false
 						break
@@ -114,7 +125,7 @@ func scheduleService(service *db.Service) {
 
 			if matchesAll {
 				selectedNode = &node
-				break // Found a matching node, assign it (MVP: just picks the first one)
+				break // Found a matching node (MVP: picks the first one)
 			}
 		}
 
@@ -123,7 +134,7 @@ func scheduleService(service *db.Service) {
 				ID:        uuid.New().String(),
 				ServiceID: service.ID,
 				NodeID:    selectedNode.ID,
-				Status:    "pending", // worker will pick this up
+				Status:    "pending", // executor will pick this up
 			}
 			db.DB.Create(&task)
 		} else {

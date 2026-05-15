@@ -31,6 +31,9 @@ func Start() {
 	// Start Telemetry & Swagger on port 4002
 	go startTelemetryServer()
 
+	// Start Local Executor: run pending tasks assigned to the local manager node
+	go startLocalExecutor()
+
 	r := gin.Default()
 
 	// API Authentication Middleware

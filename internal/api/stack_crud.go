@@ -40,7 +40,7 @@ func StackServicesHandler(c *gin.Context) {
 }
 
 // @Summary Remove Stack
-// @Description Delete a stack, its services, and tasks
+// @Description Delete a stack, stop its containers, and remove all related records
 // @Tags stacks
 // @Produce json
 // @Param id path string true "Stack ID"
@@ -48,22 +48,25 @@ func StackServicesHandler(c *gin.Context) {
 // @Router /v1/stack/{id} [delete]
 func StackRmHandler(c *gin.Context) {
 	id := c.Param("id")
-	
+
+	// Stop all running containers for this stack first
+	go StopStackContainers(id)
+
 	// Delete tasks related to this stack's services
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
 	for _, svc := range services {
 		db.DB.Where("service_id = ?", svc.ID).Delete(&db.Task{})
 	}
-	
+
 	// Delete services
 	db.DB.Where("stack_id = ?", id).Delete(&db.Service{})
-	
+
 	// Delete stack
 	if res := db.DB.Where("id = ?", id).Delete(&db.Stack{}); res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
 		return
 	}
-	
-	c.JSON(http.StatusOK, gin.H{"message": "Stack removed"})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Stack removed and containers stopped"})
 }

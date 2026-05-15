@@ -121,35 +121,52 @@ var legionJoinCmd = &cobra.Command{
 					Task struct {
 						ID string `json:"id"`
 					} `json:"task"`
-					Image string `json:"image"`
+					Image   string   `json:"image"`
+					Ports   []string `json:"ports"`
+					Env     []string `json:"env"`
+					Volumes []string `json:"volumes"`
+					Command string   `json:"command"`
 				} `json:"tasks"`
 			}
 			
 			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
 				for _, t := range data.Tasks {
-					fmt.Printf("📦 Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
-					
-					// Use docker engine to run it
-					fmt.Printf("⬇️ Pulling image %s...\n", t.Image)
+					fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
+
+					fmt.Printf("Pulling image %s...\n", t.Image)
 					if err := docker.PullImage(t.Image); err != nil {
-						fmt.Printf("❌ Failed to pull image: %v\n", err)
+						fmt.Printf("Failed to pull image: %v\n", err)
 						continue
 					}
-					
-					fmt.Printf("🚀 Starting container for task %s...\n", t.Task.ID)
-					ip, err := docker.StartContainer(t.Task.ID, t.Image)
+
+					cfg := docker.ContainerConfig{
+						TaskID:  t.Task.ID,
+						Image:   t.Image,
+						Ports:   t.Ports,
+						Env:     t.Env,
+						Volumes: t.Volumes,
+						Command: t.Command,
+					}
+
+					fmt.Printf("Starting container for task %s...\n", t.Task.ID)
+					containerName, ip, err := docker.StartContainer(cfg)
 					if err != nil {
-						fmt.Printf("❌ Failed to start container: %v\n", err)
+						fmt.Printf("Failed to start container: %v\n", err)
 						continue
 					}
-					
-					fmt.Printf("✅ Container started successfully with IP: %s\n", ip)
-					
+
+					fmt.Printf("Container %s started successfully with IP: %s\n", containerName, ip)
+
 					statusPayload, _ := json.Marshal(map[string]string{
-						"status": "running",
-						"container_ip": ip,
+						"status":         "running",
+						"container_ip":   ip,
+						"container_name": containerName,
 					})
-					http.Post(fmt.Sprintf("%s/v1/node/tasks/%s/status", managerAddr, t.Task.ID), "application/json", bytes.NewBuffer(statusPayload))
+					addr := managerAddr
+					if len(addr) > 0 && addr[:4] != "http" {
+						addr = "http://" + addr
+					}
+					http.Post(fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), "application/json", bytes.NewBuffer(statusPayload))
 				}
 			}
 			resp.Body.Close()

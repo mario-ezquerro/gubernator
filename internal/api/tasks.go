@@ -14,8 +14,12 @@ type TaskResponse struct {
 }
 
 type TaskWithImage struct {
-	Task  db.Task `json:"task"`
-	Image string  `json:"image"`
+	Task    db.Task  `json:"task"`
+	Image   string   `json:"image"`
+	Ports   []string `json:"ports"`
+	Env     []string `json:"env"`
+	Volumes []string `json:"volumes"`
+	Command string   `json:"command"`
 }
 
 // @Summary Get assigned tasks for a node
@@ -39,8 +43,12 @@ func NodeTasksHandler(c *gin.Context) {
 		var svc db.Service
 		db.DB.First(&svc, "id = ?", t.ServiceID)
 		response = append(response, TaskWithImage{
-			Task:  t,
-			Image: svc.Image,
+			Task:    t,
+			Image:   svc.Image,
+			Ports:   svc.Ports,
+			Env:     svc.Env,
+			Volumes: svc.Volumes,
+			Command: svc.Command,
 		})
 	}
 
