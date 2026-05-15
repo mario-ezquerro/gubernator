@@ -25,7 +25,7 @@ RUN apk --no-cache add ca-certificates tzdata sqlite
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
 
-# Expose API (4000), Web UI (4001), and Telemetry (4002) ports
+# Expose CLI (4000), Web UI (4001), and APITelemetry (4002) ports
 EXPOSE 4000
 EXPOSE 4001
 EXPOSE 4002
