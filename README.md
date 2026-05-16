@@ -3,9 +3,20 @@
 [![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
 [![Docker Image](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/repository/docker/marioezquerro/gubernator/general)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/go.mod)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mario-ezquerro/gubernator?style=flat-square)](https://goreportcard.com/report/github.com/mario-ezquerro/gubernator)
 [![License](https://img.shields.io/github/license/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/mario-ezquerro/gubernator/test.yml?branch=main&style=flat-square)](https://github.com/mario-ezquerro/gubernator/actions/workflows/test.yml)
 [![Documentation](https://img.shields.io/badge/docs-MkDocs-blue?style=flat-square)](https://mario-ezquerro.github.io/gubernator/)
+[![GitHub issues](https://img.shields.io/github/issues/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/network)
+[![Docker Pulls](https://img.shields.io/docker/pulls/marioezquerro/gubernator?style=flat-square&logo=docker)](https://hub.docker.com/r/marioezquerro/gubernator)
+[![Docker Image Size](https://img.shields.io/docker/image-size/marioezquerro/gubernator/latest?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/r/marioezquerro/gubernator)
+[![Go Reference](https://img.shields.io/badge/go-reference-blue?style=flat-square&logo=go)](https://pkg.go.dev/github.com/mario-ezquerro/gubernator)
+[![GitHub contributors](https://img.shields.io/github/contributors/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/graphs/contributors)
+[![GitHub repo size](https://img.shields.io/github/repo-size/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator)
+[![GitHub last commit](https://img.shields.io/github/last-commit/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/commits/main)
 
 Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicity of Docker Swarm** (native Compose support, easy cluster joining) with the **flexibility of Nomad** (task-based logic, labels for hardware/AI targeting).
 
