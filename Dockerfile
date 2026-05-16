@@ -19,13 +19,17 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Add certificates and timezone data
-RUN apk --no-cache add ca-certificates tzdata sqlite
+# Add certificates, timezone data, sqlite, curl and Docker CLI (needed for local executor)
+RUN apk --no-cache add ca-certificates tzdata sqlite docker-cli curl
 
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
 
-# Expose CLI (4000), Web UI (4001), and APITelemetry (4002) ports
+# Healthcheck — polls the telemetry port every 30s
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:4002/health || exit 1
+
+# Expose CLI (4000), Web UI (4001), and Telemetry/Swagger/Metrics (4002) ports
 EXPOSE 4000
 EXPOSE 4001
 EXPOSE 4002

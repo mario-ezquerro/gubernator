@@ -1,0 +1,79 @@
+# Gubernator Monitoring Stack
+# Spins up Gubernator + Prometheus + Grafana in a self-contained environment.
+# Prometheus auto-scrapes Gubernator metrics from port 4002.
+# Grafana auto-loads the pre-built Gubernator dashboard.
+#
+# Usage:
+#   cd monitoring/
+#   docker compose up -d
+#   open http://localhost:3000   (Grafana — admin/admin)
+#   open http://localhost:9090   (Prometheus)
+#   open http://localhost:4001   (Gubernator Web UI — admin/admin)
+
+services:
+
+  gubernator:
+    image: gubernator:latest          # use local image built from Dockerfile
+    # image: marioezquerro/gubernator:latest   # or pull from Docker Hub
+    container_name: gbnt-monitored
+    ports:
+      - "4000:4000"   # CLI / REST API
+      - "4001:4001"   # Web UI
+      - "4002:4002"   # Telemetry / Metrics / Swagger / Health
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gbnt-data:/app/data
+    environment:
+      - GBNT_API_TOKEN=admin
+      - GBNT_WEB=true
+      - GBNT_WEB_USER=admin
+      - GBNT_WEB_PASSWORD=admin
+    command: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gbnt-prometheus
+    ports:
+      - "9091:9090"      # host:container  (9090 may be in use locally)
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    depends_on:
+      - gubernator
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gbnt-grafana
+    ports:
+      - "3001:3000"      # host:container  (3000 may be in use locally)
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/gubernator.json
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  gbnt-data:
+  prometheus-data:
+  grafana-data:

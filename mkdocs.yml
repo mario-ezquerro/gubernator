@@ -50,6 +50,8 @@ nav:
   - Architecture: architecture.md
   - API & SDK: api.md
   - Web UI Dashboard: web-ui.md
+  - Observability:
+    - Health & Metrics: observability.md
   - Examples:
     - Overview: examples.md
     - "101: Getting Started": example-101.md
