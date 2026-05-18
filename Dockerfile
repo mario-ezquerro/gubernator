@@ -25,9 +25,9 @@ RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates t
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
 
-# Healthcheck — polls the telemetry port every 30s using Alpine's built-in wget
+# Healthcheck — polls the telemetry port every 30s using our native CLI
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4002/health || exit 1
+  CMD ["/app/gbnt", "health"]
 
 # Expose CLI (4000), Web UI (4001), and Telemetry/Swagger/Metrics (4002) ports
 EXPOSE 4000

@@ -36,9 +36,9 @@ The endpoint always returns `200 OK` as long as the Gubernator process is runnin
 
     ```dockerfile
     HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-      CMD wget --no-verbose --tries=1 --spider http://localhost:4002/health || exit 1
+      CMD ["/app/gbnt", "health"]
     ```
-    This is already built into the official `Dockerfile`.
+    This is already built into the official `Dockerfile` and is completely self-contained (requires no external shell, curl, or wget).
 
 === "Docker Compose"
 
@@ -47,7 +47,7 @@ The endpoint always returns `200 OK` as long as the Gubernator process is runnin
       gubernator:
         image: gubernator:latest
         healthcheck:
-          test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4002/health"]
+          test: ["CMD", "/app/gbnt", "health"]
           interval: 30s
           timeout: 5s
           retries: 3
