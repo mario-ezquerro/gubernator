@@ -37,5 +37,6 @@ jobs:
         with:
           context: .
           push: true
+          pull: true
           tags: marioezquerro/gubernator:latest, marioezquerro/gubernator:${{ env.VERSION }}
           labels: ${{ steps.meta.outputs.labels }}

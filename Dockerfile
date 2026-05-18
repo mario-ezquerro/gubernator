@@ -3,7 +3,7 @@ FROM golang:alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for go-sqlite3 (CGO)
-RUN apk add --no-cache gcc musl-dev
+RUN apk update && apk upgrade --no-cache && apk add --no-cache gcc musl-dev
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -20,7 +20,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Add certificates, timezone data, sqlite, curl and Docker CLI (needed for local executor)
-RUN apk --no-cache add ca-certificates tzdata sqlite docker-cli curl
+RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli curl
 
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
