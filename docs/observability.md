@@ -36,7 +36,7 @@ The endpoint always returns `200 OK` as long as the Gubernator process is runnin
 
     ```dockerfile
     HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-      CMD curl -f http://localhost:4002/health || exit 1
+      CMD wget --no-verbose --tries=1 --spider http://localhost:4002/health || exit 1
     ```
     This is already built into the official `Dockerfile`.
 
@@ -47,7 +47,7 @@ The endpoint always returns `200 OK` as long as the Gubernator process is runnin
       gubernator:
         image: gubernator:latest
         healthcheck:
-          test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+          test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4002/health"]
           interval: 30s
           timeout: 5s
           retries: 3
