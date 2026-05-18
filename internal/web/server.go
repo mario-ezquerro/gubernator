@@ -26,7 +26,7 @@ func StartDashboard() {
 		log.Println("Web Dashboard disabled. Set GBNT_WEB=true, GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable.")
 		return
 	}
-	
+
 	if user == "" || pass == "" {
 		log.Println("Web Dashboard is enabled but missing credentials. Provide GBNT_WEB_USER and GBNT_WEB_PASSWORD.")
 		return

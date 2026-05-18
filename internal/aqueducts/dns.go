@@ -28,7 +28,7 @@ func GenerateHostsFile() {
 				// Example: 172.17.0.2 task-abc.web.mystack.gbnt
 				domain := fmt.Sprintf("%s.%s.%s.gbnt", t.ID, svc.Name, stack.Name)
 				content += fmt.Sprintf("%s\t%s\n", t.ContainerIP, domain)
-				
+
 				// Short alias (e.g. web.mystack.gbnt points to the first container MVP)
 				shortDomain := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
 				content += fmt.Sprintf("%s\t%s\n", t.ContainerIP, shortDomain)

@@ -9,14 +9,14 @@ import (
 
 // Node represents a server (Centurion) in the Gubernator cluster.
 type Node struct {
-	ID        string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	IP        string    `gorm:"type:varchar(255);not null" json:"ip"`
-	Role      string    `gorm:"type:varchar(50);not null" json:"role"`     // e.g., "manager", "worker"
-	Status    string    `gorm:"type:varchar(50);not null" json:"status"`   // e.g., "active", "down", "drain"
-	LabelsRaw []byte    `gorm:"type:json" json:"-"`                        // Raw JSON bytes for SQLite storage
-	Labels    map[string]string `gorm:"-" json:"labels"`                   // Parsed labels for the application
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string            `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	IP        string            `gorm:"type:varchar(255);not null" json:"ip"`
+	Role      string            `gorm:"type:varchar(50);not null" json:"role"`   // e.g., "manager", "worker"
+	Status    string            `gorm:"type:varchar(50);not null" json:"status"` // e.g., "active", "down", "drain"
+	LabelsRaw []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
+	Labels    map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // BeforeSave hook to marshal Labels into LabelsRaw before saving to DB
@@ -66,11 +66,11 @@ type Service struct {
 	ConstraintsRaw  []byte    `gorm:"type:json" json:"-"`
 	Constraints     []string  `gorm:"-" json:"constraints"`
 	PortsRaw        []byte    `gorm:"type:json" json:"-"`
-	Ports           []string  `gorm:"-" json:"ports"`       // e.g. ["8080:80", "443:443"]
+	Ports           []string  `gorm:"-" json:"ports"` // e.g. ["8080:80", "443:443"]
 	EnvRaw          []byte    `gorm:"type:json" json:"-"`
-	Env             []string  `gorm:"-" json:"env"`         // e.g. ["FOO=bar"]
+	Env             []string  `gorm:"-" json:"env"` // e.g. ["FOO=bar"]
 	VolumesRaw      []byte    `gorm:"type:json" json:"-"`
-	Volumes         []string  `gorm:"-" json:"volumes"`     // e.g. ["/host:/container"]
+	Volumes         []string  `gorm:"-" json:"volumes"` // e.g. ["/host:/container"]
 	Command         string    `gorm:"type:text" json:"command"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`

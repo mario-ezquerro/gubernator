@@ -16,7 +16,7 @@ func setupRouter() *gin.Engine {
 	db.Init("file::memory:?cache=shared")
 
 	r := gin.Default()
-	
+
 	v1 := r.Group("/v1")
 	{
 		node := v1.Group("/node")

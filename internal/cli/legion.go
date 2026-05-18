@@ -69,7 +69,7 @@ var legionJoinCmd = &cobra.Command{
 			"ip":    "127.0.0.1", // In reality, we'd detect the active interface IP
 			"token": joinToken,
 			"labels": map[string]string{
-				"gbnt.node.role": "worker",
+				"gbnt.node.role":     "worker",
 				"gbnt.node.hostname": hostname,
 			},
 		}
@@ -94,10 +94,10 @@ var legionJoinCmd = &cobra.Command{
 		}
 
 		fmt.Println("✅ Successfully joined the Legion!")
-		
+
 		// Start heartbeat loop
 		fmt.Println("💓 Starting background loops (Heartbeat & Executor)...")
-		
+
 		go func() {
 			for {
 				time.Sleep(10 * time.Second)
@@ -109,13 +109,13 @@ var legionJoinCmd = &cobra.Command{
 		// Executor loop
 		for {
 			time.Sleep(5 * time.Second)
-			
+
 			// Fetch tasks
 			resp, err := http.Get(fmt.Sprintf("%s/v1/node/tasks/%s", managerAddr, nodeID))
 			if err != nil {
 				continue
 			}
-			
+
 			var data struct {
 				Tasks []struct {
 					Task struct {
@@ -128,7 +128,7 @@ var legionJoinCmd = &cobra.Command{
 					Command string   `json:"command"`
 				} `json:"tasks"`
 			}
-			
+
 			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
 				for _, t := range data.Tasks {
 					fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)

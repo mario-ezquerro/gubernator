@@ -133,5 +133,3 @@ func init() {
 
 	stackDeployCmd.Flags().StringVarP(&composeFile, "compose-file", "c", "", "Path to a Compose file")
 }
-
-

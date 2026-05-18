@@ -23,8 +23,8 @@ type ComposeService struct {
 	Ports       []string          `yaml:"ports"`       // e.g. ["8080:80"]
 	Environment []string          `yaml:"environment"` // e.g. ["FOO=bar"] or map form
 	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
-	Volumes     []string          `yaml:"volumes"`  // e.g. ["./data:/app/data"]
-	Command     string            `yaml:"command"`  // optional command override
+	Volumes     []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
+	Command     string            `yaml:"command"` // optional command override
 	Deploy      struct {
 		Replicas  int `yaml:"replicas"`
 		Placement struct {

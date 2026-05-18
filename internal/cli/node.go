@@ -133,6 +133,6 @@ func init() {
 	nodeCmd.AddCommand(nodePromoteCmd)
 	nodeCmd.AddCommand(nodeDemoteCmd)
 	nodeCmd.AddCommand(nodeUpdateCmd)
-	
+
 	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain)")
 }

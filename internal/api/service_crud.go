@@ -49,16 +49,16 @@ func ServiceTasksHandler(c *gin.Context) {
 // @Router /v1/service/{id} [delete]
 func ServiceRmHandler(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	// Delete tasks
 	db.DB.Where("service_id = ?", id).Delete(&db.Task{})
-	
+
 	// Delete service
 	if res := db.DB.Where("id = ?", id).Delete(&db.Service{}); res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "Service removed"})
 }
 

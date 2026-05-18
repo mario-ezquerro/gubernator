@@ -12,7 +12,7 @@ import (
 
 var DB *gorm.DB
 
-// Init initializes the SQLite database connection, applies migrations, 
+// Init initializes the SQLite database connection, applies migrations,
 // and ensures the initial Manager node exists.
 func Init(dbPath string) {
 	var err error
@@ -60,7 +60,7 @@ func ensureJoinToken() {
 func seedInitialData() {
 	var count int64
 	DB.Model(&Node{}).Count(&count)
-	
+
 	if count == 0 {
 		log.Println("Seeding initial Manager node into the database...")
 		managerNode := Node{
@@ -73,7 +73,7 @@ func seedInitialData() {
 				"gbnt.node.zone": "local",
 			},
 		}
-		
+
 		if err := DB.Create(&managerNode).Error; err != nil {
 			log.Printf("Failed to seed initial manager node: %v\n", err)
 		} else {

@@ -128,7 +128,7 @@ func DoAPIRequest(method, path string, body io.Reader) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
