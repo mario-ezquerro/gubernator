@@ -15,7 +15,7 @@ COPY . .
 # Build the binary with CGO enabled
 RUN CGO_ENABLED=1 GOOS=linux go build -o gbnt ./cmd/gbnt
 
-FROM alpine:latest
+FROM alpine:edge
 
 WORKDIR /app
 
