@@ -98,3 +98,15 @@ sudo mv gbnt /usr/local/bin/gbnt
 ```
 
 > **Note**: The Flutter Web Dashboard is pre-compiled and embedded in the `internal/web/flutter/` directory. If you need to modify the dashboard UI, install [Flutter SDK](https://flutter.dev) and run `cd web-ui && flutter build web --release --base-href "/"`, then copy the output to `internal/web/flutter/`.
+
+---
+
+## Post-Installation: SRE Monitoring
+
+After installing `gbnt`, you can optionally deploy a full SRE observability stack with a single command:
+
+```bash
+gbnt monitor init
+```
+
+This deploys cAdvisor, Prometheus, Grafana, Loki, and Promtail on a dedicated Docker network. See the [CLI Reference](cli.md) for details.

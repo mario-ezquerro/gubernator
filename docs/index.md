@@ -14,10 +14,11 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Docker Compose native** | Deploy any `docker-compose.yml` directly |
 | **Single-node mode** | No workers needed — the Manager runs containers locally |
 | **Built-in executor** | Passes `ports`, `environment`, `volumes`, and `command` to Docker |
-| **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, dark/light themes, and user settings |
+| **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
 | **Secure API** | Bearer token auth on port 4000, Basic Auth on Web UI |
 | **Observability** | Prometheus metrics, Swagger, and health on port 4002 |
+| **SRE Monitor** | One-command deploy: cAdvisor + Prometheus + Grafana + Loki + Promtail |
 
 ---
 
@@ -112,10 +113,31 @@ gbnt stack deploy -c compose.yml mystack
 The Web UI at `:4001` provides full lifecycle management:
 
 - **View** all stacks, services, nodes, and running containers (auto-refreshes every 5s)
+- **Clickable port links** — each container's mapped ports appear as clickable chips that open the service in your browser
 - **Edit** the compose YAML directly in the browser (syntax-highlighted editor)
 - **Save & Redeploy** — stops old containers and launches new ones in one click
 - **Stop** individual containers from the tasks table
 - **Delete** stacks with automatic container cleanup
+
+---
+
+## SRE Monitoring Stack
+
+Deploy a full observability stack with one command:
+
+```bash
+./gbnt monitor init      # Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail
+./gbnt monitor status    # Check health of monitoring containers
+./gbnt monitor stop      # Tear down the stack
+```
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| cAdvisor | `:8081` | Container resource metrics |
+| Prometheus | `:9090` | Metrics collection |
+| Grafana | `:3000` | Dashboards (admin/admin) |
+| Loki | `:3100` | Log aggregation |
+| Promtail | — | Log shipping |
 
 ---
 
@@ -141,6 +163,6 @@ While `./gbnt serve` is running, access:
 
 ## Current Development State
 
-> Gubernator **v1.3.29** — Phases 1–8 complete plus single-node executor and Web UI compose editor.
+> Gubernator **v1.5.0** — Phases 1–11 complete including Flutter Web UI, clickable port links, and built-in SRE Monitoring Stack.
 
 **[View the complete Roadmap](roadmap.md)**

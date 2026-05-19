@@ -100,3 +100,16 @@ Commands for managing individual services (which are usually created via Stacks)
 
 - **`gbnt health`**
   Checks the health of the local Gubernator process by sending a request to `http://localhost:4002/health`. Returns exit code `0` if healthy, `1` otherwise. This is used as the native Docker `HEALTHCHECK` command inside the container, eliminating the need for `curl` or `wget`.
+
+---
+
+## SRE Monitor (Observability Stack)
+
+- **`gbnt monitor init`**
+  Deploys the full SRE monitoring stack on the Manager node: cAdvisor (`:8081`), Prometheus (`:9090`), Grafana (`:3000`), Loki (`:3100`), and Promtail. All containers run on a dedicated `gbnt-monitor-net` Docker network. Config files are written to `~/.gbnt/monitor/`.
+
+- **`gbnt monitor status`**
+  Displays the status of all monitoring containers (running, stopped, IP, ports).
+
+- **`gbnt monitor stop`**
+  Stops and removes all monitoring containers and the `gbnt-monitor-net` Docker network.

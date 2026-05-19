@@ -224,7 +224,36 @@ docker run -d -p 4000:4000 -p 4001:4001 \
   gubernator:latest serve
 ```
 
-Access the dashboard at `http://localhost:4001` and authenticate with the credentials you provided to manage nodes, view running containers, and stop tasks dynamically!
+Access the dashboard at `http://localhost:4001` and authenticate with the credentials you provided to manage nodes, view running containers, click on port links to open services in your browser, and stop tasks dynamically!
+
+---
+
+## 🛡️ SRE Monitoring Stack (`gbnt monitor`)
+
+Gubernator includes a **built-in SRE observability stack** that can be deployed with a single command. No external tooling or Compose files required.
+
+### Deploy on the Manager
+```bash
+./gbnt monitor init
+```
+
+This command deploys 5 containers on a dedicated Docker network (`gbnt-monitor-net`):
+
+| Container | Port | Role |
+|-----------|------|------|
+| **cAdvisor** | `:8081` | Container CPU, memory, disk, network metrics |
+| **Prometheus** | `:9090` | Metrics scraping (Gubernator + cAdvisor + workers) |
+| **Grafana** | `:3000` | Dashboards with pre-configured datasources (admin/admin) |
+| **Loki** | `:3100` | Log aggregation from all nodes |
+| **Promtail** | — | Ships container and system logs to Loki |
+
+### Management Commands
+```bash
+./gbnt monitor status   # Check health of all monitoring containers
+./gbnt monitor stop     # Tear down the entire stack
+```
+
+Configuration files are auto-generated in `~/.gbnt/monitor/` and can be customized.
 
 ---
 
@@ -255,6 +284,15 @@ Access the dashboard at `http://localhost:4001` and authenticate with the creden
 * `gbnt service scale [service_id]=[replicas]` - Scale a service up/down.
 * `gbnt service rm [service_id]` - Delete a service.
 
+**SRE Monitor (Observability)**
+* `gbnt monitor init` - Deploy the full SRE stack (Prometheus, Grafana, Loki, cAdvisor, Promtail).
+* `gbnt monitor status` - Show status of monitoring containers.
+* `gbnt monitor stop` - Stop and remove all monitoring containers.
+
+**System**
+* `gbnt serve` - Start the Manager daemon.
+* `gbnt health` - Check local process health (used as Docker HEALTHCHECK).
+
 ---
 
 ##  API Documentation (Swagger)
@@ -270,6 +308,6 @@ From the Swagger UI, you can directly test endpoints.
 
 ##  Current Roadmap State
 
-Gubernator's development is divided into "Campaigns". We've completed up to **Phase 8**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, and Asymmetric Port Security (4000/4001/4002).
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 11**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, and the built-in SRE Monitoring Stack.
 
 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**

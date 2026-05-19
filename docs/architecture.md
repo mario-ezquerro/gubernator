@@ -106,6 +106,27 @@ Port 4002 exposes:
 - `GET /health` — JSON health check (`{"status":"healthy"}`)
 - `GET /swagger/index.html` — Interactive Swagger API explorer
 
+### 6. SRE Monitor Stack (`gbnt monitor init`)
+
+A built-in, one-command SRE monitoring deployment that creates a dedicated Docker network (`gbnt-monitor-net`) and launches:
+
+| Container | Image | Port | Purpose |
+|-----------|-------|------|---------|
+| `gbnt-monitor-cadvisor` | `gcr.io/cadvisor/cadvisor` | `:8081` | Container resource metrics |
+| `gbnt-monitor-prometheus` | `prom/prometheus` | `:9090` | Metrics collection & scraping |
+| `gbnt-monitor-grafana` | `grafana/grafana` | `:3000` | Dashboards (Prometheus + Loki datasources pre-configured) |
+| `gbnt-monitor-loki` | `grafana/loki` | `:3100` | Log aggregation |
+| `gbnt-monitor-promtail` | `grafana/promtail` | — | Log shipping (Docker + system logs → Loki) |
+
+```
+Data Flow:
+  cAdvisor ──metrics──→ Prometheus ──→ Grafana
+  Gubernator :4002 ──metrics──→ Prometheus ──→ Grafana
+  Promtail ──logs──→ Loki ──→ Grafana
+```
+
+Config files are auto-generated in `~/.gbnt/monitor/` and can be customized.
+
 ---
 
 ## Data Model

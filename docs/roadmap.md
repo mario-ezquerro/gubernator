@@ -45,24 +45,27 @@ This document tracks the development journey of Gubernator, divided into "Campai
 - [x] **Phase 10.5 — Flutter Web UI & Security Hardening**
   Complete Web Dashboard rewrite from plain HTML/JS to **Flutter Web** with **Material Design 3**. Added ⚙️ Settings gear icon with user profile, password change, and dark/light theme toggle. Native `gbnt health` CLI subcommand for Docker HEALTHCHECK (eliminating curl/wget/busybox dependencies). Container image hardened: base upgraded to `alpine:edge`, `curl` removed, `busybox` patched (CVE-2025-60876), `golang.org/x/net` upgraded to v0.54.0.
 
+- [x] **Phase 11 — SRE Monitor (`gbnt monitor init`)**
+  Built-in SRE observability stack with a single command. `gbnt monitor init` deploys **cAdvisor** (container metrics), **Prometheus** (metrics collection), **Grafana** (dashboards with pre-configured datasources), **Loki** (log aggregation), and **Promtail** (log shipping) — all on a dedicated Docker network (`gbnt-monitor-net`). `gbnt monitor status` and `gbnt monitor stop` for lifecycle management. Config files auto-generated in `~/.gbnt/monitor/`.
+
 ---
 
 ## Upcoming Development
 
-- [ ] **Phase 11 — High Availability (The Senate)**
+- [ ] **Phase 12 — High Availability (The Senate)**
   Distributed SQLite via `rqlite` or `dqlite` (SQLite over Raft) for multi-manager fault tolerance. Eliminate the single point of failure.
 
-- [ ] **Phase 12 — Live Observability**
+- [ ] **Phase 13 — Live Observability**
   WebSocket streaming for container logs (`docker logs -f`) directly in the Web UI dashboard.
 
-- [ ] **Phase 13 — Secret Management (The Praetorian Guard)**
+- [ ] **Phase 14 — Secret Management (The Praetorian Guard)**
   Encrypted variable injection from Gubernator's DB into containers — no plaintext secrets in Compose files.
 
-- [ ] **Phase 14 — Rolling Updates**
+- [ ] **Phase 15 — Rolling Updates**
   Zero-downtime deployments: update replicas sequentially, wait for health checks before removing old containers.
 
-- [ ] **Phase 15 — Storage Affinity**
+- [ ] **Phase 16 — Storage Affinity**
   Scheduler awareness of local persistent volumes — reschedule containers back to the same node where their data lives.
 
-- [ ] **Phase 16 — Multi-arch Build Registry**
+- [ ] **Phase 17 — Multi-arch Build Registry**
   Optional integrated lightweight image registry for air-gapped deployments.

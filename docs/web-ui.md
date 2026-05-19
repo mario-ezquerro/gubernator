@@ -122,6 +122,7 @@ Lists all container instances with:
 | Node | Node that is running this task |
 | Status | `running` / `pending` / `starting` / `dead` |
 | IP | Container's internal Docker network IP |
+| Ports | **Clickable chips** for each port mapping (e.g. `8080:80`). Clicking opens `http://<nodeIP>:<hostPort>` in a new browser tab. Supports multiple ports per container. |
 | Stop | Executes `docker stop + docker rm` and removes from DB |
 
 ---
