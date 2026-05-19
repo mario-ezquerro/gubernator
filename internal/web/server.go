@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"gopkg.in/yaml.v3"
 )
 
@@ -274,6 +275,12 @@ func redeployStackHandler(c *gin.Context) {
 		return
 	}
 
+	// Special handling for the SRE Monitor stack
+	if id == monitor.SREStackID {
+		redeploySREStack(c)
+		return
+	}
+
 	composeRaw := stack.RawComposeFile
 	stackName := stack.Name
 
@@ -332,6 +339,39 @@ func redeployStackHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "new_stack_id": newStackID})
+}
+
+// redeploySREStack handles redeploy for the special SRE Monitor stack.
+// It stops all monitoring containers, re-deploys the full stack via monitor package,
+// and re-registers the containers in the database.
+func redeploySREStack(c *gin.Context) {
+	// 1. Stop all monitoring containers and clean up
+	monitor.StopAll()
+	monitor.UnregisterFromDB(db.DB)
+
+	// 2. Brief pause for Docker to release resources
+	time.Sleep(2 * time.Second)
+
+	// 3. Re-deploy the full SRE stack
+	if err := monitor.EnsureNetwork(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create network: %v", err)})
+		return
+	}
+	if err := monitor.WriteConfigs(nil); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to write configs: %v", err)})
+		return
+	}
+	if err := monitor.DeployManagerStack(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("SRE deploy failed: %v", err)})
+		return
+	}
+
+	// 4. Re-register in DB
+	if err := monitor.RegisterInDB(db.DB); err != nil {
+		log.Printf("Warning: SRE stack deployed but failed to register in DB: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
 }
 
 // stopContainerByName calls docker stop + rm on a named container.
