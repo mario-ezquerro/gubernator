@@ -114,6 +114,7 @@ func DeployManagerStack() error {
 		"-e", "GF_SECURITY_ADMIN_USER=admin",
 		"-e", "GF_SECURITY_ADMIN_PASSWORD=admin",
 		"-e", "GF_USERS_ALLOW_SIGN_UP=false",
+		"-e", "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/gubernator.json",
 		"grafana/grafana:latest",
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {

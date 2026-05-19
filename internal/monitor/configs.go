@@ -1,11 +1,16 @@
 package monitor
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+//go:embed gubernator_dashboard.json
+var gubernatorDashboardJSON string
+
 
 // WriteConfigs generates all monitoring config files to ~/.gbnt/monitor/.
 // workerTargets is a list of worker IPs to add to Prometheus scrape targets.
@@ -31,6 +36,7 @@ func WriteConfigs(workerTargets []string) error {
 		filepath.Join(dir, "promtail", "promtail-config.yml"):                      promtailConfig(),
 		filepath.Join(dir, "grafana", "provisioning", "datasources", "ds.yml"):     grafanaDatasources(),
 		filepath.Join(dir, "grafana", "provisioning", "dashboards", "dash.yml"):    grafanaDashboardProv(),
+		filepath.Join(dir, "grafana", "provisioning", "dashboards", "gubernator.json"): gubernatorDashboardJSON,
 	}
 
 	for path, content := range files {
@@ -198,7 +204,7 @@ providers:
     editable: true
     updateIntervalSeconds: 30
     options:
-      path: /var/lib/grafana/dashboards
+      path: /etc/grafana/provisioning/dashboards
       foldersFromFilesStructure: false
 `
 }
