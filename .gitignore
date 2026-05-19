@@ -36,3 +36,9 @@ test_output.txt
 
 .DS_Store
 
+# Compiled Go binary (90MB+ — too large for Git)
+/gbnt
+
+# Flutter build cache
+web-ui/build/
+web-ui/.dart_tool/
