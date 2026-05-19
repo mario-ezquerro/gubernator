@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/common_widgets.dart';
@@ -503,6 +504,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     DataColumn(label: Text('NODE')),
                     DataColumn(label: Text('STATUS')),
                     DataColumn(label: Text('IP')),
+                    DataColumn(label: Text('PORTS')),
                     DataColumn(label: Text('ACTIONS')),
                   ],
                   rows: _state.tasks.map((t) {
@@ -543,6 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               fontFamily: 'Courier New', fontSize: 13))),
                       DataCell(StatusBadge(label: t.status)),
                       DataCell(Text(t.containerIp.isEmpty ? '-' : t.containerIp)),
+                      DataCell(_buildPortsCell(svc, node)),
                       DataCell(
                         IconButton(
                           icon: const Icon(Icons.stop_circle, size: 20),
@@ -595,6 +598,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: EdgeInsets.zero,
         splashRadius: 18,
       ),
+    );
+  }
+
+  /// Builds clickable port chips for a task's service.
+  /// Parses port mappings like "8080:80" → host port 8080.
+  /// Each chip opens http://<nodeIP>:<hostPort> in the browser.
+  Widget _buildPortsCell(Service? svc, Node? node) {
+    if (svc == null || svc.ports.isEmpty) {
+      return const Text('-', style: TextStyle(color: Colors.grey));
+    }
+
+    final nodeIp = (node != null && node.ip.isNotEmpty) ? node.ip : 'localhost';
+    // For containers running on the manager (127.0.0.1), use localhost
+    final host = (nodeIp == '127.0.0.1') ? 'localhost' : nodeIp;
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: svc.ports.map((portMapping) {
+        // Parse "hostPort:containerPort" or "hostPort:containerPort/protocol"
+        final hostPort = portMapping.split(':').first;
+        final url = 'http://$host:$hostPort';
+
+        return ActionChip(
+          avatar: Icon(Icons.open_in_new, size: 14,
+              color: Theme.of(context).colorScheme.primary),
+          label: Text(portMapping,
+              style: TextStyle(
+                fontSize: 12,
+                fontFamily: 'Courier New',
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              )),
+          tooltip: url,
+          onPressed: () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              _showSnackBar('Could not open $url', isError: true);
+            }
+          },
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+        );
+      }).toList(),
     );
   }
 

@@ -61,6 +61,7 @@ class Service {
   final String name;
   final String image;
   final int desiredReplicas;
+  final List<String> ports;
 
   Service({
     required this.id,
@@ -68,6 +69,7 @@ class Service {
     required this.name,
     required this.image,
     this.desiredReplicas = 1,
+    this.ports = const [],
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,7 @@ class Service {
       name: json['name'] ?? '',
       image: json['image'] ?? '',
       desiredReplicas: json['desired_replicas'] ?? 1,
+      ports: (json['ports'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 }
