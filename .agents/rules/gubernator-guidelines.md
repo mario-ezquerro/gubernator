@@ -35,3 +35,7 @@ You are working on **Gubernator (gbnt)**, a Goldilocks orchestrator that combine
 - Keep packages focused and small (`cmd/gbnt`, `internal/api`, `internal/cli`, `internal/db`, `internal/core`).
 - Always run `swag init` after modifying API routes.
 - Always ensure the project compiles statically for Docker (`CGO_ENABLED=0`).
+
+## Testing & Execution Rules
+1. **Containerized Testing:** Always run and test the Gubernator Manager/Worker environment inside a Docker container (mapping `/var/run/docker.sock` to allow container management) rather than running it directly as a host process.
+

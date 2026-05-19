@@ -12,6 +12,11 @@ import (
 
 var DB *gorm.DB
 
+// GetDB returns the global database connection.
+func GetDB() *gorm.DB {
+	return DB
+}
+
 // Init initializes the SQLite database connection, applies migrations,
 // and ensures the initial Manager node exists.
 func Init(dbPath string) {

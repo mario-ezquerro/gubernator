@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -16,6 +15,14 @@ const (
 	PromtailName   = "gbnt-monitor-promtail"
 	GrafanaName    = "gbnt-monitor-grafana"
 	NetworkName    = "gbnt-monitor-net"
+
+	// Docker volume names for config persistence
+	VolPrometheus       = "gbnt-monitor-prom-conf"
+	VolLoki             = "gbnt-monitor-loki-conf"
+	VolPromtail         = "gbnt-monitor-promtail-conf"
+	VolGrafanaProv      = "gbnt-monitor-grafana-prov"
+	VolPrometheusData   = "gbnt-monitor-prom-data"
+	VolGrafanaData      = "gbnt-monitor-grafana-data"
 )
 
 // AllContainers returns all monitoring container names.
@@ -23,9 +30,19 @@ func AllContainers() []string {
 	return []string{CadvisorName, PrometheusName, LokiName, PromtailName, GrafanaName}
 }
 
+// AllVolumes returns all monitoring volume names.
+func AllVolumes() []string {
+	return []string{VolPrometheus, VolLoki, VolPromtail, VolGrafanaProv, VolPrometheusData, VolGrafanaData}
+}
+
 // DeployManagerStack deploys the full SRE monitoring stack on the Manager node.
+// It uses Docker named volumes populated via "docker cp" to avoid bind-mount issues
+// when gbnt itself runs inside a container.
 func DeployManagerStack() error {
-	dir := MonitorDir()
+	// Populate config volumes from generated files in MonitorDir()
+	if err := populateConfigVolumes(); err != nil {
+		return fmt.Errorf("failed to populate config volumes: %w", err)
+	}
 
 	// 1) cAdvisor
 	fmt.Println("\n📊 Deploying cAdvisor (container metrics)...")
@@ -49,7 +66,7 @@ func DeployManagerStack() error {
 	if err := runContainer(LokiName, []string{
 		"--net", NetworkName,
 		"-p", "3100:3100",
-		"-v", filepath.Join(dir, "loki", "loki-config.yml") + ":/etc/loki/loki-config.yml:ro",
+		"-v", VolLoki + ":/etc/loki:ro",
 		"grafana/loki:latest",
 		"-config.file=/etc/loki/loki-config.yml",
 	}); err != nil {
@@ -60,7 +77,7 @@ func DeployManagerStack() error {
 	fmt.Println("📤 Deploying Promtail (log shipper)...")
 	if err := runContainer(PromtailName, []string{
 		"--net", NetworkName,
-		"-v", filepath.Join(dir, "promtail", "promtail-config.yml") + ":/etc/promtail/config.yml:ro",
+		"-v", VolPromtail + ":/etc/promtail:ro",
 		"-v", "/var/log:/var/log:ro",
 		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
 		"grafana/promtail:latest",
@@ -74,7 +91,8 @@ func DeployManagerStack() error {
 	promArgs := []string{
 		"--net", NetworkName,
 		"-p", "9090:9090",
-		"-v", filepath.Join(dir, "prometheus", "prometheus.yml") + ":/etc/prometheus/prometheus.yml:ro",
+		"-v", VolPrometheus + ":/etc/prometheus:ro",
+		"-v", VolPrometheusData + ":/prometheus",
 		// Allow Prometheus to reach the host Gubernator on :4002
 		"--add-host", "host.docker.internal:host-gateway",
 		"prom/prometheus:latest",
@@ -91,7 +109,8 @@ func DeployManagerStack() error {
 	grafanaArgs := []string{
 		"--net", NetworkName,
 		"-p", "3000:3000",
-		"-v", filepath.Join(dir, "grafana", "provisioning") + ":/etc/grafana/provisioning:ro",
+		"-v", VolGrafanaProv + ":/etc/grafana/provisioning:ro",
+		"-v", VolGrafanaData + ":/var/lib/grafana",
 		"-e", "GF_SECURITY_ADMIN_USER=admin",
 		"-e", "GF_SECURITY_ADMIN_PASSWORD=admin",
 		"-e", "GF_USERS_ALLOW_SIGN_UP=false",
@@ -104,12 +123,15 @@ func DeployManagerStack() error {
 	return nil
 }
 
-// StopAll stops and removes all monitoring containers and the network.
+// StopAll stops and removes all monitoring containers, the network, and config volumes.
 func StopAll() {
 	for _, name := range AllContainers() {
 		fmt.Printf("⏹  Stopping %s...\n", name)
 		exec.Command("docker", "stop", name).Run()
 		exec.Command("docker", "rm", "-f", name).Run()
+	}
+	for _, vol := range AllVolumes() {
+		exec.Command("docker", "volume", "rm", "-f", vol).Run()
 	}
 	RemoveNetwork()
 }
@@ -145,6 +167,55 @@ func Status() {
 		fmt.Printf("  %s %-30s  status=%-10s  ip=%-15s  ports=%s\n", icon, name, status, ip, ports)
 	}
 	fmt.Println()
+}
+
+// populateConfigVolumes creates Docker named volumes and copies config files into them
+// using a temporary alpine container. This works whether gbnt runs on the host or inside a container.
+func populateConfigVolumes() error {
+	dir := MonitorDir()
+
+	type volCopy struct {
+		volume    string
+		srcDir    string // local dir to copy FROM
+		destPath  string // path INSIDE the volume
+	}
+
+	copies := []volCopy{
+		{VolPrometheus, dir + "/prometheus", "/data"},
+		{VolLoki, dir + "/loki", "/data"},
+		{VolPromtail, dir + "/promtail", "/data"},
+		{VolGrafanaProv, dir + "/grafana/provisioning", "/data"},
+	}
+
+	for _, c := range copies {
+		// Create volume
+		exec.Command("docker", "volume", "create", c.volume).Run()
+
+		helperName := "gbnt-vol-helper-" + c.volume
+
+		// Remove any existing helper
+		exec.Command("docker", "rm", "-f", helperName).Run()
+
+		// Create a temporary container that mounts the volume
+		if err := exec.Command("docker", "create", "--name", helperName,
+			"-v", c.volume+":"+c.destPath,
+			"alpine:latest").Run(); err != nil {
+			return fmt.Errorf("failed to create helper for %s: %w", c.volume, err)
+		}
+
+		// Copy all files from the local source dir into the volume via docker cp
+		// docker cp copies the CONTENTS of srcDir into destPath
+		if err := exec.Command("docker", "cp", c.srcDir+"/.", helperName+":"+c.destPath+"/").Run(); err != nil {
+			exec.Command("docker", "rm", "-f", helperName).Run()
+			return fmt.Errorf("failed to copy configs into volume %s: %w", c.volume, err)
+		}
+
+		// Remove the helper container
+		exec.Command("docker", "rm", "-f", helperName).Run()
+	}
+
+	fmt.Println("📦 Config volumes populated successfully.")
+	return nil
 }
 
 // runContainer runs a container in detached mode with the given name and args.
