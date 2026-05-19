@@ -9,13 +9,74 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed flutter/*
 var flutterFS embed.FS
+
+// composeFile and composeService are local copies of the API types to avoid
+// circular imports (api → web → api). They must stay in sync with api.ComposeFile.
+type composeFile struct {
+	Services map[string]composeService `yaml:"services"`
+}
+
+type composeService struct {
+	Image       string   `yaml:"image"`
+	Ports       []string `yaml:"ports"`
+	Environment []string `yaml:"environment"`
+	Volumes     []string `yaml:"volumes"`
+	Command     string   `yaml:"command"`
+	Deploy      struct {
+		Replicas  int `yaml:"replicas"`
+		Placement struct {
+			Constraints []string `yaml:"constraints"`
+		} `yaml:"placement"`
+	} `yaml:"deploy"`
+}
+
+// webScheduleService schedules tasks for a service (same logic as api.scheduleService).
+func webScheduleService(service *db.Service) {
+	for i := 0; i < service.DesiredReplicas; i++ {
+		var allNodes []db.Node
+		db.DB.Where("status = ?", "active").Find(&allNodes)
+
+		var selectedNode *db.Node
+		for _, node := range allNodes {
+			matchesAll := true
+			for _, constraint := range service.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 {
+					key := strings.TrimPrefix(strings.TrimSpace(parts[0]), "node.labels.")
+					val := strings.TrimSpace(parts[1])
+					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+						matchesAll = false
+						break
+					}
+				}
+			}
+			if matchesAll {
+				selectedNode = &node
+				break
+			}
+		}
+
+		if selectedNode != nil {
+			task := db.Task{
+				ID:        uuid.New().String(),
+				ServiceID: service.ID,
+				NodeID:    selectedNode.ID,
+				Status:    "pending",
+			}
+			db.DB.Create(&task)
+		}
+	}
+}
 
 func StartDashboard() {
 	webEnabled := os.Getenv("GBNT_WEB")
@@ -213,37 +274,64 @@ func redeployStackHandler(c *gin.Context) {
 		return
 	}
 
-	// Stop and remove all existing containers for this stack
+	composeRaw := stack.RawComposeFile
+	stackName := stack.Name
+
+	// 1. Stop and remove all existing containers for this stack SYNCHRONOUSLY
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
 	for _, svc := range services {
 		var tasks []db.Task
 		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
 		for _, task := range tasks {
-			go stopContainerByName(task.ContainerName)
+			stopContainerByName(task.ContainerName) // synchronous — wait for stop
 		}
 		db.DB.Where("service_id = ?", svc.ID).Delete(&db.Task{})
 	}
 	db.DB.Where("stack_id = ?", id).Delete(&db.Service{})
+	db.DB.Where("id = ?", id).Delete(&db.Stack{})
 
-	// Re-trigger deploy via the REST API (reuse the same compose raw)
-	webClient := &http.Client{}
-	token := os.Getenv("GBNT_API_TOKEN")
-	if token == "" {
-		token = "admin"
-	}
-	payload := fmt.Sprintf(`{"name":%q,"compose_raw":%q}`, stack.Name, stack.RawComposeFile)
-	req, _ := http.NewRequest("POST", "http://localhost:4000/v1/stack/deploy", strings.NewReader(payload))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := webClient.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to redeploy stack"})
+	// 2. Brief pause to let Docker release the ports
+	time.Sleep(2 * time.Second)
+
+	// 3. Re-parse the compose YAML and re-deploy as a new stack
+	var compose composeFile
+	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
 		return
 	}
-	resp.Body.Close()
 
-	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
+	newStackID := uuid.New().String()
+	newStack := db.Stack{
+		ID:             newStackID,
+		Name:           stackName,
+		RawComposeFile: composeRaw,
+	}
+	db.DB.Create(&newStack)
+
+	for srvName, srvDef := range compose.Services {
+		replicas := srvDef.Deploy.Replicas
+		if replicas == 0 {
+			replicas = 1
+		}
+
+		service := db.Service{
+			ID:              uuid.New().String(),
+			StackID:         newStackID,
+			Name:            srvName,
+			Image:           srvDef.Image,
+			DesiredReplicas: replicas,
+			Constraints:     srvDef.Deploy.Placement.Constraints,
+			Ports:           srvDef.Ports,
+			Env:             srvDef.Environment,
+			Volumes:         srvDef.Volumes,
+			Command:         srvDef.Command,
+		}
+		db.DB.Create(&service)
+		webScheduleService(&service)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "new_stack_id": newStackID})
 }
 
 // stopContainerByName calls docker stop + rm on a named container.
