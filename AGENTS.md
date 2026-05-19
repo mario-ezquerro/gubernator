@@ -7,7 +7,7 @@ Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicit
 * **Language:** Go (Golang)
 * **State:** SQLite (Centralized on Manager, with local cache on Workers for resilience)
 * **API:** Secured REST (Port 4000)
-* **Web UI:** Web Dashboard (Port 4001)
+* **Web UI:** Flutter Web Dashboard with Material Design 3 (Port 4001)
 * **Observability:** OpenTelemetry + Prometheus, Swagger, Healthchecks (Port 4002)
 * **Engine:** Docker Engine API interaction
 

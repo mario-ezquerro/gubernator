@@ -14,7 +14,7 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Docker Compose native** | Deploy any `docker-compose.yml` directly |
 | **Single-node mode** | No workers needed — the Manager runs containers locally |
 | **Built-in executor** | Passes `ports`, `environment`, `volumes`, and `command` to Docker |
-| **Web UI** | Live dashboard with compose editor, redeploy, and stop |
+| **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, dark/light themes, and user settings |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
 | **Secure API** | Bearer token auth on port 4000, Basic Auth on Web UI |
 | **Observability** | Prometheus metrics, Swagger, and health on port 4002 |

@@ -3,7 +3,7 @@ package web
 import (
 	"embed"
 	"fmt"
-	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -14,8 +14,8 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
-//go:embed templates/* static/*
-var fs embed.FS
+//go:embed flutter/*
+var flutterFS embed.FS
 
 func StartDashboard() {
 	webEnabled := os.Getenv("GBNT_WEB")
@@ -35,19 +35,10 @@ func StartDashboard() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// Load HTML templates from embedded filesystem
-	templ := template.Must(template.New("").ParseFS(fs, "templates/*.html"))
-	r.SetHTMLTemplate(templ)
-
-	// Serve static files
-	r.StaticFS("/static", http.FS(fs))
-
 	// Setup Basic Auth
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 		user: pass,
 	}))
-
-	authorized.GET("/", dashboardHandler)
 
 	// API for dashboard
 	api := authorized.Group("/api")
@@ -58,18 +49,41 @@ func StartDashboard() {
 		api.POST("/stack/:id/redeploy", redeployStackHandler)
 		api.DELETE("/stack/:id", deleteStackHandler)
 		api.DELETE("/task/:id", deleteTaskHandler)
+		api.GET("/settings", getSettingsHandler)
+		api.PUT("/settings", updateSettingsHandler)
+		api.PUT("/settings/password", changePasswordHandler)
 	}
 
-	log.Println("Starting Web Dashboard on :4001")
+	// Serve the Flutter web app — SPA routing
+	flutterContent, err := fs.Sub(flutterFS, "flutter")
+	if err != nil {
+		log.Fatalf("Failed to access embedded Flutter build: %v", err)
+	}
+	fileServer := http.FileServer(http.FS(flutterContent))
+
+	// Serve root path
+	authorized.GET("/", func(c *gin.Context) {
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
+
+	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
+	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Try to serve the exact file
+		if f, err := flutterContent.Open(strings.TrimPrefix(path, "/")); err == nil {
+			f.Close()
+			fileServer.ServeHTTP(c.Writer, c.Request)
+			return
+		}
+		// For SPA routing, serve index.html
+		c.Request.URL.Path = "/"
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
+
+	log.Println("Starting Web Dashboard (Flutter) on :4001")
 	if err := r.Run(":4001"); err != nil {
 		log.Fatalf("Failed to start Web Dashboard: %v", err)
 	}
-}
-
-func dashboardHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.html", gin.H{
-		"title": "Gubernator Dashboard",
-	})
 }
 
 func stateHandler(c *gin.Context) {
@@ -89,6 +103,46 @@ func stateHandler(c *gin.Context) {
 		"services": services,
 		"tasks":    tasks,
 	})
+}
+
+func getSettingsHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"display_name": os.Getenv("GBNT_WEB_USER"),
+		"theme":        "dark",
+	})
+}
+
+func updateSettingsHandler(c *gin.Context) {
+	var req struct {
+		DisplayName string `json:"display_name"`
+		Theme       string `json:"theme"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "saved"})
+}
+
+func changePasswordHandler(c *gin.Context) {
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	currentPass := os.Getenv("GBNT_WEB_PASSWORD")
+	if req.CurrentPassword != currentPass {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Current password is incorrect"})
+		return
+	}
+
+	// Update the environment variable for the current process
+	os.Setenv("GBNT_WEB_PASSWORD", req.NewPassword)
+	c.JSON(http.StatusOK, gin.H{"status": "password_changed"})
 }
 
 func deleteStackHandler(c *gin.Context) {

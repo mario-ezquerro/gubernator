@@ -30,6 +30,7 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 * **API & CLI:** Built with Gin and Cobra.
 * **State:** Powered by SQLite and GORM.
 * **Container Engine:** Direct communication with the Docker Engine.
+* **Web Dashboard:** Flutter Web with Material Design 3 (embedded into the Go binary).
 * **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and Caddy (external ingress).
 
 *(See [architecture.md](architecture.md) for a deeper dive).*
@@ -201,9 +202,16 @@ To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same direct
 
 ---
 
-##  Web UI Dashboard
+##  Web UI Dashboard (Flutter)
 
-Gubernator includes a secure, built-in Web UI to visualize the state of your cluster. It is disabled by default to keep the binary lightweight and secure.
+Gubernator includes a premium, built-in **Flutter Web Dashboard** with **Material Design 3** to visualize and manage your cluster. It is disabled by default to keep the binary lightweight and secure.
+
+**Features:**
+- 📊 **Real-time stats** — Nodes, Stacks, Services, Tasks counters with auto-refresh
+- 📝 **Compose editor** — View, edit, save, and redeploy stack YAML files
+- ⚙️ **Settings gear icon** — User profile, password change, and dark/light theme toggle
+- 🌙 **Dark / Light themes** — Material Design 3 theming with smooth transitions
+- 📱 **Responsive layout** — Works on desktop, tablet, and mobile browsers
 
 To activate the Web UI on **port 4001**, you must pass the `GBNT_WEB=true` flag and credentials when starting the Manager:
 ```bash

@@ -63,7 +63,7 @@ graph TD
 ### 1. Manager (The Senate)
 
 - Exposes the secured REST API (`:4000`) for CLI and SDK communication
-- Hosts the Web UI Dashboard (`:4001`) for visual cluster management
+- Hosts the **Flutter Web Dashboard** (`:4001`) for visual cluster management
 - Maintains global cluster state using **SQLite** (via GORM)
 - Runs the **Scheduler** to match service constraints against node labels
 - Runs the **Local Executor** to run containers directly without needing a separate worker

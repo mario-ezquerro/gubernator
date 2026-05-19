@@ -42,6 +42,9 @@ This document tracks the development journey of Gubernator, divided into "Campai
 - [x] **Phase 10 — Web UI Compose Editor**
   Web Dashboard upgraded with: compose YAML editor, Save Changes, Save & Redeploy, Reset, Stack Redeploy button, real container stop (not just DB delete), `container_name` column in tasks table, status badges, toast notifications.
 
+- [x] **Phase 10.5 — Flutter Web UI & Security Hardening**
+  Complete Web Dashboard rewrite from plain HTML/JS to **Flutter Web** with **Material Design 3**. Added ⚙️ Settings gear icon with user profile, password change, and dark/light theme toggle. Native `gbnt health` CLI subcommand for Docker HEALTHCHECK (eliminating curl/wget/busybox dependencies). Container image hardened: base upgraded to `alpine:edge`, `curl` removed, `busybox` patched (CVE-2025-60876), `golang.org/x/net` upgraded to v0.54.0.
+
 ---
 
 ## Upcoming Development

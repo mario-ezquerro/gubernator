@@ -1,6 +1,8 @@
 # Web UI Dashboard
 
-Gubernator includes a built-in **Web Dashboard** on port `:4001` that provides full lifecycle management of your cluster without requiring the CLI.
+Gubernator includes a built-in **Flutter Web Dashboard** on port `:4001` that provides full lifecycle management of your cluster without requiring the CLI.
+
+The dashboard is built with **Flutter Web** and **Material Design 3**, offering a premium, responsive interface with dark/light theme support.
 
 ---
 
@@ -32,19 +34,57 @@ Then open: **[http://localhost:4001](http://localhost:4001)**
 
 ---
 
+## Technology Stack
+
+The dashboard is built with:
+
+| Technology | Purpose |
+|-----------|---------|
+| **Flutter 3.44+** | UI framework (compiled to web) |
+| **Material Design 3** | Design system with dark/light themes |
+| **Dart** | Programming language |
+| **Go (Gin)** | Backend API + embedded static serving |
+
+The compiled Flutter web assets are embedded directly into the Go binary via `go:embed`, so the dashboard requires **no external dependencies** at runtime.
+
+---
+
+## ⚙️ Settings (Gear Icon)
+
+Click the **gear icon** (⚙️) in the top-right corner of the app bar to access user settings. The settings dialog has three tabs:
+
+### Profile Tab
+- **Avatar** — Display avatar with camera icon overlay (future: upload custom photo)
+- **Display Name** — Editable text field for your display name
+- Profile data is stored locally in the browser
+
+### Password Tab
+- **Change Password** — Update your web dashboard password
+- Requires current password verification
+- New password confirmation field
+- Updates `GBNT_WEB_PASSWORD` for the running process
+
+### Appearance Tab
+- **Theme Toggle** — Switch between **Light** and **Dark** mode
+- Visual theme selection cards with checkmark indicator
+- Quick toggle switch for fast switching
+- Theme preference applied immediately across the entire dashboard
+
+---
+
 ## Dashboard Sections
 
 ### Stats Bar
 
 Displays real-time cluster summary (auto-refreshes every 5 seconds):
 
-| Counter | Description |
-|---------|-------------|
-| Nodes | Total registered cluster nodes |
-| Stacks | Total deployed stacks |
-| Services | Total services across all stacks |
-| Tasks | Total container instances |
-| Running | Tasks currently in `running` state |
+| Counter | Icon | Description |
+|---------|------|-------------|
+| Nodes | 🖥️ | Total registered cluster nodes |
+| Stacks | 📚 | Total deployed stacks |
+| Services | ⚙️ | Total services across all stacks |
+| Tasks | 📋 | Total container instances |
+| Running | ▶️ | Tasks currently in `running` state (green) |
 
 ---
 
@@ -52,21 +92,21 @@ Displays real-time cluster summary (auto-refreshes every 5 seconds):
 
 Lists all deployed stacks with actions per row:
 
-| Button | Action |
-|--------|--------|
-| **Edit YAML** | Opens the compose editor modal |
-| **Redeploy** | Stops current containers and re-deploys immediately |
-| **Delete** | Stops containers and removes stack from DB |
+| Button | Icon | Action |
+|--------|------|--------|
+| **Edit YAML** | 📝 | Opens the compose editor dialog |
+| **Redeploy** | 🚀 | Stops current containers and re-deploys immediately |
+| **Delete** | 🗑️ | Stops containers and removes stack from DB |
 
 ---
 
 ### Centurions (Nodes)
 
 Lists all registered cluster nodes with their:
-- **ID** (first 8 chars)
+- **ID** (first 8 chars, monospace)
 - **IP** address
-- **Role** badge — `manager` (grey) or `worker` (blue)
-- **Status** badge — `active` (green), `down` (red), `drain` (yellow)
+- **Role** badge — `manager` (blue) or `worker` (cyan)
+- **Status** badge — `active` (green), `down` (red), `drain` (amber)
 
 ---
 
@@ -88,11 +128,11 @@ Lists all container instances with:
 
 ## Compose Editor
 
-Click **Edit YAML** on any stack to open the compose editor:
+Click **Edit YAML** on any stack to open the compose editor dialog:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Edit Compose: mystack                               [×] │
+│  📝 Edit Compose: mystack                            [×] │
 ├──────────────────────────────────────────────────────────┤
 │  services:                                               │
 │    web:                                                  │
@@ -103,7 +143,7 @@ Click **Edit YAML** on any stack to open the compose editor:
 │        replicas: 2                                       │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
-│  [Save Changes]  [Save & Redeploy]  [Reset]              │
+│  [Reset]            [Save]  [Save & Redeploy 🚀]        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -111,7 +151,7 @@ Click **Edit YAML** on any stack to open the compose editor:
 
 | Button | What it does |
 |--------|-------------|
-| **Save Changes** | Saves the edited YAML to the database (no containers affected yet) |
+| **Save** | Saves the edited YAML to the database (no containers affected yet) |
 | **Save & Redeploy** | Saves the YAML, stops existing containers, schedules new tasks |
 | **Reset** | Reverts the editor to the last saved state |
 | **Click backdrop** | Closes the modal without saving |
@@ -146,5 +186,35 @@ The Web UI communicates with the internal `/api` routes (on port 4001, protected
 | `POST` | `/api/stack/:id/redeploy` | Stop + redeploy a stack |
 | `DELETE` | `/api/stack/:id` | Stop containers + delete stack |
 | `DELETE` | `/api/task/:id` | Stop container + delete task record |
+| `GET` | `/api/settings` | Get user settings (display name, theme) |
+| `PUT` | `/api/settings` | Update user settings |
+| `PUT` | `/api/settings/password` | Change web dashboard password |
 
 > These routes are separate from the CLI API on port 4000 and use Basic Auth instead of Bearer tokens.
+
+---
+
+## Building the Flutter UI from Source
+
+If you need to modify the dashboard:
+
+```bash
+# Install Flutter SDK
+brew install --cask flutter
+
+# Navigate to the web-ui directory
+cd web-ui
+
+# Install dependencies
+flutter pub get
+
+# Build for production
+flutter build web --release --base-href "/"
+
+# Copy build output to Go embed directory
+rm -rf ../internal/web/flutter
+cp -r build/web ../internal/web/flutter
+
+# Rebuild Go binary
+cd .. && go build ./cmd/gbnt
+```

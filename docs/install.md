@@ -96,3 +96,5 @@ cd gubernator
 go build -o gbnt ./cmd/gbnt
 sudo mv gbnt /usr/local/bin/gbnt
 ```
+
+> **Note**: The Flutter Web Dashboard is pre-compiled and embedded in the `internal/web/flutter/` directory. If you need to modify the dashboard UI, install [Flutter SDK](https://flutter.dev) and run `cd web-ui && flutter build web --release --base-href "/"`, then copy the output to `internal/web/flutter/`.

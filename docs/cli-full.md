@@ -78,3 +78,13 @@ Commands for managing individual services (which are usually created via Stacks)
 
 - **`gbnt service rm [service_id]`**
   Deletes a specific service and forces the worker nodes to stop its associated containers.
+
+---
+
+## 🔧 System Commands
+
+- **`gbnt serve`**
+  Starts the Gubernator Manager daemon. Boots up the REST API (`:4000`), Flutter Web Dashboard (`:4001`), and Telemetry server (`:4002`).
+
+- **`gbnt health`**
+  Checks the health of the local Gubernator process by querying `http://localhost:4002/health`. Returns exit code `0` if healthy, `1` otherwise. Used as the native Docker `HEALTHCHECK` command.
