@@ -81,7 +81,7 @@ func DeployManagerStack() error {
 		"-v", "/var/log:/var/log:ro",
 		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
 		"grafana/promtail:latest",
-		"-config.file=/etc/promtail/config.yml",
+		"-config.file=/etc/promtail/promtail-config.yml",
 	}); err != nil {
 		return fmt.Errorf("Promtail failed: %w", err)
 	}
