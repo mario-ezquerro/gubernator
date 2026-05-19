@@ -42,3 +42,11 @@ test_output.txt
 # Flutter build cache
 web-ui/build/
 web-ui/.dart_tool/
+
+# Auto-generated ingress and DNS files
+Caddyfile
+gubernator.hosts
+
+# SQLite databases
+*.db
+

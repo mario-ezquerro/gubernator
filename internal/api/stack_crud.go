@@ -50,7 +50,7 @@ func StackRmHandler(c *gin.Context) {
 	id := c.Param("id")
 
 	// Stop all running containers for this stack first
-	go StopStackContainers(id)
+	StopStackContainers(id)
 
 	// Delete tasks related to this stack's services
 	var services []db.Service
