@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
@@ -32,6 +33,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _error;
   DateTime? _lastRefresh;
   Timer? _timer;
+  String _stackSearchQuery = '';
+  String _nodeSearchQuery = '';
+  String _taskSearchQuery = '';
 
   @override
   void initState() {
@@ -370,6 +374,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStacksCard(ThemeData theme) {
+    final filteredStacks = _state.stacks.where((s) {
+      if (_stackSearchQuery.isEmpty) return true;
+      return s.id.toLowerCase().contains(_stackSearchQuery) ||
+          s.name.toLowerCase().contains(_stackSearchQuery);
+    }).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -386,8 +396,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_state.stacks.isEmpty)
-              _emptyState('No stacks deployed yet', Icons.layers_clear)
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search stacks...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _stackSearchQuery = val.toLowerCase();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            if (filteredStacks.isEmpty)
+              _emptyState(_state.stacks.isEmpty ? 'No stacks deployed yet' : 'No matching stacks found', Icons.layers_clear)
             else
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -398,10 +423,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     DataColumn(label: Text('CREATED')),
                     DataColumn(label: Text('ACTIONS')),
                   ],
-                  rows: _state.stacks.map((s) {
+                  rows: filteredStacks.map((s) {
                     return DataRow(cells: [
-                      DataCell(SelectableText(s.id.length > 8 ? s.id.substring(0, 8) : s.id,
-                          style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText(s.id.length > 8 ? s.id.substring(0, 8) : s.id,
+                              style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 14),
+                            tooltip: 'Copy full ID',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: s.id));
+                              _showSnackBar('Copied Stack ID to clipboard!');
+                            },
+                          ),
+                        ],
+                      )),
                       DataCell(Text(s.name,
                           style: const TextStyle(fontWeight: FontWeight.w600))),
                       DataCell(Text(_formatDate(s.createdAt))),
@@ -427,6 +468,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildNodesCard(ThemeData theme) {
+    final filteredNodes = _state.nodes.where((n) {
+      if (_nodeSearchQuery.isEmpty) return true;
+      return n.id.toLowerCase().contains(_nodeSearchQuery) ||
+          n.ip.toLowerCase().contains(_nodeSearchQuery) ||
+          n.role.toLowerCase().contains(_nodeSearchQuery) ||
+          n.status.toLowerCase().contains(_nodeSearchQuery);
+    }).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -443,8 +492,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_state.nodes.isEmpty)
-              _emptyState('No nodes registered', Icons.dns)
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search nodes...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _nodeSearchQuery = val.toLowerCase();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            if (filteredNodes.isEmpty)
+              _emptyState(_state.nodes.isEmpty ? 'No nodes registered' : 'No matching nodes found', Icons.dns)
             else
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -455,10 +519,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     DataColumn(label: Text('ROLE')),
                     DataColumn(label: Text('STATUS')),
                   ],
-                  rows: _state.nodes.map((n) {
+                  rows: filteredNodes.map((n) {
                     return DataRow(cells: [
-                      DataCell(SelectableText(n.id.length > 8 ? n.id.substring(0, 8) : n.id,
-                          style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText(n.id.length > 8 ? n.id.substring(0, 8) : n.id,
+                              style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 14),
+                            tooltip: 'Copy full ID',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: n.id));
+                              _showSnackBar('Copied Node ID to clipboard!');
+                            },
+                          ),
+                        ],
+                      )),
                       DataCell(Text(n.ip)),
                       DataCell(StatusBadge(label: n.role)),
                       DataCell(StatusBadge(label: n.status)),
@@ -474,6 +554,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ─── Tasks Section ──────────────────────────────────────────────────
   Widget _buildTasksSection(ThemeData theme) {
+    final filteredTasks = _state.tasks.where((t) {
+      if (_taskSearchQuery.isEmpty) return true;
+      final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+      final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
+      return t.id.toLowerCase().contains(_taskSearchQuery) ||
+          t.containerName.toLowerCase().contains(_taskSearchQuery) ||
+          t.containerIp.toLowerCase().contains(_taskSearchQuery) ||
+          t.status.toLowerCase().contains(_taskSearchQuery) ||
+          (svc != null && svc.name.toLowerCase().contains(_taskSearchQuery)) ||
+          (svc != null && svc.image.toLowerCase().contains(_taskSearchQuery)) ||
+          (node != null && node.id.toLowerCase().contains(_taskSearchQuery));
+    }).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -491,8 +584,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_state.tasks.isEmpty)
-              _emptyState('No tasks running', Icons.inbox)
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search tasks...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _taskSearchQuery = val.toLowerCase();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            if (filteredTasks.isEmpty)
+              _emptyState(_state.tasks.isEmpty ? 'No tasks running' : 'No matching tasks found', Icons.inbox)
             else
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -507,7 +615,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     DataColumn(label: Text('PORTS')),
                     DataColumn(label: Text('ACTIONS')),
                   ],
-                  rows: _state.tasks.map((t) {
+                  rows: filteredTasks.map((t) {
                     final svc = _state.services
                         .where((s) => s.id == t.serviceId)
                         .firstOrNull;
@@ -515,10 +623,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         .where((n) => n.id == t.nodeId)
                         .firstOrNull;
                     return DataRow(cells: [
-                      DataCell(SelectableText(
-                          t.id.length > 8 ? t.id.substring(0, 8) : t.id,
-                          style: const TextStyle(
-                              fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText(
+                              t.id.length > 8 ? t.id.substring(0, 8) : t.id,
+                              style: const TextStyle(
+                                  fontFamily: 'Courier New', fontSize: 13)),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 14),
+                            tooltip: 'Copy full ID',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: t.id));
+                              _showSnackBar('Copied Task ID to clipboard!');
+                            },
+                          ),
+                        ],
+                      )),
                       DataCell(Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
