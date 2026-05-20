@@ -36,6 +36,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _stackSearchQuery = '';
   String _nodeSearchQuery = '';
   String _taskSearchQuery = '';
+  int? _stackSortColumnIndex;
+  bool _stackSortAscending = true;
+  int? _nodeSortColumnIndex;
+  bool _nodeSortAscending = true;
+  int? _taskSortColumnIndex;
+  bool _taskSortAscending = true;
+  List<String> _sectionOrder = ['stats', 'stacks', 'nodes', 'tasks'];
 
   @override
   void initState() {
@@ -50,12 +57,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
+  void _applySorting() {
+    // Apply Stacks sort
+    if (_stackSortColumnIndex != null) {
+      Comparable Function(StackModel s) getField;
+      switch (_stackSortColumnIndex) {
+        case 0:
+          getField = (s) => s.id;
+          break;
+        case 1:
+          getField = (s) => s.name;
+          break;
+        case 2:
+          getField = (s) => s.createdAt;
+          break;
+        default:
+          getField = (s) => s.id;
+      }
+      _state.stacks.sort((a, b) {
+        final aVal = getField(_stackSortAscending ? a : b);
+        final bVal = getField(_stackSortAscending ? b : a);
+        return Comparable.compare(aVal, bVal);
+      });
+    }
+
+    // Apply Nodes sort
+    if (_nodeSortColumnIndex != null) {
+      Comparable Function(Node n) getField;
+      switch (_nodeSortColumnIndex) {
+        case 0:
+          getField = (n) => n.id;
+          break;
+        case 1:
+          getField = (n) => n.ip;
+          break;
+        case 2:
+          getField = (n) => n.role;
+          break;
+        case 3:
+          getField = (n) => n.status;
+          break;
+        default:
+          getField = (n) => n.id;
+      }
+      _state.nodes.sort((a, b) {
+        final aVal = getField(_nodeSortAscending ? a : b);
+        final bVal = getField(_nodeSortAscending ? b : a);
+        return Comparable.compare(aVal, bVal);
+      });
+    }
+
+    // Apply Tasks sort
+    if (_taskSortColumnIndex != null) {
+      Comparable Function(Task t) getField;
+      switch (_taskSortColumnIndex) {
+        case 0:
+          getField = (t) => t.id;
+          break;
+        case 1:
+          getField = (t) {
+            final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+            return svc?.name ?? '';
+          };
+          break;
+        case 2:
+          getField = (t) => t.containerName;
+          break;
+        case 3:
+          getField = (t) => t.nodeId;
+          break;
+        case 4:
+          getField = (t) => t.status;
+          break;
+        case 5:
+          getField = (t) => t.containerIp;
+          break;
+        default:
+          getField = (t) => t.id;
+      }
+      _state.tasks.sort((a, b) {
+        final aVal = getField(_taskSortAscending ? a : b);
+        final bVal = getField(_taskSortAscending ? b : a);
+        return Comparable.compare(aVal, bVal);
+      });
+    }
+  }
+
   Future<void> _fetchData() async {
     try {
       final data = await ApiService.fetchState();
       if (mounted) {
         setState(() {
           _state = data;
+          _applySorting();
           _loading = false;
           _error = null;
           _lastRefresh = DateTime.now();
@@ -289,15 +383,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStatsRow(theme, running),
-                        const SizedBox(height: 24),
-                        _buildTwoColumnRow(theme),
-                        const SizedBox(height: 24),
-                        _buildTasksSection(theme),
-                      ],
+                    child: ReorderableListView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
+                          final item = _sectionOrder.removeAt(oldIndex);
+                          _sectionOrder.insert(newIndex, item);
+                        });
+                      },
+                      children: _sectionOrder.map((section) {
+                        Widget child;
+                        switch (section) {
+                          case 'stats':
+                            child = _buildStatsRow(theme, running);
+                            break;
+                          case 'stacks':
+                            child = _buildStacksCard(theme);
+                            break;
+                          case 'nodes':
+                            child = _buildNodesCard(theme);
+                            break;
+                          case 'tasks':
+                            child = _buildTasksSection(theme);
+                            break;
+                          default:
+                            child = const SizedBox.shrink();
+                        }
+                        return Padding(
+                          key: ValueKey(section),
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: child,
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
@@ -306,72 +427,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ─── Stats Row ──────────────────────────────────────────────────────
   Widget _buildStatsRow(ThemeData theme, int running) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 800;
-        final cards = [
-          StatCard(
-              label: 'Nodes',
-              value: '${_state.nodes.length}',
-              icon: Icons.dns),
-          StatCard(
-              label: 'Stacks',
-              value: '${_state.stacks.length}',
-              icon: Icons.layers),
-          StatCard(
-              label: 'Services',
-              value: '${_state.services.length}',
-              icon: Icons.miscellaneous_services),
-          StatCard(
-              label: 'Tasks',
-              value: '${_state.tasks.length}',
-              icon: Icons.task),
-          StatCard(
-              label: 'Running',
-              value: '$running',
-              icon: Icons.play_circle,
-              valueColor: const Color(0xFF10B981)),
-        ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.analytics, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Metrics Overview',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 800;
+                final cards = [
+                  StatCard(
+                      label: 'Nodes',
+                      value: '${_state.nodes.length}',
+                      icon: Icons.dns),
+                  StatCard(
+                      label: 'Stacks',
+                      value: '${_state.stacks.length}',
+                      icon: Icons.layers),
+                  StatCard(
+                      label: 'Services',
+                      value: '${_state.services.length}',
+                      icon: Icons.miscellaneous_services),
+                  StatCard(
+                      label: 'Tasks',
+                      value: '${_state.tasks.length}',
+                      icon: Icons.task),
+                  StatCard(
+                      label: 'Running',
+                      value: '$running',
+                      icon: Icons.play_circle,
+                      valueColor: const Color(0xFF10B981)),
+                ];
 
-        if (isWide) {
-          return Row(
-            children:
-                cards.map((c) => Expanded(child: c)).toList(),
-          );
-        }
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: cards
-              .map((c) => SizedBox(width: constraints.maxWidth / 2 - 8, child: c))
-              .toList(),
-        );
-      },
+                if (isWide) {
+                  return Row(
+                    children:
+                        cards.map((c) => Expanded(child: c)).toList(),
+                  );
+                }
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: cards
+                      .map((c) => SizedBox(width: constraints.maxWidth / 2 - 8, child: c))
+                      .toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  // ─── Two Column: Stacks + Nodes ─────────────────────────────────────
-  Widget _buildTwoColumnRow(ThemeData theme) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 900;
-        final stacksCard = _buildStacksCard(theme);
-        final nodesCard = _buildNodesCard(theme);
-
-        if (isWide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: stacksCard),
-              const SizedBox(width: 24),
-              Expanded(child: nodesCard),
-            ],
-          );
-        }
-        return Column(children: [stacksCard, const SizedBox(height: 24), nodesCard]);
-      },
-    );
-  }
 
   Widget _buildStacksCard(ThemeData theme) {
     final filteredStacks = _state.stacks.where((s) {
@@ -393,6 +514,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Legions (Stacks)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -417,11 +540,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('ID')),
-                    DataColumn(label: Text('NAME')),
-                    DataColumn(label: Text('CREATED')),
-                    DataColumn(label: Text('ACTIONS')),
+                  sortColumnIndex: _stackSortColumnIndex,
+                  sortAscending: _stackSortAscending,
+                  columns: [
+                    DataColumn(
+                      label: const Text('ID'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _stackSortColumnIndex = columnIndex;
+                          _stackSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('NAME'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _stackSortColumnIndex = columnIndex;
+                          _stackSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('CREATED'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _stackSortColumnIndex = columnIndex;
+                          _stackSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    const DataColumn(label: Text('ACTIONS')),
                   ],
                   rows: filteredStacks.map((s) {
                     return DataRow(cells: [
@@ -489,6 +641,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Centurions (Nodes)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -513,11 +667,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('ID')),
-                    DataColumn(label: Text('IP')),
-                    DataColumn(label: Text('ROLE')),
-                    DataColumn(label: Text('STATUS')),
+                  sortColumnIndex: _nodeSortColumnIndex,
+                  sortAscending: _nodeSortAscending,
+                  columns: [
+                    DataColumn(
+                      label: const Text('ID'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _nodeSortColumnIndex = columnIndex;
+                          _nodeSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('IP'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _nodeSortColumnIndex = columnIndex;
+                          _nodeSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('ROLE'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _nodeSortColumnIndex = columnIndex;
+                          _nodeSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('STATUS'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _nodeSortColumnIndex = columnIndex;
+                          _nodeSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
                   ],
                   rows: filteredNodes.map((n) {
                     return DataRow(cells: [
@@ -581,6 +773,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Cohorts & Tasks (Containers)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -605,15 +799,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('TASK ID')),
-                    DataColumn(label: Text('SERVICE')),
-                    DataColumn(label: Text('CONTAINER')),
-                    DataColumn(label: Text('NODE')),
-                    DataColumn(label: Text('STATUS')),
-                    DataColumn(label: Text('IP')),
-                    DataColumn(label: Text('PORTS')),
-                    DataColumn(label: Text('ACTIONS')),
+                  sortColumnIndex: _taskSortColumnIndex,
+                  sortAscending: _taskSortAscending,
+                  columns: [
+                    DataColumn(
+                      label: const Text('TASK ID'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('SERVICE'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('CONTAINER'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('NODE'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('STATUS'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('IP'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    const DataColumn(label: Text('PORTS')),
+                    const DataColumn(label: Text('ACTIONS')),
                   ],
                   rows: filteredTasks.map((t) {
                     final svc = _state.services
@@ -633,7 +883,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(width: 4),
                           IconButton(
                             icon: const Icon(Icons.copy, size: 14),
-                            tooltip: 'Copy full ID',
+                            tooltip: 'Copy Task ID',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () {
@@ -643,30 +893,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ],
                       )),
-                      DataCell(Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(svc?.name ?? 'unknown',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
-                          if (svc?.image != null)
-                            Text(svc!.image,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.5))),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(svc?.name ?? 'unknown',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              if (svc?.image != null)
+                                Text(svc!.image,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.5))),
+                            ],
+                          ),
+                          if (svc != null) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 14),
+                              tooltip: 'Copy Service ID',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: svc.id));
+                                _showSnackBar('Copied Service ID to clipboard!');
+                              },
+                            ),
+                          ],
                         ],
                       )),
                       DataCell(Text(t.containerName.isEmpty ? '-' : t.containerName,
                           style: const TextStyle(
                               fontFamily: 'Courier New', fontSize: 13))),
-                      DataCell(Text(
-                          node != null && node.id.length > 8
-                              ? node.id.substring(0, 8)
-                              : node?.id ?? 'unknown',
-                          style: const TextStyle(
-                              fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText(
+                              node != null && node.id.length > 8
+                                  ? node.id.substring(0, 8)
+                                  : node?.id ?? 'unknown',
+                              style: const TextStyle(
+                                  fontFamily: 'Courier New', fontSize: 13)),
+                          if (node != null) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 14),
+                              tooltip: 'Copy Node ID',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: node.id));
+                                _showSnackBar('Copied Node ID to clipboard!');
+                              },
+                            ),
+                          ],
+                        ],
+                      )),
                       DataCell(StatusBadge(label: t.status)),
                       DataCell(Text(t.containerIp.isEmpty ? '-' : t.containerIp)),
                       DataCell(_buildPortsCell(svc, node)),
