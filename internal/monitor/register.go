@@ -97,7 +97,6 @@ func RegisterInDB(database *gorm.DB) error {
 
 // UnregisterFromDB removes the SRE monitoring stack from the database.
 func UnregisterFromDB(database *gorm.DB) {
-	database.Where("stack_id = ?", SREStackID).Delete(&db.Task{})
 	// Delete tasks via service IDs
 	var services []db.Service
 	database.Where("stack_id = ?", SREStackID).Find(&services)

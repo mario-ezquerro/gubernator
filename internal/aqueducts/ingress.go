@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -40,11 +41,19 @@ func GenerateCaddyfile() {
 		}
 	}
 
-	err := os.WriteFile("Caddyfile", []byte(content), 0644)
+	// If no reverse proxy rules are generated, write a default block to avoid caddy start error
+	if !strings.Contains(content, "reverse_proxy") {
+		content += ":80 {\n\trespond \"Gubernator Caddy Ingress is running!\" 200\n}\n"
+	}
+
+	caddyfilePath := caddy.CaddyfilePath()
+	err := os.WriteFile(caddyfilePath, []byte(content), 0644)
 	if err != nil {
 		log.Printf("Failed to write Caddyfile: %v\n", err)
 	} else {
 		log.Println("🌊 Aqueducts: Generated new Caddyfile.")
-		// We could send an API reload request to Caddy here if running.
+		if err := caddy.ReloadConfig(); err != nil {
+			log.Printf("⚠️  Aqueducts: Caddy reload failed: %v\n", err)
+		}
 	}
 }

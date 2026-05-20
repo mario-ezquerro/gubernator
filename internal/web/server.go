@@ -13,6 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/mario-ezquerro/gubernator/internal/caddy"
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"gopkg.in/yaml.v3"
@@ -281,6 +283,12 @@ func redeployStackHandler(c *gin.Context) {
 		return
 	}
 
+	// Special handling for the Core stack (CoreDNS + Caddy)
+	if id == coredns.CoreStackID {
+		redeployCoreStack(c)
+		return
+	}
+
 	composeRaw := stack.RawComposeFile
 	stackName := stack.Name
 
@@ -369,6 +377,38 @@ func redeploySREStack(c *gin.Context) {
 	// 4. Re-register in DB
 	if err := monitor.RegisterInDB(db.DB); err != nil {
 		log.Printf("Warning: SRE stack deployed but failed to register in DB: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
+}
+
+// redeployCoreStack handles redeploy for the Core Gubernator stack.
+func redeployCoreStack(c *gin.Context) {
+	// 1. Stop CoreDNS and Caddy
+	coredns.Stop()
+	caddy.Stop()
+	coredns.UnregisterFromDB(db.DB)
+
+	// 2. Brief pause for Docker to release resources
+	time.Sleep(2 * time.Second)
+
+	// 3. Re-deploy CoreDNS and Caddy
+	if err := coredns.EnsureNetwork(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create network: %v", err)})
+		return
+	}
+	if err := coredns.EnsureRunning(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("CoreDNS deploy failed: %v", err)})
+		return
+	}
+	if err := caddy.EnsureRunning(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Caddy deploy failed: %v", err)})
+		return
+	}
+
+	// 4. Re-register in DB
+	if err := coredns.RegisterInDB(db.DB); err != nil {
+		log.Printf("Warning: Core stack deployed but failed to register in DB: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
