@@ -5,10 +5,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // GenerateHostsFile queries the DB for all running tasks and regenerates the CoreDNS hosts file.
+// After writing, it signals CoreDNS to reload the new records.
 func GenerateHostsFile() {
 	var tasks []db.Task
 	// Only fetch tasks that have an IP
@@ -36,11 +38,18 @@ func GenerateHostsFile() {
 		}
 	}
 
-	err := os.WriteFile("gubernator.hosts", []byte(content), 0644)
+	// Write to the CoreDNS config directory (~/.gbnt/coredns/gubernator.hosts)
+	hostsPath := coredns.HostsFilePath()
+	err := os.WriteFile(hostsPath, []byte(content), 0644)
 	if err != nil {
 		log.Printf("Failed to write gubernator.hosts: %v\n", err)
-	} else {
-		log.Println("🌊 Aqueducts: Generated new gubernator.hosts file.")
-		// We could send a SIGHUP to CoreDNS here if running locally, or CoreDNS 'auto' / 'hosts' plugin with 'reload' option handles it automatically.
+		return
+	}
+
+	log.Println("🌊 Aqueducts: Generated new gubernator.hosts file.")
+
+	// Signal CoreDNS to reload the updated hosts file
+	if err := coredns.ReloadConfig(); err != nil {
+		log.Printf("⚠️  Aqueducts: CoreDNS reload failed: %v\n", err)
 	}
 }

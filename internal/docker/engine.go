@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 )
 
 func init() {
@@ -39,6 +41,7 @@ func PullImage(imageName string) error {
 
 // StartContainer creates and starts a container with full compose-like config.
 // Returns the container name and its internal IP address.
+// All managed containers are automatically connected to gbnt-net for DNS resolution.
 func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 	containerName = "gbnt-" + cfg.TaskID
 
@@ -74,7 +77,7 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 		return "", "", fmt.Errorf("failed to run container: %w", err)
 	}
 
-	// Fetch container IP
+	// Fetch container IP (default bridge network)
 	ipCmd := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", containerName)
 	var out bytes.Buffer
 	ipCmd.Stdout = &out
@@ -83,11 +86,23 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 	}
 
 	ip = strings.TrimSpace(out.String())
+
+	// Connect the container to gbnt-net so it can resolve *.gbnt via CoreDNS.
+	// This is done after start to not block the initial container launch.
+	if connErr := coredns.ConnectContainer(containerName); connErr != nil {
+		// Non-fatal: container is running, DNS is just not available on gbnt-net
+		fmt.Printf("⚠️  docker: failed to connect %s to gbnt-net: %v\n", containerName, connErr)
+	}
+
 	return containerName, ip, nil
 }
 
 // StopContainer stops and removes a container by name.
+// It also disconnects the container from gbnt-net before removal.
 func StopContainer(containerName string) error {
+	// Disconnect from gbnt-net first (best effort)
+	coredns.DisconnectContainer(containerName)
+
 	// Stop gracefully
 	exec.Command("docker", "stop", containerName).Run()
 	// Remove
