@@ -4,17 +4,24 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 //go:embed gubernator_dashboard.json
 var gubernatorDashboardJSON string
 
-
 // WriteConfigs generates all monitoring config files to ~/.gbnt/monitor/.
 // workerTargets is a list of worker IPs to add to Prometheus scrape targets.
 func WriteConfigs(workerTargets []string) error {
+	if len(workerTargets) == 0 {
+		workerTargets = getWorkerIPs()
+	}
 	dir := MonitorDir()
 
 	dirs := []string{
@@ -31,11 +38,11 @@ func WriteConfigs(workerTargets []string) error {
 	}
 
 	files := map[string]string{
-		filepath.Join(dir, "prometheus", "prometheus.yml"):                         prometheusConfig(workerTargets),
-		filepath.Join(dir, "loki", "loki-config.yml"):                              lokiConfig(),
-		filepath.Join(dir, "promtail", "promtail-config.yml"):                      promtailConfig(),
-		filepath.Join(dir, "grafana", "provisioning", "datasources", "ds.yml"):     grafanaDatasources(),
-		filepath.Join(dir, "grafana", "provisioning", "dashboards", "dash.yml"):    grafanaDashboardProv(),
+		filepath.Join(dir, "prometheus", "prometheus.yml"):                             prometheusConfig(workerTargets),
+		filepath.Join(dir, "loki", "loki-config.yml"):                                  lokiConfig(),
+		filepath.Join(dir, "promtail", "promtail-config.yml"):                          promtailConfig(),
+		filepath.Join(dir, "grafana", "provisioning", "datasources", "ds.yml"):         grafanaDatasources(),
+		filepath.Join(dir, "grafana", "provisioning", "dashboards", "dash.yml"):        grafanaDashboardProv(),
 		filepath.Join(dir, "grafana", "provisioning", "dashboards", "gubernator.json"): gubernatorDashboardJSON,
 	}
 
@@ -104,6 +111,11 @@ func lokiConfig() string {
 server:
   http_listen_port: 3100
 
+ingester:
+  lifecycler:
+    join_after: 0s
+    min_ready_duration: 0s
+
 common:
   path_prefix: /loki
   storage:
@@ -128,6 +140,10 @@ schema_config:
 limits_config:
   reject_old_samples: true
   reject_old_samples_max_age: 168h
+  ingestion_rate_mb: 50
+  ingestion_burst_size_mb: 100
+  per_stream_rate_limit: 50MB
+  per_stream_rate_limit_burst: 100MB
 
 analytics:
   reporting_enabled: false
@@ -207,4 +223,76 @@ providers:
       path: /etc/grafana/provisioning/dashboards
       foldersFromFilesStructure: false
 `
+}
+
+// getWorkerIPs retrieves active worker node IPs from database.
+func getWorkerIPs() []string {
+	var ips []string
+
+	// 1. If we are running inside the server process, db.DB is already initialized
+	if db.DB != nil {
+		var nodes []db.Node
+		if err := db.DB.Where("role = ? AND status = ?", "worker", "active").Find(&nodes).Error; err == nil {
+			for _, n := range nodes {
+				ips = append(ips, n.IP)
+			}
+		}
+		return ips
+	}
+
+	// 2. If db.DB is nil (e.g. running from CLI), try to open the database file locally
+	dbPath := "gubernator.db"
+	if _, err := os.Stat(dbPath); err == nil {
+		tmpDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+		if err == nil {
+			var nodes []db.Node
+			if err := tmpDB.Where("role = ? AND status = ?", "worker", "active").Find(&nodes).Error; err == nil {
+				for _, n := range nodes {
+					ips = append(ips, n.IP)
+				}
+			}
+			sqlDB, err := tmpDB.DB()
+			if err == nil {
+				sqlDB.Close()
+			}
+		}
+	}
+	return ips
+}
+
+// UpdatePrometheusConfig regenerates prometheus.yml based on active workers in the DB,
+// writes it to disk, and if the Prometheus container is running, copies it in and sends SIGHUP.
+func UpdatePrometheusConfig() error {
+	ips := getWorkerIPs()
+	dir := MonitorDir()
+	promDir := filepath.Join(dir, "prometheus")
+	if err := os.MkdirAll(promDir, 0755); err != nil {
+		return fmt.Errorf("failed to create prometheus directory: %w", err)
+	}
+
+	content := prometheusConfig(ips)
+	configPath := filepath.Join(promDir, "prometheus.yml")
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write prometheus.yml: %w", err)
+	}
+
+	// Update the named volume via a temporary helper container
+	volCmd := exec.Command("docker", "run", "--rm", "-i", "-v", VolPrometheus+":/data", "alpine:latest", "sh", "-c", "cat > /data/prometheus.yml")
+	volCmd.Stdin = strings.NewReader(content)
+	if err := volCmd.Run(); err != nil {
+		return fmt.Errorf("failed to update prometheus config volume: %w", err)
+	}
+
+	// If Prometheus container is running, send SIGHUP to reload
+	inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", "gbnt-monitor-prometheus")
+	out, err := inspectCmd.Output()
+	if err == nil && strings.TrimSpace(string(out)) == "true" {
+		reloadCmd := exec.Command("docker", "kill", "-s", "SIGHUP", "gbnt-monitor-prometheus")
+		if err := reloadCmd.Run(); err != nil {
+			return fmt.Errorf("failed to send SIGHUP reload signal: %w", err)
+		}
+		fmt.Println("🔄 Prometheus configuration reloaded successfully with updated targets.")
+	}
+
+	return nil
 }

@@ -1,10 +1,12 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
 // @Summary Inspect Node
@@ -55,6 +57,12 @@ func NodeRoleHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
 	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node role change: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Node role updated"})
 }
 
@@ -95,6 +103,12 @@ func NodeAvailabilityHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
 	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node availability change: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
 }
 
@@ -112,5 +126,11 @@ func NodeLeaveHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
 	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node leave: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
 }

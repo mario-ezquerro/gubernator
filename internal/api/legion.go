@@ -1,11 +1,13 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
 // JoinRequest represents the payload for joining the cluster
@@ -56,6 +58,11 @@ func NodeJoinHandler(c *gin.Context) {
 	if err := db.DB.Save(&node).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register node"})
 		return
+	}
+
+	// Regenerate and reload Prometheus configurations with the new worker target
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node join: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully joined the cluster"})

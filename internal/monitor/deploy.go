@@ -17,12 +17,12 @@ const (
 	NetworkName    = "gbnt-monitor-net"
 
 	// Docker volume names for config persistence
-	VolPrometheus       = "gbnt-monitor-prom-conf"
-	VolLoki             = "gbnt-monitor-loki-conf"
-	VolPromtail         = "gbnt-monitor-promtail-conf"
-	VolGrafanaProv      = "gbnt-monitor-grafana-prov"
-	VolPrometheusData   = "gbnt-monitor-prom-data"
-	VolGrafanaData      = "gbnt-monitor-grafana-data"
+	VolPrometheus     = "gbnt-monitor-prom-conf"
+	VolLoki           = "gbnt-monitor-loki-conf"
+	VolPromtail       = "gbnt-monitor-promtail-conf"
+	VolGrafanaProv    = "gbnt-monitor-grafana-prov"
+	VolPrometheusData = "gbnt-monitor-prom-data"
+	VolGrafanaData    = "gbnt-monitor-grafana-data"
 )
 
 // AllContainers returns all monitoring container names.
@@ -176,9 +176,9 @@ func populateConfigVolumes() error {
 	dir := MonitorDir()
 
 	type volCopy struct {
-		volume    string
-		srcDir    string // local dir to copy FROM
-		destPath  string // path INSIDE the volume
+		volume   string
+		srcDir   string // local dir to copy FROM
+		destPath string // path INSIDE the volume
 	}
 
 	copies := []volCopy{
