@@ -62,11 +62,17 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 		args = append(args, "-v", v)
 	}
 
+	// Set CoreDNS as resolver if running
+	dnsIP := coredns.GetContainerIP()
+	if dnsIP != "" {
+		args = append(args, "--dns", dnsIP)
+	}
+
 	args = append(args, cfg.Image)
 
 	// Optional command override
 	if cfg.Command != "" {
-		args = append(args, strings.Fields(cfg.Command)...)
+		args = append(args, splitCommand(cfg.Command)...)
 	}
 
 	cmd := exec.Command("docker", args...)
@@ -77,22 +83,22 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 		return "", "", fmt.Errorf("failed to run container: %w", err)
 	}
 
-	// Fetch container IP (default bridge network)
-	ipCmd := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", containerName)
-	var out bytes.Buffer
-	ipCmd.Stdout = &out
-	if err = ipCmd.Run(); err != nil {
-		return containerName, "", fmt.Errorf("container started but failed to inspect IP: %w", err)
-	}
-
-	ip = strings.TrimSpace(out.String())
-
 	// Connect the container to gbnt-net so it can resolve *.gbnt via CoreDNS.
-	// This is done after start to not block the initial container launch.
+	// This must be done before querying the IP on gbnt-net.
 	if connErr := coredns.ConnectContainer(containerName); connErr != nil {
 		// Non-fatal: container is running, DNS is just not available on gbnt-net
 		fmt.Printf("⚠️  docker: failed to connect %s to gbnt-net: %v\n", containerName, connErr)
 	}
+
+	// Fetch container IP in gbnt-net
+	ipCmd := exec.Command("docker", "inspect", "-f", fmt.Sprintf("{{(index .NetworkSettings.Networks \"%s\").IPAddress}}", coredns.NetworkName), containerName)
+	var out bytes.Buffer
+	ipCmd.Stdout = &out
+	if err = ipCmd.Run(); err != nil {
+		return containerName, "", fmt.Errorf("container started but failed to inspect IP on gbnt-net: %w", err)
+	}
+
+	ip = strings.TrimSpace(out.String())
 
 	return containerName, ip, nil
 }
@@ -110,4 +116,54 @@ func StopContainer(containerName string) error {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
 	return nil
+}
+
+// splitCommand parses a command string into individual arguments,
+// respecting single and double quotes.
+func splitCommand(cmd string) []string {
+	var args []string
+	var current strings.Builder
+	inDoubleQuotes := false
+	inSingleQuotes := false
+	escaped := false
+
+	for i := 0; i < len(cmd); i++ {
+		r := rune(cmd[i])
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			continue
+		}
+
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+
+		if r == '"' && !inSingleQuotes {
+			inDoubleQuotes = !inDoubleQuotes
+			continue
+		}
+
+		if r == '\'' && !inDoubleQuotes {
+			inSingleQuotes = !inSingleQuotes
+			continue
+		}
+
+		if (r == ' ' || r == '\t') && !inDoubleQuotes && !inSingleQuotes {
+			if current.Len() > 0 {
+				args = append(args, current.String())
+				current.Reset()
+			}
+			continue
+		}
+
+		current.WriteRune(r)
+	}
+
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+
+	return args
 }

@@ -25,6 +25,19 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Deploys a new stack.
+  static Future<bool> deployStack(String name, String compose) async {
+    final response = await http.post(
+      Uri.parse('/api/stack'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'compose': compose,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
   /// Stops/removes a single task.
   static Future<bool> deleteTask(String id) async {
     final response = await http.delete(Uri.parse('/api/task/$id'));
@@ -83,4 +96,31 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  /// Updates a node's role (promote/demote).
+  static Future<bool> updateNodeRole(String id, String role) async {
+    final response = await http.post(
+      Uri.parse('/api/node/$id/role'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'role': role}),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Updates a node's availability status.
+  static Future<bool> updateNodeAvailability(String id, String availability) async {
+    final response = await http.post(
+      Uri.parse('/api/node/$id/availability'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'availability': availability}),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Commands the node to leave the cluster.
+  static Future<bool> leaveNode(String id) async {
+    final response = await http.post(Uri.parse('/api/node/$id/leave'));
+    return response.statusCode == 200;
+  }
 }
+

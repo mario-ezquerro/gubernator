@@ -30,11 +30,20 @@ func GenerateCaddyfile() {
 				val := strings.TrimSpace(parts[1])
 
 				if key == "ingress.host" || key == "node.labels.gbnt.ingress.host" {
-					var stack db.Stack
-					if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
-						// e.g., web.mystack.gbnt
-						internalDNS := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
-						content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s:80\n}\n\n", val, internalDNS)
+					var tasks []db.Task
+					if err := db.DB.Where("service_id = ? AND status = ? AND container_ip != ?", svc.ID, "running", "").Find(&tasks).Error; err == nil && len(tasks) > 0 {
+						var upstreams []string
+						for _, t := range tasks {
+							upstreams = append(upstreams, fmt.Sprintf("%s:80", t.ContainerIP))
+						}
+						content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n", val, strings.Join(upstreams, " "))
+					} else {
+						// Fallback to internal DNS if no running tasks are found in DB yet
+						var stack db.Stack
+						if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
+							internalDNS := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
+							content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s:80\n}\n\n", val, internalDNS)
+						}
 					}
 				}
 			}

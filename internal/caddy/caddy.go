@@ -86,8 +86,14 @@ func EnsureRunning() error {
 		"-p", "80:80",
 		"-p", "443:443",
 		"-v", VolumeName + ":" + ConfigMountPath + ":ro",
-		ImageName,
 	}
+
+	dnsIP := coredns.GetContainerIP()
+	if dnsIP != "" {
+		args = append(args, "--dns", dnsIP)
+	}
+
+	args = append(args, ImageName)
 
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout = os.Stdout

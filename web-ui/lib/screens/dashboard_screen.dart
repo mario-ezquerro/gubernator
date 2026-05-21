@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,6 +8,7 @@ import '../services/api_service.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/compose_editor.dart';
 import '../widgets/settings_dialog.dart';
+import '../widgets/new_stack_dialog.dart';
 
 /// Main dashboard screen.
 class DashboardScreen extends StatefulWidget {
@@ -42,7 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _nodeSortAscending = true;
   int? _taskSortColumnIndex;
   bool _taskSortAscending = true;
-  List<String> _sectionOrder = ['stats', 'stacks', 'nodes', 'tasks'];
+  List<String> _sectionOrder = ['stats', 'stacks_nodes', 'tasks'];
 
   @override
   void initState() {
@@ -254,6 +256,205 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _showNewStackDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => NewStackDialog(
+        onDeploy: (name, yaml) async {
+          final ok = await ApiService.deployStack(name, yaml);
+          if (ok) {
+            _showSnackBar('Stack deployed successfully!');
+            _fetchData();
+          } else {
+            _showSnackBar('Failed to deploy stack.', isError: true);
+          }
+          return ok;
+        },
+      ),
+    );
+  }
+
+  void _showNodeInspectDialog(Node n) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        
+        final encoder = const JsonEncoder.withIndent('  ');
+        final labelsJson = encoder.convert(n.labels);
+
+        return Dialog(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 8, 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.dns, color: theme.colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Node Details',
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _detailRow('Node ID', n.id, theme),
+                        const SizedBox(height: 16),
+                        _detailRow('IP Address', n.ip, theme),
+                        const SizedBox(height: 16),
+                        _detailRow('Role', n.role.toUpperCase(), theme, isBadge: true),
+                        const SizedBox(height: 16),
+                        _detailRow('Status', n.status.toUpperCase(), theme, isBadge: true),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Labels',
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: SelectableText(
+                            labelsJson,
+                            style: const TextStyle(
+                              fontFamily: 'Courier New',
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        if (n.createdAt.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          _detailRow('Created At', n.createdAt, theme),
+                        ],
+                        if (n.updatedAt.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _detailRow('Last Heartbeat', n.updatedAt, theme),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(String label, String value, ThemeData theme, {bool isBadge = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        isBadge
+            ? StatusBadge(label: value)
+            : SelectableText(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+              ),
+      ],
+    );
+  }
+
+  Future<void> _updateNodeRole(String id, String role) async {
+    final ok = await ApiService.updateNodeRole(id, role);
+    if (ok) {
+      _showSnackBar('Node role updated successfully!');
+      _fetchData();
+    } else {
+      _showSnackBar('Failed to update node role.', isError: true);
+    }
+  }
+
+  Future<void> _updateNodeAvailability(String id, String availability) async {
+    final ok = await ApiService.updateNodeAvailability(id, availability);
+    if (ok) {
+      _showSnackBar('Node availability updated successfully!');
+      _fetchData();
+    } else {
+      _showSnackBar('Failed to update node availability.', isError: true);
+    }
+  }
+
+  Future<void> _leaveNode(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Force Node Leave'),
+        content: const Text('Are you sure you want to force this node to leave the legion?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Force Leave'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final ok = await ApiService.leaveNode(id);
+      if (ok) {
+        _showSnackBar('Node left the cluster successfully.');
+        _fetchData();
+      } else {
+        _showSnackBar('Failed to remove node from cluster.', isError: true);
+      }
+    }
+  }
+
+
   Future<void> _stopTask(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -401,11 +602,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           case 'stats':
                             child = _buildStatsRow(theme, running);
                             break;
-                          case 'stacks':
-                            child = _buildStacksCard(theme);
-                            break;
-                          case 'nodes':
-                            child = _buildNodesCard(theme);
+                          case 'stacks_nodes':
+                            child = _buildStacksAndNodesRow(theme);
                             break;
                           case 'tasks':
                             child = _buildTasksSection(theme);
@@ -494,6 +692,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
 
+  // ─── Legions + Centurions side by side ────────────────────────────
+  Widget _buildStacksAndNodesRow(ThemeData theme) {
+    // MediaQuery gives the true window/screen width.
+    // We then subtract the outer SingleChildScrollView padding (24×2=48).
+    final screenWidth = MediaQuery.of(context).size.width;
+    const outerPadding = 48.0;
+    const gap = 24.0;
+    final availableWidth = screenWidth - outerPadding;
+
+    // Narrow screen → stack vertically
+    if (availableWidth <= 700) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildStacksCard(theme),
+          const SizedBox(height: gap),
+          _buildNodesCard(theme),
+        ],
+      );
+    }
+
+    // Wide screen → side by side.
+    // IMPORTANT: we wrap the Row in SizedBox(width: availableWidth) so that
+    // the Row gets a **bounded** width parent. Without this explicit bound the
+    // ReorderableListView passes maxWidth=∞ and the Row cannot lay out its
+    // children correctly even when the children have explicit SizedBox widths.
+    final cardWidth = (availableWidth - gap) / 2;
+    return SizedBox(
+      width: availableWidth,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: cardWidth, child: _buildStacksCard(theme)),
+          const SizedBox(width: gap),
+          SizedBox(width: cardWidth, child: _buildNodesCard(theme)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStacksCard(ThemeData theme) {
     final filteredStacks = _state.stacks.where((s) {
       if (_stackSearchQuery.isEmpty) return true;
@@ -515,6 +753,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'Options',
+                  onSelected: (val) {
+                    if (val == 'deploy') {
+                      _showNewStackDialog();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'deploy',
+                      child: Row(
+                        children: [
+                          Icon(Icons.add, size: 20),
+                          SizedBox(width: 8),
+                          Text('Deploy New Stack'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
@@ -710,6 +969,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         });
                       },
                     ),
+                    const DataColumn(label: Text('ACTIONS')),
                   ],
                   rows: filteredNodes.map((n) {
                     return DataRow(cells: [
@@ -734,6 +994,110 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       DataCell(Text(n.ip)),
                       DataCell(StatusBadge(label: n.role)),
                       DataCell(StatusBadge(label: n.status)),
+                      DataCell(
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 20),
+                          tooltip: 'Node Actions',
+                          onSelected: (action) {
+                            if (action == 'inspect') {
+                              _showNodeInspectDialog(n);
+                            } else if (action == 'promote') {
+                              _updateNodeRole(n.id, 'manager');
+                            } else if (action == 'demote') {
+                              _updateNodeRole(n.id, 'worker');
+                            } else if (action == 'active') {
+                              _updateNodeAvailability(n.id, 'active');
+                            } else if (action == 'pause') {
+                              _updateNodeAvailability(n.id, 'pause');
+                            } else if (action == 'drain') {
+                              _updateNodeAvailability(n.id, 'drain');
+                            } else if (action == 'leave') {
+                              _leaveNode(n.id);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'inspect',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Inspect'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            if (n.role == 'worker')
+                              const PopupMenuItem(
+                                value: 'promote',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.trending_up, size: 18, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text('Promote to Manager'),
+                                  ],
+                                ),
+                              ),
+                            if (n.role == 'manager')
+                              const PopupMenuItem(
+                                value: 'demote',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.trending_down, size: 18, color: Colors.orange),
+                                    SizedBox(width: 8),
+                                    Text('Demote to Worker'),
+                                  ],
+                                ),
+                              ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: 'active',
+                              enabled: n.status != 'active',
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.play_arrow, size: 18, color: Colors.green),
+                                  SizedBox(width: 8),
+                                  Text('Set Active'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'pause',
+                              enabled: n.status != 'pause',
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.pause, size: 18, color: Colors.amber),
+                                  SizedBox(width: 8),
+                                  Text('Set Pause'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'drain',
+                              enabled: n.status != 'drain',
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.delete_sweep, size: 18, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Set Drain'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: 'leave',
+                              enabled: n.status != 'left',
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.exit_to_app, size: 18, color: Colors.redAccent),
+                                  SizedBox(width: 8),
+                                  Text('Force Leave'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ]);
                   }).toList(),
                 ),

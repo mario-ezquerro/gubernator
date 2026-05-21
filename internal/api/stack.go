@@ -113,7 +113,12 @@ func scheduleService(service *db.Service) {
 				// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
 				parts := strings.Split(constraint, "==")
 				if len(parts) == 2 {
-					key := strings.TrimPrefix(strings.TrimSpace(parts[0]), "node.labels.")
+					leftSide := strings.TrimSpace(parts[0])
+					if !strings.HasPrefix(leftSide, "node.labels.") {
+						// Skip non-node-placement constraints (like ingress.host)
+						continue
+					}
+					key := strings.TrimPrefix(leftSide, "node.labels.")
 					val := strings.TrimSpace(parts[1])
 
 					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {

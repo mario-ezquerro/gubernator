@@ -1,0 +1,10 @@
+services:
+  hello-app:
+    image: busybox:latest
+    command: 'sh -c "mkdir -p /www && echo hola contenedor \$(hostname) > /www/index.html && httpd -f -p 80 -h /www"'
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - ingress.host == hello.gbnt.local
+

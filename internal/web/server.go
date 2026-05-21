@@ -111,11 +111,18 @@ func StartDashboard() {
 		api.GET("/stack/:id/compose", getStackComposeHandler)
 		api.PUT("/stack/:id/compose", updateStackComposeHandler)
 		api.POST("/stack/:id/redeploy", redeployStackHandler)
+		api.POST("/stack", deployStackHandler)
 		api.DELETE("/stack/:id", deleteStackHandler)
 		api.DELETE("/task/:id", deleteTaskHandler)
 		api.GET("/settings", getSettingsHandler)
 		api.PUT("/settings", updateSettingsHandler)
 		api.PUT("/settings/password", changePasswordHandler)
+
+		// Node operations
+		api.GET("/node/:id", nodeInspectHandler)
+		api.POST("/node/:id/role", nodeRoleHandler)
+		api.POST("/node/:id/availability", nodeAvailabilityHandler)
+		api.POST("/node/:id/leave", nodeLeaveHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -266,6 +273,63 @@ func updateStackComposeHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "saved"})
+}
+
+func deployStackHandler(c *gin.Context) {
+	var req struct {
+		Name    string `json:"name" binding:"required"`
+		Compose string `json:"compose" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Re-parse the compose YAML
+	var compose composeFile
+	if err := yaml.Unmarshal([]byte(req.Compose), &compose); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
+		return
+	}
+
+	// Check if stack name already exists to prevent duplicate/collisions
+	var existing db.Stack
+	if err := db.DB.First(&existing, "name = ?", req.Name).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Stack with name '%s' already exists", req.Name)})
+		return
+	}
+
+	stackID := uuid.New().String()
+	stack := db.Stack{
+		ID:             stackID,
+		Name:           req.Name,
+		RawComposeFile: req.Compose,
+	}
+	db.DB.Create(&stack)
+
+	for srvName, srvDef := range compose.Services {
+		replicas := srvDef.Deploy.Replicas
+		if replicas == 0 {
+			replicas = 1
+		}
+
+		service := db.Service{
+			ID:              uuid.New().String(),
+			StackID:         stackID,
+			Name:            srvName,
+			Image:           srvDef.Image,
+			DesiredReplicas: replicas,
+			Constraints:     srvDef.Deploy.Placement.Constraints,
+			Ports:           srvDef.Ports,
+			Env:             srvDef.Environment,
+			Volumes:         srvDef.Volumes,
+			Command:         srvDef.Command,
+		}
+		db.DB.Create(&service)
+		webScheduleService(&service)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
 }
 
 func redeployStackHandler(c *gin.Context) {
@@ -419,3 +483,93 @@ func stopContainerByName(name string) {
 	exec.Command("docker", "stop", name).Run()
 	exec.Command("docker", "rm", "-f", name).Run()
 }
+
+func nodeInspectHandler(c *gin.Context) {
+	id := c.Param("id")
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+	c.JSON(http.StatusOK, node)
+}
+
+func nodeRoleHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Role string `json:"role" binding:"required"` // "worker" or "manager"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Role != "worker" && req.Role != "manager" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		return
+	}
+
+	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("role", req.Role)
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node role change: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node role updated"})
+}
+
+func nodeAvailabilityHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Availability string `json:"availability" binding:"required"` // "active", "pause", "drain"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Availability != "active" && req.Availability != "pause" && req.Availability != "drain" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid availability"})
+		return
+	}
+
+	status := "active"
+	if req.Availability != "active" {
+		status = req.Availability
+	}
+
+	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", status)
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node availability change: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
+}
+
+func nodeLeaveHandler(c *gin.Context) {
+	id := c.Param("id")
+	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", "left")
+	if res.Error != nil || res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		log.Printf("Warning: failed to update Prometheus config on node leave: %v", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
+}
+
