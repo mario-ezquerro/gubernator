@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -137,6 +140,11 @@ func StartDashboard() {
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
 
+	authorized.GET("/grafana", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/grafana/")
+	})
+	authorized.Any("/grafana/*proxyPath", grafanaProxyHandler)
+
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -169,10 +177,11 @@ func stateHandler(c *gin.Context) {
 	db.DB.Find(&tasks)
 
 	c.JSON(http.StatusOK, gin.H{
-		"nodes":    nodes,
-		"stacks":   stacks,
-		"services": services,
-		"tasks":    tasks,
+		"nodes":           nodes,
+		"stacks":          stacks,
+		"services":        services,
+		"tasks":           tasks,
+		"monitor_running": monitor.IsRunning(),
 	})
 }
 
@@ -572,4 +581,34 @@ func nodeLeaveHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
 }
+
+func grafanaProxyHandler(c *gin.Context) {
+	targetHost := "gbnt-monitor-grafana:3000"
+	_, err := net.LookupHost("gbnt-monitor-grafana")
+	if err != nil {
+		targetHost = "127.0.0.1:3000"
+	}
+
+	targetURL, err := url.Parse("http://" + targetHost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse target URL"})
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = targetHost
+		username, _, _ := req.BasicAuth()
+		if username != "" {
+			req.Header.Set("X-WEBAUTH-USER", username)
+		}
+		req.Header.Del("Authorization")
+	}
+
+	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
 

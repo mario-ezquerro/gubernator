@@ -494,6 +494,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _openGrafana() async {
+    final url = Uri.parse('/grafana/');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Grafana')),
+        );
+      }
+    }
+  }
+
   // ─── Build ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -540,6 +551,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
+            ),
+          // Observability gear icon
+          if (_state.monitorRunning)
+            IconButton(
+              icon: const Icon(Icons.analytics_outlined),
+              tooltip: 'Observability (Grafana)',
+              onPressed: _openGrafana,
             ),
           // Settings gear icon
           IconButton(

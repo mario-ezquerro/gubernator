@@ -118,12 +118,14 @@ class DashboardState {
   final List<StackModel> stacks;
   final List<Service> services;
   final List<Task> tasks;
+  final bool monitorRunning;
 
   DashboardState({
     this.nodes = const [],
     this.stacks = const [],
     this.services = const [],
     this.tasks = const [],
+    this.monitorRunning = false,
   });
 
   factory DashboardState.fromJson(Map<String, dynamic> json) {
@@ -140,6 +142,7 @@ class DashboardState {
       tasks: (json['tasks'] as List? ?? [])
           .map((e) => Task.fromJson(e))
           .toList(),
+      monitorRunning: json['monitor_running'] ?? false,
     );
   }
 }

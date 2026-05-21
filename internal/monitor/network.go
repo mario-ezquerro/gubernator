@@ -35,3 +35,46 @@ func EnsureNetwork() error {
 func RemoveNetwork() {
 	exec.Command("docker", "network", "rm", "gbnt-monitor-net").Run()
 }
+
+// ConnectGubernator connects the current gubernator container (if running inside Docker) to the monitor network.
+func ConnectGubernator() error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil // Hostname not available, probably not in docker or no permission
+	}
+
+	// Check if this hostname is a docker container by trying to inspect it
+	if err := exec.Command("docker", "inspect", hostname).Run(); err != nil {
+		// Not running inside a docker container, or docker CLI is not available
+		return nil
+	}
+
+	// Check if already connected to gbnt-monitor-net
+	out, err := exec.Command("docker", "inspect", "-f",
+		"{{index .NetworkSettings.Networks \"gbnt-monitor-net\"}}",
+		hostname).Output()
+	if err == nil && strings.TrimSpace(string(out)) != "<nil>" && strings.TrimSpace(string(out)) != "" {
+		// Already connected
+		return nil
+	}
+
+	if err := exec.Command("docker", "network", "connect", "gbnt-monitor-net", hostname).Run(); err != nil {
+		return fmt.Errorf("failed to connect gubernator container (%s) to gbnt-monitor-net: %w", hostname, err)
+	}
+
+	fmt.Printf("🔗 Gubernator container (%s) connected to gbnt-monitor-net\n", hostname)
+	return nil
+}
+
+// DisconnectGubernator disconnects the current gubernator container from the monitor network.
+func DisconnectGubernator() {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return
+	}
+
+	if err := exec.Command("docker", "inspect", hostname).Run(); err == nil {
+		exec.Command("docker", "network", "disconnect", "-f", "gbnt-monitor-net", hostname).Run()
+	}
+}
+

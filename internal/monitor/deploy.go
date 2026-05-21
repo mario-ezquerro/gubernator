@@ -39,6 +39,11 @@ func AllVolumes() []string {
 // It uses Docker named volumes populated via "docker cp" to avoid bind-mount issues
 // when gbnt itself runs inside a container.
 func DeployManagerStack() error {
+	// Connect Gubernator container to the monitor network
+	if err := ConnectGubernator(); err != nil {
+		fmt.Printf("⚠️  Warning: failed to connect Gubernator to monitor network: %v\n", err)
+	}
+
 	// Populate config volumes from generated files in MonitorDir()
 	if err := populateConfigVolumes(); err != nil {
 		return fmt.Errorf("failed to populate config volumes: %w", err)
@@ -108,13 +113,19 @@ func DeployManagerStack() error {
 	fmt.Println("📈 Deploying Grafana (dashboards)...")
 	grafanaArgs := []string{
 		"--net", NetworkName,
-		"-p", "3000:3000",
+		"-p", "127.0.0.1:3000:3000",
 		"-v", VolGrafanaProv + ":/etc/grafana/provisioning:ro",
 		"-v", VolGrafanaData + ":/var/lib/grafana",
 		"-e", "GF_SECURITY_ADMIN_USER=admin",
 		"-e", "GF_SECURITY_ADMIN_PASSWORD=admin",
 		"-e", "GF_USERS_ALLOW_SIGN_UP=false",
 		"-e", "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/gubernator.json",
+		"-e", "GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/",
+		"-e", "GF_SERVER_SERVE_FROM_SUB_PATH=true",
+		"-e", "GF_AUTH_PROXY_ENABLED=true",
+		"-e", "GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER",
+		"-e", "GF_AUTH_PROXY_HEADER_PROPERTY=username",
+		"-e", "GF_AUTH_PROXY_AUTO_SIGN_UP=true",
 		"grafana/grafana:latest",
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
@@ -126,6 +137,9 @@ func DeployManagerStack() error {
 
 // StopAll stops and removes all monitoring containers, the network, and config volumes.
 func StopAll() {
+	// Disconnect Gubernator from the monitor network before removing it
+	DisconnectGubernator()
+
 	for _, name := range AllContainers() {
 		fmt.Printf("⏹  Stopping %s...\n", name)
 		exec.Command("docker", "stop", name).Run()
@@ -135,6 +149,15 @@ func StopAll() {
 		exec.Command("docker", "volume", "rm", "-f", vol).Run()
 	}
 	RemoveNetwork()
+}
+
+// IsRunning checks if the Grafana monitoring container is currently running.
+func IsRunning() bool {
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", GrafanaName).Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) == "true"
 }
 
 // Status prints the status of all monitoring containers.
