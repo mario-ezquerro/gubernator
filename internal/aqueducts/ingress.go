@@ -11,8 +11,9 @@ import (
 )
 
 // GenerateCaddyfile creates a Caddyfile based on Service constraints/labels.
-// For example, if a service has a constraint "caddy.route == api.gbnt.local",
-// it configures Caddy to reverse proxy to the internal DNS of that service.
+// It groups all upstreams by ingress hostname to avoid duplicate site definitions.
+// Only services with running tasks are included — no DNS fallback blocks are emitted
+// since those cause "ambiguous site definition" errors when combined with IP-based blocks.
 func GenerateCaddyfile() {
 	var services []db.Service
 	if err := db.DB.Find(&services).Error; err != nil {
@@ -20,49 +21,66 @@ func GenerateCaddyfile() {
 		return
 	}
 
-	content := "# Gubernator Auto-Generated Caddyfile\n\n"
+	// hostUpstreams groups container IPs per ingress hostname to avoid duplicate blocks.
+	hostUpstreams := make(map[string][]string)
+	// Preserve insertion order for deterministic output.
+	var hostOrder []string
 
 	for _, svc := range services {
 		for _, constraint := range svc.Constraints {
 			parts := strings.Split(constraint, "==")
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
 
-				if key == "ingress.host" || key == "node.labels.gbnt.ingress.host" {
-					var tasks []db.Task
-					if err := db.DB.Where("service_id = ? AND status = ? AND container_ip != ?", svc.ID, "running", "").Find(&tasks).Error; err == nil && len(tasks) > 0 {
-						var upstreams []string
-						for _, t := range tasks {
-							upstreams = append(upstreams, fmt.Sprintf("%s:80", t.ContainerIP))
-						}
-						content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n", val, strings.Join(upstreams, " "))
-					} else {
-						// Fallback to internal DNS if no running tasks are found in DB yet
-						var stack db.Stack
-						if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
-							internalDNS := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
-							content += fmt.Sprintf("%s {\n\ttls internal\n\treverse_proxy %s:80\n}\n\n", val, internalDNS)
-						}
-					}
-				}
+			if key != "ingress.host" && key != "node.labels.gbnt.ingress.host" {
+				continue
+			}
+
+			// Only include running tasks with a real IP.
+			var tasks []db.Task
+			if err := db.DB.Where(
+				"service_id = ? AND status = ? AND container_ip != ?",
+				svc.ID, "running", "",
+			).Find(&tasks).Error; err != nil || len(tasks) == 0 {
+				// Skip — no fallback DNS block to avoid duplicates/conflicts.
+				continue
+			}
+
+			if _, seen := hostUpstreams[val]; !seen {
+				hostOrder = append(hostOrder, val)
+			}
+			for _, t := range tasks {
+				hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:80", t.ContainerIP))
 			}
 		}
 	}
 
-	// If no reverse proxy rules are generated, write a default block to avoid caddy start error
-	if !strings.Contains(content, "reverse_proxy") {
+	content := "# Gubernator Auto-Generated Caddyfile\n\n"
+
+	for _, host := range hostOrder {
+		upstreams := hostUpstreams[host]
+		content += fmt.Sprintf(
+			"%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
+			host, strings.Join(upstreams, " "),
+		)
+	}
+
+	// If no reverse proxy rules were generated, write a default block so Caddy starts cleanly.
+	if len(hostOrder) == 0 {
 		content += ":80 {\n\trespond \"Gubernator Caddy Ingress is running!\" 200\n}\n"
 	}
 
 	caddyfilePath := caddy.CaddyfilePath()
-	err := os.WriteFile(caddyfilePath, []byte(content), 0644)
-	if err != nil {
+	if err := os.WriteFile(caddyfilePath, []byte(content), 0644); err != nil {
 		log.Printf("Failed to write Caddyfile: %v\n", err)
-	} else {
-		log.Println("🌊 Aqueducts: Generated new Caddyfile.")
-		if err := caddy.ReloadConfig(); err != nil {
-			log.Printf("⚠️  Aqueducts: Caddy reload failed: %v\n", err)
-		}
+		return
+	}
+
+	log.Println("🌊 Aqueducts: Generated new Caddyfile.")
+	if err := caddy.ReloadConfig(); err != nil {
+		log.Printf("⚠️  Aqueducts: Caddy reload failed: %v\n", err)
 	}
 }

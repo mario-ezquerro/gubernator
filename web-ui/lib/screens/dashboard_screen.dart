@@ -1405,35 +1405,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // For containers running on the manager (127.0.0.1), use localhost
     final host = (nodeIp == '127.0.0.1') ? 'localhost' : nodeIp;
 
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: svc.ports.map((portMapping) {
         // Parse "hostPort:containerPort" or "hostPort:containerPort/protocol"
         final hostPort = portMapping.split(':').first;
         final url = 'http://$host:$hostPort';
 
-        return ActionChip(
-          avatar: Icon(Icons.open_in_new, size: 14,
-              color: Theme.of(context).colorScheme.primary),
-          label: Text(portMapping,
-              style: TextStyle(
-                fontSize: 12,
-                fontFamily: 'Courier New',
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
-              )),
-          tooltip: url,
-          onPressed: () async {
-            final uri = Uri.parse(url);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else {
-              _showSnackBar('Could not open $url', isError: true);
-            }
-          },
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+        return Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: ActionChip(
+            avatar: Icon(Icons.open_in_new, size: 14,
+                color: Theme.of(context).colorScheme.primary),
+            label: Text(portMapping,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'Courier New',
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                )),
+            tooltip: url,
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } else {
+                _showSnackBar('Could not open $url', isError: true);
+              }
+            },
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
         );
       }).toList(),
     );
