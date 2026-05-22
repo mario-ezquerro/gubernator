@@ -19,6 +19,9 @@ FROM alpine:edge
 
 WORKDIR /app
 
+# Add /app to the system PATH so 'gbnt' can be executed from anywhere
+ENV PATH="/app:${PATH}"
+
 # Add certificates, timezone data, sqlite, and Docker CLI (needed for local executor)
 RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli
 

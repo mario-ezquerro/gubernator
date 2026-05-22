@@ -44,6 +44,36 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Sends an action (pause, unpause, restart, start, stop) to a task
+  static Future<bool> taskAction(String id, String action) async {
+    final response = await http.post(
+      Uri.parse('/api/task/$id/action'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'action': action}),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Gets tail logs for a task
+  static Future<String> taskLogs(String id) async {
+    final response = await http.get(Uri.parse('/api/task/$id/logs'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['logs'] ?? '';
+    }
+    throw Exception('Failed to fetch logs: ${response.statusCode}');
+  }
+
+  /// Gets inspect JSON for a task
+  static Future<String> taskInspect(String id) async {
+    final response = await http.get(Uri.parse('/api/task/$id/inspect'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return const JsonEncoder.withIndent('  ').convert(data);
+    }
+    throw Exception('Failed to fetch inspect data: ${response.statusCode}');
+  }
+
   /// Gets the compose YAML for a specific stack.
   static Future<String> getStackCompose(String id) async {
     final response = await http.get(Uri.parse('/api/stack/$id/compose'));

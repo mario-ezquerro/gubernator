@@ -11,11 +11,14 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/creack/pty"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -122,6 +125,10 @@ func StartDashboard() {
 		api.POST("/stack", deployStackHandler)
 		api.DELETE("/stack/:id", deleteStackHandler)
 		api.DELETE("/task/:id", deleteTaskHandler)
+		api.POST("/task/:id/action", taskActionHandler)
+		api.GET("/task/:id/logs", taskLogsHandler)
+		api.GET("/task/:id/inspect", taskInspectHandler)
+		api.GET("/task/:id/shell", taskShellHandler)
 		api.GET("/settings", getSettingsHandler)
 		api.PUT("/settings", updateSettingsHandler)
 		api.PUT("/settings/password", changePasswordHandler)
@@ -131,6 +138,7 @@ func StartDashboard() {
 		api.POST("/node/:id/role", nodeRoleHandler)
 		api.POST("/node/:id/availability", nodeAvailabilityHandler)
 		api.POST("/node/:id/leave", nodeLeaveHandler)
+		api.GET("/node/:id/shell", nodeShellHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -263,6 +271,156 @@ func deleteTaskHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+func taskActionHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Action string `json:"action" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	var task db.Task
+	if err := db.DB.First(&task, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if task.ContainerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task has no container assigned"})
+		return
+	}
+
+	var err error
+	switch req.Action {
+	case "pause":
+		err = exec.Command("docker", "pause", task.ContainerName).Run()
+	case "unpause":
+		err = exec.Command("docker", "unpause", task.ContainerName).Run()
+	case "restart":
+		err = exec.Command("docker", "restart", task.ContainerName).Run()
+	case "start":
+		err = exec.Command("docker", "start", task.ContainerName).Run()
+	case "stop":
+		err = exec.Command("docker", "stop", task.ContainerName).Run()
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown action"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute docker action: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func taskLogsHandler(c *gin.Context) {
+	id := c.Param("id")
+	var task db.Task
+	if err := db.DB.First(&task, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+	if task.ContainerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task has no container assigned"})
+		return
+	}
+
+	out, err := exec.Command("docker", "logs", "--tail", "200", task.ContainerName).CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get logs: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"logs": string(out)})
+}
+
+func taskInspectHandler(c *gin.Context) {
+	id := c.Param("id")
+	var task db.Task
+	if err := db.DB.First(&task, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+	if task.ContainerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task has no container assigned"})
+		return
+	}
+
+	out, err := exec.Command("docker", "inspect", task.ContainerName).CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to inspect: %v", err)})
+		return
+	}
+
+	c.Data(http.StatusOK, "application/json", out)
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for the dashboard
+	},
+}
+
+func taskShellHandler(c *gin.Context) {
+	id := c.Param("id")
+	var task db.Task
+	if err := db.DB.First(&task, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+	if task.ContainerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Task has no container assigned"})
+		return
+	}
+
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade websocket: %v", err)
+		return
+	}
+	defer ws.Close()
+
+	cmd := exec.Command("docker", "exec", "-it", task.ContainerName, "/bin/sh")
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start shell: %v\r\n", err)))
+		return
+	}
+	defer func() {
+		_ = ptmx.Close()
+	}()
+
+	// Copy from PTY to WebSocket
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if err != nil {
+				break
+			}
+			if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+				break
+			}
+		}
+	}()
+
+	// Copy from WebSocket to PTY
+	for {
+		_, msg, err := ws.ReadMessage()
+		if err != nil {
+			break
+		}
+		_, err = ptmx.Write(msg)
+		if err != nil {
+			break
+		}
+	}
+}
+
 func getStackComposeHandler(c *gin.Context) {
 	id := c.Param("id")
 	var stack db.Stack
@@ -368,63 +526,87 @@ func redeployStackHandler(c *gin.Context) {
 	}
 
 	composeRaw := stack.RawComposeFile
-	stackName := stack.Name
 
-	// 1. Stop and remove all existing containers for this stack SYNCHRONOUSLY
-	var services []db.Service
-	db.DB.Where("stack_id = ?", id).Find(&services)
-	for _, svc := range services {
-		var tasks []db.Task
-		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
-		for _, task := range tasks {
-			stopContainerByName(task.ContainerName) // synchronous — wait for stop
-		}
-		db.DB.Where("service_id = ?", svc.ID).Delete(&db.Task{})
-	}
-	db.DB.Where("stack_id = ?", id).Delete(&db.Service{})
-	db.DB.Where("id = ?", id).Delete(&db.Stack{})
-
-	// 2. Brief pause to let Docker release the ports
-	time.Sleep(2 * time.Second)
-
-	// 3. Re-parse the compose YAML and re-deploy as a new stack
+	// 1. Parse the (potentially updated) compose YAML
 	var compose composeFile
 	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
 		return
 	}
 
-	newStackID := uuid.New().String()
-	newStack := db.Stack{
-		ID:             newStackID,
-		Name:           stackName,
-		RawComposeFile: composeRaw,
+	// 2. Load existing services for this stack, indexed by name
+	var existingServices []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&existingServices)
+	existingByName := make(map[string]db.Service)
+	for _, svc := range existingServices {
+		existingByName[svc.Name] = svc
 	}
-	db.DB.Create(&newStack)
 
+	var summary []string
+
+	// 3. Process each service in the new compose definition
 	for srvName, srvDef := range compose.Services {
-		replicas := srvDef.Deploy.Replicas
-		if replicas == 0 {
-			replicas = 1
+		newReplicas := srvDef.Deploy.Replicas
+		if newReplicas == 0 {
+			newReplicas = 1
 		}
 
-		service := db.Service{
-			ID:              uuid.New().String(),
-			StackID:         newStackID,
-			Name:            srvName,
-			Image:           srvDef.Image,
-			DesiredReplicas: replicas,
-			Constraints:     srvDef.Deploy.Placement.Constraints,
-			Ports:           srvDef.Ports,
-			Env:             srvDef.Environment,
-			Volumes:         srvDef.Volumes,
-			Command:         srvDef.Command,
+		if existing, ok := existingByName[srvName]; ok {
+			// Service already exists — check what changed
+			if serviceDefinitionChanged(existing, srvDef) {
+				// Definition changed (image, ports, env, etc.) → full teardown + recreate
+				log.Printf("[Redeploy] Service %q: definition changed, full recreate", srvName)
+				stopAllTasksForService(existing.ID)
+				updateServiceRecord(&existing, srvDef, newReplicas)
+				webScheduleService(&existing)
+				summary = append(summary, fmt.Sprintf("%s: recreated (%d replicas)", srvName, newReplicas))
+			} else if existing.DesiredReplicas != newReplicas {
+				// Only replica count changed → incremental scale
+				delta := newReplicas - existing.DesiredReplicas
+				log.Printf("[Redeploy] Service %q: scaling %d → %d (delta: %+d)", srvName, existing.DesiredReplicas, newReplicas, delta)
+				if delta > 0 {
+					scaleServiceUp(&existing, delta)
+				} else {
+					scaleServiceDown(&existing, -delta)
+				}
+				// Update DesiredReplicas in DB
+				db.DB.Model(&db.Service{}).Where("id = ?", existing.ID).Update("desired_replicas", newReplicas)
+				summary = append(summary, fmt.Sprintf("%s: scaled %d → %d", srvName, existing.DesiredReplicas, newReplicas))
+			} else {
+				// Nothing changed for this service
+				summary = append(summary, fmt.Sprintf("%s: unchanged", srvName))
+			}
+			delete(existingByName, srvName)
+		} else {
+			// Brand new service — create and schedule
+			log.Printf("[Redeploy] Service %q: new service, creating %d replicas", srvName, newReplicas)
+			service := db.Service{
+				ID:              uuid.New().String(),
+				StackID:         id,
+				Name:            srvName,
+				Image:           srvDef.Image,
+				DesiredReplicas: newReplicas,
+				Constraints:     srvDef.Deploy.Placement.Constraints,
+				Ports:           srvDef.Ports,
+				Env:             srvDef.Environment,
+				Volumes:         srvDef.Volumes,
+				Command:         srvDef.Command,
+			}
+			db.DB.Create(&service)
+			webScheduleService(&service)
+			summary = append(summary, fmt.Sprintf("%s: created (%d replicas)", srvName, newReplicas))
 		}
-		db.DB.Create(&service)
-		webScheduleService(&service)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "new_stack_id": newStackID})
+	// 4. Remove services that were in the old compose but not in the new one
+	for srvName, orphan := range existingByName {
+		log.Printf("[Redeploy] Service %q: removed from compose, stopping", srvName)
+		stopAllTasksForService(orphan.ID)
+		db.DB.Where("id = ?", orphan.ID).Delete(&db.Service{})
+		summary = append(summary, fmt.Sprintf("%s: removed", srvName))
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "stack_id": id, "changes": summary})
 }
 
 // redeploySREStack handles redeploy for the special SRE Monitor stack.
@@ -490,6 +672,131 @@ func redeployCoreStack(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
+}
+
+// ─── Incremental Scaling Helpers ─────────────────────────────────────
+
+// serviceDefinitionChanged returns true if any field besides DesiredReplicas
+// differs between the existing DB service and the new compose definition.
+func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
+	if existing.Image != newDef.Image {
+		return true
+	}
+	if existing.Command != newDef.Command {
+		return true
+	}
+	if !stringSlicesEqual(existing.Ports, newDef.Ports) {
+		return true
+	}
+	if !stringSlicesEqual(existing.Env, newDef.Environment) {
+		return true
+	}
+	if !stringSlicesEqual(existing.Volumes, newDef.Volumes) {
+		return true
+	}
+	if !stringSlicesEqual(existing.Constraints, newDef.Deploy.Placement.Constraints) {
+		return true
+	}
+	return false
+}
+
+// stringSlicesEqual compares two string slices for equality (order-sensitive).
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// stopAllTasksForService stops all running containers for a service and deletes
+// the task records from the DB. This is synchronous — it waits for each stop.
+func stopAllTasksForService(serviceID string) {
+	var tasks []db.Task
+	db.DB.Where("service_id = ? AND container_name != ''", serviceID).Find(&tasks)
+	for _, task := range tasks {
+		stopContainerByName(task.ContainerName)
+	}
+	db.DB.Where("service_id = ?", serviceID).Delete(&db.Task{})
+}
+
+// updateServiceRecord updates an existing service's definition in the DB
+// to match the new compose values, then persists the change.
+func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
+	svc.Image = newDef.Image
+	svc.Ports = newDef.Ports
+	svc.Env = newDef.Environment
+	svc.Volumes = newDef.Volumes
+	svc.Command = newDef.Command
+	svc.Constraints = newDef.Deploy.Placement.Constraints
+	svc.DesiredReplicas = replicas
+	db.DB.Save(svc)
+}
+
+// scaleServiceUp schedules `count` new tasks for an existing service.
+func scaleServiceUp(svc *db.Service, count int) {
+	for i := 0; i < count; i++ {
+		var allNodes []db.Node
+		db.DB.Where("status = ?", "active").Find(&allNodes)
+
+		var selectedNode *db.Node
+		for _, node := range allNodes {
+			matchesAll := true
+			for _, constraint := range svc.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 {
+					leftSide := strings.TrimSpace(parts[0])
+					if !strings.HasPrefix(leftSide, "node.labels.") {
+						continue
+					}
+					key := strings.TrimPrefix(leftSide, "node.labels.")
+					val := strings.TrimSpace(parts[1])
+					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+						matchesAll = false
+						break
+					}
+				}
+			}
+			if matchesAll {
+				selectedNode = &node
+				break
+			}
+		}
+
+		if selectedNode != nil {
+			task := db.Task{
+				ID:        uuid.New().String(),
+				ServiceID: svc.ID,
+				NodeID:    selectedNode.ID,
+				Status:    "pending",
+			}
+			db.DB.Create(&task)
+		}
+	}
+}
+
+// scaleServiceDown stops and removes the `count` newest tasks for a service.
+// Tasks are sorted by created_at DESC so the most recently created are removed first.
+func scaleServiceDown(svc *db.Service, count int) {
+	var tasks []db.Task
+	db.DB.Where("service_id = ?", svc.ID).Find(&tasks)
+
+	// Sort by CreatedAt descending (newest first)
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
+	})
+
+	// Stop up to `count` tasks
+	for i := 0; i < count && i < len(tasks); i++ {
+		if tasks[i].ContainerName != "" {
+			stopContainerByName(tasks[i].ContainerName)
+		}
+		db.DB.Where("id = ?", tasks[i].ID).Delete(&db.Task{})
+	}
 }
 
 // stopContainerByName calls docker stop + rm on a named container.
@@ -617,3 +924,56 @@ func grafanaProxyHandler(c *gin.Context) {
 }
 
 
+
+func nodeShellHandler(c *gin.Context) {
+	id := c.Param("id")
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade websocket: %v", err)
+		return
+	}
+	defer ws.Close()
+
+	// Use nsenter inside a privileged container to get host shell
+	cmd := exec.Command("docker", "run", "-it", "--rm", "--privileged", "--pid=host", "alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh")
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start host shell: %v\r\n", err)))
+		return
+	}
+	defer func() {
+		_ = ptmx.Close()
+	}()
+
+	// Copy from PTY to WebSocket
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if err != nil {
+				break
+			}
+			if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+				break
+			}
+		}
+	}()
+
+	// Copy from WebSocket to PTY
+	for {
+		_, msg, err := ws.ReadMessage()
+		if err != nil {
+			break
+		}
+		_, err = ptmx.Write(msg)
+		if err != nil {
+			break
+		}
+	}
+}

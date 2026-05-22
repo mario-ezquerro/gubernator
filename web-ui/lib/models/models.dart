@@ -91,6 +91,7 @@ class Task {
   final String status;
   final String containerName;
   final String containerIp;
+  final String createdAt;
 
   Task({
     required this.id,
@@ -99,6 +100,7 @@ class Task {
     required this.status,
     this.containerName = '',
     this.containerIp = '',
+    this.createdAt = '',
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -109,6 +111,7 @@ class Task {
       status: json['status'] ?? '',
       containerName: json['container_name'] ?? '',
       containerIp: json['container_ip'] ?? '',
+      createdAt: json['created_at'] ?? '',
     );
   }
 }

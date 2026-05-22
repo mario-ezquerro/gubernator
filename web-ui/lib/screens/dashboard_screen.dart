@@ -9,6 +9,7 @@ import '../widgets/common_widgets.dart';
 import '../widgets/compose_editor.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/new_stack_dialog.dart';
+import '../widgets/shell_dialog.dart';
 
 /// Main dashboard screen.
 class DashboardScreen extends StatefulWidget {
@@ -133,6 +134,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           break;
         case 5:
           getField = (t) => t.containerIp;
+          break;
+        case 6:
+          getField = (t) => t.createdAt;
           break;
         default:
           getField = (t) => t.id;
@@ -475,11 +479,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     if (confirmed != true) return;
     final ok = await ApiService.deleteTask(id);
-    _showSnackBar(
-      ok ? 'Task stopped.' : 'Failed to stop task.',
-      isError: !ok,
+    if (ok) {
+      _showSnackBar('Task stopped.');
+      _fetchData();
+    } else {
+      _showSnackBar('Failed to stop task.', isError: true);
+    }
+  }
+
+  Future<void> _taskAction(String id, String action) async {
+    final ok = await ApiService.taskAction(id, action);
+    if (ok) {
+      _showSnackBar('Action "$action" executed successfully.');
+      _fetchData();
+    } else {
+      _showSnackBar('Failed to execute "$action".', isError: true);
+    }
+  }
+
+  Future<void> _viewTaskLogs(String id) async {
+    try {
+      final logs = await ApiService.taskLogs(id);
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Container Logs'),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            color: Colors.black,
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              child: Text(
+                logs.isEmpty ? 'No logs available.' : logs,
+                style: const TextStyle(
+                  fontFamily: 'Courier New',
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _showSnackBar(e.toString(), isError: true);
+    }
+  }
+
+  Future<void> _viewTaskInspect(String id) async {
+    try {
+      final inspectData = await ApiService.taskInspect(id);
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Container Details (Inspect)'),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            color: Colors.grey[900],
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                inspectData,
+                style: const TextStyle(
+                  fontFamily: 'Courier New',
+                  color: Colors.greenAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _showSnackBar(e.toString(), isError: true);
+    }
+  }
+
+  void _viewTaskShell(String id, String name) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ShellDialog(
+        taskId: id,
+        containerName: name,
+      ),
     );
-    _fetchData();
+  }
+
+  void _viewNodeShell(String id, String name) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ShellDialog(
+        taskId: id,
+        containerName: name,
+        isNode: true,
+      ),
+    );
   }
 
   void _openSettings() {
@@ -1017,7 +1129,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: const Icon(Icons.more_vert, size: 20),
                           tooltip: 'Node Actions',
                           onSelected: (action) {
-                            if (action == 'inspect') {
+                            if (action == 'shell') {
+                              _viewNodeShell(n.id, n.ip);
+                            } else if (action == 'inspect') {
                               _showNodeInspectDialog(n);
                             } else if (action == 'promote') {
                               _updateNodeRole(n.id, 'manager');
@@ -1034,6 +1148,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             }
                           },
                           itemBuilder: (context) => [
+                            if (n.status == 'ready' || n.status == 'active')
+                              const PopupMenuItem(
+                                value: 'shell',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.terminal, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Shell'),
+                                  ],
+                                ),
+                              ),
                             const PopupMenuItem(
                               value: 'inspect',
                               child: Row(
@@ -1244,6 +1369,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         });
                       },
                     ),
+                    DataColumn(
+                      label: const Text('CREATED'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
                     const DataColumn(label: Text('PORTS')),
                     const DataColumn(label: Text('ACTIONS')),
                   ],
@@ -1337,13 +1472,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       )),
                       DataCell(StatusBadge(label: t.status)),
                       DataCell(Text(t.containerIp.isEmpty ? '-' : t.containerIp)),
+                      DataCell(Text(_timeAgo(t.createdAt), style: const TextStyle(fontSize: 13, color: Colors.grey))),
                       DataCell(_buildPortsCell(svc, node)),
                       DataCell(
-                        IconButton(
-                          icon: const Icon(Icons.stop_circle, size: 20),
-                          color: const Color(0xFFEF4444),
-                          tooltip: 'Stop task',
-                          onPressed: () => _stopTask(t.id),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 20),
+                          tooltip: 'Actions',
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'shell':
+                                _viewTaskShell(t.id, t.containerName);
+                                break;
+                              case 'logs':
+                                _viewTaskLogs(t.id);
+                                break;
+                              case 'inspect':
+                                _viewTaskInspect(t.id);
+                                break;
+                              case 'pause':
+                                _taskAction(t.id, 'pause');
+                                break;
+                              case 'unpause':
+                                _taskAction(t.id, 'unpause');
+                                break;
+                              case 'restart':
+                                _taskAction(t.id, 'restart');
+                                break;
+                              case 'start':
+                                _taskAction(t.id, 'start');
+                                break;
+                              case 'stop':
+                                _stopTask(t.id);
+                                break;
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                            if (t.status == 'running')
+                              const PopupMenuItem<String>(
+                                value: 'shell',
+                                child: ListTile(
+                                  leading: Icon(Icons.terminal, size: 20),
+                                  title: Text('Shell'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            const PopupMenuItem<String>(
+                              value: 'logs',
+                              child: ListTile(
+                                leading: Icon(Icons.notes, size: 20),
+                                title: Text('Logs'),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'inspect',
+                              child: ListTile(
+                                leading: Icon(Icons.info_outline, size: 20),
+                                title: Text('View Details'),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            if (t.status == 'running')
+                              const PopupMenuItem<String>(
+                                value: 'pause',
+                                child: ListTile(
+                                  leading: Icon(Icons.pause, size: 20),
+                                  title: Text('Pause'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              )
+                            else if (t.status == 'paused')
+                              const PopupMenuItem<String>(
+                                value: 'unpause',
+                                child: ListTile(
+                                  leading: Icon(Icons.play_arrow, size: 20),
+                                  title: Text('Resume'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              )
+                            else
+                              const PopupMenuItem<String>(
+                                value: 'start',
+                                child: ListTile(
+                                  leading: Icon(Icons.play_arrow, size: 20),
+                                  title: Text('Start'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            const PopupMenuItem<String>(
+                              value: 'restart',
+                              child: ListTile(
+                                leading: Icon(Icons.refresh, size: 20),
+                                title: Text('Restart'),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem<String>(
+                              value: 'stop',
+                              child: ListTile(
+                                leading: Icon(Icons.stop_circle, size: 20, color: Colors.red),
+                                title: Text('Stop', style: TextStyle(color: Colors.red)),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ]);
@@ -1449,11 +1683,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatDate(String iso) {
     try {
-      final dt = DateTime.parse(iso);
+      final dt = DateTime.parse(iso).toLocal();
       return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;
+    }
+  }
+
+  String _timeAgo(String iso) {
+    if (iso.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final diff = DateTime.now().difference(dt);
+
+      if (diff.inDays > 0) {
+        return 'Up ${diff.inDays} days';
+      } else if (diff.inHours > 0) {
+        return 'Up ${diff.inHours} hours';
+      } else if (diff.inMinutes > 0) {
+        return 'Up ${diff.inMinutes} minutes';
+      } else {
+        return 'Up ${diff.inSeconds} seconds';
+      }
+    } catch (_) {
+      return '-';
     }
   }
 }
