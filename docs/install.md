@@ -86,6 +86,36 @@ gbnt --help
 
 ---
 
+## Running via Docker
+
+You can run Gubernator inside Docker using the multi-stage `Dockerfile`. 
+
+### Build the Image
+
+* **For the local architecture:**
+  ```bash
+  docker build -t gbnt:latest .
+  ```
+
+* **For multiple architectures (Intel, macOS, Raspberry Pi) using buildx:**
+  ```bash
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest .
+  ```
+
+### Run the Container
+```bash
+docker run -d \
+  --name gbnt-manager \
+  -p 4000:4000 \
+  -p 4001:4001 \
+  -p 4002:4002 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  marioezquerro/gubernator:latest serve
+```
+
+---
+
+
 ## Compiling from Source
 
 If you prefer to compile Gubernator yourself, ensure you have **Go 1.24+** installed. Note that `CGO_ENABLED=1` is required due to the SQLite dependency.

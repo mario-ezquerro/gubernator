@@ -7,9 +7,10 @@ Pre-configured **Prometheus + Grafana** stack that automatically:
 ## Quick Start
 
 ```bash
-# 1. Make sure Gubernator image is built
+# 1. Make sure Gubernator image is built (see main README.md for multi-arch buildx options)
 cd ..
-docker build -t gubernator:latest .
+docker build -t gbnt:latest .
+
 
 # 2. Start the full monitoring stack
 cd monitoring/

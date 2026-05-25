@@ -55,9 +55,22 @@ go build -o gbnt ./cmd/gbnt
 Alternatively, you can run Gubernator using Docker via the included multi-stage `Dockerfile`.
 
 **1. Build the Docker Image:**
-```bash
-docker build -t gbnt:latest .
-```
+
+* **For the local architecture only:**
+  ```bash
+  docker build -t gbnt:latest .
+  ```
+
+* **For multiple architectures (Intel, macOS, Raspberry Pi):**
+  We use `docker buildx` to compile for `linux/amd64` (Intel/AMD), `linux/arm64` (macOS Apple Silicon & Raspberry Pi 4+), and `linux/arm/v7` (32-bit Raspberry Pi):
+  ```bash
+  # Build and check compilation for all targets:
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest .
+
+  # Build and push to Docker Hub:
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest --push .
+  ```
+
 
 **2. Run the Manager API via Docker:**
 Because Gubernator manages Docker containers, it needs access to the local Docker socket. We also expose ports `4000` (CLI), `4001` (Web UI), and `4002` (API/Swagger, Health, and Telemetry).
