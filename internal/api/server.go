@@ -22,10 +22,24 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/web"
 )
 
+// dbPath returns the path to the SQLite database file.
+// It respects the GBNT_DATA_DIR env var so Docker volumes work seamlessly.
+func dbPath() string {
+	dir := os.Getenv("GBNT_DATA_DIR")
+	if dir == "" {
+		dir = "/data"
+	}
+	// If running outside Docker (no /data dir), fall back to current dir
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		dir = "."
+	}
+	return dir + "/gubernator.db"
+}
+
 // Start initializes the Gin router and starts the REST API server on port 4000.
 func Start() {
 	// Initialize the Database
-	db.Init("gubernator.db")
+	db.Init(dbPath())
 
 	// ── CoreDNS: Ensure gbnt-net network and CoreDNS container are running ──
 	// This is the core DNS infrastructure for all Gubernator-managed containers.
@@ -92,10 +106,12 @@ func Start() {
 	r := gin.Default()
 
 	// API Authentication Middleware
+	// Token priority: env var → DB value (loaded by db.Init → ensureAPIToken)
 	r.Use(func(c *gin.Context) {
 		expectedToken := os.Getenv("GBNT_API_TOKEN")
 		if expectedToken == "" {
-			expectedToken = "admin" // default fallback
+			// Last resort: read from DB directly (should not happen after Init)
+			expectedToken = db.GetAPIToken()
 		}
 
 		authHeader := c.GetHeader("Authorization")
@@ -128,6 +144,7 @@ func Start() {
 		cluster := v1.Group("/cluster")
 		{
 			cluster.GET("/token", ClusterTokenHandler)
+			cluster.GET("/info", ClusterInfoHandler)
 		}
 
 		stack := v1.Group("/stack")

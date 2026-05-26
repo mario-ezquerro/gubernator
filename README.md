@@ -82,8 +82,11 @@ docker run -d \
   -p 4001:4001 \
   -p 4002:4002 \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v gubernator-data:/data \
   marioezquerro/gubernator:latest serve
 ```
+
+> **Important:** The `-v gubernator-data:/data` volume persists your database across container restarts. This is where Gubernator stores nodes, stacks, tokens, and all cluster state. Without it, the cluster is reset on every restart.
 
 **3. Run CLI Commands via Docker:**
 You can execute CLI commands directly through the running container:
@@ -100,11 +103,36 @@ To initialize the centralized API server on port `4000`:
 ./gbnt serve
 ```
 
-The server will output:
+#### 🔐 First Boot — Security Bootstrap
+
+On the **very first start**, Gubernator automatically generates two secure credentials and prints a one-time banner:
+
 ```text
-[GIN-debug] Listening and serving HTTP on :4000
+╔══════════════════════════════════════════════════════════════════╗
+║          🏛  GUBERNATOR — FIRST BOOT CREDENTIALS                ║
+╠══════════════════════════════════════════════════════════════════╣
+║  API TOKEN  : 4a8f3c1d2e9b...                                    ║
+║                                                                  ║
+║  Save this token! It will NOT be shown again.                    ║
+║  Use it to configure your remote gbnt CLI:                      ║
+║                                                                  ║
+║  gbnt config add-context myserver \                             ║
+║      --server http://<MANAGER-IP>:4000 \                        ║
+║      --token 4a8f3c1d2e9b...                                     ║
+╚══════════════════════════════════════════════════════════════════╝
 ```
-It will also print a configuration snippet that you can use to connect remotely.
+
+**Both credentials are persisted in the SQLite database** (`/data/gubernator.db`) and survive container restarts. You do not need to regenerate or provide them again.
+
+| Credential | Purpose | How to retrieve |
+|---|---|---|
+| **API Token** | Bearer auth for the REST API (port 4000) — used by the `gbnt` CLI | Shown once at first boot. Retrieve later with `gbnt legion info` (localhost only) |
+| **Join Token** | Allows worker nodes to register into the cluster | `gbnt legion join-token` or `gbnt legion info` (localhost only) |
+
+To see both tokens and the ready-to-use commands at any time:
+```bash
+gbnt legion info
+```
 
 ---
 
@@ -114,10 +142,22 @@ By default, the CLI connects to `http://localhost:4000`. You can configure it to
 
 ### Context Management (Remote CLI)
 
-Settings are stored in `~/.gbntctl/config` (similar to Kubeconfig).
+Settings are stored in `~/.gbntctl/config` (similar to Kubeconfig). This allows you to manage **remote Gubernator managers** from any machine.
 
-* **View contexts**: `gbnt config get-contexts`
-* **Switch context**: `gbnt config use-context <name>`
+**Add a context (connect to a remote manager):**
+```bash
+gbnt config add-context production \
+    --server http://192.168.1.10:4000 \
+    --token <API_TOKEN>
+```
+> Get `<API_TOKEN>` from the first-boot banner or by running `gbnt legion info` on the Manager host.
+
+**Other context commands:**
+```bash
+gbnt config get-contexts      # List all configured contexts
+gbnt config use-context prod  # Switch to a different manager
+gbnt config current-context   # Show the currently active context
+```
 
 ### List Nodes
 To see all nodes (Centurions) currently registered in the cluster:
@@ -128,33 +168,53 @@ To see all nodes (Centurions) currently registered in the cluster:
 
 **Output Example:**
 ```text
-ID      IP         ROLE     STATUS 
-node-1  127.0.0.1  manager  active 
+ID                   IP            ROLE     STATUS 
+node-local-manager   127.0.0.1     manager  active 
+node-worker-pi4      192.168.1.20  worker   active 
 ```
-*(Note: Data is currently mocked while we implement the DB layer).*
 
 ### Clustering (The Legion)
 
 To form a cluster, you must initialize the "Legion" from the Manager node to retrieve the secure Join Token.
 
 ```bash
-./gbnt legion init
+# On the Manager node — shows both tokens and ready-to-use commands
+gbnt legion info
 ```
-*Output:*
+
+*Output example:*
 ```text
- Gubernator Legion Initialized!
-
-To add a worker to this swarm, run the following command on the worker node:
-  gbnt legion join --token <TOKEN_STRING> --manager <MANAGER-IP>:4000
+╔══════════════════════════════════════════════════════════╗
+║         🏛  GUBERNATOR — CLUSTER INFO                   ║
+╠══════════════════════════════════════════════════════════╣
+║  JOIN TOKEN : a3f8c1d2e4b5...                            ║
+║  API TOKEN  : 4a8f3c1d2e9b...                            ║
+╠══════════════════════════════════════════════════════════╣
+║  Add a WORKER node:                                      ║
+║  > gbnt legion join --token a3f8... --manager <IP>:4000  ║
+║                                                          ║
+║  Configure remote CLI:                                   ║
+║  > gbnt config add-context myserver --server http://...  ║
+╚══════════════════════════════════════════════════════════╝
 ```
 
-Once you have the token, you can join any other node as a "Centurion" (Worker) by simply running:
+Once you have both tokens, join any machine as a Worker (Centurion):
 
 ```bash
-./gbnt legion join --token <TOKEN_STRING> --manager 192.168.1.100:4000
+# On the worker host
+gbnt legion join \
+    --token <JOIN_TOKEN> \
+    --api-token <API_TOKEN> \
+    --manager 192.168.1.100:4000
 ```
 
-*This will authenticate the node, register it in the Manager's SQLite DB, and start a background heartbeat service.*
+*This will:*
+1. Authenticate the node using the join token.
+2. Register it in the Manager's SQLite DB with its real IP address.
+3. Start a background heartbeat service (every 10s) so the Manager tracks its availability.
+4. Start the task executor loop (every 5s) to pull and run assigned containers.
+
+> **Security note:** The Join Token is only used during the `legion join` handshake. All subsequent communication (heartbeat, task status) uses the Bearer API Token.
 
 ### Stack Deploy (The Command)
 
@@ -270,12 +330,61 @@ Configuration files are auto-generated in `~/.gbnt/monitor/` and can be customiz
 
 ---
 
+## 🔐 Security & Environment Variables
+
+### Credentials (auto-generated on first boot)
+
+| Credential | Storage | Description |
+|---|---|---|
+| **API Token** | SQLite DB + `GBNT_API_TOKEN` env | Bearer token required for all API calls on port 4000 |
+| **Join Token** | SQLite DB | One-time handshake token for workers joining the cluster |
+
+Both tokens are generated with `crypto/rand` and stored in the `/data/gubernator.db` database. They persist across restarts as long as the volume is mounted.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `GBNT_DATA_DIR` | `/data` | Directory for SQLite DB. Falls back to `.` if `/data` doesn't exist |
+| `GBNT_API_TOKEN` | *(auto-generated)* | Override the Bearer token for the REST API |
+| `GBNT_WEB` | `false` | Set to `true` to enable the Flutter Web Dashboard on port 4001 |
+| `GBNT_WEB_USER` | — | Username for the Web Dashboard Basic Auth |
+| `GBNT_WEB_PASSWORD` | — | Password for the Web Dashboard Basic Auth |
+| `GBNT_MONITOR` | `false` | Set to `true` to auto-deploy the SRE monitoring stack on startup |
+
+### Full Docker run example (all features)
+
+```bash
+docker run -d \
+  --name gbnt-manager \
+  -p 4000:4000 \
+  -p 4001:4001 \
+  -p 4002:4002 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v gubernator-data:/data \
+  -e GBNT_WEB=true \
+  -e GBNT_WEB_USER=admin \
+  -e GBNT_WEB_PASSWORD=mysecretpassword \
+  marioezquerro/gubernator:latest serve
+```
+
+---
+
 ##  Commands Reference (CLI)
+
+**🔐 Security & Bootstrap**
+* `gbnt legion info` - Show join token + API token + ready-to-use commands. **(Localhost only)**
+* `gbnt legion join-token` - Print only the worker join command.
+
+**📡 Context Management (Remote CLI)**
+* `gbnt config add-context [name] --server [url] --token [token]` - Add/update a remote manager context.
+* `gbnt config get-contexts` - List all configured contexts.
+* `gbnt config use-context [name]` - Switch active context.
+* `gbnt config current-context` - Show the active context.
 
 **The Legion (Cluster)**
 * `gbnt legion init` - Initialize a new cluster (Manager).
-* `gbnt legion join` - Join an existing cluster as a Worker.
-* `gbnt legion join-token` - Get the command to join a new node.
+* `gbnt legion join --token [t] --api-token [t] --manager [addr]` - Join as a Worker.
 * `gbnt legion leave` - Leave the cluster.
 
 **The Centurions (Nodes)**

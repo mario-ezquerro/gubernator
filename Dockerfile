@@ -22,11 +22,20 @@ WORKDIR /app
 # Add /app to the system PATH so 'gbnt' can be executed from anywhere
 ENV PATH="/app:${PATH}"
 
+# Data directory for SQLite DB and persistent state
+# Mount a Docker volume here to survive container restarts:
+#   docker run -v gubernator-data:/data gubernator serve
+ENV GBNT_DATA_DIR="/data"
+
 # Add certificates, timezone data, sqlite, and Docker CLI (needed for local executor)
 RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli
 
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
+
+# Declare /data as a volume so Docker manages persistence automatically
+# This ensures gubernator.db (tokens, nodes, stacks) survives restarts
+VOLUME ["/data"]
 
 # Healthcheck — polls the telemetry port every 30s using our native CLI
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

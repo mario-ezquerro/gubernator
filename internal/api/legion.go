@@ -123,3 +123,40 @@ func ClusterTokenHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": config.JoinToken})
 }
+
+// ClusterInfoHandler returns all bootstrap information (tokens + ready commands).
+// Only accessible from localhost to protect sensitive credentials.
+//
+// @Summary Get Cluster Bootstrap Info
+// @Description Returns join token, API token, and ready-to-use CLI commands. Localhost only.
+// @Tags legion
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /v1/cluster/info [get]
+func ClusterInfoHandler(c *gin.Context) {
+	if c.ClientIP() != "127.0.0.1" && c.ClientIP() != "::1" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied. Can only read bootstrap info from localhost."})
+		return
+	}
+
+	var config db.ClusterConfig
+	if err := db.DB.First(&config, "id = ?", "global").Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Config not found"})
+		return
+	}
+
+	// Try to determine the manager's outbound IP
+	managerIP := "localhost"
+	if ip := c.Request.Host; ip != "" {
+		managerIP = "localhost"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"join_token":      config.JoinToken,
+		"api_token":       config.APIToken,
+		"manager_ip_hint": managerIP,
+		"join_command":    "gbnt legion join --token " + config.JoinToken + " --manager <MANAGER-IP>:4000",
+		"config_command":  "gbnt config add-context myserver --server http://<MANAGER-IP>:4000 --token " + config.APIToken,
+	})
+}
+

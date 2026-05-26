@@ -6,18 +6,47 @@ Gubernator's CLI is heavily inspired by Docker Swarm and Nomad, providing an int
 
 ---
 
+## 🔐 Security Bootstrap (First Steps)
+
+Commands to retrieve credentials and configure remote access. These should be your **first commands** after starting `gbnt serve`.
+
+- **`gbnt legion info`** *(Localhost only)*
+  Shows both the **Join Token** and the **API Token**, plus ready-to-use CLI commands to add workers and configure remote clients. Only accessible from the Manager host for security.
+
+- **`gbnt config add-context [name] --server [url] --token [token]`**
+  Adds a named remote Manager to `~/.gbntctl/config`. After this, all `gbnt` commands target that remote manager.
+  ```bash
+  gbnt config add-context production \
+      --server http://192.168.1.10:4000 \
+      --token <API_TOKEN>
+  ```
+
+- **`gbnt config current-context`**
+  Displays the name of the currently active context.
+
+- **`gbnt config get-contexts`**
+  Lists all configured contexts with their server URLs.
+
+- **`gbnt config use-context [name]`**
+  Switches the active context to manage a different Manager.
+
+---
+
 ## 🏛 The Legion (Cluster Management)
 
 Commands for managing the cluster lifecycle and joining nodes.
 
 - **`gbnt legion init`**
-  Initializes a new Gubernator cluster, converting the current node into the local Manager and setting up the SQLite database state.
+  Initializes a new Gubernator cluster on the local node. Retrieves the join token from the local API.
 
-- **`gbnt legion join --token [token] --manager [ip:4000]`**
+- **`gbnt legion join --token [join-token] --api-token [api-token] --manager [ip:4000]`**
   Joins the current machine to an existing Gubernator cluster as a Worker node.
+  - `--token`: The Join Token from `gbnt legion info` or `gbnt legion join-token`
+  - `--api-token`: The Bearer API Token required for all API communication
+  - `--manager`: The Manager's address (e.g., `192.168.1.10:4000`)
 
 - **`gbnt legion join-token`**
-  Prints the exact command and secure token needed to join new Worker nodes to the cluster.
+  Prints the worker join command with the current token (also shows the `--api-token` hint).
 
 - **`gbnt legion leave`**
   Gracefully leaves the cluster, marking the current node as `left` in the Manager's database.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -49,6 +50,7 @@ var legionInitCmd = &cobra.Command{
 var (
 	joinToken   string
 	managerAddr string
+	apiToken    string // Bearer token for the Manager API (used by workers)
 )
 
 var legionJoinCmd = &cobra.Command{
@@ -61,12 +63,21 @@ var legionJoinCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Ensure managerAddr has a scheme
+		addr := managerAddr
+		if len(addr) > 0 && addr[:4] != "http" {
+			addr = "http://" + addr
+		}
+
 		hostname, _ := os.Hostname()
 		nodeID := "node-" + hostname
 
+		// Detect the local outbound IP (best effort)
+		localIP := detectLocalIP()
+
 		payload := map[string]interface{}{
 			"id":    nodeID,
-			"ip":    "127.0.0.1", // In reality, we'd detect the active interface IP
+			"ip":    localIP,
 			"token": joinToken,
 			"labels": map[string]string{
 				"gbnt.node.role":     "worker",
@@ -75,12 +86,19 @@ var legionJoinCmd = &cobra.Command{
 		}
 
 		body, _ := json.Marshal(payload)
-		// Ensure managerAddr has a scheme
-		addr := managerAddr
-		if len(addr) > 0 && addr[:4] != "http" {
-			addr = "http://" + addr
+
+		// Use an authenticated request — the join endpoint is protected by Bearer
+		req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/join", addr), bytes.NewBuffer(body))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create request: %v\n", err)
+			os.Exit(1)
 		}
-		resp, err := http.Post(fmt.Sprintf("%s/v1/node/join", addr), "application/json", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		if apiToken != "" {
+			req.Header.Set("Authorization", "Bearer "+apiToken)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
@@ -94,15 +112,26 @@ var legionJoinCmd = &cobra.Command{
 		}
 
 		fmt.Println("✅ Successfully joined the Legion!")
+		fmt.Printf("   Node ID  : %s\n", nodeID)
+		fmt.Printf("   Local IP : %s\n", localIP)
+		fmt.Printf("   Manager  : %s\n", addr)
 
 		// Start heartbeat loop
-		fmt.Println("💓 Starting background loops (Heartbeat & Executor)...")
+		fmt.Println("\n💓 Starting background loops (Heartbeat & Executor)...")
 
 		go func() {
 			for {
 				time.Sleep(10 * time.Second)
 				hbPayload, _ := json.Marshal(map[string]string{"id": nodeID})
-				http.Post(fmt.Sprintf("%s/v1/node/heartbeat", managerAddr), "application/json", bytes.NewBuffer(hbPayload))
+				req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/heartbeat", addr), bytes.NewBuffer(hbPayload))
+				if err != nil {
+					continue
+				}
+				req.Header.Set("Content-Type", "application/json")
+				if apiToken != "" {
+					req.Header.Set("Authorization", "Bearer "+apiToken)
+				}
+				http.DefaultClient.Do(req)
 			}
 		}()
 
@@ -110,8 +139,15 @@ var legionJoinCmd = &cobra.Command{
 		for {
 			time.Sleep(5 * time.Second)
 
-			// Fetch tasks
-			resp, err := http.Get(fmt.Sprintf("%s/v1/node/tasks/%s", managerAddr, nodeID))
+			// Fetch tasks assigned to this node
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/node/tasks/%s", addr, nodeID), nil)
+			if err != nil {
+				continue
+			}
+			if apiToken != "" {
+				req.Header.Set("Authorization", "Bearer "+apiToken)
+			}
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				continue
 			}
@@ -162,11 +198,14 @@ var legionJoinCmd = &cobra.Command{
 						"container_ip":   ip,
 						"container_name": containerName,
 					})
-					addr := managerAddr
-					if len(addr) > 0 && addr[:4] != "http" {
-						addr = "http://" + addr
+					statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
+					if err == nil {
+						statusReq.Header.Set("Content-Type", "application/json")
+						if apiToken != "" {
+							statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+						}
+						http.DefaultClient.Do(statusReq)
 					}
-					http.Post(fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), "application/json", bytes.NewBuffer(statusPayload))
 				}
 			}
 			resp.Body.Close()
@@ -174,16 +213,32 @@ var legionJoinCmd = &cobra.Command{
 	},
 }
 
+// detectLocalIP returns the preferred outbound IP of this machine
+// by opening a UDP connection (no data is sent) and reading the local address.
+func detectLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:53")
+	if err == nil {
+		defer conn.Close()
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		return localAddr.IP.String()
+	}
+	// Fallback to hostname
+	hostname, _ := os.Hostname()
+	return hostname
+}
+
 func init() {
 	rootCmd.AddCommand(legionCmd)
 	legionCmd.AddCommand(legionInitCmd)
 	legionCmd.AddCommand(legionJoinCmd)
 
-	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Token to authenticate with the Manager")
+	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Join token provided by the Manager (gbnt legion join-token)")
 	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000 or http://192.168.1.100:4000)")
+	legionJoinCmd.Flags().StringVar(&apiToken, "api-token", "", "Bearer API token for the Manager REST API (GBNT_API_TOKEN)")
 
 	legionCmd.AddCommand(legionJoinTokenCmd)
 	legionCmd.AddCommand(legionLeaveCmd)
+	legionCmd.AddCommand(legionInfoCmd)
 }
 
 var legionJoinTokenCmd = &cobra.Command{
@@ -205,7 +260,51 @@ var legionJoinTokenCmd = &cobra.Command{
 			return
 		}
 		fmt.Printf("To add a worker to this legion, run the following command:\n\n")
-		fmt.Printf("    gbnt legion join --token %s --manager <MANAGER-IP>:4000\n\n", data.Token)
+		fmt.Printf("    gbnt legion join \\\n")
+		fmt.Printf("        --token %s \\\n", data.Token)
+		fmt.Printf("        --api-token <API_TOKEN> \\\n")
+		fmt.Printf("        --manager <MANAGER-IP>:4000\n\n")
+		fmt.Printf("💡 Get the API token with: gbnt legion info\n")
+	},
+}
+
+// legionInfoCmd shows all bootstrap info (localhost only via /v1/cluster/info)
+var legionInfoCmd = &cobra.Command{
+	Use:   "info",
+	Short: "Show cluster bootstrap info (join token + API token). Localhost only.",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/cluster/info", nil)
+		if err != nil {
+			fmt.Printf("Failed to reach manager: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var data struct {
+			JoinToken     string `json:"join_token"`
+			APIToken      string `json:"api_token"`
+			JoinCommand   string `json:"join_command"`
+			ConfigCommand string `json:"config_command"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			fmt.Println("Failed to decode cluster info")
+			return
+		}
+
+		fmt.Println("")
+		fmt.Println("╔══════════════════════════════════════════════════════════╗")
+		fmt.Println("║         🏛  GUBERNATOR — CLUSTER INFO                   ║")
+		fmt.Println("╠══════════════════════════════════════════════════════════╣")
+		fmt.Printf( "║  JOIN TOKEN : %-43s ║\n", data.JoinToken)
+		fmt.Printf( "║  API TOKEN  : %-43s ║\n", data.APIToken)
+		fmt.Println("╠══════════════════════════════════════════════════════════╣")
+		fmt.Println("║  Add a WORKER node:                                      ║")
+		fmt.Printf( "║  > %s\n", data.JoinCommand)
+		fmt.Println("║                                                          ║")
+		fmt.Println("║  Configure remote CLI:                                   ║")
+		fmt.Printf( "║  > %s\n", data.ConfigCommand)
+		fmt.Println("╚══════════════════════════════════════════════════════════╝")
+		fmt.Println("")
 	},
 }
 
