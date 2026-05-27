@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 /// A dialog to define and deploy a new Docker Compose stack.
 class NewStackDialog extends StatefulWidget {
   final Future<bool> Function(String name, String yaml) onDeploy;
+  final String? initialName;
+  final String? initialYaml;
 
   const NewStackDialog({
     super.key,
     required this.onDeploy,
+    this.initialName,
+    this.initialYaml,
   });
 
   @override
@@ -16,16 +20,26 @@ class NewStackDialog extends StatefulWidget {
 
 class _NewStackDialogState extends State<NewStackDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _yamlController = TextEditingController(text: '''services:
+  late final TextEditingController _nameController;
+  late final TextEditingController _yamlController;
+  bool _deploying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.initialName);
+    _yamlController = TextEditingController(
+      text: widget.initialYaml ??
+          '''services:
   web:
     image: nginx:latest
     ports:
       - "80:80"
     deploy:
       replicas: 1
-''');
-  bool _deploying = false;
+''',
+    );
+  }
 
   void _pickFile() {
     final uploadInput = html.FileUploadInputElement();
@@ -87,7 +101,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Deploy New Stack',
+                        widget.initialName != null ? 'Duplicate Stack: ${widget.initialName}' : 'Deploy New Stack',
                         style: theme.textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
@@ -231,7 +245,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.rocket_launch, size: 18),
-                      label: const Text('Deploy Stack'),
+                      label: Text(widget.initialName != null ? 'Duplicate Stack' : 'Deploy Stack'),
                     ),
                   ],
                 ),

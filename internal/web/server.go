@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/creack/pty"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -178,6 +179,35 @@ func StartDashboard() {
 	}
 }
 
+type DNSRecord struct {
+	IP       string `json:"ip"`
+	Hostname string `json:"hostname"`
+}
+
+func getDNSRecords() []DNSRecord {
+	records := []DNSRecord{}
+	hostsPath := coredns.HostsFilePath()
+	content, err := os.ReadFile(hostsPath)
+	if err != nil {
+		return records
+	}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			records = append(records, DNSRecord{
+				IP:       fields[0],
+				Hostname: fields[1],
+			})
+		}
+	}
+	return records
+}
+
 func stateHandler(c *gin.Context) {
 	var nodes []db.Node
 	var stacks []db.Stack
@@ -189,12 +219,21 @@ func stateHandler(c *gin.Context) {
 	db.DB.Find(&services)
 	db.DB.Find(&tasks)
 
+	caddyfilePath := caddy.CaddyfilePath()
+	caddyfileContent := ""
+	if content, err := os.ReadFile(caddyfilePath); err == nil {
+		caddyfileContent = string(content)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"nodes":           nodes,
 		"stacks":          stacks,
 		"services":        services,
 		"tasks":           tasks,
 		"monitor_running": monitor.IsRunning(),
+		"dns_records":     getDNSRecords(),
+		"caddy_status":    caddy.Status(),
+		"caddyfile":       caddyfileContent,
 	})
 }
 
@@ -638,6 +677,7 @@ func redeploySREStack(c *gin.Context) {
 	if err := monitor.RegisterInDB(db.DB); err != nil {
 		log.Printf("Warning: SRE stack deployed but failed to register in DB: %v", err)
 	}
+	aqueducts.GenerateHostsFile()
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
 }
@@ -670,6 +710,7 @@ func redeployCoreStack(c *gin.Context) {
 	if err := coredns.RegisterInDB(db.DB); err != nil {
 		log.Printf("Warning: Core stack deployed but failed to register in DB: %v", err)
 	}
+	aqueducts.GenerateHostsFile()
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed"})
 }
@@ -918,6 +959,12 @@ func grafanaProxyHandler(c *gin.Context) {
 			req.Header.Set("X-WEBAUTH-USER", username)
 		}
 		req.Header.Del("Authorization")
+	}
+
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("X-Frame-Options")
+		resp.Header.Del("Content-Security-Policy")
+		return nil
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)

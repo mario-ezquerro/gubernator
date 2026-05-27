@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"text/tabwriter"
 
@@ -27,6 +28,12 @@ var nodeLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+			os.Exit(1)
+		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -70,6 +77,13 @@ var nodeInspectCmd = &cobra.Command{
 			return
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+			os.Exit(1)
+		}
+
 		io.Copy(os.Stdout, resp.Body)
 		fmt.Println()
 	},

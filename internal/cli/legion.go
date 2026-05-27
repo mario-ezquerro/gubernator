@@ -252,6 +252,12 @@ var legionJoinTokenCmd = &cobra.Command{
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode != http.StatusOK {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Failed to get join token: Status %d - %s\n", resp.StatusCode, string(bodyBytes))
+			return
+		}
+
 		var data struct {
 			Token string `json:"token"`
 		}
@@ -279,6 +285,12 @@ var legionInfoCmd = &cobra.Command{
 			return
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Failed to get cluster info: Status %d - %s\n", resp.StatusCode, string(bodyBytes))
+			return
+		}
 
 		var data struct {
 			JoinToken     string `json:"join_token"`

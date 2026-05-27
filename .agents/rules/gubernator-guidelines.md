@@ -38,4 +38,5 @@ You are working on **Gubernator (gbnt)**, a Goldilocks orchestrator that combine
 
 ## Testing & Execution Rules
 1. **Containerized Testing:** Always run and test the Gubernator Manager/Worker environment inside a Docker container (mapping `/var/run/docker.sock` to allow container management) rather than running it directly as a host process.
+2. **Container Naming:** The Gubernator Manager container MUST always be named `gubernator`. Do NOT name it `gbnt-test` or any other name. Many internal/SRE scripts and templates expect the container name to be exactly `gubernator` for network connections, logging, and status checks.
 

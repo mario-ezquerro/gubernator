@@ -39,13 +39,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _stackSearchQuery = '';
   String _nodeSearchQuery = '';
   String _taskSearchQuery = '';
+  String _dnsSearchQuery = '';
   int? _stackSortColumnIndex;
   bool _stackSortAscending = true;
   int? _nodeSortColumnIndex;
   bool _nodeSortAscending = true;
   int? _taskSortColumnIndex;
   bool _taskSortAscending = true;
-  List<String> _sectionOrder = ['stats', 'stacks_nodes', 'tasks'];
 
   @override
   void initState() {
@@ -124,18 +124,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           };
           break;
         case 2:
-          getField = (t) => t.containerName;
+          getField = (t) {
+            final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+            final stack = _state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
+            return stack?.name ?? svc?.stackId ?? '';
+          };
           break;
         case 3:
-          getField = (t) => t.nodeId;
+          getField = (t) => t.containerName;
           break;
         case 4:
-          getField = (t) => t.status;
+          getField = (t) => t.nodeId;
           break;
         case 5:
-          getField = (t) => t.containerIp;
+          getField = (t) => t.status;
           break;
         case 6:
+          getField = (t) => t.containerIp;
+          break;
+        case 7:
           getField = (t) => t.createdAt;
           break;
         default:
@@ -236,6 +243,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       isError: !ok,
     );
     _fetchData();
+  }
+
+  Future<void> _duplicateStack(StackModel stack) async {
+    try {
+      final yaml = await ApiService.getStackCompose(stack.id);
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => NewStackDialog(
+          initialName: '${stack.name}-copy',
+          initialYaml: yaml,
+          onDeploy: (name, compose) async {
+            final ok = await ApiService.deployStack(name, compose);
+            if (ok) {
+              _showSnackBar('Stack duplicated and deployed successfully!');
+              _fetchData();
+            } else {
+              _showSnackBar('Failed to duplicate stack.', isError: true);
+            }
+            return ok;
+          },
+        ),
+      );
+    } catch (e) {
+      _showSnackBar('Failed to load original stack compose file', isError: true);
+    }
   }
 
   Future<void> _openComposeEditor(StackModel stack) async {
@@ -624,132 +658,169 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final tasks = _state.tasks;
     final running = tasks.where((t) => t.status == 'running').length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Image.network('/gubernator-icon.png',
-                height: 28, width: 28,
-                errorBuilder: (_, __, ___) =>
-                    Icon(Icons.hub, color: theme.colorScheme.primary)),
-            const SizedBox(width: 12),
-            const Text('Gubernator'),
-            const SizedBox(width: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text('Manager',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
-            ),
-          ],
-        ),
-        actions: [
-          // Last refresh
-          if (_lastRefresh != null)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'Refreshed: ${_formatTime(_lastRefresh!)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            children: [
+              Image.network('/gubernator-icon.png',
+                  height: 28, width: 28,
+                  errorBuilder: (_, __, ___) =>
+                      Icon(Icons.hub, color: theme.colorScheme.primary)),
+              const SizedBox(width: 12),
+              const Text('Gubernator'),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: const Text('Manager',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white)),
               ),
-            ),
-          // Observability gear icon
-          if (_state.monitorRunning)
-            IconButton(
-              icon: const Icon(Icons.analytics_outlined),
-              tooltip: 'Observability (Grafana)',
-              onPressed: _openGrafana,
-            ),
-          // Settings gear icon
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: _openSettings,
+            ],
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: _loading && _state.nodes.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _state.nodes.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.cloud_off,
-                          size: 64,
-                          color:
-                              theme.colorScheme.error.withValues(alpha: 0.6)),
-                      const SizedBox(height: 16),
-                      Text('Connection error',
-                          style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text(_error!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
-                          )),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: _fetchData,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchData,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(24),
-                    child: ReorderableListView(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      onReorder: (oldIndex, newIndex) {
-                        setState(() {
-                          if (oldIndex < newIndex) {
-                            newIndex -= 1;
-                          }
-                          final item = _sectionOrder.removeAt(oldIndex);
-                          _sectionOrder.insert(newIndex, item);
-                        });
-                      },
-                      children: _sectionOrder.map((section) {
-                        Widget child;
-                        switch (section) {
-                          case 'stats':
-                            child = _buildStatsRow(theme, running);
-                            break;
-                          case 'stacks_nodes':
-                            child = _buildStacksAndNodesRow(theme);
-                            break;
-                          case 'tasks':
-                            child = _buildTasksSection(theme);
-                            break;
-                          default:
-                            child = const SizedBox.shrink();
-                        }
-                        return Padding(
-                          key: ValueKey(section),
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: child,
-                        );
-                      }).toList(),
+          actions: [
+            // Last refresh
+            if (_lastRefresh != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'Refreshed: ${_formatTime(_lastRefresh!)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ),
+              ),
+            // Observability gear icon
+            if (_state.monitorRunning)
+              IconButton(
+                icon: const Icon(Icons.analytics_outlined),
+                tooltip: 'Observability (Grafana)',
+                onPressed: _openGrafana,
+              ),
+            // Settings gear icon
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: 'Settings',
+              onPressed: _openSettings,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: _loading && _state.nodes.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null && _state.nodes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_off,
+                            size: 64,
+                            color:
+                                theme.colorScheme.error.withValues(alpha: 0.6)),
+                        const SizedBox(height: 16),
+                        Text('Connection error',
+                            style: theme.textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(_error!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            )),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: _fetchData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildStatsRow(theme, running),
+                        const SizedBox(height: 16),
+                        TabBar(
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                          tabs: const [
+                            Tab(
+                              icon: Icon(Icons.hub_outlined),
+                              text: 'Legions & Tasks',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.alt_route_outlined),
+                              text: 'Caddy Ingress',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.dns_outlined),
+                              text: 'CoreDNS Records',
+                            ),
+                            Tab(
+                              icon: Icon(Icons.analytics_outlined),
+                              text: 'Grafana Metrics',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              // Tab 1: Legions & Tasks
+                              RefreshIndicator(
+                                onRefresh: _fetchData,
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _buildStacksAndNodesRow(theme),
+                                      const SizedBox(height: 24),
+                                      _buildTasksSection(theme),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Tab 2: Caddy Ingress
+                              RefreshIndicator(
+                                onRefresh: _fetchData,
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: _buildCaddySection(theme),
+                                ),
+                              ),
+                              // Tab 3: CoreDNS Records
+                              RefreshIndicator(
+                                onRefresh: _fetchData,
+                                child: SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: _buildDnsSection(theme),
+                                ),
+                              ),
+                              // Tab 4: Grafana Metrics (Iframe)
+                              Card(
+                                clipBehavior: Clip.antiAlias,
+                                child: const HtmlElementView(viewType: 'grafana-iframe'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+      ),
     );
   }
 
@@ -768,8 +839,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Metrics Overview',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -904,7 +973,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
-                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -992,6 +1060,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           _actionBtn(Icons.code, 'Edit YAML',
                               const Color(0xFF3B82F6), () => _openComposeEditor(s)),
+                          (s.id == 'core-gbnt-stack' ||
+                                  s.id == 'sre-monitor-stack' ||
+                                  s.name.toLowerCase().contains('core-gbnt') ||
+                                  s.name.toLowerCase().contains('monitor'))
+                              ? const SizedBox(width: 36)
+                              : _actionBtn(Icons.copy, 'Duplicate',
+                                  const Color(0xFF10B981), () => _duplicateStack(s)),
                           _actionBtn(Icons.rocket_launch, 'Redeploy',
                               const Color(0xFFD29922), () => _redeployStack(s.id)),
                           _actionBtn(Icons.delete, 'Delete',
@@ -1030,8 +1105,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Centurions (Nodes)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -1280,8 +1353,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Cohorts & Tasks (Containers)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Icon(Icons.drag_indicator, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
               ],
             ),
             const SizedBox(height: 16),
@@ -1321,6 +1392,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     DataColumn(
                       label: const Text('SERVICE'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _taskSortColumnIndex = columnIndex;
+                          _taskSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
+                      label: const Text('STACK'),
                       onSort: (columnIndex, ascending) {
                         setState(() {
                           _taskSortColumnIndex = columnIndex;
@@ -1389,8 +1470,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final node = _state.nodes
                         .where((n) => n.id == t.nodeId)
                         .firstOrNull;
-                    return DataRow(cells: [
-                      DataCell(Row(
+                    final stack = _state.stacks
+                        .where((s) => s.id == svc?.stackId)
+                        .firstOrNull;
+                    final stackName = stack?.name ?? svc?.stackId ?? '-';
+                    return DataRow(
+                      color: WidgetStateProperty.resolveWith<Color?>((states) {
+                        if (t.id == 'core-task-gubernator' || t.containerName == 'gubernator') {
+                          return theme.colorScheme.primary.withValues(alpha: 0.15);
+                        }
+                        return null;
+                      }),
+                      cells: [
+                        DataCell(Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SelectableText(
@@ -1443,6 +1535,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ],
                       )),
+                      DataCell(Text(stackName,
+                          style: const TextStyle(fontWeight: FontWeight.w500))),
                       DataCell(Text(t.containerName.isEmpty ? '-' : t.containerName,
                           style: const TextStyle(
                               fontFamily: 'Courier New', fontSize: 13))),
@@ -1709,5 +1803,307 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (_) {
       return '-';
     }
+  }
+
+  Widget _buildDnsSection(ThemeData theme) {
+    final filteredDns = _state.dnsRecords.where((d) {
+      if (_dnsSearchQuery.isEmpty) return true;
+      return d.ip.toLowerCase().contains(_dnsSearchQuery) ||
+          d.hostname.toLowerCase().contains(_dnsSearchQuery);
+    }).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.dns_outlined,
+                    size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('CoreDNS Records (*.gbnt)',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search DNS records...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _dnsSearchQuery = val.toLowerCase();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            if (filteredDns.isEmpty)
+              _emptyState(_state.dnsRecords.isEmpty ? 'No DNS records found' : 'No matching records found', Icons.dns)
+            else
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('IP ADDRESS')),
+                    DataColumn(label: Text('HOSTNAME (DOMAIN)')),
+                    DataColumn(label: Text('TEST RESOLUTION (CURL)')),
+                  ],
+                  rows: filteredDns.map((d) {
+                    return DataRow(cells: [
+                      DataCell(SelectableText(d.ip,
+                          style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(SelectableText(d.hostname,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Courier New', fontSize: 13))),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText('curl http://${d.hostname}',
+                              style: TextStyle(fontFamily: 'Courier New', fontSize: 12, color: theme.colorScheme.primary)),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 14),
+                            tooltip: 'Copy curl command',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: 'curl http://${d.hostname}'));
+                              _showSnackBar('Copied curl command to clipboard!');
+                            },
+                          ),
+                        ],
+                      )),
+                    ]);
+                  }).toList(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaddySection(ThemeData theme) {
+    final status = _state.caddyStatus;
+    final caddyfile = _state.caddyfile;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final rules = _parseCaddyfile(caddyfile);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Status Card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Icon(Icons.alt_route, size: 40, color: theme.colorScheme.primary),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Caddy Ingress Gateway',
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Caddy acts as the reverse proxy / ingress controller, exposing services to external traffic.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'STATUS',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    StatusBadge(label: status.contains('|') ? status.split('|').first.trim() : status),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Active Routing Rules Table
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.fork_right, size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ingress Routing Rules',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (rules.isEmpty)
+                  _emptyState('No ingress rules defined. Add "ingress.host" deploy constraint in your Legion stack YAML.', Icons.fork_right_outlined)
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: const [
+                        DataColumn(label: Text('INGRESS HOST')),
+                        DataColumn(label: Text('UPSTREAMS (CONTAINER BACKENDS)')),
+                        DataColumn(label: Text('TEST COMMAND')),
+                      ],
+                      rows: rules.map((rule) {
+                        final host = rule['host'] ?? '';
+                        final upstreams = rule['upstreams'] ?? '';
+                        final curlCmd = 'curl -H "Host: $host" http://localhost';
+
+                        return DataRow(cells: [
+                          DataCell(SelectableText(
+                            host,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Courier New', fontSize: 13),
+                          )),
+                          DataCell(SelectableText(
+                            upstreams,
+                            style: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                          )),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SelectableText(
+                                curlCmd,
+                                style: TextStyle(fontFamily: 'Courier New', fontSize: 12, color: theme.colorScheme.primary),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 14),
+                                tooltip: 'Copy curl command',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: curlCmd));
+                                  _showSnackBar('Copied curl command to clipboard!');
+                                },
+                              ),
+                            ],
+                          )),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Caddyfile Card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.description, size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Generated Caddyfile',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 16),
+                      tooltip: 'Copy Caddyfile',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: caddyfile));
+                        _showSnackBar('Copied Caddyfile content to clipboard!');
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.dividerColor),
+                  ),
+                  child: SelectableText(
+                    caddyfile.isEmpty ? '# No configuration loaded' : caddyfile,
+                    style: const TextStyle(
+                      fontFamily: 'Courier New',
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Map<String, String>> _parseCaddyfile(String caddyfile) {
+    final List<Map<String, String>> rules = [];
+    final lines = caddyfile.split('\n');
+    String? currentHost;
+    final List<String> currentUpstreams = [];
+
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+
+      if (line.endsWith('{')) {
+        currentHost = line.replaceAll('{', '').trim();
+        currentUpstreams.clear();
+      } else if (line.startsWith('reverse_proxy') && currentHost != null) {
+        final parts = line.split(' ');
+        for (final part in parts) {
+          if (part == 'reverse_proxy' || part == '{' || part.isEmpty) continue;
+          currentUpstreams.add(part);
+        }
+      } else if (line == '}') {
+        if (currentHost != null) {
+          if (currentHost != ':80') {
+            rules.add({
+              'host': currentHost,
+              'upstreams': currentUpstreams.join(', '),
+            });
+          }
+          currentHost = null;
+        }
+      }
+    }
+    return rules;
   }
 }

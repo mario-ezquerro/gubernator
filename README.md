@@ -365,6 +365,7 @@ docker run -d \
   -e GBNT_WEB=true \
   -e GBNT_WEB_USER=admin \
   -e GBNT_WEB_PASSWORD=mysecretpassword \
+  -e GBNT_MONITOR=true \
   marioezquerro/gubernator:latest serve
 ```
 

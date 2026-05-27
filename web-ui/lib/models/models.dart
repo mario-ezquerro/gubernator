@@ -116,19 +116,42 @@ class Task {
   }
 }
 
+class DnsRecord {
+  final String ip;
+  final String hostname;
+
+  DnsRecord({
+    required this.ip,
+    required this.hostname,
+  });
+
+  factory DnsRecord.fromJson(Map<String, dynamic> json) {
+    return DnsRecord(
+      ip: json['ip'] ?? '',
+      hostname: json['hostname'] ?? '',
+    );
+  }
+}
+
 class DashboardState {
   final List<Node> nodes;
   final List<StackModel> stacks;
   final List<Service> services;
   final List<Task> tasks;
+  final List<DnsRecord> dnsRecords;
   final bool monitorRunning;
+  final String caddyStatus;
+  final String caddyfile;
 
   DashboardState({
     this.nodes = const [],
     this.stacks = const [],
     this.services = const [],
     this.tasks = const [],
+    this.dnsRecords = const [],
     this.monitorRunning = false,
+    this.caddyStatus = 'not running',
+    this.caddyfile = '',
   });
 
   factory DashboardState.fromJson(Map<String, dynamic> json) {
@@ -145,7 +168,12 @@ class DashboardState {
       tasks: (json['tasks'] as List? ?? [])
           .map((e) => Task.fromJson(e))
           .toList(),
+      dnsRecords: (json['dns_records'] as List? ?? [])
+          .map((e) => DnsRecord.fromJson(e))
+          .toList(),
       monitorRunning: json['monitor_running'] ?? false,
+      caddyStatus: json['caddy_status'] ?? 'not running',
+      caddyfile: json['caddyfile'] ?? '',
     );
   }
 }

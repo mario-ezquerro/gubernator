@@ -2,6 +2,7 @@ package coredns
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ const (
 	CoreStackName = "CORE-GBNT"
 )
 
-// RegisterInDB registers the CoreDNS and Caddy containers as a special stack in the
+// RegisterInDB registers the CoreDNS, Caddy and Gubernator containers as a special stack in the
 // Gubernator database so they appear in the Flutter dashboard.
 func RegisterInDB(database *gorm.DB) error {
 	// Remove any previous Core stack records
@@ -37,12 +38,23 @@ func RegisterInDB(database *gorm.DB) error {
 		return fmt.Errorf("failed to create Core stack: %w", err)
 	}
 
+	// Detect our own container name/ID
+	gubernatorContainerName := "gubernator"
+	if hostname, err := os.Hostname(); err == nil {
+		if exec.Command("docker", "inspect", hostname).Run() == nil {
+			gubernatorContainerName = hostname
+		}
+	}
+
+	gubernatorImage := getContainerImage(gubernatorContainerName)
+
 	services := []struct {
 		Name          string
 		ContainerName string
 		Image         string
 		Ports         []string
 	}{
+		{Name: "gubernator", ContainerName: gubernatorContainerName, Image: gubernatorImage, Ports: []string{"4000:4000", "4001:4001", "4002:4002"}},
 		{Name: "coredns", ContainerName: ContainerName, Image: ImageName, Ports: []string{DNSPort}},
 		{Name: "caddy", ContainerName: "gbnt-caddy", Image: "caddy:latest", Ports: []string{"80:80", "443:443"}},
 	}
@@ -108,4 +120,17 @@ func getContainerIP(name string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// getContainerImage inspects a Docker container and returns its image name.
+func getContainerImage(name string) string {
+	out, err := exec.Command("docker", "inspect", "--format", "{{.Config.Image}}", name).Output()
+	if err != nil {
+		return "gubernator:latest"
+	}
+	img := strings.TrimSpace(string(out))
+	if img == "" {
+		return "gubernator:latest"
+	}
+	return img
 }
