@@ -508,7 +508,17 @@ func updateStackComposeHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if res := db.DB.Model(&db.Stack{}).Where("id = ?", id).Update("raw_compose_file", req.Compose); res.Error != nil {
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// Replace placeholders like {{stack.name}} with the actual stack name
+	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", stack.Name)
+
+	if res := db.DB.Model(&db.Stack{}).Where("id = ?", id).Update("raw_compose_file", composeRaw); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update compose"})
 		return
 	}
