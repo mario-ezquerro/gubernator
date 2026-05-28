@@ -1,7 +1,0 @@
-services:
-  web-nginx:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    deploy:
-      replicas: 1

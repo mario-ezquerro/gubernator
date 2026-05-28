@@ -52,12 +52,12 @@ export GBNT_API_TOKEN=admin
 ./gbnt legion init
 ./gbnt legion join --token <TOKEN> --manager 127.0.0.1:4000
 
-# 4. In a third terminal — deploy a stack
-./gbnt stack deploy -c examples/example-101/01-nginx-basic.yml nginx-demo
+# 4. In a third terminal — deploy a stack (WordPress + MySQL)
+./gbnt stack deploy -c examples/example-101/docker-compose.yml wp
 
 # 5. Verify
-curl http://localhost:8080          # NGINX running
-./gbnt task ls                      # See the running task
+curl http://localhost:8080          # WordPress setup page
+./gbnt task ls                      # See the running tasks
 ```
 
 Open **[http://localhost:4001](http://localhost:4001)** (admin/admin) to see the live dashboard.

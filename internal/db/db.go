@@ -24,7 +24,8 @@ func GetDB() *gorm.DB {
 func Init(dbPath string) {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		// Warn level: only logs slow queries and errors — keeps startup output clean
+		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -39,89 +40,138 @@ func Init(dbPath string) {
 	}
 
 	seedInitialData()
-	ensureJoinToken()
-	ensureAPIToken()
+	ensureClusterConfig()
 }
 
-// ensureJoinToken generates a secure random join token if one does not exist.
-func ensureJoinToken() {
+// ensureClusterConfig atomically creates or loads both the join token and API token
+// in a single pass. This avoids the two-phase bug where ensureJoinToken would create
+// the DB row (without api_token), then ensureAPIToken couldn't distinguish "first boot"
+// from "token already set" on a fresh volume.
+//
+// Priority for API token:
+//  1. GBNT_API_TOKEN env var → persisted in DB (operator override)
+//  2. token already in DB → loaded into env (survives restarts)
+//  3. neither → generate + print first-boot banner (truly one-time)
+func ensureClusterConfig() {
 	var config ClusterConfig
+	firstBoot := false
+
 	if err := DB.First(&config, "id = ?", "global").Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			bytes := make([]byte, 16)
-			if _, err := rand.Read(bytes); err != nil {
-				log.Fatalf("Failed to generate join token: %v", err)
-			}
-			token := hex.EncodeToString(bytes)
-			config = ClusterConfig{ID: "global", JoinToken: token}
-			if err := DB.Create(&config).Error; err != nil {
-				log.Fatalf("Failed to save join token: %v", err)
-			}
-			log.Println("Generated new cluster Join Token.")
-		} else {
-			log.Fatalf("Error querying cluster config: %v", err)
+		if err != gorm.ErrRecordNotFound {
+			log.Fatalf("ensureClusterConfig: cannot read cluster config: %v", err)
 		}
-	}
-}
 
-// ensureAPIToken ensures a secure Bearer API token exists in the database.
-// Priority:
-//  1. If GBNT_API_TOKEN env var is set → save/update it in DB (operator override)
-//  2. If token already exists in DB → load it into env (survives restarts)
-//  3. If no token anywhere → generate one, save to DB, print it once to stdout
-func ensureAPIToken() {
-	var config ClusterConfig
-	if err := DB.First(&config, "id = ?", "global").Error; err != nil {
-		// ClusterConfig must exist at this point (created by ensureJoinToken).
-		// If we can't read it, it's a fatal DB error.
-		log.Fatalf("ensureAPIToken: cannot read cluster config: %v", err)
+		// ── TRUE FIRST BOOT: row does not exist yet ──────────────────────
+		firstBoot = true
+
+		joinBytes := make([]byte, 16)
+		if _, err := rand.Read(joinBytes); err != nil {
+			log.Fatalf("Failed to generate join token: %v", err)
+		}
+
+		var apiToken string
+		if env := os.Getenv("GBNT_API_TOKEN"); env != "" {
+			apiToken = env // operator pre-set
+			firstBoot = false // don't show banner when token is pre-set
+		} else {
+			apiBytes := make([]byte, 32)
+			if _, err := rand.Read(apiBytes); err != nil {
+				log.Fatalf("Failed to generate API token: %v", err)
+			}
+			apiToken = hex.EncodeToString(apiBytes)
+		}
+
+		config = ClusterConfig{
+			ID:        "global",
+			JoinToken: hex.EncodeToString(joinBytes),
+			APIToken:  apiToken,
+		}
+		if err := DB.Create(&config).Error; err != nil {
+			log.Fatalf("Failed to save cluster config: %v", err)
+		}
+		log.Println("Generated new cluster Join Token and API Token.")
 	}
 
+	// ── SUBSEQUENT BOOTS: row already exists ────────────────────────────────
 	envToken := os.Getenv("GBNT_API_TOKEN")
 
-	switch {
-	case envToken != "" && envToken != config.APIToken:
-		// Operator explicitly set a token via env → persist it in DB
+	if envToken != "" && envToken != config.APIToken {
+		// Operator changed the token via env var → update DB
 		DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("api_token", envToken)
+		config.APIToken = envToken
 		log.Println("API Token updated from GBNT_API_TOKEN environment variable.")
-
-	case config.APIToken != "":
-		// Token already in DB → load it into the process environment so the
-		// API middleware can read it from os.Getenv without further changes.
-		if envToken == "" {
-			os.Setenv("GBNT_API_TOKEN", config.APIToken)
-			log.Println("API Token loaded from database.")
-		}
-
-	default:
-		// First boot: no token in env or DB → generate a new secure token
-		bytes := make([]byte, 32)
-		if _, err := rand.Read(bytes); err != nil {
-			log.Fatalf("Failed to generate API token: %v", err)
-		}
-		newToken := hex.EncodeToString(bytes)
-
-		DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("api_token", newToken)
-		os.Setenv("GBNT_API_TOKEN", newToken)
-
-		// Print onboarding banner — this is the ONE-TIME output the operator must save.
-		fmt.Println("")
-		fmt.Println("╔══════════════════════════════════════════════════════════════════╗")
-		fmt.Println("║          🏛  GUBERNATOR — FIRST BOOT CREDENTIALS                ║")
-		fmt.Println("╠══════════════════════════════════════════════════════════════════╣")
-		fmt.Printf( "║  API TOKEN  : %-51s ║\n", newToken)
-		fmt.Println("║                                                                  ║")
-		fmt.Println("║  Save this token! It will NOT be shown again.                   ║")
-		fmt.Println("║  Use it to configure your remote gbnt CLI:                      ║")
-		fmt.Println("║                                                                  ║")
-		fmt.Println("║  gbnt config add-context myserver \\                             ║")
-		fmt.Println("║      --server http://<MANAGER-IP>:4000 \\                        ║")
-		fmt.Printf( "║      --token %-52s ║\n", newToken)
-		fmt.Println("╚══════════════════════════════════════════════════════════════════╝")
-		fmt.Println("")
-
-		log.Println("Generated new API Token (see banner above).")
+	} else if config.APIToken != "" && envToken == "" {
+		// Load persisted token into env so the API middleware can read it
+		os.Setenv("GBNT_API_TOKEN", config.APIToken)
+		log.Println("API Token loaded from database.")
 	}
+
+	// ── STARTUP & TOKEN INFO BANNER ─────────────────────────────────────────
+	// Printed on EVERY startup so the token and its recovery instructions are always visible.
+	newToken := config.APIToken
+	os.Setenv("GBNT_API_TOKEN", newToken)
+
+	fmt.Println("")
+	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════════╗")
+	if firstBoot {
+		fmt.Println("║            🏛  GUBERNATOR — PRIMER ARRANQUE / FIRST BOOT                        ║")
+	} else {
+		fmt.Println("║            🏛  GUBERNATOR — INICIALIZADO / SYSTEM STARTUP                        ║")
+	}
+	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════════╣")
+	fmt.Println("║                                                                                  ║")
+	if firstBoot {
+		fmt.Println("║  Se han generado las credenciales del clúster.                                  ║")
+		fmt.Println("║  Generated cluster credentials.                                                 ║")
+	} else {
+		fmt.Println("║  Credenciales del clúster cargadas correctamente de la base de datos.            ║")
+		fmt.Println("║  Cluster credentials successfully loaded from the database.                     ║")
+	}
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════════╣")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  🔑  API TOKEN (Bearer auth — REST API en puerto 4000)                          ║")
+	fmt.Println("║      Este token identifica y autoriza todas las peticiones del CLI y API REST.  ║")
+	fmt.Println("║      This token identifies and authorizes all CLI and REST API requests.         ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Printf( "║  ▶   %-76s  ◀  ║\n", newToken)
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════════╣")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  📋  QUÉ HACER AHORA / WHAT TO DO NEXT:                                        ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  1) Configura el CLI (local o en otro host):                                    ║")
+	fmt.Println("║     (Configure the CLI — local or on a remote host)                             ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║     gbnt config add-context local \\                                             ║")
+	fmt.Println("║         --server http://localhost:4000 \\                                        ║")
+	fmt.Printf( "║         --token %-65s  ║\n", newToken)
+	fmt.Println("║     gbnt config use-context local                                               ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  2) Si usas Docker, ejecuta comandos dentro del contenedor:                     ║")
+	fmt.Println("║     (Or run CLI commands directly inside the container)                         ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║     docker exec -it gbnt-manager /app/gbnt node ls                              ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  3) Para añadir nodos worker al clúster o ver detalles del token:               ║")
+	fmt.Println("║     (To join worker nodes or inspect cluster/token information)                 ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║     docker exec -it gbnt-manager /app/gbnt legion info                          ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║  4) Accede a los servicios web:                                                 ║")
+	fmt.Println("║     Web UI       →  http://localhost:4001                                       ║")
+	fmt.Println("║     Swagger/API  →  http://localhost:4002/swagger/index.html                    ║")
+	fmt.Println("║     Health       →  http://localhost:4002/health                                ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════════╣")
+	fmt.Println("║  ℹ️  ¿CÓMO RECUPERAR ESTE TOKEN? / HOW TO RECOVER THIS TOKEN?                    ║")
+	fmt.Println("║      Puedes recuperar el API Token y Join Token en cualquier momento            ║")
+	fmt.Println("║      ejecutando el siguiente comando en el nodo manager:                         ║")
+	fmt.Println("║      You can recover the API Token and Join Token at any time by running:        ║")
+	fmt.Println("║                                                                                  ║")
+	fmt.Println("║      docker exec -it gbnt-manager /app/gbnt legion info                          ║")
+	fmt.Println("╚══════════════════════════════════════════════════════════════════════════════════╝")
+	fmt.Println("")
 }
 
 // GetAPIToken returns the API Bearer token from the database.

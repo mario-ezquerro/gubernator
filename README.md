@@ -83,10 +83,15 @@ docker run -d \
   -p 4002:4002 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v gubernator-data:/data \
+  -v gubernator-home:/root/.gbnt \
+  -e GBNT_WEB=true \
+  -e GBNT_WEB_USER=admin \
+  -e GBNT_WEB_PASSWORD=admin \
+  -e GBNT_MONITOR=true \
   marioezquerro/gubernator:latest serve
 ```
 
-> **Important:** The `-v gubernator-data:/data` volume persists your database across container restarts. This is where Gubernator stores nodes, stacks, tokens, and all cluster state. Without it, the cluster is reset on every restart.
+> **Important:** The `-v gubernator-data:/data` and `-v gubernator-home:/root/.gbnt` volumes persist your database and configuration files (CoreDNS and SRE stack) across container restarts. This is where Gubernator stores nodes, stacks, tokens, and all configurations. Without them, the cluster state is lost on restart. The `-e GBNT_MONITOR=true` and `-e GBNT_WEB=true` enable the SRE monitoring stack and the Web Dashboard respectively on startup.
 
 **3. Run CLI Commands via Docker:**
 You can execute CLI commands directly through the running container:
@@ -362,9 +367,10 @@ docker run -d \
   -p 4002:4002 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v gubernator-data:/data \
+  -v gubernator-home:/root/.gbnt \
   -e GBNT_WEB=true \
   -e GBNT_WEB_USER=admin \
-  -e GBNT_WEB_PASSWORD=mysecretpassword \
+  -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
   marioezquerro/gubernator:latest serve
 ```

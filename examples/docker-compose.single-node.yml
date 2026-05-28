@@ -1,0 +1,99 @@
+# =============================================================================
+#  Gubernator — Single-Node Deployment (Manager + SRE Stack)
+# =============================================================================
+#
+# USAGE:
+#   docker compose -f docker-compose.single-node.yml up -d
+#
+# IMPORTANT: On first boot the API token is auto-generated and printed in the
+# container logs. Run:
+#   docker compose logs gbnt-manager | grep "API TOKEN"
+#
+# To access the Web UI → http://localhost:4001  (admin / mysecretpassword)
+# Swagger docs        → http://localhost:4002/swagger/index.html
+# Prometheus          → http://localhost:9090
+# Grafana             → http://localhost:3000  (admin / admin)
+# Loki                → http://localhost:3100
+# cAdvisor            → http://localhost:8081
+# =============================================================================
+
+name: gubernator
+
+services:
+  gbnt-manager:
+    image: marioezquerro/gubernator:latest
+    container_name: gbnt-manager
+    restart: unless-stopped
+    command: serve
+
+    # ── Ports ──────────────────────────────────────────────────────────────
+    # 4000 → REST API (Bearer token auth)
+    # 4001 → Flutter Web Dashboard (Basic Auth)
+    # 4002 → Swagger / Prometheus metrics / Health
+    # 5354 → CoreDNS DNS resolver (UDP+TCP) — launched by gbnt via docker socket
+    # 8081 → cAdvisor     ┐
+    # 9090 → Prometheus   │  These are launched by gbnt-monitor as sibling
+    # 3000 → Grafana      │  containers on the host Docker daemon. We expose
+    # 3100 → Loki         ┘  them here so docker-compose documents them.
+    ports:
+      - "4000:4000"   # API
+      - "4001:4001"   # Web UI
+      - "4002:4002"   # Telemetry / Swagger / Health
+
+    # ── Volumes ────────────────────────────────────────────────────────────
+    volumes:
+      # Docker socket — required so gbnt can launch sibling containers
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Persistent database (nodes, stacks, tokens survive restarts)
+      - gubernator-data:/data
+
+      # Persist CoreDNS & SRE configs so they survive container restarts.
+      # gbnt writes to ~/.gbnt/ (= /root/.gbnt inside the container).
+      # Mounting this dir means CoreDNS Corefile and SRE configs are kept.
+      - gubernator-home:/root/.gbnt
+
+    # ── Environment ────────────────────────────────────────────────────────
+    environment:
+      # Where to store the SQLite DB (matches the volume above)
+      GBNT_DATA_DIR: /data
+
+      # --- API Security ---
+      # Leave unset on first boot → auto-generated token is printed in logs.
+      # Set explicitly to lock it to a known value (useful for automation).
+      GBNT_API_TOKEN: "changeme-use-a-strong-secret"
+
+      # --- Web UI ---
+      GBNT_WEB: "true"
+      GBNT_WEB_USER: "admin"
+      GBNT_WEB_PASSWORD: "mysecretpassword"
+
+      # --- SRE Monitoring Stack ---
+      # Set to "true" to auto-deploy Prometheus, Grafana, Loki, cAdvisor,
+      # and Promtail as sibling containers via the Docker socket.
+      GBNT_MONITOR: "true"
+
+    # ── Health check ───────────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "/app/gbnt", "health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # ── Labels ─────────────────────────────────────────────────────────────
+    labels:
+      gbnt.managed: "true"
+      gbnt.node.role: "manager"
+
+# =============================================================================
+# Named Volumes
+# =============================================================================
+volumes:
+  # SQLite database and cluster state
+  gubernator-data:
+    name: gubernator-data
+
+  # CoreDNS Corefile + SRE monitor configs (~/.gbnt/ inside container)
+  gubernator-home:
+    name: gubernator-home

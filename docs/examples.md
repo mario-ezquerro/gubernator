@@ -25,9 +25,10 @@ This page is your index to the three progressive tutorials included with Guberna
 
 [Start Example 101 →](example-101.md)
 
-- Deploy 3 stacks: NGINX, Redis, Whoami API
-- Learn `gbnt stack deploy`, `gbnt task ls`, `gbnt stack rm`
+- Deploy a WordPress + MySQL stack
+- Learn how persistent volumes, multi-service dependencies, and internal DNS work
 - Verify containers with `docker ps | grep gbnt`
+- Explore automatic Caddy Ingress reverse proxying
 
 ---
 

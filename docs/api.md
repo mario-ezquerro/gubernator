@@ -100,10 +100,10 @@ Workers call this endpoint after starting a container:
 ## Example: Deploy via curl
 
 ```bash
-COMPOSE=$(cat examples/example-101/01-nginx-basic.yml)
+COMPOSE=$(cat examples/example-101/docker-compose.yml)
 
 curl -s -X POST http://localhost:4000/v1/stack/deploy \
   -H "Authorization: Bearer admin" \
   -H "Content-Type: application/json" \
-  -d "{\"name\": \"nginx-demo\", \"compose_raw\": $(echo "$COMPOSE" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}"
+  -d "{\"name\": \"wp\", \"compose_raw\": $(echo "$COMPOSE" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}"
 ```

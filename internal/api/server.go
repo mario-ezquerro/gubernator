@@ -106,6 +106,9 @@ func Start() {
 		}()
 	}
 
+	// Run GIN in release mode to avoid debug noise in logs
+	gin.SetMode(gin.ReleaseMode)
+
 	r := gin.Default()
 
 	// API Authentication Middleware
@@ -181,7 +184,8 @@ func Start() {
 
 // startTelemetryServer runs on port 4002 serving Swagger, Metrics and Healthchecks
 func startTelemetryServer() {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "healthy"})

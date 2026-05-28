@@ -1,145 +1,54 @@
-# Example 101 — Getting Started with Gubernator
+# 🏛 Ejemplo 101 — Despliegue de WordPress en Gubernator
 
-This is the **first example** to run. It demonstrates the complete basic workflow of Gubernator on a **single node** (your local machine), without requiring any external workers.
+Este ejemplo demuestra cómo desplegar un stack multi-servicio de producción (**WordPress + MySQL**) en un clúster de Gubernator, utilizando almacenamiento persistente (volúmenes de Docker), descubrimiento de servicios interno (CoreDNS) y enrutamiento externo (Caddy Ingress).
 
-You will deploy three progressively complex stacks to learn how Gubernator works.
+## 📋 Estructura del Stack
 
----
-
-## Prerequisites
-
-- **Docker** running on your machine.
-- **Gubernator compiled** (`gbnt` binary) or pulled from Docker Hub.
+El archivo `docker-compose.yml` define dos servicios:
+1. **`db`**: Contenedor MySQL (puerto `3306`), que almacena los datos en el volumen persistente `db_data`.
+2. **`wordpress`**: Contenedor de WordPress expuesto en el puerto `8080` del host, conectado a la base de datos a través de DNS y expuesto mediante Caddy Ingress en la dirección `hello-101.gbnt.local`.
 
 ---
 
-## Step 1: Start Gubernator
+## 📡 Descubrimiento de Servicios y DNS
 
-Open a terminal at the **root of the repository** and start the Manager. It will start listening on three ports simultaneously:
+Dado que Gubernator gestiona múltiples stacks en una misma red compartida (`gbnt-net`), los servicios se aíslan y exponen en DNS usando el formato `<nombre-servicio>.<nombre-stack>.gbnt`.
 
-```bash
-# Compile (only needed once)
-go build -o gbnt ./cmd/gbnt
-
-# Start the Manager
-GBNT_API_TOKEN=admin GBNT_WEB=true GBNT_WEB_USER=admin GBNT_WEB_PASSWORD=admin ./gbnt serve
+Por esta razón, la variable de entorno para conectar WordPress con MySQL está configurada como:
+```yaml
+WORDPRESS_DB_HOST: db.wp.gbnt:3306
 ```
-
-Gubernator is now running. Leave this terminal open. You will see its logs here.
-
-| Port | Service |
-|------|---------|
-| `:4000` | REST API (CLI endpoint) |
-| `:4001` | Web UI Dashboard |
-| `:4002` | Swagger, Metrics, Health |
-
-> **Tip**: Open [http://localhost:4001](http://localhost:4001) in your browser (admin/admin) to watch the dashboard live as you deploy stacks below.
+> [!IMPORTANT]
+> El stack **debe** desplegarse con el nombre **`wp`** para que el nombre de DNS `db.wp.gbnt` se resuelva correctamente. Si deseas nombrarlo de otra forma, debes ajustar esta variable en el archivo `docker-compose.yml`.
 
 ---
 
-## Step 2: Register the Local Node
+## 🚀 Instrucciones de Despliegue
 
-Gubernator needs at least one active node to schedule tasks. Register your local machine:
-
-```bash
-export GBNT_API_TOKEN=admin
-
-./gbnt legion init
-```
-
-This prints a join token. Now join the local manager as its own worker (single-node mode):
+### 1. Desplegar el Stack
+Ejecuta el siguiente comando en la terminal utilizando el CLI de Gubernator (o súbelo mediante el Dashboard Web en el puerto `4001`):
 
 ```bash
-./gbnt legion join --token <YOUR_TOKEN> --manager 127.0.0.1:4000
+gbnt stack deploy -c examples/example-101/docker-compose.yml wp
 ```
 
-Leave this terminal running. It will execute containers locally.
-
----
-
-## Step 3: Deploy the Stacks
-
-Open a third terminal. Set the token and deploy all three example stacks:
-
-### Stack 1 — Basic NGINX (port 8080)
+### 2. Verificar el Despliegue
+Puedes seguir el estado de los contenedores mediante el Dashboard o usando la CLI:
 
 ```bash
-export GBNT_API_TOKEN=admin
+# Listar todos los stacks
+gbnt stack ls
 
-./gbnt stack deploy -c examples/example-101/01-nginx-basic.yml nginx-demo
+# Listar las tareas de contenedores activas
+gbnt node ls
 ```
 
-**Verify:**
-```bash
-curl http://localhost:8080
-# → NGINX welcome page
-docker ps | grep gbnt
-```
+### 3. Acceso a la aplicación
+* **Directo por puerto:** Puedes ingresar a WordPress desde `http://localhost:8080`.
+* **A través de Ingress (Caddy):** Caddy redirige de manera transparente las peticiones desde el dominio local `http://hello-101.gbnt.local` hacia el puerto `80` del contenedor WordPress.
 
----
-
-### Stack 2 — Redis Cache (port 6379)
-
-```bash
-./gbnt stack deploy -c examples/example-101/02-constrained-redis.yml redis-demo
-```
-
-**Verify:**
-```bash
-redis-cli -h localhost -p 6379 ping
-# → PONG
-```
-
----
-
-### Stack 3 — Whoami API (port 8081)
-
-```bash
-./gbnt stack deploy -c examples/example-101/03-ingress-api.yml api-demo
-```
-
-**Verify:**
-```bash
-curl http://localhost:8081
-# → Shows request info (IP, headers, etc.)
-```
-
----
-
-## Step 4: Inspect the Cluster
-
-```bash
-# List all nodes
-./gbnt node ls
-
-# List deployed stacks
-./gbnt stack ls
-
-# List running services
-./gbnt service ls
-
-# List all tasks (containers)
-./gbnt task ls
-```
-
----
-
-## Step 5: Clean Up
-
-```bash
-# Remove each stack (this stops and removes the containers)
-./gbnt stack rm <stack_id>
-```
-
-Or remove all at once from the Web UI at [http://localhost:4001](http://localhost:4001).
-
----
-
-## What You Learned
-
-| Concept | What happened |
-|---------|--------------|
-| **Stack deploy** | Gubernator parsed your YAML and stored the desired state in SQLite |
-| **Scheduler** | It found the active local node and assigned tasks to it |
-| **Executor** | The built-in executor pulled the image and ran the container |
-| **Lifecycle** | `stack rm` stopped and removed the containers cleanly |
+> [!NOTE]
+> Para que el dominio `hello-101.gbnt.local` funcione en el navegador de tu máquina host, debes asegurarte de que tu sistema use el servidor DNS de Gubernator (`gbnt-coredns` en el puerto `5354`) o añadir la entrada manual a tu archivo `/etc/hosts`:
+> ```text
+> 127.0.0.1 hello-101.gbnt.local
+> ```

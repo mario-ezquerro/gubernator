@@ -1,182 +1,136 @@
-# Example 101 — Getting Started with Gubernator
+# Example 101 — Getting Started with WordPress on Gubernator
 
-This is the **first example** to run. It demonstrates the complete basic workflow of Gubernator on a **single node** (your local machine), without requiring external infrastructure.
-
-You will deploy three progressively complex stacks and learn the full Gubernator lifecycle.
+This is the **first example** to run. It demonstrates the complete basic workflow of Gubernator on a **single node** (your local machine), showcasing a multi-service deployment (**WordPress + MySQL**) utilizing persistent volumes, internal DNS service discovery, and automatic Caddy Ingress routing.
 
 ---
 
 ## What You Will Deploy
 
-| Stack | Image | Port | What it shows |
-|-------|-------|------|---------------|
-| `nginx-demo` | `nginx:alpine` | 8080 | Basic single-service deployment |
-| `redis-demo` | `redis:alpine` | 6379 | Service with port binding |
-| `api-demo` | `traefik/whoami` | 8081 | API service + verification |
+The stack file `docker-compose.yml` located in `examples/example-101/` defines:
+- **`db`**: A MySQL database container storing data in a persistent Docker volume (`db_data`).
+- **`wordpress`**: A WordPress container connected to the database via internal DNS and exposed to external traffic using Caddy Ingress.
 
 ---
 
 ## Prerequisites
 
-- **Docker** running on your machine
-- **Go 1.24+** installed (or download the pre-built `gbnt` binary from [Releases](https://github.com/mario-ezquerro/gubernator/releases))
+- **Docker** running on your local machine.
+- **Go 1.24+** installed (or download the pre-built `gbnt` binary from [Releases](https://github.com/mario-ezquerro/gubernator/releases)).
 
 ---
 
 ## Step 1: Start Gubernator
 
-Open a terminal at the **repository root** and compile (once):
+Open a terminal at the **repository root** and compile the Gubernator binary:
 
 ```bash
 go build -o gbnt ./cmd/gbnt
 ```
 
-Start the Manager with Web UI enabled:
+Start the Manager with the Web UI and SRE Monitor enabled:
 
 ```bash
 GBNT_API_TOKEN=admin \
 GBNT_WEB=true \
 GBNT_WEB_USER=admin \
 GBNT_WEB_PASSWORD=admin \
+GBNT_MONITOR=true \
 ./gbnt serve
 ```
 
-Leave this terminal running. You will see executor logs here as containers start.
+Leave this terminal running. It will output orchestrator logs as containers start up.
 
-!!! tip "Open the dashboard"
-    Navigate to [http://localhost:4001](http://localhost:4001) (admin/admin) to watch tasks appear live as you deploy stacks.
+!!! tip "Open the Dashboard"
+    Navigate to [http://localhost:4001](http://localhost:4001) (admin/admin) to view the live dashboard, watch logs, and manage stacks.
 
 ---
 
 ## Step 2: Register the Local Node
 
-Gubernator needs at least one active node. Initialize the legion and register the local machine as its own worker:
+Before deploying stacks, Gubernator needs at least one active node. Open a **second terminal** and register your machine as a worker node:
 
 ```bash
 # Terminal 2
 export GBNT_API_TOKEN=admin
 
-# Initialize the cluster and get the join token
+# Initialize the cluster control plane
 ./gbnt legion init
 ```
 
-Copy the join command from the output and run it:
+Copy the `gbnt legion join` command output by the initialization and run it:
 
 ```bash
 ./gbnt legion join --token <YOUR_TOKEN> --manager 127.0.0.1:4000
 ```
 
-Leave this terminal running. You will see pull and start logs here.
-
 ---
 
-## Step 3: Deploy Stack 1 — NGINX
+## Step 3: Deploy the WordPress Stack
+
+In a **third terminal**, deploy the WordPress stack using the CLI:
 
 ```bash
 # Terminal 3
 export GBNT_API_TOKEN=admin
 
-./gbnt stack deploy -c examples/example-101/01-nginx-basic.yml nginx-demo
+./gbnt stack deploy -c examples/example-101/docker-compose.yml wp
 ```
 
-**Verify:**
-```bash
-curl http://localhost:8080
-# → NGINX Welcome page
-
-./gbnt task ls
-# → nginx-demo task shows status=running
-```
+> [!IMPORTANT]
+> The stack **must** be named **`wp`** during deployment. This ensures that the generated CoreDNS service domain resolves correctly to `db.wp.gbnt` as defined in WordPress's database connection settings.
 
 ---
 
-## Step 4: Deploy Stack 2 — Redis
+## Step 4: Verify the Deployment
 
+Wait a few seconds for the Docker daemon to pull the images and start the containers.
+
+### 1. Check Tasks via CLI
 ```bash
-./gbnt stack deploy -c examples/example-101/02-constrained-redis.yml redis-demo
+./gbnt task ls
 ```
+You should see both the `db` and `wordpress` tasks listed as `running`.
 
-**Verify:**
+### 2. Verify with Docker
 ```bash
-redis-cli -h localhost -p 6379 ping
-# → PONG
-
 docker ps | grep gbnt
-# → Both gbnt-<uuid> containers visible
 ```
+You will see the active container instances running, linked to the `gbnt-net` bridge network.
+
+### 3. Access WordPress
+* **Direct Access:** Open [http://localhost:8080](http://localhost:8080) in your browser. You should see the WordPress setup screen.
+* **Caddy Ingress:** Caddy routes traffic from the local host name `http://hello-101.gbnt.local` directly to the WordPress task container.
+  
+  *Note: To resolve `hello-101.gbnt.local` on your host machine, add `127.0.0.1 hello-101.gbnt.local` to your local `/etc/hosts` file.*
 
 ---
 
-## Step 5: Deploy Stack 3 — Whoami API
+## Step 5: Edit & Scale from the Web UI
 
-```bash
-./gbnt stack deploy -c examples/example-101/03-ingress-api.yml api-demo
-```
-
-**Verify:**
-```bash
-curl http://localhost:8081
-# → Hostname, IP, and request headers from whoami
-
-./gbnt stack ls
-# → All three stacks listed
-```
+1. Open [http://localhost:4001](http://localhost:4001).
+2. Browse to the **Legion Stacks** tab.
+3. Select the `wp` stack and click the **Edit YAML** button.
+4. You can edit configurations on the fly or adjust scale replicas, then click **Save & Redeploy**.
 
 ---
 
-## Step 6: Inspect the Cluster
+## Step 6: Clean Up
+
+When you are done testing, tear down the stack:
 
 ```bash
-# All nodes
-./gbnt node ls
-
-# All stacks
+# Get the stack ID
 ./gbnt stack ls
 
-# All tasks (containers)
-./gbnt task ls
-```
-
----
-
-## Step 7: Edit & Redeploy from the Web UI
-
-1. Open [http://localhost:4001](http://localhost:4001)
-2. Find the `nginx-demo` stack → click **Edit YAML**
-3. Change `replicas: 1` to `replicas: 2`
-4. Click **Save & Redeploy**
-
-Gubernator will stop the old container and start two new ones.
-
----
-
-## Step 8: Clean Up
-
-```bash
-# List stacks to get their IDs
-./gbnt stack ls
-
-# Remove each stack (stops and removes containers)
+# Remove the stack (stops and cleans up all associated containers and volumes)
 ./gbnt stack rm <stack_id>
 ```
-
-Or click **Delete** on each stack in the Web UI.
 
 ---
 
 ## What You Learned
 
-| Concept | What happened |
-|---------|--------------|
-| **Single binary** | `gbnt serve` is both the API and the executor |
-| **Stack deploy** | Compose YAML → parsed → SQLite → containers |
-| **Local executor** | Manager runs containers directly without a separate worker |
-| **Ports/Env/Volumes** | Passed directly from YAML to `docker run` |
-| **Web UI** | Live view, editor, redeploy, and stop — all in the browser |
-| **Lifecycle** | `stack rm` gracefully stops and removes containers |
-
----
-
-## Source Files
-
-All YAML files are in [`examples/example-101/`](https://github.com/mario-ezquerro/gubernator/tree/main/examples/example-101) in the repository.
+- **Multi-service Stacks**: How to deploy complex applications with backend dependencies.
+- **Service Discovery**: Using Gubernator's built-in CoreDNS to resolve container IPs via `<service>.<stack>.gbnt`.
+- **Caddy Ingress**: Exposing services under custom domain names using the `ingress.host` placement constraint.
+- **YAML Mapping Compatibility**: Gubernator automatically supports both list (`- KEY=VALUE`) and map (`KEY: VALUE`) formats for environment variables.

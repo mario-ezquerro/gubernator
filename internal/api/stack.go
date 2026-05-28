@@ -11,6 +11,35 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// EnvSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
+type EnvSlice []string
+
+func (e *EnvSlice) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		*e = list
+		return nil
+	}
+
+	if value.Kind == yaml.MappingNode {
+		var m map[string]string
+		if err := value.Decode(&m); err != nil {
+			return err
+		}
+		list := make([]string, 0, len(m))
+		for k, v := range m {
+			list = append(list, fmt.Sprintf("%s=%s", k, v))
+		}
+		*e = list
+		return nil
+	}
+
+	return fmt.Errorf("invalid environment format: must be a list or map")
+}
+
 // ComposeFile represents a simplified structure of docker-compose.yml
 type ComposeFile struct {
 	Services map[string]ComposeService `yaml:"services"`
@@ -21,7 +50,7 @@ type ComposeFile struct {
 type ComposeService struct {
 	Image       string            `yaml:"image"`
 	Ports       []string          `yaml:"ports"`       // e.g. ["8080:80"]
-	Environment []string          `yaml:"environment"` // e.g. ["FOO=bar"] or map form
+	Environment EnvSlice          `yaml:"environment"` // handles both list and map formats
 	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
 	Volumes     []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
 	Command     string            `yaml:"command"` // optional command override
@@ -47,6 +76,7 @@ type StackDeployRequest struct {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /v1/stack/deploy [post]
+// func StackDeployHandler(c *gin.Context) { ... }
 func StackDeployHandler(c *gin.Context) {
 	var req StackDeployRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -85,7 +115,7 @@ func StackDeployHandler(c *gin.Context) {
 			DesiredReplicas: replicas,
 			Constraints:     srvDef.Deploy.Placement.Constraints,
 			Ports:           srvDef.Ports,
-			Env:             srvDef.Environment,
+			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
 			Command:         srvDef.Command,
 		}

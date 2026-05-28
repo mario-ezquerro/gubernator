@@ -6,5 +6,5 @@ services:
       replicas: 2
       placement:
         constraints:
-          - ingress.host == hello.gbnt.local
+          - ingress.host == hello-102.gbnt.local
 
