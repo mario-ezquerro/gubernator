@@ -30,6 +30,35 @@ import (
 //go:embed flutter/*
 var flutterFS embed.FS
 
+// envSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
+type envSlice []string
+
+func (e *envSlice) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		*e = list
+		return nil
+	}
+
+	if value.Kind == yaml.MappingNode {
+		var m map[string]string
+		if err := value.Decode(&m); err != nil {
+			return err
+		}
+		list := make([]string, 0, len(m))
+		for k, v := range m {
+			list = append(list, fmt.Sprintf("%s=%s", k, v))
+		}
+		*e = list
+		return nil
+	}
+
+	return fmt.Errorf("invalid environment format: must be a list or map")
+}
+
 // composeFile and composeService are local copies of the API types to avoid
 // circular imports (api → web → api). They must stay in sync with api.ComposeFile.
 type composeFile struct {
@@ -39,7 +68,7 @@ type composeFile struct {
 type composeService struct {
 	Image       string   `yaml:"image"`
 	Ports       []string `yaml:"ports"`
-	Environment []string `yaml:"environment"`
+	Environment envSlice `yaml:"environment"` // handles both list and map formats
 	Volumes     []string `yaml:"volumes"`
 	Command     string   `yaml:"command"`
 	Deploy      struct {
@@ -496,9 +525,12 @@ func deployStackHandler(c *gin.Context) {
 		return
 	}
 
+	// Replace placeholders like {{stack.name}} with the actual stack name
+	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", req.Name)
+
 	// Re-parse the compose YAML
 	var compose composeFile
-	if err := yaml.Unmarshal([]byte(req.Compose), &compose); err != nil {
+	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
 		return
 	}
@@ -514,7 +546,7 @@ func deployStackHandler(c *gin.Context) {
 	stack := db.Stack{
 		ID:             stackID,
 		Name:           req.Name,
-		RawComposeFile: req.Compose,
+		RawComposeFile: composeRaw,
 	}
 	db.DB.Create(&stack)
 
@@ -532,7 +564,7 @@ func deployStackHandler(c *gin.Context) {
 			DesiredReplicas: replicas,
 			Constraints:     srvDef.Deploy.Placement.Constraints,
 			Ports:           srvDef.Ports,
-			Env:             srvDef.Environment,
+			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
 			Command:         srvDef.Command,
 		}
@@ -627,7 +659,7 @@ func redeployStackHandler(c *gin.Context) {
 				DesiredReplicas: newReplicas,
 				Constraints:     srvDef.Deploy.Placement.Constraints,
 				Ports:           srvDef.Ports,
-				Env:             srvDef.Environment,
+				Env:             []string(srvDef.Environment),
 				Volumes:         srvDef.Volumes,
 				Command:         srvDef.Command,
 			}
@@ -729,7 +761,7 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 	if !stringSlicesEqual(existing.Ports, newDef.Ports) {
 		return true
 	}
-	if !stringSlicesEqual(existing.Env, newDef.Environment) {
+	if !stringSlicesEqual(existing.Env, []string(newDef.Environment)) {
 		return true
 	}
 	if !stringSlicesEqual(existing.Volumes, newDef.Volumes) {
@@ -770,7 +802,7 @@ func stopAllTasksForService(serviceID string) {
 func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
 	svc.Image = newDef.Image
 	svc.Ports = newDef.Ports
-	svc.Env = newDef.Environment
+	svc.Env = []string(newDef.Environment)
 	svc.Volumes = newDef.Volumes
 	svc.Command = newDef.Command
 	svc.Constraints = newDef.Deploy.Placement.Constraints

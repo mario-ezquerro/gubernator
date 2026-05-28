@@ -52,3 +52,14 @@ gbnt node ls
 > ```text
 > 127.0.0.1 hello-101.gbnt.local
 > ```
+
+> [!TIP]
+> **Confiar en HTTPS Local de Caddy:**
+> Si usas HTTPS local y deseas que tu host confíe en el certificado temporal generado por Caddy, descarga y confía en el certificado raíz ejecutando en tu terminal:
+> ```bash
+> # 1. Copiar el certificado desde el contenedor
+> docker cp gbnt-caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+> 
+> # 2. Instalar y confiar en macOS (Llavero / Keychain)
+> sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./caddy-root.crt
+> ```

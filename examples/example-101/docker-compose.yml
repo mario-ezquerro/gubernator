@@ -18,7 +18,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      WORDPRESS_DB_HOST: db.wp.gbnt:3306
+      WORDPRESS_DB_HOST: db.{{stack.name}}.gbnt:3306
       WORDPRESS_DB_NAME: wordpress
       WORDPRESS_DB_USER: wp_user
       WORDPRESS_DB_PASSWORD: admin

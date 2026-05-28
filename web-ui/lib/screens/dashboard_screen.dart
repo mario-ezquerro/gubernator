@@ -47,6 +47,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int? _taskSortColumnIndex;
   bool _taskSortAscending = true;
 
+  final ScrollController _stackScrollController = ScrollController();
+  final ScrollController _nodeScrollController = ScrollController();
+  final ScrollController _taskScrollController = ScrollController();
+  final ScrollController _dnsScrollController = ScrollController();
+  final ScrollController _ingressScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +63,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _stackScrollController.dispose();
+    _nodeScrollController.dispose();
+    _taskScrollController.dispose();
+    _dnsScrollController.dispose();
+    _ingressScrollController.dispose();
     super.dispose();
   }
 
@@ -994,9 +1005,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (filteredStacks.isEmpty)
               _emptyState(_state.stacks.isEmpty ? 'No stacks deployed yet' : 'No matching stacks found', Icons.layers_clear)
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
+              Scrollbar(
+                controller: _stackScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _stackScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
                   sortColumnIndex: _stackSortColumnIndex,
                   sortAscending: _stackSortAscending,
                   columns: [
@@ -1077,6 +1092,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -1126,9 +1142,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (filteredNodes.isEmpty)
               _emptyState(_state.nodes.isEmpty ? 'No nodes registered' : 'No matching nodes found', Icons.dns)
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
+              Scrollbar(
+                controller: _nodeScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _nodeScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
                   sortColumnIndex: _nodeSortColumnIndex,
                   sortAscending: _nodeSortAscending,
                   columns: [
@@ -1318,6 +1338,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -1374,9 +1395,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (filteredTasks.isEmpty)
               _emptyState(_state.tasks.isEmpty ? 'No tasks running' : 'No matching tasks found', Icons.inbox)
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
+              Scrollbar(
+                controller: _taskScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _taskScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
                   sortColumnIndex: _taskSortColumnIndex,
                   sortAscending: _taskSortAscending,
                   columns: [
@@ -1678,6 +1703,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -1847,9 +1873,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (filteredDns.isEmpty)
               _emptyState(_state.dnsRecords.isEmpty ? 'No DNS records found' : 'No matching records found', Icons.dns)
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
+              Scrollbar(
+                controller: _dnsScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _dnsScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
                   columns: const [
                     DataColumn(label: Text('IP ADDRESS')),
                     DataColumn(label: Text('HOSTNAME (DOMAIN)')),
@@ -1883,6 +1913,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   }).toList(),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -1969,9 +2000,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (rules.isEmpty)
                   _emptyState('No ingress rules defined. Add "ingress.host" deploy constraint in your Legion stack YAML.', Icons.fork_right_outlined)
                 else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
+                  Scrollbar(
+                    controller: _ingressScrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _ingressScrollController,
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
                       columns: const [
                         DataColumn(label: Text('INGRESS HOST')),
                         DataColumn(label: Text('UPSTREAMS (CONTAINER BACKENDS)')),
@@ -2015,6 +2050,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       }).toList(),
                     ),
                   ),
+                ),
               ],
             ),
           ),

@@ -84,9 +84,12 @@ func StackDeployHandler(c *gin.Context) {
 		return
 	}
 
+	// Replace placeholders like {{stack.name}} with the actual stack name
+	composeRaw := strings.ReplaceAll(req.ComposeRaw, "{{stack.name}}", req.Name)
+
 	// Parse YAML
 	var compose ComposeFile
-	if err := yaml.Unmarshal([]byte(req.ComposeRaw), &compose); err != nil {
+	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
 		return
 	}
@@ -96,7 +99,7 @@ func StackDeployHandler(c *gin.Context) {
 	stack := db.Stack{
 		ID:             stackID,
 		Name:           req.Name,
-		RawComposeFile: req.ComposeRaw,
+		RawComposeFile: composeRaw,
 	}
 	db.DB.Create(&stack)
 
