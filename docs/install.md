@@ -110,8 +110,37 @@ docker run -d \
   -p 4001:4001 \
   -p 4002:4002 \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v gubernator-data:/data \
+  -v gubernator-home:/root/.gbnt \
+  -e GBNT_WEB=true \
+  -e GBNT_WEB_USER=admin \
+  -e GBNT_WEB_PASSWORD=admin \
+  -e GBNT_MONITOR=true \
   marioezquerro/gubernator:latest serve
 ```
+
+> **Important:** The `-v gubernator-data:/data` and `-v gubernator-home:/root/.gbnt` volumes persist your database and configuration files. Without them, the cluster state is lost on restart.
+
+**Alternatively, run via Docker Compose:**
+You can use the provided `docker-compose.yml` and `.env` files in the root of the repository to start the Manager API easily:
+
+```bash
+docker compose up -d
+```
+
+### Run CLI Commands via Docker
+
+To retrieve the initial tokens or see the startup logs, especially if running in detached mode (`-d`), you can use:
+
+```bash
+# Ver los logs de arranque
+docker logs gbnt-manager
+
+# O pedirle los tokens directamente al contenedor
+docker exec -it gbnt-manager /app/gbnt legion info
+```
+
+> **Note:** When you configure your local `gbnt` CLI using `gbnt config add-context`, the authentication token and server URL are stored locally on your machine in the `~/.gbntctl/config` file.
 
 ---
 
