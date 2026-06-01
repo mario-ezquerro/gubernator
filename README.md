@@ -93,6 +93,12 @@ docker run -d \
 
 > **Important:** The `-v gubernator-data:/data` and `-v gubernator-home:/root/.gbnt` volumes persist your database and configuration files (CoreDNS and SRE stack) across container restarts. This is where Gubernator stores nodes, stacks, tokens, and all configurations. Without them, the cluster state is lost on restart. The `-e GBNT_MONITOR=true` and `-e GBNT_WEB=true` enable the SRE monitoring stack and the Web Dashboard respectively on startup.
 
+**Alternatively, run via Docker Compose:**
+You can use the provided `docker-compose.yml` and `.env` files in the root of the repository to start the Manager API easily:
+
+```bash
+docker compose up -d
+```
 **3. Run CLI Commands via Docker:**
 You can execute CLI commands directly through the running container:
 
@@ -100,6 +106,18 @@ You can execute CLI commands directly through the running container:
 docker exec -it gbnt-manager /app/gbnt node ls
 ```
 
+To retrieve the initial tokens or see the startup logs, especially if running in detached mode (`-d`), you can use:
+
+```bash
+# Ver los logs de arranque
+docker logs gbnt-manager
+
+# O pedirle los tokens directamente al contenedor
+docker exec -it gbnt-manager /app/gbnt legion info
+```
+
+
+> **Note:** When you configure your local `gbnt` CLI using `gbnt config add-context`, the authentication token and server URL are stored locally on your machine in the `~/.gbntctl/config` file.
 ### Starting the Manager (The Senate)
 
 To initialize the centralized API server on port `4000`:

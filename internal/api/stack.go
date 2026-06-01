@@ -177,6 +177,14 @@ func scheduleService(service *db.Service) {
 			db.DB.Create(&task)
 		} else {
 			fmt.Printf("Warning: Could not find a suitable node for service %s replica %d\n", service.Name, i+1)
+			task := db.Task{
+				ID:        uuid.New().String(),
+				ServiceID: service.ID,
+				NodeID:    "none", // Or a dummy node ID
+				Status:    "dead",
+				Error:     "No suitable node found for placement constraints",
+			}
+			db.DB.Create(&task)
 		}
 	}
 }

@@ -1,0 +1,23 @@
+services:
+  manager:
+    image: marioezquerro/gubernator:latest
+    container_name: gbnt-manager
+    restart: unless-stopped
+    ports:
+      - "4000:4000"  # API REST / CLI
+      - "4001:4001"  # Web UI Dashboard (Si GBNT_WEB=true)
+      - "4002:4002"  # Telemetría, Swagger y Health
+    volumes:
+      # Acceso al socket de Docker para ejecutar contenedores localmente
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistencia de la base de datos (nodos, stacks, tokens)
+      - gubernator-data:/data
+      # Persistencia de configuraciones de monitoreo y DNS/Ingress
+      - gubernator-home:/root/.gbnt
+    env_file:
+      - .env
+    command: serve
+
+volumes:
+  gubernator-data:
+  gubernator-home:

@@ -54,7 +54,12 @@ var stackDeployCmd = &cobra.Command{
 
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", string(bodyBytes))
+			var errResp map[string]string
+			if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp["error"] != "" {
+				fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", errResp["error"])
+			} else {
+				fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", string(bodyBytes))
+			}
 			os.Exit(1)
 		}
 

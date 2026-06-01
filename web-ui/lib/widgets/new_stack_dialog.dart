@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 /// A dialog to define and deploy a new Docker Compose stack.
 class NewStackDialog extends StatefulWidget {
-  final Future<bool> Function(String name, String yaml) onDeploy;
+  final Future<String?> Function(String name, String yaml) onDeploy;
   final String? initialName;
   final String? initialYaml;
 
@@ -232,10 +232,24 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                 setState(() => _deploying = true);
                                 final name = _nameController.text.trim();
                                 final yaml = _yamlController.text;
-                                final ok = await widget.onDeploy(name, yaml);
+                                final errorMsg = await widget.onDeploy(name, yaml);
                                 setState(() => _deploying = false);
-                                if (ok && context.mounted) {
+                                if (errorMsg == null && context.mounted) {
                                   Navigator.of(context).pop();
+                                } else if (errorMsg != null && context.mounted) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Deployment Failed'),
+                                      content: Text(errorMsg),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(),
+                                          child: const Text('OK'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
                                 }
                               }
                             },

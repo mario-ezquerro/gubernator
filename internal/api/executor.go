@@ -33,7 +33,7 @@ func startLocalExecutor() {
 			var svc db.Service
 			if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
 				fmt.Printf("[Executor] Task %s: service not found, skipping.\n", task.ID[:8])
-				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "dead")
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{"status": "dead", "error": "service not found"})
 				continue
 			}
 
@@ -48,7 +48,7 @@ func executeTask(task db.Task, svc db.Service) {
 
 	if err := docker.PullImage(svc.Image); err != nil {
 		fmt.Printf("[Executor] Task %s: pull failed: %v\n", task.ID[:8], err)
-		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "dead")
+		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{"status": "dead", "error": fmt.Sprintf("pull failed: %v", err)})
 		return
 	}
 
@@ -64,7 +64,7 @@ func executeTask(task db.Task, svc db.Service) {
 	containerName, ip, err := docker.StartContainer(cfg)
 	if err != nil {
 		fmt.Printf("[Executor] Task %s: start failed: %v\n", task.ID[:8], err)
-		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "dead")
+		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{"status": "dead", "error": fmt.Sprintf("start failed: %v", err)})
 		return
 	}
 

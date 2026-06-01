@@ -16,7 +16,7 @@ services:
     container_name: app_wordpress
     restart: always
     ports:
-      - "8080:80"
+      - "127.0.0.1::80"
     environment:
       WORDPRESS_DB_HOST: db.{{stack.name}}.gbnt:3306
       WORDPRESS_DB_NAME: wordpress

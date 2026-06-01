@@ -85,6 +85,7 @@ type Task struct {
 	Status        string    `gorm:"type:varchar(50);not null" json:"status"` // "pending", "running", "dead"
 	ContainerIP   string    `gorm:"type:varchar(50)" json:"container_ip"`
 	ContainerName string    `gorm:"type:varchar(255)" json:"container_name"`
+	Error         string    `gorm:"type:text" json:"error"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

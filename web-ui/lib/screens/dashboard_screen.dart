@@ -267,14 +267,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           initialName: '${stack.name}-copy',
           initialYaml: yaml,
           onDeploy: (name, compose) async {
-            final ok = await ApiService.deployStack(name, compose);
-            if (ok) {
+            final errorMsg = await ApiService.deployStack(name, compose);
+            if (errorMsg == null) {
               _showSnackBar('Stack duplicated and deployed successfully!');
               _fetchData();
-            } else {
-              _showSnackBar('Failed to duplicate stack.', isError: true);
             }
-            return ok;
+            return errorMsg;
           },
         ),
       );
@@ -310,14 +308,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (ctx) => NewStackDialog(
         onDeploy: (name, yaml) async {
-          final ok = await ApiService.deployStack(name, yaml);
-          if (ok) {
+          final errorMsg = await ApiService.deployStack(name, yaml);
+          if (errorMsg == null) {
             _showSnackBar('Stack deployed successfully!');
             _fetchData();
-          } else {
-            _showSnackBar('Failed to deploy stack.', isError: true);
           }
-          return ok;
+          return errorMsg;
         },
       ),
     );

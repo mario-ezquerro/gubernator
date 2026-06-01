@@ -25,8 +25,7 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  /// Deploys a new stack.
-  static Future<bool> deployStack(String name, String compose) async {
+  static Future<String?> deployStack(String name, String compose) async {
     final response = await http.post(
       Uri.parse('/api/stack'),
       headers: {'Content-Type': 'application/json'},
@@ -35,7 +34,16 @@ class ApiService {
         'compose': compose,
       }),
     );
-    return response.statusCode == 200;
+    if (response.statusCode == 200) {
+      return null;
+    } else {
+      try {
+        final body = jsonDecode(response.body);
+        return body['error'] ?? 'Unknown error';
+      } catch (_) {
+        return 'Server error: ${response.statusCode}';
+      }
+    }
   }
 
   /// Stops/removes a single task.

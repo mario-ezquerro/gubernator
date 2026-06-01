@@ -30,9 +30,13 @@ var taskLsCmd = &cobra.Command{
 		json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tIP")
+		fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tIP\tERROR")
 		for _, t := range tasks {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", t.ID[:8], t.NodeID, t.ServiceID[:8], t.Status, t.ContainerIP)
+			errStr := t.Error
+			if len(errStr) > 40 {
+				errStr = errStr[:37] + "..."
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID[:8], t.NodeID, t.ServiceID[:8], t.Status, t.ContainerIP, errStr)
 		}
 		w.Flush()
 	},
