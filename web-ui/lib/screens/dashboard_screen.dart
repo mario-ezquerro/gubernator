@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pluto_grid/pluto_grid.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/common_widgets.dart';
@@ -46,6 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _nodeSortAscending = true;
   int? _taskSortColumnIndex;
   bool _taskSortAscending = true;
+  PlutoGridStateManager? _taskGridStateManager;
 
   final ScrollController _stackScrollController = ScrollController();
   final ScrollController _nodeScrollController = ScrollController();
@@ -174,6 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _state = data;
           _applySorting();
+          _updateTaskGrid();
           _loading = false;
           _error = null;
           _lastRefresh = DateTime.now();
@@ -1341,8 +1344,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ─── Tasks Section ──────────────────────────────────────────────────
-  Widget _buildTasksSection(ThemeData theme) {
+  void _updateTaskGrid() {
+    if (_taskGridStateManager == null) return;
+    final theme = Theme.of(context);
+    final List<PlutoRow> rows = _getPlutoRows(theme);
+    
+    // Save current filters before replacing rows
+    final currentFilters = _taskGridStateManager!.filterRows.toList();
+    
+    _taskGridStateManager!.removeAllRows(notify: false);
+    _taskGridStateManager!.appendRows(rows);
+    
+    // Re-apply filters to newly appended rows
+    if (currentFilters.isNotEmpty) {
+      _taskGridStateManager!.setFilterWithFilterRows(currentFilters);
+    }
+  }
+
+  List<PlutoRow> _getPlutoRows(ThemeData theme) {
     final filteredTasks = _state.tasks.where((t) {
       if (_taskSearchQuery.isEmpty) return true;
       final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
@@ -1355,6 +1374,223 @@ class _DashboardScreenState extends State<DashboardScreen> {
           (svc != null && svc.image.toLowerCase().contains(_taskSearchQuery)) ||
           (node != null && node.id.toLowerCase().contains(_taskSearchQuery));
     }).toList();
+
+    return filteredTasks.map((t) {
+      final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+      final stack = _state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
+      final stackName = stack?.name ?? svc?.stackId ?? '-';
+      
+      return PlutoRow(
+        cells: {
+          'task_id': PlutoCell(value: t.id),
+          'service': PlutoCell(value: svc?.name ?? 'unknown'),
+          'stack': PlutoCell(value: stackName),
+          'container': PlutoCell(value: t.containerName.isEmpty ? '-' : t.containerName),
+          'node': PlutoCell(value: t.nodeId),
+          'status': PlutoCell(value: t.status),
+          'ip': PlutoCell(value: t.containerIp.isEmpty ? '-' : t.containerIp),
+          'created': PlutoCell(value: t.createdAt),
+          'ports': PlutoCell(value: ''),
+          'actions': PlutoCell(value: ''),
+          'task_raw': PlutoCell(value: t),
+        },
+      );
+    }).toList();
+  }
+
+  // ─── Tasks Section ──────────────────────────────────────────────────
+  Widget _buildTasksSection(ThemeData theme) {
+    if (_state.tasks.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.view_in_ar,
+                      size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('Cohorts & Tasks (Containers)',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _emptyState('No tasks running', Icons.inbox),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final List<PlutoColumn> columns = [
+      PlutoColumn(
+        title: 'TASK ID',
+        field: 'task_id',
+        type: PlutoColumnType.text(),
+        width: 150,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(
+                  t.id.length > 8 ? t.id.substring(0, 8) : t.id,
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 14),
+                tooltip: 'Copy Task ID',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: t.id));
+                  _showSnackBar('Copied Task ID to clipboard!');
+                },
+              ),
+            ],
+          );
+        },
+      ),
+      PlutoColumn(
+        title: 'SERVICE',
+        field: 'service',
+        type: PlutoColumnType.text(),
+        width: 150,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(svc?.name ?? 'unknown',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  if (svc?.image != null)
+                    Text(svc!.image,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                ],
+              ),
+              if (svc != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 14),
+                  tooltip: 'Copy Service ID',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: svc.id));
+                    _showSnackBar('Copied Service ID to clipboard!');
+                  },
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+      PlutoColumn(
+        title: 'STACK',
+        field: 'stack',
+        type: PlutoColumnType.text(),
+        width: 120,
+      ),
+      PlutoColumn(
+        title: 'CONTAINER',
+        field: 'container',
+        type: PlutoColumnType.text(),
+        width: 150,
+      ),
+      PlutoColumn(
+        title: 'NODE',
+        field: 'node',
+        type: PlutoColumnType.text(),
+        width: 150,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(
+                  node != null && node.id.length > 8
+                      ? node.id.substring(0, 8)
+                      : node?.id ?? 'unknown',
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
+              if (node != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 14),
+                  tooltip: 'Copy Node ID',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: node.id));
+                    _showSnackBar('Copied Node ID to clipboard!');
+                  },
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+      PlutoColumn(
+        title: 'STATUS',
+        field: 'status',
+        type: PlutoColumnType.text(),
+        width: 100,
+        renderer: (rendererContext) {
+          final status = rendererContext.cell.value as String;
+          return StatusBadge(label: status);
+        },
+      ),
+      PlutoColumn(
+        title: 'IP',
+        field: 'ip',
+        type: PlutoColumnType.text(),
+        width: 120,
+      ),
+      PlutoColumn(
+        title: 'CREATED',
+        field: 'created',
+        type: PlutoColumnType.text(),
+        width: 150,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          return Text(_timeAgo(t.createdAt),
+              style: const TextStyle(fontSize: 13, color: Colors.grey));
+        },
+      ),
+      PlutoColumn(
+        title: 'PORTS',
+        field: 'ports',
+        type: PlutoColumnType.text(),
+        width: 200,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
+          final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
+          return _buildPortsCell(svc, node);
+        },
+      ),
+      PlutoColumn(
+        title: 'ACTIONS',
+        field: 'actions',
+        type: PlutoColumnType.text(),
+        width: 100,
+        enableSorting: false,
+        renderer: (rendererContext) {
+          final t = rendererContext.row.cells['task_raw']!.value as Task;
+          return _buildTaskActions(t);
+        },
+      ),
+    ];
 
     return Card(
       child: Padding(
@@ -1379,330 +1615,161 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               onChanged: (val) {
                 setState(() {
                   _taskSearchQuery = val.toLowerCase();
+                  _updateTaskGrid();
                 });
               },
             ),
             const SizedBox(height: 16),
-            if (filteredTasks.isEmpty)
-              _emptyState(_state.tasks.isEmpty ? 'No tasks running' : 'No matching tasks found', Icons.inbox)
-            else
-              Scrollbar(
-                controller: _taskScrollController,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _taskScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                  sortColumnIndex: _taskSortColumnIndex,
-                  sortAscending: _taskSortAscending,
-                  columns: [
-                    DataColumn(
-                      label: const Text('TASK ID'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
+            Container(
+              height: 400,
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: PlutoGrid(
+                  columns: columns,
+                  rows: _getPlutoRows(theme),
+                  rowColorCallback: (rowColorContext) {
+                    if (rowColorContext.rowIdx % 2 != 0) {
+                      return theme.colorScheme.onSurface.withValues(alpha: 0.04);
+                    }
+                    return theme.brightness == Brightness.dark
+                        ? const Color(0xFF111111)
+                        : Colors.white;
+                  },
+                  onLoaded: (PlutoGridOnLoadedEvent event) {
+                    _taskGridStateManager = event.stateManager;
+                    _taskGridStateManager!.setShowColumnFilter(true);
+                  },
+                  configuration: PlutoGridConfiguration(
+                    style: theme.brightness == Brightness.dark
+                        ? const PlutoGridStyleConfig.dark()
+                        : const PlutoGridStyleConfig(),
+                    columnSize: const PlutoGridColumnSizeConfig(
+                      autoSizeMode: PlutoAutoSizeMode.none,
                     ),
-                    DataColumn(
-                      label: const Text('SERVICE'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('STACK'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('CONTAINER'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('NODE'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('STATUS'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('IP'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    DataColumn(
-                      label: const Text('CREATED'),
-                      onSort: (columnIndex, ascending) {
-                        setState(() {
-                          _taskSortColumnIndex = columnIndex;
-                          _taskSortAscending = ascending;
-                          _applySorting();
-                        });
-                      },
-                    ),
-                    const DataColumn(label: Text('PORTS')),
-                    const DataColumn(label: Text('ACTIONS')),
-                  ],
-                  rows: filteredTasks.map((t) {
-                    final svc = _state.services
-                        .where((s) => s.id == t.serviceId)
-                        .firstOrNull;
-                    final node = _state.nodes
-                        .where((n) => n.id == t.nodeId)
-                        .firstOrNull;
-                    final stack = _state.stacks
-                        .where((s) => s.id == svc?.stackId)
-                        .firstOrNull;
-                    final stackName = stack?.name ?? svc?.stackId ?? '-';
-                    return DataRow(
-                      color: WidgetStateProperty.resolveWith<Color?>((states) {
-                        if (t.id == 'core-task-gubernator' || t.containerName == 'gubernator') {
-                          return theme.colorScheme.primary.withValues(alpha: 0.15);
-                        }
-                        return null;
-                      }),
-                      cells: [
-                        DataCell(Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SelectableText(
-                              t.id.length > 8 ? t.id.substring(0, 8) : t.id,
-                              style: const TextStyle(
-                                  fontFamily: 'Courier New', fontSize: 13)),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 14),
-                            tooltip: 'Copy Task ID',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: t.id));
-                              _showSnackBar('Copied Task ID to clipboard!');
-                            },
-                          ),
-                        ],
-                      )),
-                      DataCell(Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(svc?.name ?? 'unknown',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              if (svc?.image != null)
-                                Text(svc!.image,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.5))),
-                            ],
-                          ),
-                          if (svc != null) ...[
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 14),
-                              tooltip: 'Copy Service ID',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: svc.id));
-                                _showSnackBar('Copied Service ID to clipboard!');
-                              },
-                            ),
-                          ],
-                        ],
-                      )),
-                      DataCell(Text(stackName,
-                          style: const TextStyle(fontWeight: FontWeight.w500))),
-                      DataCell(Text(t.containerName.isEmpty ? '-' : t.containerName,
-                          style: const TextStyle(
-                              fontFamily: 'Courier New', fontSize: 13))),
-                      DataCell(Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SelectableText(
-                              node != null && node.id.length > 8
-                                  ? node.id.substring(0, 8)
-                                  : node?.id ?? 'unknown',
-                              style: const TextStyle(
-                                  fontFamily: 'Courier New', fontSize: 13)),
-                          if (node != null) ...[
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 14),
-                              tooltip: 'Copy Node ID',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: node.id));
-                                _showSnackBar('Copied Node ID to clipboard!');
-                              },
-                            ),
-                          ],
-                        ],
-                      )),
-                      DataCell(StatusBadge(label: t.status)),
-                      DataCell(Text(t.containerIp.isEmpty ? '-' : t.containerIp)),
-                      DataCell(Text(_timeAgo(t.createdAt), style: const TextStyle(fontSize: 13, color: Colors.grey))),
-                      DataCell(_buildPortsCell(svc, node)),
-                      DataCell(
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 20),
-                          tooltip: 'Actions',
-                          onSelected: (value) {
-                            switch (value) {
-                              case 'shell':
-                                _viewTaskShell(t.id, t.containerName);
-                                break;
-                              case 'logs':
-                                _viewTaskLogs(t.id);
-                                break;
-                              case 'inspect':
-                                _viewTaskInspect(t.id);
-                                break;
-                              case 'pause':
-                                _taskAction(t.id, 'pause');
-                                break;
-                              case 'unpause':
-                                _taskAction(t.id, 'unpause');
-                                break;
-                              case 'restart':
-                                _taskAction(t.id, 'restart');
-                                break;
-                              case 'start':
-                                _taskAction(t.id, 'start');
-                                break;
-                              case 'stop':
-                                _stopTask(t.id);
-                                break;
-                            }
-                          },
-                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                            if (t.status == 'running')
-                              const PopupMenuItem<String>(
-                                value: 'shell',
-                                child: ListTile(
-                                  leading: Icon(Icons.terminal, size: 20),
-                                  title: Text('Shell'),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            const PopupMenuItem<String>(
-                              value: 'logs',
-                              child: ListTile(
-                                leading: Icon(Icons.notes, size: 20),
-                                title: Text('Logs'),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'inspect',
-                              child: ListTile(
-                                leading: Icon(Icons.info_outline, size: 20),
-                                title: Text('View Details'),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            if (t.status == 'running')
-                              const PopupMenuItem<String>(
-                                value: 'pause',
-                                child: ListTile(
-                                  leading: Icon(Icons.pause, size: 20),
-                                  title: Text('Pause'),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              )
-                            else if (t.status == 'paused')
-                              const PopupMenuItem<String>(
-                                value: 'unpause',
-                                child: ListTile(
-                                  leading: Icon(Icons.play_arrow, size: 20),
-                                  title: Text('Resume'),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              )
-                            else
-                              const PopupMenuItem<String>(
-                                value: 'start',
-                                child: ListTile(
-                                  leading: Icon(Icons.play_arrow, size: 20),
-                                  title: Text('Start'),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            const PopupMenuItem<String>(
-                              value: 'restart',
-                              child: ListTile(
-                                leading: Icon(Icons.refresh, size: 20),
-                                title: Text('Restart'),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem<String>(
-                              value: 'stop',
-                              child: ListTile(
-                                leading: Icon(Icons.stop_circle, size: 20, color: Colors.red),
-                                title: Text('Stop', style: TextStyle(color: Colors.red)),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ]);
-                  }).toList(),
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTaskActions(Task t) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 20),
+      tooltip: 'Actions',
+      onSelected: (value) {
+        switch (value) {
+          case 'shell':
+            _viewTaskShell(t.id, t.containerName);
+            break;
+          case 'logs':
+            _viewTaskLogs(t.id);
+            break;
+          case 'inspect':
+            _viewTaskInspect(t.id);
+            break;
+          case 'pause':
+            _taskAction(t.id, 'pause');
+            break;
+          case 'unpause':
+            _taskAction(t.id, 'unpause');
+            break;
+          case 'restart':
+            _taskAction(t.id, 'restart');
+            break;
+          case 'start':
+            _taskAction(t.id, 'start');
+            break;
+          case 'stop':
+            _stopTask(t.id);
+            break;
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        if (t.status == 'running')
+          const PopupMenuItem<String>(
+            value: 'shell',
+            child: ListTile(
+              leading: Icon(Icons.terminal, size: 20),
+              title: Text('Shell'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        const PopupMenuItem<String>(
+          value: 'logs',
+          child: ListTile(
+            leading: Icon(Icons.notes, size: 20),
+            title: Text('Logs'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'inspect',
+          child: ListTile(
+            leading: Icon(Icons.info_outline, size: 20),
+            title: Text('View Details'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        if (t.status == 'running')
+          const PopupMenuItem<String>(
+            value: 'pause',
+            child: ListTile(
+              leading: Icon(Icons.pause, size: 20),
+              title: Text('Pause'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          )
+        else if (t.status == 'paused')
+          const PopupMenuItem<String>(
+            value: 'unpause',
+            child: ListTile(
+              leading: Icon(Icons.play_arrow, size: 20),
+              title: Text('Resume'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          )
+        else
+          const PopupMenuItem<String>(
+            value: 'start',
+            child: ListTile(
+              leading: Icon(Icons.play_arrow, size: 20),
+              title: Text('Start'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        const PopupMenuItem<String>(
+          value: 'restart',
+          child: ListTile(
+            leading: Icon(Icons.refresh, size: 20),
+            title: Text('Restart'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'stop',
+          child: ListTile(
+            leading: Icon(Icons.stop_circle, size: 20, color: Colors.red),
+            title: Text('Stop', style: TextStyle(color: Colors.red)),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
     );
   }
 

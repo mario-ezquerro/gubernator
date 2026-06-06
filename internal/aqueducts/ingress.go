@@ -49,11 +49,22 @@ func GenerateCaddyfile() {
 				continue
 			}
 
+			port := "80"
+			if len(svc.Ports) > 0 {
+				p := svc.Ports[0]
+				parts := strings.Split(p, ":")
+				lastPart := parts[len(parts)-1]
+				cleaned := strings.TrimSpace(strings.Split(lastPart, "/")[0])
+				if cleaned != "" {
+					port = cleaned
+				}
+			}
+
 			if _, seen := hostUpstreams[val]; !seen {
 				hostOrder = append(hostOrder, val)
 			}
 			for _, t := range tasks {
-				hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:80", t.ContainerIP))
+				hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:%s", t.ContainerIP, port))
 			}
 		}
 	}

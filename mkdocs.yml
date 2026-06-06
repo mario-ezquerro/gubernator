@@ -57,6 +57,7 @@ nav:
     - "101: Getting Started": example-101.md
     - "The Empire: Cluster + Ingress": example-empire.md
     - "SRE-01: Full Observability": example-sre01.md
+    - "AI & Automation (n8n)": example-n8n.md
 
 markdown_extensions:
   - admonition
