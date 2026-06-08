@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,25 +23,23 @@ class ShellDialog extends StatefulWidget {
 
 class _ShellDialogState extends State<ShellDialog> {
   late final Terminal terminal;
+  late final TerminalController _controller;
   WebSocketChannel? channel;
 
   @override
   void initState() {
     super.initState();
     terminal = Terminal();
+    _controller = TerminalController();
     _connectWebSocket();
   }
 
   void _connectWebSocket() {
     final wsProtocol = Uri.base.scheme == 'https' ? 'wss' : 'ws';
-    // If running in debug mode (flutter run -d chrome), hardcode the local backend port 4001
-    // Otherwise use the same host/port the web app was served from.
     var wsHost = Uri.base.host;
     var wsPort = Uri.base.port;
     if (wsPort == 0 || Uri.base.scheme == 'data' || wsHost == 'localhost') {
       // Data URI means it might be a weird environment, or localhost means dev.
-      // Usually in prod wsPort is the right one.
-      // Let's fallback to the same URL logic we might use elsewhere, but Uri.base is standard.
     }
     
     // For local dev, hardcode backend port if we are on a flutter dev server port (like 50000+)
@@ -84,9 +83,43 @@ class _ShellDialogState extends State<ShellDialog> {
     }
   }
 
+  Future<void> _handleCopy() async {
+    final selection = _controller.selection;
+    if (selection != null) {
+      final text = terminal.buffer.getText(selection);
+      if (text.isNotEmpty) {
+        await Clipboard.setData(ClipboardData(text: text));
+        _showSnackBar('Copied selection to clipboard!');
+        return;
+      }
+    }
+    // Fallback: Copy all text
+    final text = terminal.buffer.getText();
+    await Clipboard.setData(ClipboardData(text: text));
+    _showSnackBar('Copied all terminal output!');
+  }
+
+  Future<void> _handlePaste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data != null && data.text != null) {
+      channel?.sink.add(data.text!);
+      _showSnackBar('Pasted from clipboard!');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     channel?.sink.close();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -96,10 +129,31 @@ class _ShellDialogState extends State<ShellDialog> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Shell: ${widget.containerName}'),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
+          Expanded(
+            child: Text(
+              'Shell: ${widget.containerName}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.copy),
+                tooltip: 'Copy text (Selection or All)',
+                onPressed: _handleCopy,
+              ),
+              IconButton(
+                icon: const Icon(Icons.paste),
+                tooltip: 'Paste from clipboard',
+                onPressed: _handlePaste,
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ),
         ],
       ),
@@ -107,11 +161,39 @@ class _ShellDialogState extends State<ShellDialog> {
         width: MediaQuery.of(context).size.width * 0.8,
         height: MediaQuery.of(context).size.height * 0.7,
         color: Colors.black,
-        child: TerminalView(
-          terminal,
-          textStyle: TerminalStyle(
-            fontFamily: GoogleFonts.robotoMono().fontFamily ?? 'Courier New',
-            fontSize: 14,
+        child: Focus(
+          onKeyEvent: (FocusNode node, KeyEvent event) {
+            if (event is KeyDownEvent) {
+              final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+              final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
+              final isShortcutModifier = isControlPressed || isMetaPressed;
+
+              if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
+                final selection = _controller.selection;
+                if (selection != null) {
+                  final text = terminal.buffer.getText(selection);
+                  if (text.isNotEmpty) {
+                    Clipboard.setData(ClipboardData(text: text));
+                    _showSnackBar('Copied to clipboard!');
+                    return KeyEventResult.handled;
+                  }
+                }
+              }
+
+              if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
+                _handlePaste();
+                return KeyEventResult.handled;
+              }
+            }
+            return KeyEventResult.ignored;
+          },
+          child: TerminalView(
+            terminal,
+            controller: _controller,
+            textStyle: TerminalStyle(
+              fontFamily: GoogleFonts.robotoMono().fontFamily ?? 'Courier New',
+              fontSize: 14,
+            ),
           ),
         ),
       ),
