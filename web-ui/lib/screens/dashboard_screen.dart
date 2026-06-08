@@ -11,6 +11,7 @@ import '../widgets/compose_editor.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/new_stack_dialog.dart';
 import '../widgets/shell_dialog.dart';
+import '../widgets/stack_diagram_dialog.dart';
 
 /// Main dashboard screen.
 class DashboardScreen extends StatefulWidget {
@@ -318,6 +319,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
           return errorMsg;
         },
+      ),
+    );
+  }
+
+  void _showStackDiagramDialog(StackModel s) {
+    showDialog(
+      context: context,
+      builder: (ctx) => StackDiagramDialog(
+        stack: s,
+        services: _state.services,
+        tasks: _state.tasks,
+        nodes: _state.nodes,
       ),
     );
   }
@@ -1072,6 +1085,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       DataCell(Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          _actionBtn(Icons.schema_outlined, 'View Schema',
+                              const Color(0xFF06B6D4), () => _showStackDiagramDialog(s)),
                           _actionBtn(Icons.code, 'Edit YAML',
                               const Color(0xFF3B82F6), () => _openComposeEditor(s)),
                           (s.id == 'core-gbnt-stack' ||

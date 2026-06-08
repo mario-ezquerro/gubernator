@@ -40,6 +40,7 @@ dependencies:
   xterm: ^4.0.0
   web_socket_channel: ^3.0.3
   pluto_grid: ^8.1.0
+  pdf: ^3.12.0
 
 dev_dependencies:
   flutter_test:
