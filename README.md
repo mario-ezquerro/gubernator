@@ -17,7 +17,8 @@
 [![GitHub contributors](https://img.shields.io/github/contributors/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/graphs/contributors)
 [![GitHub repo size](https://img.shields.io/github/repo-size/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator)
 [![GitHub last commit](https://img.shields.io/github/last-commit/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/commits/main)
-[![DeepWiki](https://deepwiki.com/badge-maker?url=https%3A%2F%2Fdeepwiki.com%2Fmario-ezquerro%2Fgubernator)](https://deepwiki.com/mario-ezquerro/gubernator)  
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mario-ezquerro/registrator)
+  
 
 Gubernator is a powerful "Goldilocks" orchestrator that combines the **simplicity of Docker Swarm** (native Compose support, easy cluster joining) with the **flexibility of Nomad** (task-based logic, labels for hardware/AI targeting).
 
