@@ -7,13 +7,13 @@ This page is your index to the progressive tutorials included with Gubernator. E
 ## Learning Path
 
 ```
-┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
-│   Example 101      │ ──► │   The Empire        │ ──► │    SRE-01          │ ──► │   Example n8n      │
-│   Single Node      │     │   Cluster + Ingress │     │   Full SRE Stack   │     │   AI & Automation  │
-│   Basic stacks     │     │   CoreDNS + Caddy   │     │   Prometheus/Grafana│     │   n8n+Ollama+Qdrant│
-│   10 min           │     │   30 min            │     │   60 min           │     │   40 min           │
-└────────────────────┘     └────────────────────┘     └────────────────────┘     └────────────────────┘
-  Beginner                   Intermediate                Advanced / DevOps          Advanced / AI
+┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
+│   Example 101      │ ──► │   The Empire        │ ──► │    SRE-01          │ ──► │   Example n8n      │ ──► │   Example Jupyter  │
+│   Single Node      │     │   Cluster + Ingress │     │   Full SRE Stack   │     │   AI & Automation  │     │   AI Notebook Stack│
+│   Basic stacks     │     │   CoreDNS + Caddy   │     │   Prometheus/Grafana│     │   n8n+Ollama+Qdrant│     │   Jupyter + PyTorch│
+│   10 min           │     │   30 min            │     │   60 min           │     │   40 min           │     │   15 min           │
+└────────────────────┘     └────────────────────┘     └────────────────────┘     └────────────────────┘     └────────────────────┘
+  Beginner                   Intermediate                Advanced / DevOps          Advanced / AI              Advanced / AI
 ```
 
 ---
@@ -69,4 +69,19 @@ This page is your index to the progressive tutorials included with Gubernator. E
 - Set up local LLMs via Ollama and a vector database via Qdrant
 - Dynamic Caddy Ingress reverse proxying for custom/non-standard ports
 - Autoloading local models (`llama3.2`) during container initialization
+
+---
+
+## Example Jupyter — AI Notebook Stack
+
+**Target**: Advanced / AI  
+**Goal**: Deploy a data science and machine learning notebook pre-loaded with PyTorch
+
+[Start Example Jupyter →](example-jupyter.md)
+
+- Deploy a pre-configured JupyterLab developer workspace
+- Built-in support for PyTorch, NumPy, Pandas, Scipy, and Scikit-Learn
+- Persistent volume workspace for code and notebooks
+- Caddy Ingress configuration for secure external traffic mapping on port `8888`
+
 

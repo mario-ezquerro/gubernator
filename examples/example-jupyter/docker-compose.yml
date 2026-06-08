@@ -1,0 +1,21 @@
+version: '3.8'
+
+volumes:
+  jupyter_workspace:
+
+services:
+  jupyter:
+    image: quay.io/jupyter/pytorch-notebook:latest
+    container_name: jupyter_notebook
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1::8888"
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - jupyter_workspace:/home/jovyan/work
+    deploy:
+      placement:
+        constraints:
+          - ingress.host == jupyter.gbnt.local
