@@ -1,0 +1,42 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck       # unchecked errors
+    - govet          # suspicious constructs (printf, unreachable, shadow)
+    - staticcheck    # large set of correctness checks
+    - ineffassign    # assignments whose value is never used
+    - unused         # unused code
+    - gosimple       # simplify expressions
+    - bodyclose      # HTTP response body not closed
+    - noctx          # HTTP requests without context
+    - gocritic       # opinionated but practical style checks
+
+linters-settings:
+  errcheck:
+    # Ignore Close/Flush/Write calls — their errors are commonly intentionally ignored
+    exclude-functions:
+      - (io.Closer).Close
+      - (io.Writer).Write
+      - (*os.File).Close
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment  # noisy; relevant only for perf-critical structs
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+    disabled-checks:
+      - hugeParam       # false-positive on large structs passed by value intentionally
+
+issues:
+  # Show all issues, not just the first 3 per linter
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # Test files: relax errcheck and unused
+    - path: "_test\\.go"
+      linters:
+        - errcheck
+        - unused

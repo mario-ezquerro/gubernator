@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"gorm.io/driver/sqlite"
@@ -21,26 +21,25 @@ func GetDB() *gorm.DB {
 
 // Init initializes the SQLite database connection, applies migrations,
 // and ensures the initial Manager node exists.
-func Init(dbPath string) {
+func Init(dbPath string) error {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		// Warn level: only logs slow queries and errors — keeps startup output clean
 		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		return fmt.Errorf("connect to database: %w", err)
 	}
 
-	log.Println("Database connection established")
+	slog.Info("database connection established")
 
-	// AutoMigrate the schemas
 	err = DB.AutoMigrate(&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{})
 	if err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		return fmt.Errorf("migrate database: %w", err)
 	}
 
 	seedInitialData()
-	ensureClusterConfig()
+	return ensureClusterConfig()
 }
 
 // ensureClusterConfig atomically creates or loads both the join token and API token
@@ -52,13 +51,13 @@ func Init(dbPath string) {
 //  1. GBNT_API_TOKEN env var → persisted in DB (operator override)
 //  2. token already in DB → loaded into env (survives restarts)
 //  3. neither → generate + print first-boot banner (truly one-time)
-func ensureClusterConfig() {
+func ensureClusterConfig() error {
 	var config ClusterConfig
 	firstBoot := false
 
 	if err := DB.First(&config, "id = ?", "global").Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
-			log.Fatalf("ensureClusterConfig: cannot read cluster config: %v", err)
+			return fmt.Errorf("ensureClusterConfig: cannot read cluster config: %w", err)
 		}
 
 		// ── TRUE FIRST BOOT: row does not exist yet ──────────────────────
@@ -66,7 +65,7 @@ func ensureClusterConfig() {
 
 		joinBytes := make([]byte, 16)
 		if _, err := rand.Read(joinBytes); err != nil {
-			log.Fatalf("Failed to generate join token: %v", err)
+			return fmt.Errorf("generate join token: %w", err)
 		}
 
 		var apiToken string
@@ -76,7 +75,7 @@ func ensureClusterConfig() {
 		} else {
 			apiBytes := make([]byte, 32)
 			if _, err := rand.Read(apiBytes); err != nil {
-				log.Fatalf("Failed to generate API token: %v", err)
+				return fmt.Errorf("generate API token: %w", err)
 			}
 			apiToken = hex.EncodeToString(apiBytes)
 		}
@@ -87,9 +86,9 @@ func ensureClusterConfig() {
 			APIToken:  apiToken,
 		}
 		if err := DB.Create(&config).Error; err != nil {
-			log.Fatalf("Failed to save cluster config: %v", err)
+			return fmt.Errorf("save cluster config: %w", err)
 		}
-		log.Println("Generated new cluster Join Token and API Token.")
+		slog.Info("generated new cluster join token and API token")
 	}
 
 	// ── SUBSEQUENT BOOTS: row already exists ────────────────────────────────
@@ -99,11 +98,11 @@ func ensureClusterConfig() {
 		// Operator changed the token via env var → update DB
 		DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("api_token", envToken)
 		config.APIToken = envToken
-		log.Println("API Token updated from GBNT_API_TOKEN environment variable.")
+		slog.Info("API token updated from GBNT_API_TOKEN env var")
 	} else if config.APIToken != "" && envToken == "" {
 		// Load persisted token into env so the API middleware can read it
 		os.Setenv("GBNT_API_TOKEN", config.APIToken)
-		log.Println("API Token loaded from database.")
+		slog.Info("API token loaded from database")
 	}
 
 	// ── STARTUP & TOKEN INFO BANNER ─────────────────────────────────────────
@@ -172,6 +171,7 @@ func ensureClusterConfig() {
 	fmt.Println("║      docker exec -it gbnt-manager /app/gbnt legion info                          ║")
 	fmt.Println("╚══════════════════════════════════════════════════════════════════════════════════╝")
 	fmt.Println("")
+	return nil
 }
 
 // GetAPIToken returns the API Bearer token from the database.
@@ -198,7 +198,7 @@ func seedInitialData() {
 	DB.Model(&Node{}).Count(&count)
 
 	if count == 0 {
-		log.Println("Seeding initial Manager node into the database...")
+		slog.Info("seeding initial manager node")
 		managerNode := Node{
 			ID:     "node-local-manager",
 			IP:     "127.0.0.1",
@@ -211,9 +211,9 @@ func seedInitialData() {
 		}
 
 		if err := DB.Create(&managerNode).Error; err != nil {
-			log.Printf("Failed to seed initial manager node: %v\n", err)
+			slog.Error("failed to seed initial manager node", "err", err)
 		} else {
-			log.Println("Initial Manager node seeded successfully.")
+			slog.Info("initial manager node seeded")
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -11,16 +12,19 @@ import (
 
 const localManagerNodeID = "node-local-manager"
 
-// startLocalExecutor is the built-in executor that runs inside the Manager process.
-// It polls for pending tasks assigned to the local node and executes them directly
-// via the Docker daemon, enabling single-node mode without needing a separate Worker.
-func startLocalExecutor() {
+// startLocalExecutor polls for pending tasks on the local node and executes them.
+// Exits cleanly when ctx is cancelled.
+func startLocalExecutor(ctx context.Context) {
 	fmt.Println("[Executor] Local executor started. Watching for pending tasks on node:", localManagerNodeID)
 
 	for {
-		time.Sleep(5 * time.Second)
+		select {
+		case <-ctx.Done():
+			fmt.Println("[Executor] Shutting down.")
+			return
+		case <-time.After(5 * time.Second):
+		}
 
-		// Fetch all pending tasks assigned to this local node
 		var tasks []db.Task
 		if err := db.DB.Where("node_id = ? AND status = ?", localManagerNodeID, "pending").Find(&tasks).Error; err != nil {
 			continue

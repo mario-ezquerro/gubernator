@@ -2,7 +2,7 @@ package aqueducts
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
@@ -15,7 +15,7 @@ func GenerateHostsFile() {
 	var tasks []db.Task
 	// Only fetch tasks that have an IP
 	if err := db.DB.Where("status = ? AND container_ip != ?", "running", "").Find(&tasks).Error; err != nil {
-		log.Printf("Failed to fetch tasks for DNS generation: %v\n", err)
+		slog.Error("failed to fetch tasks for DNS generation", "err", err)
 		return
 	}
 
@@ -42,14 +42,14 @@ func GenerateHostsFile() {
 	hostsPath := coredns.HostsFilePath()
 	err := os.WriteFile(hostsPath, []byte(content), 0644)
 	if err != nil {
-		log.Printf("Failed to write gubernator.hosts: %v\n", err)
+		slog.Error("failed to write gubernator.hosts", "err", err)
 		return
 	}
 
-	log.Println("🌊 Aqueducts: Generated new gubernator.hosts file.")
+	slog.Info("aqueducts: generated new gubernator.hosts file")
 
 	// Signal CoreDNS to reload the updated hosts file
 	if err := coredns.ReloadConfig(); err != nil {
-		log.Printf("⚠️  Aqueducts: CoreDNS reload failed: %v\n", err)
+		slog.Warn("aqueducts: CoreDNS reload failed", "err", err)
 	}
 }
