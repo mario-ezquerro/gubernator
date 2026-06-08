@@ -50,3 +50,5 @@ gubernator.hosts
 # SQLite databases
 *.db
 
+# Local certificates
+*.crt

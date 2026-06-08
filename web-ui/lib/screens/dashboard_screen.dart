@@ -1347,17 +1347,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _updateTaskGrid() {
     if (_taskGridStateManager == null) return;
     final theme = Theme.of(context);
-    final List<PlutoRow> rows = _getPlutoRows(theme);
-    
-    // Save current filters before replacing rows
-    final currentFilters = _taskGridStateManager!.filterRows.toList();
-    
-    _taskGridStateManager!.removeAllRows(notify: false);
-    _taskGridStateManager!.appendRows(rows);
-    
-    // Re-apply filters to newly appended rows
-    if (currentFilters.isNotEmpty) {
-      _taskGridStateManager!.setFilterWithFilterRows(currentFilters);
+    final List<PlutoRow> newRows = _getPlutoRows(theme);
+
+    final currentRows = _taskGridStateManager!.rows;
+    final Map<String, PlutoRow> currentRowsMap = {
+      for (var row in currentRows) row.cells['task_id']!.value.toString(): row
+    };
+
+    final List<PlutoRow> rowsToAdd = [];
+    final Set<String> newRowIds = {};
+
+    bool hasChanges = false;
+
+    for (var newRow in newRows) {
+      final id = newRow.cells['task_id']!.value.toString();
+      newRowIds.add(id);
+
+      final existingRow = currentRowsMap[id];
+      if (existingRow != null) {
+        // Update values of existing row cells if they have changed
+        for (var key in newRow.cells.keys) {
+          if (existingRow.cells[key]!.value != newRow.cells[key]!.value) {
+            existingRow.cells[key]!.value = newRow.cells[key]!.value;
+            hasChanges = true;
+          }
+        }
+      } else {
+        // Mark for addition
+        rowsToAdd.add(newRow);
+        hasChanges = true;
+      }
+    }
+
+    // Identify rows to remove
+    final List<PlutoRow> rowsToRemove = [];
+    for (var row in currentRows) {
+      final id = row.cells['task_id']!.value.toString();
+      if (!newRowIds.contains(id)) {
+        rowsToRemove.add(row);
+        hasChanges = true;
+      }
+    }
+
+    if (rowsToRemove.isNotEmpty) {
+      _taskGridStateManager!.removeRows(rowsToRemove);
+    }
+    if (rowsToAdd.isNotEmpty) {
+      _taskGridStateManager!.appendRows(rowsToAdd);
+    }
+
+    if (hasChanges) {
+      _taskGridStateManager!.notifyListeners();
     }
   }
 
