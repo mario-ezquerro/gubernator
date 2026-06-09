@@ -52,7 +52,7 @@ type ClusterConfig struct {
 type Stack struct {
 	ID             string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
 	Name           string    `gorm:"type:varchar(255);not null" json:"name"`
-	RawComposeFile string    `gorm:"type:text" json:"-"`
+	RawComposeFile string    `gorm:"type:text" json:"raw_compose_file"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }

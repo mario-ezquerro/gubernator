@@ -51,14 +51,14 @@ class StackDiagramDialog extends StatefulWidget {
 class _StackDiagramDialogState extends State<StackDiagramDialog> {
   final GlobalKey _repaintBoundaryKey = GlobalKey();
   
-  late final List<Service> _stackServices;
-  late final Map<String, List<String>> _adjList;
-  late final Map<String, DiagramNode> _nodes;
-  late final Map<String, String> _ingressHosts;
+  List<Service> _stackServices = [];
+  Map<String, List<String>> _adjList = {};
+  Map<String, DiagramNode> _nodes = {};
+  Map<String, String> _ingressHosts = {};
   
-  late final List<Map<String, dynamic>> _column0Items;
-  late final List<Map<String, dynamic>> _column1Items;
-  late final List<Map<String, dynamic>> _column2Items;
+  List<Map<String, dynamic>> _column0Items = [];
+  List<Map<String, dynamic>> _column1Items = [];
+  List<Map<String, dynamic>> _column2Items = [];
 
   double _containerHeight = 250;
   final double _canvasWidth = 700;
