@@ -564,7 +564,7 @@ class _StackDiagramDialogState extends State<StackDiagramDialog> {
       final cardStrokeColor = isDark ? '#334155' : '#CBD5E1';
       final textColor = isDark ? '#FFFFFF' : '#0F172A';
       final imageTextColor = isDark ? '#94A3B8' : '#64748B';
-      final primaryBlue = '#3B82F6';
+      final primaryOrange = '#F97316';
       
       final connectionColorHex = '#F59E0B';
 
@@ -650,19 +650,19 @@ class _StackDiagramDialogState extends State<StackDiagramDialog> {
         
         // Network/Ports/Ingress row
         if (service.name == 'Caddy Ingress') {
-          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 52}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryBlue">Ports: 80, 443</text>');
+          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 52}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryOrange">Ports: 80, 443</text>');
           final domainsString = _ingressHosts.values.join(', ');
-          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 68}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryBlue">${_truncateImage(domainsString)}</text>');
+          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 68}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryOrange">${_truncateImage(domainsString)}</text>');
           buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 84}" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="$imageTextColor">Load Balancer</text>');
         } else {
           final ipText = node.task != null ? node.task!.containerIp : 'No active container';
           final pubPortsText = node.task != null ? _getTaskPublicEndpoint(service, node.task!) : 'Internal';
           
           buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 52}" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="$textColor">Int IP: $ipText</text>');
-          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 68}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryBlue">Pub: $pubPortsText</text>');
+          buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 68}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryOrange">Pub: $pubPortsText</text>');
           
           if (ingressHost != null) {
-            buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 84}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryBlue">🌐 $ingressHost</text>');
+            buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 84}" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="600" fill="$primaryOrange">🌐 $ingressHost</text>');
           } else {
             buffer.writeln('  <text x="${node.x + 12}" y="${node.y + 84}" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="$imageTextColor">Active container</text>');
           }

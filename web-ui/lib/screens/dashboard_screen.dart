@@ -1086,9 +1086,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _actionBtn(Icons.schema_outlined, 'View Schema',
-                              const Color(0xFF06B6D4), () => _showStackDiagramDialog(s)),
+                              const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
                           _actionBtn(Icons.code, 'Edit YAML',
-                              const Color(0xFF3B82F6), () => _openComposeEditor(s)),
+                              const Color(0xFFF97316), () => _openComposeEditor(s)),
                           (s.id == 'core-gbnt-stack' ||
                                   s.id == 'sre-monitor-stack' ||
                                   s.name.toLowerCase().contains('core-gbnt') ||

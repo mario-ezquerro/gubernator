@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 /// Gubernator theme configuration with Material 3 support.
 /// Provides both light and dark themes with the project's signature color palette.
 
-const Color _primaryBlue = Color(0xFF3B82F6);
-const Color _primaryDark = Color(0xFF2563EB);
+const Color _primaryBlue = Color(0xFFF97316); // Premium Orange (formerly blue)
+const Color _primaryDark = Color(0xFFEA580C); // Darker Orange (formerly dark blue)
 const Color _successGreen = Color(0xFF10B981);
 const Color _dangerRed = Color(0xFFEF4444);
 const Color _warningAmber = Color(0xFFF59E0B);
-const Color _accentCyan = Color(0xFF06B6D4);
+const Color _accentCyan = Color(0xFFFB923C); // Accent Orange 400 (formerly cyan)
 
 class GubernatorTheme {
   // ─── Dark Theme ───────────────────────────────────────────────────────
