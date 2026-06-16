@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -128,12 +128,12 @@ func StartDashboard() {
 	pass := os.Getenv("GBNT_WEB_PASSWORD")
 
 	if webEnabled != "true" {
-		log.Println("Web Dashboard disabled. Set GBNT_WEB=true, GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable.")
+		slog.Info("web dashboard disabled; set GBNT_WEB=true, GBNT_WEB_USER and GBNT_WEB_PASSWORD to enable")
 		return
 	}
 
 	if user == "" || pass == "" {
-		log.Println("Web Dashboard is enabled but missing credentials. Provide GBNT_WEB_USER and GBNT_WEB_PASSWORD.")
+		slog.Warn("web dashboard missing credentials; provide GBNT_WEB_USER and GBNT_WEB_PASSWORD")
 		return
 	}
 
@@ -174,7 +174,8 @@ func StartDashboard() {
 	// Serve the Flutter web app — SPA routing
 	flutterContent, err := fs.Sub(flutterFS, "flutter")
 	if err != nil {
-		log.Fatalf("Failed to access embedded Flutter build: %v", err)
+		slog.Error("failed to access embedded Flutter build", "err", err)
+		return
 	}
 	fileServer := http.FileServer(http.FS(flutterContent))
 
@@ -202,9 +203,9 @@ func StartDashboard() {
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
 
-	log.Println("Starting Web Dashboard (Flutter) on :4001")
+	slog.Info("starting web dashboard", "addr", ":4001")
 	if err := r.Run(":4001"); err != nil {
-		log.Fatalf("Failed to start Web Dashboard: %v", err)
+		slog.Error("web dashboard error", "err", err)
 	}
 }
 
@@ -447,7 +448,7 @@ func taskShellHandler(c *gin.Context) {
 
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Failed to upgrade websocket: %v", err)
+		slog.Error("failed to upgrade websocket", "err", err)
 		return
 	}
 	defer ws.Close()
@@ -636,7 +637,7 @@ func redeployStackHandler(c *gin.Context) {
 			// Service already exists — check what changed
 			if serviceDefinitionChanged(existing, srvDef) {
 				// Definition changed (image, ports, env, etc.) → full teardown + recreate
-				log.Printf("[Redeploy] Service %q: definition changed, full recreate", srvName)
+				slog.Info("redeploy: definition changed, full recreate", "service", srvName)
 				stopAllTasksForService(existing.ID)
 				updateServiceRecord(&existing, srvDef, newReplicas)
 				webScheduleService(&existing)
@@ -644,7 +645,7 @@ func redeployStackHandler(c *gin.Context) {
 			} else if existing.DesiredReplicas != newReplicas {
 				// Only replica count changed → incremental scale
 				delta := newReplicas - existing.DesiredReplicas
-				log.Printf("[Redeploy] Service %q: scaling %d → %d (delta: %+d)", srvName, existing.DesiredReplicas, newReplicas, delta)
+				slog.Info("redeploy: scaling service", "service", srvName, "from", existing.DesiredReplicas, "to", newReplicas, "delta", delta)
 				if delta > 0 {
 					scaleServiceUp(&existing, delta)
 				} else {
@@ -660,7 +661,7 @@ func redeployStackHandler(c *gin.Context) {
 			delete(existingByName, srvName)
 		} else {
 			// Brand new service — create and schedule
-			log.Printf("[Redeploy] Service %q: new service, creating %d replicas", srvName, newReplicas)
+			slog.Info("redeploy: new service, creating replicas", "service", srvName, "replicas", newReplicas)
 			service := db.Service{
 				ID:              uuid.New().String(),
 				StackID:         id,
@@ -681,7 +682,7 @@ func redeployStackHandler(c *gin.Context) {
 
 	// 4. Remove services that were in the old compose but not in the new one
 	for srvName, orphan := range existingByName {
-		log.Printf("[Redeploy] Service %q: removed from compose, stopping", srvName)
+		slog.Info("redeploy: service removed, stopping", "service", srvName)
 		stopAllTasksForService(orphan.ID)
 		db.DB.Where("id = ?", orphan.ID).Delete(&db.Service{})
 		summary = append(summary, fmt.Sprintf("%s: removed", srvName))
@@ -717,7 +718,7 @@ func redeploySREStack(c *gin.Context) {
 
 	// 4. Re-register in DB
 	if err := monitor.RegisterInDB(db.DB); err != nil {
-		log.Printf("Warning: SRE stack deployed but failed to register in DB: %v", err)
+		slog.Warn("SRE stack deployed but failed to register in DB", "err", err)
 	}
 	aqueducts.GenerateHostsFile()
 
@@ -750,7 +751,7 @@ func redeployCoreStack(c *gin.Context) {
 
 	// 4. Re-register in DB
 	if err := coredns.RegisterInDB(db.DB); err != nil {
-		log.Printf("Warning: Core stack deployed but failed to register in DB: %v", err)
+		slog.Warn("core stack deployed but failed to register in DB", "err", err)
 	}
 	aqueducts.GenerateHostsFile()
 
@@ -921,7 +922,7 @@ func nodeRoleHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node role change: %v", err)
+		slog.Warn("failed to update Prometheus config on node role change", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node role updated"})
@@ -955,7 +956,7 @@ func nodeAvailabilityHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node availability change: %v", err)
+		slog.Warn("failed to update Prometheus config on node availability change", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
@@ -971,7 +972,7 @@ func nodeLeaveHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node leave: %v", err)
+		slog.Warn("failed to update Prometheus config on node leave", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
@@ -1024,7 +1025,7 @@ func nodeShellHandler(c *gin.Context) {
 
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Failed to upgrade websocket: %v", err)
+		slog.Error("failed to upgrade websocket", "err", err)
 		return
 	}
 	defer ws.Close()

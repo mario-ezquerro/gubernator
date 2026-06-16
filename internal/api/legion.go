@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -62,7 +62,7 @@ func NodeJoinHandler(c *gin.Context) {
 
 	// Regenerate and reload Prometheus configurations with the new worker target
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node join: %v", err)
+		slog.Warn("failed to update Prometheus config on node join", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully joined the cluster"})

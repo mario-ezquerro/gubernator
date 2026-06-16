@@ -1,8 +1,9 @@
 package api
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -38,44 +39,36 @@ func dbPath() string {
 }
 
 // Start initializes the Gin router and starts the REST API server on port 4000.
-func Start() {
-	// Initialize the Database
-	db.Init(dbPath())
+// It blocks until ctx is cancelled, then shuts down gracefully.
+func Start(ctx context.Context) error {
+	if err := db.Init(dbPath()); err != nil {
+		return fmt.Errorf("database init: %w", err)
+	}
 
 	// ── CoreDNS: Ensure gbnt-net network and CoreDNS container are running ──
-	// This is the core DNS infrastructure for all Gubernator-managed containers.
-	// gbnt-net: shared bridge network where all managed containers resolve *.gbnt
-	// gbnt-coredns: CoreDNS container serving the .gbnt zone
 	if err := coredns.EnsureNetwork(); err != nil {
-		log.Printf("⚠️  CoreDNS: failed to create gbnt-net network: %v", err)
+		slog.Warn("CoreDNS: failed to create gbnt-net network", "err", err)
 	} else {
 		go func() {
 			// Small delay to allow Docker daemon to fully register the network
 			time.Sleep(2 * time.Second)
 			if err := coredns.EnsureRunning(); err != nil {
-				log.Printf("⚠️  CoreDNS: failed to start gbnt-coredns container: %v", err)
+				slog.Warn("CoreDNS: failed to start gbnt-coredns container", "err", err)
 			}
 			if err := caddy.EnsureRunning(); err != nil {
-				log.Printf("⚠️  Caddy: failed to start gbnt-caddy container: %v", err)
+				slog.Warn("Caddy: failed to start gbnt-caddy container", "err", err)
 			}
 			if err := coredns.RegisterInDB(db.GetDB()); err != nil {
-				log.Printf("⚠️  Core Stack: failed to register in database: %v", err)
+				slog.Warn("core stack: failed to register in database", "err", err)
 			}
 			aqueducts.GenerateHostsFile()
 		}()
 	}
 
-	// Start Background Healthchecks & Metrics Updater
-	go startWatchtowers()
-
-	// Start Web Dashboard on port 4001 (if env vars are set)
+	go startWatchtowers(ctx)
 	go web.StartDashboard()
-
-	// Start Telemetry & Swagger on port 4002
-	go startTelemetryServer()
-
-	// Start Local Executor: run pending tasks assigned to the local manager node
-	go startLocalExecutor()
+	go startTelemetryServer(ctx)
+	go startLocalExecutor(ctx)
 
 	// Auto-deploy SRE Monitoring Stack if GBNT_MONITOR=true
 	monitorEnabled := strings.ToLower(os.Getenv("GBNT_MONITOR"))
@@ -96,7 +89,6 @@ func Start() {
 				fmt.Printf("❌ SRE Monitor: deployment failed: %v\n", err)
 				return
 			}
-			// Register monitoring containers in the database for dashboard visibility
 			if err := monitor.RegisterInDB(db.GetDB()); err != nil {
 				fmt.Printf("⚠️  SRE Monitor: failed to register in DB: %v\n", err)
 			}
@@ -106,41 +98,31 @@ func Start() {
 		}()
 	}
 
-	// Run GIN in release mode to avoid debug noise in logs
 	gin.SetMode(gin.ReleaseMode)
-
 	r := gin.Default()
 
 	// API Authentication Middleware
-	// Token priority: env var → DB value (loaded by db.Init → ensureAPIToken)
 	authMiddleware := func(c *gin.Context) {
 		expectedToken := os.Getenv("GBNT_API_TOKEN")
 		if expectedToken == "" {
-			// Last resort: read from DB directly (should not happen after Init)
 			expectedToken = db.GetAPIToken()
 		}
-
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "Bearer "+expectedToken {
+		if c.GetHeader("Authorization") != "Bearer "+expectedToken {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized API access. Invalid or missing Bearer token."})
 			return
 		}
 		c.Next()
 	}
 
-	// v1 group
 	v1 := r.Group("/v1")
 	{
 		node := v1.Group("/node", authMiddleware)
 		{
-			// Existing node logic
 			node.GET("/ls", NodeListHandler)
 			node.POST("/join", NodeJoinHandler)
 			node.POST("/heartbeat", NodeHeartbeatHandler)
 			node.GET("/tasks/:node_id", NodeTasksHandler)
 			node.POST("/tasks/:task_id/status", UpdateTaskStatusHandler)
-
-			// New CRUD node logic
 			node.GET("/:id", NodeInspectHandler)
 			node.POST("/:id/role", NodeRoleHandler)
 			node.POST("/:id/availability", NodeAvailabilityHandler)
@@ -176,27 +158,49 @@ func Start() {
 		}
 	}
 
-	log.Println("Starting Gubernator Manager API on :4000")
-	if err := r.Run(":4000"); err != nil {
-		log.Fatalf("Failed to start API server: %v", err)
+	srv := &http.Server{Addr: ":4000", Handler: r}
+
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutCtx); err != nil {
+			slog.Error("API server shutdown error", "err", err)
+		}
+	}()
+
+	slog.Info("starting Gubernator Manager API", "addr", ":4000")
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("API server: %w", err)
 	}
+	return nil
 }
 
-// startTelemetryServer runs on port 4002 serving Swagger, Metrics and Healthchecks
-func startTelemetryServer() {
+// startTelemetryServer runs on port 4002 serving Swagger, Metrics and Healthchecks.
+func startTelemetryServer(ctx context.Context) {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "healthy"})
 	})
-
 	r.GET("/metrics", telemetry.MetricsHandler())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	log.Println("Starting Telemetry, Health & Swagger API on :4002")
-	if err := r.Run(":4002"); err != nil {
-		log.Fatalf("Failed to start Telemetry server: %v", err)
+	srv := &http.Server{Addr: ":4002", Handler: r}
+
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutCtx); err != nil {
+			slog.Error("telemetry server shutdown error", "err", err)
+		}
+	}()
+
+	slog.Info("starting telemetry, health & swagger server", "addr", ":4002")
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Error("telemetry server error", "err", err)
 	}
 }
 
@@ -224,12 +228,15 @@ func NodeListHandler(c *gin.Context) {
 }
 
 // startWatchtowers runs a background loop to update telemetry metrics
-// and check for stale nodes (missed heartbeats).
-func startWatchtowers() {
+// and check for stale nodes (missed heartbeats). Exits when ctx is cancelled.
+func startWatchtowers(ctx context.Context) {
 	for {
-		time.Sleep(15 * time.Second)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(15 * time.Second):
+		}
 
-		// 1. Update Metrics
 		var nodeCount int64
 		db.DB.Model(&db.Node{}).Count(&nodeCount)
 		telemetry.TotalNodes.Set(float64(nodeCount))
@@ -238,7 +245,7 @@ func startWatchtowers() {
 		db.DB.Model(&db.Task{}).Count(&taskCount)
 		telemetry.TotalTasks.Set(float64(taskCount))
 
-		// 2. Healthchecks: Mark nodes as 'down' if no heartbeat in 30 seconds
+		// Mark nodes as 'down' if no heartbeat in 30 seconds
 		threshold := time.Now().Add(-30 * time.Second)
 		db.DB.Model(&db.Node{}).
 			Where("role = ?", "worker").

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +60,7 @@ func NodeRoleHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node role change: %v", err)
+		slog.Warn("failed to update Prometheus config on node role change", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node role updated"})
@@ -106,7 +106,7 @@ func NodeAvailabilityHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node availability change: %v", err)
+		slog.Warn("failed to update Prometheus config on node availability change", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
@@ -129,7 +129,7 @@ func NodeLeaveHandler(c *gin.Context) {
 
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
-		log.Printf("Warning: failed to update Prometheus config on node leave: %v", err)
+		slog.Warn("failed to update Prometheus config on node leave", "err", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})

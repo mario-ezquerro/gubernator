@@ -2,7 +2,7 @@ package aqueducts
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -17,7 +17,7 @@ import (
 func GenerateCaddyfile() {
 	var services []db.Service
 	if err := db.DB.Find(&services).Error; err != nil {
-		log.Printf("Failed to fetch services for Ingress: %v\n", err)
+		slog.Error("failed to fetch services for ingress", "err", err)
 		return
 	}
 
@@ -86,12 +86,12 @@ func GenerateCaddyfile() {
 
 	caddyfilePath := caddy.CaddyfilePath()
 	if err := os.WriteFile(caddyfilePath, []byte(content), 0644); err != nil {
-		log.Printf("Failed to write Caddyfile: %v\n", err)
+		slog.Error("failed to write Caddyfile", "err", err)
 		return
 	}
 
-	log.Println("🌊 Aqueducts: Generated new Caddyfile.")
+	slog.Info("aqueducts: generated new Caddyfile")
 	if err := caddy.ReloadConfig(); err != nil {
-		log.Printf("⚠️  Aqueducts: Caddy reload failed: %v\n", err)
+		slog.Warn("aqueducts: Caddy reload failed", "err", err)
 	}
 }
