@@ -50,6 +50,7 @@ func setupRouter(t *testing.T) (*gin.Engine, string) {
 		node.POST("/:id/role", NodeRoleHandler)
 		node.POST("/:id/availability", NodeAvailabilityHandler)
 		node.POST("/:id/leave", NodeLeaveHandler)
+		node.POST("/:id/labels", NodeLabelsHandler)
 
 		cluster := v1.Group("/cluster")
 		cluster.GET("/token", ClusterTokenHandler)
@@ -545,3 +546,52 @@ func TestUpdateTaskStatus(t *testing.T) {
 		t.Errorf("expected 200, got %d: %s", w2.Code, w2.Body.String())
 	}
 }
+
+func TestNodeLabelsUpdate(t *testing.T) {
+	r, tok := setupRouter(t)
+
+	// Update manager node labels
+	body, _ := json.Marshal(map[string]interface{}{
+		"labels": map[string]string{
+			"gbnt.node.role": "hacked-role", // should be ignored/restored to "manager"
+			"gbnt.node.arch": "hacked-arch", // should be ignored/restored to the original or detected arch
+			"custom-key":     "custom-val",
+		},
+	})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/node/node-local-manager/labels", bytes.NewReader(body))
+	req.Header.Set("Authorization", authHeader(tok))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Fetch node details to verify labels
+	w2 := httptest.NewRecorder()
+	req2, _ := http.NewRequest("GET", "/v1/node/node-local-manager", nil)
+	req2.Header.Set("Authorization", authHeader(tok))
+	r.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("failed to inspect manager: %d", w2.Code)
+	}
+
+	var node db.Node
+	json.Unmarshal(w2.Body.Bytes(), &node)
+
+	// Role should remain "manager"
+	if node.Labels["gbnt.node.role"] != "manager" {
+		t.Errorf("expected gbnt.node.role to be 'manager', got: %s", node.Labels["gbnt.node.role"])
+	}
+
+	// Hacked arch should be rejected/restored (since it wasn't hacked-arch originally)
+	if node.Labels["gbnt.node.arch"] == "hacked-arch" {
+		t.Errorf("expected gbnt.node.arch to not be 'hacked-arch'")
+	}
+
+	// Custom key should be set
+	if node.Labels["custom-key"] != "custom-val" {
+		t.Errorf("expected custom-key to be 'custom-val', got: %s", node.Labels["custom-key"])
+	}
+}
+

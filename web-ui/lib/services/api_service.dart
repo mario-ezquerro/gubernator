@@ -160,5 +160,15 @@ class ApiService {
     final response = await http.post(Uri.parse('/api/node/$id/leave'));
     return response.statusCode == 200;
   }
+
+  /// Updates a node's labels.
+  static Future<bool> updateNodeLabels(String id, Map<String, String> labels) async {
+    final response = await http.post(
+      Uri.parse('/api/node/$id/labels'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'labels': labels}),
+    );
+    return response.statusCode == 200;
+  }
 }
 

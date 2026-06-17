@@ -12,6 +12,7 @@ import '../widgets/settings_dialog.dart';
 import '../widgets/new_stack_dialog.dart';
 import '../widgets/shell_dialog.dart';
 import '../widgets/stack_diagram_dialog.dart';
+import '../widgets/node_labels_dialog.dart';
 
 /// Main dashboard screen.
 class DashboardScreen extends StatefulWidget {
@@ -49,6 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int? _taskSortColumnIndex;
   bool _taskSortAscending = true;
   PlutoGridStateManager? _taskGridStateManager;
+  List<String> _layoutOrder = ['stacks', 'nodes'];
 
   final ScrollController _stackScrollController = ScrollController();
   final ScrollController _nodeScrollController = ScrollController();
@@ -206,13 +208,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ─── Stack Actions ──────────────────────────────────────────────────
-  Future<void> _deleteStack(String id) async {
+  Future<void> _deleteStack(String id, String name) async {
+    final isCore = id == 'core-gbnt-stack' || name.toLowerCase().contains('core-gbnt');
+    final isMonitor = id == 'sre-monitor-stack' || name.toLowerCase().contains('monitor');
+
+    final title = isCore
+        ? 'Restart Core Stack'
+        : isMonitor
+            ? 'Stop Monitor Stack'
+            : 'Delete Stack';
+
+    final content = isCore
+        ? 'Restart all core containers? This will not delete the stack or stop it permanently.'
+        : isMonitor
+            ? 'Stop and remove all monitor containers? The stack will remain in the dashboard for redeployment.'
+            : 'Delete this stack and stop all its containers?';
+
+    final actionText = isCore
+        ? 'Restart'
+        : isMonitor
+            ? 'Stop'
+            : 'Delete';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Stack'),
-        content:
-            const Text('Delete this stack and stop all its containers?'),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -221,14 +243,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.error),
-              child: const Text('Delete')),
+              child: Text(actionText)),
         ],
       ),
     );
     if (confirmed != true) return;
     final ok = await ApiService.deleteStack(id);
+
+    final successMsg = isCore
+        ? 'Core services restarted successfully!'
+        : isMonitor
+            ? 'Monitor containers stopped.'
+            : 'Stack deleted and containers stopped.';
+
+    final failMsg = isCore
+        ? 'Failed to restart core services.'
+        : isMonitor
+            ? 'Failed to stop monitor.'
+            : 'Failed to delete stack.';
+
     _showSnackBar(
-      ok ? 'Stack deleted and containers stopped.' : 'Failed to delete stack.',
+      ok ? successMsg : failMsg,
       isError: !ok,
     );
     _fetchData();
@@ -331,6 +366,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         services: _state.services,
         tasks: _state.tasks,
         nodes: _state.nodes,
+      ),
+    );
+  }
+
+  void _showNodeLabelsDialog(Node n) {
+    showDialog(
+      context: context,
+      builder: (ctx) => NodeLabelsDialog(
+        node: n,
+        onLabelsSaved: () {
+          _showSnackBar('Node labels updated successfully!');
+          _fetchData();
+        },
       ),
     );
   }
@@ -925,32 +973,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Narrow screen → stack vertically
     if (availableWidth <= 700) {
+      final children = _layoutOrder.map((type) {
+        final card = type == 'stacks' ? _buildStacksCard(theme) : _buildNodesCard(theme);
+        return _buildDraggableCard(type, card, availableWidth);
+      }).toList();
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildStacksCard(theme),
+          children[0],
           const SizedBox(height: gap),
-          _buildNodesCard(theme),
+          children[1],
         ],
       );
     }
 
     // Wide screen → side by side.
-    // IMPORTANT: we wrap the Row in SizedBox(width: availableWidth) so that
-    // the Row gets a **bounded** width parent. Without this explicit bound the
-    // ReorderableListView passes maxWidth=∞ and the Row cannot lay out its
-    // children correctly even when the children have explicit SizedBox widths.
     final cardWidth = (availableWidth - gap) / 2;
+    final children = _layoutOrder.map((type) {
+      final card = type == 'stacks' ? _buildStacksCard(theme) : _buildNodesCard(theme);
+      return SizedBox(
+        width: cardWidth,
+        child: _buildDraggableCard(type, card, cardWidth),
+      );
+    }).toList();
+
     return SizedBox(
       width: availableWidth,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: cardWidth, child: _buildStacksCard(theme)),
+          children[0],
           const SizedBox(width: gap),
-          SizedBox(width: cardWidth, child: _buildNodesCard(theme)),
+          children[1],
         ],
       ),
+    );
+  }
+
+  Widget _buildDraggableCard(String type, Widget child, double? width) {
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (details) => details.data != type,
+      onAcceptWithDetails: (details) {
+        setState(() {
+          final index1 = _layoutOrder.indexOf(details.data);
+          final index2 = _layoutOrder.indexOf(type);
+          final temp = _layoutOrder[index1];
+          _layoutOrder[index1] = _layoutOrder[index2];
+          _layoutOrder[index2] = temp;
+        });
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isOver = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: isOver
+                ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                : null,
+          ),
+          child: Draggable<String>(
+            data: type,
+            feedback: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: width ?? 350,
+                child: Opacity(
+                  opacity: 0.85,
+                  child: child,
+                ),
+              ),
+            ),
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: child,
+            ),
+            child: child,
+          ),
+        );
+      },
     );
   }
 
@@ -1098,8 +1201,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const Color(0xFF10B981), () => _duplicateStack(s)),
                           _actionBtn(Icons.rocket_launch, 'Redeploy',
                               const Color(0xFFD29922), () => _redeployStack(s.id)),
-                          _actionBtn(Icons.delete, 'Delete',
-                              const Color(0xFFEF4444), () => _deleteStack(s.id)),
+                          _actionBtn(
+                              Icons.delete,
+                              (s.id == 'core-gbnt-stack' || s.name.toLowerCase().contains('core-gbnt'))
+                                  ? 'Restart Core (Does not delete)'
+                                  : (s.id == 'sre-monitor-stack' || s.name.toLowerCase().contains('monitor'))
+                                      ? 'Stop Monitor (Keeps stack)'
+                                      : 'Delete',
+                              const Color(0xFFEF4444),
+                              () => _deleteStack(s.id, s.name)),
                         ],
                       )),
                     ]);
@@ -1206,6 +1316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         });
                       },
                     ),
+                    const DataColumn(label: Text('LABELS')),
                     const DataColumn(label: Text('ACTIONS')),
                   ],
                   rows: filteredNodes.map((n) {
@@ -1232,6 +1343,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       DataCell(StatusBadge(label: n.role)),
                       DataCell(StatusBadge(label: n.status)),
                       DataCell(
+                        n.labels.isEmpty
+                            ? const Text('-')
+                            : Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: n.labels.entries.map((entry) {
+                                  final isFixed = entry.key == 'gbnt.node.role' || entry.key == 'gbnt.node.arch';
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isFixed
+                                          ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                                          : theme.colorScheme.secondary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: isFixed
+                                            ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                                            : theme.colorScheme.secondary.withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${entry.key}=${entry.value}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: isFixed
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.secondary,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                      ),
+                      DataCell(
                         PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert, size: 20),
                           tooltip: 'Node Actions',
@@ -1240,6 +1386,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _viewNodeShell(n.id, n.ip);
                             } else if (action == 'inspect') {
                               _showNodeInspectDialog(n);
+                            } else if (action == 'labels') {
+                              _showNodeLabelsDialog(n);
                             } else if (action == 'promote') {
                               _updateNodeRole(n.id, 'manager');
                             } else if (action == 'demote') {
@@ -1273,6 +1421,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Icon(Icons.info_outline, size: 18),
                                   SizedBox(width: 8),
                                   Text('Inspect'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'labels',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.label_outline, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Edit Labels'),
                                 ],
                               ),
                             ),

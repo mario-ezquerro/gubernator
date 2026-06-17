@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/spf13/cobra"
 )
@@ -82,6 +83,7 @@ var legionJoinCmd = &cobra.Command{
 			"labels": map[string]string{
 				"gbnt.node.role":     "worker",
 				"gbnt.node.hostname": hostname,
+				"gbnt.node.arch":     db.DetectArch(),
 			},
 		}
 

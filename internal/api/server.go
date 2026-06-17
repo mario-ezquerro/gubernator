@@ -127,6 +127,7 @@ func Start(ctx context.Context) error {
 			node.POST("/:id/role", NodeRoleHandler)
 			node.POST("/:id/availability", NodeAvailabilityHandler)
 			node.POST("/:id/leave", NodeLeaveHandler)
+			node.POST("/:id/labels", NodeLabelsHandler)
 		}
 
 		cluster := v1.Group("/cluster")

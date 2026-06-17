@@ -134,3 +134,38 @@ func NodeLeaveHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
 }
+
+type NodeLabelsRequest struct {
+	Labels map[string]string `json:"labels" binding:"required"`
+}
+
+// @Summary Update Node Labels
+// @Description Add, update, or remove node labels
+// @Tags nodes
+// @Accept json
+// @Produce json
+// @Param id path string true "Node ID"
+// @Param request body NodeLabelsRequest true "Labels Update"
+// @Success 200 {object} map[string]string
+// @Router /v1/node/{id}/labels [post]
+func NodeLabelsHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req NodeLabelsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := db.UpdateNodeLabels(id, req.Labels); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		slog.Warn("failed to update Prometheus config on node labels change", "err", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node labels updated"})
+}
+

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -207,6 +208,7 @@ func seedInitialData() {
 			Labels: map[string]string{
 				"gbnt.node.role": "manager",
 				"gbnt.node.zone": "local",
+				"gbnt.node.arch": DetectArch(),
 			},
 		}
 
@@ -216,4 +218,46 @@ func seedInitialData() {
 			slog.Info("initial manager node seeded")
 		}
 	}
+}
+
+// DetectArch returns a standardized CPU architecture name.
+func DetectArch() string {
+	arch := runtime.GOARCH
+	switch arch {
+	case "amd64":
+		return "x86_64"
+	case "386":
+		return "x86"
+	case "arm64":
+		return "arm64"
+	case "arm":
+		return "arm"
+	default:
+		return arch
+	}
+}
+
+// UpdateNodeLabels saves new labels for a node, enforcing read-only system labels.
+func UpdateNodeLabels(nodeID string, newLabels map[string]string) error {
+	var node Node
+	if err := DB.First(&node, "id = ?", nodeID).Error; err != nil {
+		return err
+	}
+
+	if newLabels == nil {
+		newLabels = make(map[string]string)
+	}
+
+	// Enforce role system label
+	newLabels["gbnt.node.role"] = node.Role
+
+	// Enforce CPU architecture system label (keep existing or detect if missing)
+	archVal, exists := node.Labels["gbnt.node.arch"]
+	if !exists || archVal == "" {
+		archVal = DetectArch()
+	}
+	newLabels["gbnt.node.arch"] = archVal
+
+	node.Labels = newLabels
+	return DB.Save(&node).Error
 }

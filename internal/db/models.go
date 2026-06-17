@@ -35,9 +35,21 @@ func (n *Node) BeforeSave(tx *gorm.DB) (err error) {
 // AfterFind hook to unmarshal LabelsRaw into Labels after reading from DB
 func (n *Node) AfterFind(tx *gorm.DB) (err error) {
 	if len(n.LabelsRaw) > 0 {
-		return json.Unmarshal(n.LabelsRaw, &n.Labels)
+		err = json.Unmarshal(n.LabelsRaw, &n.Labels)
+	} else {
+		n.Labels = make(map[string]string)
 	}
-	n.Labels = make(map[string]string)
+	if err != nil {
+		return err
+	}
+	if n.Labels == nil {
+		n.Labels = make(map[string]string)
+	}
+	// Dynamically populate/ensure fixed system labels are present
+	n.Labels["gbnt.node.role"] = n.Role
+	if _, exists := n.Labels["gbnt.node.arch"]; !exists || n.Labels["gbnt.node.arch"] == "" {
+		n.Labels["gbnt.node.arch"] = DetectArch()
+	}
 	return nil
 }
 

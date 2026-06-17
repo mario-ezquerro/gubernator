@@ -168,6 +168,7 @@ func StartDashboard() {
 		api.POST("/node/:id/role", nodeRoleHandler)
 		api.POST("/node/:id/availability", nodeAvailabilityHandler)
 		api.POST("/node/:id/leave", nodeLeaveHandler)
+		api.POST("/node/:id/labels", nodeLabelsHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
 	}
 
@@ -309,6 +310,43 @@ func changePasswordHandler(c *gin.Context) {
 
 func deleteStackHandler(c *gin.Context) {
 	id := c.Param("id")
+
+	// Special handling for SRE Monitor stack
+	if id == monitor.SREStackID {
+		// Stop and remove all monitoring containers (Docker)
+		monitor.StopAll()
+		// Update tasks status to "dead" and clear container IP in DB, keeping stack and services
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+				"status":       "dead",
+				"container_ip": "",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
+	}
+
+	// Special handling for Core stack (CoreDNS + Caddy + Gubernator)
+	if id == coredns.CoreStackID {
+		// Restart the core containers but do not delete them from database or stop/remove them permanently
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			var tasks []db.Task
+			db.DB.Where("service_id = ?", svc.ID).Find(&tasks)
+			for _, task := range tasks {
+				if task.ContainerName != "" {
+					go func(name string) {
+						exec.Command("docker", "restart", name).Run()
+					}(task.ContainerName)
+				}
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
+	}
 
 	// Stop containers before deleting
 	var services []db.Service
@@ -976,6 +1014,31 @@ func nodeLeaveHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
+}
+
+type nodeLabelsRequest struct {
+	Labels map[string]string `json:"labels" binding:"required"`
+}
+
+func nodeLabelsHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req nodeLabelsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := db.UpdateNodeLabels(id, req.Labels); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Trigger Prometheus targets reload
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		slog.Warn("failed to update Prometheus config on node labels change", "err", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node labels updated"})
 }
 
 func grafanaProxyHandler(c *gin.Context) {

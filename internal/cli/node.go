@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -121,6 +122,8 @@ var nodeDemoteCmd = &cobra.Command{
 
 var (
 	nodeAvailability string
+	nodeLabelAdd     []string
+	nodeLabelRm      []string
 )
 
 var nodeUpdateCmd = &cobra.Command{
@@ -137,7 +140,121 @@ var nodeUpdateCmd = &cobra.Command{
 				fmt.Printf("Failed to update node availability.\n")
 			}
 		}
+
+		if len(nodeLabelAdd) > 0 || len(nodeLabelRm) > 0 {
+			updateNodeLabelsCLI(args[0], nodeLabelAdd, nodeLabelRm)
+		}
 	},
+}
+
+var nodeLabelCmd = &cobra.Command{
+	Use:   "label [node_id] [key=value | key]...",
+	Short: "Manage labels for a node",
+	Long:  `Add, update or remove labels of a node. Arguments with "=" (key=value) will add or update a label. Arguments without "=" (key) will remove that label.`,
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		nodeID := args[0]
+		toAdd := []string{}
+		toRm := []string{}
+
+		for _, arg := range args[1:] {
+			if strings.Contains(arg, "=") {
+				toAdd = append(toAdd, arg)
+			} else {
+				toRm = append(toRm, arg)
+			}
+		}
+
+		if len(toAdd) == 0 && len(toRm) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: must specify at least one label to add (key=value) or remove (key)")
+			cmd.Help()
+			os.Exit(1)
+		}
+
+		updateNodeLabelsCLI(nodeID, toAdd, toRm)
+	},
+}
+
+func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
+	if len(toAdd) == 0 && len(toRm) == 0 {
+		return
+	}
+
+	// 1. Fetch current node data to inspect its labels
+	resp, err := DoAPIRequest("GET", "/v1/node/"+nodeID, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to contact API: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+		os.Exit(1)
+	}
+
+	var node struct {
+		Labels map[string]string `json:"labels"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&node); err != nil {
+		fmt.Fprintf(os.Stderr, "Error decoding node response: %v\n", err)
+		os.Exit(1)
+	}
+
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+
+	// 2. Process removals
+	for _, key := range toRm {
+		if key == "gbnt.node.role" || key == "gbnt.node.arch" {
+			fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be removed.\n", key)
+			os.Exit(1)
+		}
+		delete(node.Labels, key)
+	}
+
+	// 3. Process additions
+	for _, item := range toAdd {
+		parts := strings.SplitN(item, "=", 2)
+		if len(parts) != 2 {
+			fmt.Fprintf(os.Stderr, "Error: Invalid label format '%s'. Must be key=value.\n", item)
+			os.Exit(1)
+		}
+		key, value := parts[0], parts[1]
+		if key == "" {
+			fmt.Fprintf(os.Stderr, "Error: Label key cannot be empty.\n")
+			os.Exit(1)
+		}
+		if key == "gbnt.node.role" || key == "gbnt.node.arch" {
+			fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be modified.\n", key)
+			os.Exit(1)
+		}
+		node.Labels[key] = value
+	}
+
+	// 4. Send the updated labels map
+	payload, err := json.Marshal(map[string]interface{}{"labels": node.Labels})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding request payload: %v\n", err)
+		os.Exit(1)
+	}
+
+	respUpdate, err := DoAPIRequest("POST", "/v1/node/"+nodeID+"/labels", bytes.NewReader(payload))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to contact API to update labels: %v\n", err)
+		os.Exit(1)
+	}
+	defer respUpdate.Body.Close()
+
+	if respUpdate.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(respUpdate.Body)
+		fmt.Fprintf(os.Stderr, "Failed to update labels (Status %d): %s\n", respUpdate.StatusCode, string(body))
+		os.Exit(1)
+	}
+
+	fmt.Printf("Node %s labels updated successfully.\n", nodeID)
 }
 
 func init() {
@@ -147,6 +264,9 @@ func init() {
 	nodeCmd.AddCommand(nodePromoteCmd)
 	nodeCmd.AddCommand(nodeDemoteCmd)
 	nodeCmd.AddCommand(nodeUpdateCmd)
+	nodeCmd.AddCommand(nodeLabelCmd)
 
 	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain)")
+	nodeUpdateCmd.Flags().StringSliceVar(&nodeLabelAdd, "label-add", []string{}, "Add or update labels (key=value)")
+	nodeUpdateCmd.Flags().StringSliceVar(&nodeLabelRm, "label-rm", []string{}, "Remove labels by key")
 }
