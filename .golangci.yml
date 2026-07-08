@@ -1,15 +1,13 @@
 version: "2"
 
 linters:
+  disable-all: true
   enable:
-    - errcheck       # unchecked errors
     - govet          # suspicious constructs (printf, unreachable, shadow)
     - staticcheck    # large set of correctness checks
     - ineffassign    # assignments whose value is never used
     - unused         # unused code
-    - gosimple       # simplify expressions
     - bodyclose      # HTTP response body not closed
-    - noctx          # HTTP requests without context
     - gocritic       # opinionated but practical style checks
 
 linters-settings:

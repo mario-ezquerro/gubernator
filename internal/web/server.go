@@ -1093,15 +1093,14 @@ func grafanaProxyHandler(c *gin.Context) {
 
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		req.Host = targetHost
-		username, _, _ := req.BasicAuth()
+	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
+		pr.SetURL(targetURL)
+		pr.Out.Host = targetHost
+		username, _, _ := pr.In.BasicAuth()
 		if username != "" {
-			req.Header.Set("X-WEBAUTH-USER", username)
+			pr.Out.Header.Set("X-WEBAUTH-USER", username)
 		}
-		req.Header.Del("Authorization")
+		pr.Out.Header.Del("Authorization")
 	}
 
 	proxy.ModifyResponse = func(resp *http.Response) error {

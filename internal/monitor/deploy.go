@@ -75,7 +75,7 @@ func DeployManagerStack() error {
 		"grafana/loki:latest",
 		"-config.file=/etc/loki/loki-config.yml",
 	}); err != nil {
-		return fmt.Errorf("Loki failed: %w", err)
+		return fmt.Errorf("loki failed: %w", err)
 	}
 
 	// 3) Promtail
@@ -88,7 +88,7 @@ func DeployManagerStack() error {
 		"grafana/promtail:latest",
 		"-config.file=/etc/promtail/promtail-config.yml",
 	}); err != nil {
-		return fmt.Errorf("Promtail failed: %w", err)
+		return fmt.Errorf("promtail failed: %w", err)
 	}
 
 	// 4) Prometheus
@@ -106,7 +106,7 @@ func DeployManagerStack() error {
 		"--web.enable-lifecycle",
 	}
 	if err := runContainer(PrometheusName, promArgs); err != nil {
-		return fmt.Errorf("Prometheus failed: %w", err)
+		return fmt.Errorf("prometheus failed: %w", err)
 	}
 
 	// 5) Grafana
@@ -129,7 +129,7 @@ func DeployManagerStack() error {
 		"grafana/grafana:latest",
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
-		return fmt.Errorf("Grafana failed: %w", err)
+		return fmt.Errorf("grafana failed: %w", err)
 	}
 
 	return nil
