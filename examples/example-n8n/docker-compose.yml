@@ -1,3 +1,4 @@
+name: n8n-stack
 volumes:
   n8n_storage:
   postgres_storage:

@@ -1,3 +1,4 @@
+name: hello-lb
 services:
   hello-app:
     image: busybox:latest

@@ -1,3 +1,4 @@
+name: sre-monitoring
 services:
   prometheus:
     image: prom/prometheus:latest
