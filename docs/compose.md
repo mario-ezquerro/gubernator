@@ -12,8 +12,8 @@ Gubernator allows you to define the name of your stack directly inside the `dock
 
 Gubernator resolves the stack name in the following order:
 
-1. **Explicit argument** (e.g., CLI `[name]` argument).
-2. **`stack.name` constraint** (Gubernator specific extension, Recommended).
+1. **`stack.name` constraint** (Highest Priority - Overrides all other methods).
+2. **Explicit argument** (e.g., CLI `[name]` argument or Web UI input).
 3. **Top-level `name` property** (Native Docker Compose standard).
 
 ### Option A: The `stack.name` constraint (Recommended)

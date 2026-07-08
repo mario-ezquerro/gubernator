@@ -66,7 +66,15 @@ var stackDeployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("🚀 Stack '%s' deployed successfully!\n", name)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		var successResp map[string]interface{}
+		json.Unmarshal(bodyBytes, &successResp)
+		resolvedName := name
+		if n, ok := successResp["name"].(string); ok && n != "" {
+			resolvedName = n
+		}
+
+		fmt.Printf("🚀 Stack '%s' deployed successfully!\n", resolvedName)
 		fmt.Println("The Governor has dispatched the Centurions to schedule the tasks.")
 	},
 }

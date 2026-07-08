@@ -85,27 +85,28 @@ func StackDeployHandler(c *gin.Context) {
 
 	stackName := req.Name
 
-	// If name not provided via API, try to infer it from the raw YAML
-	if stackName == "" {
-		var tempCompose ComposeFile
-		if err := yaml.Unmarshal([]byte(req.ComposeRaw), &tempCompose); err == nil {
-			if tempCompose.Name != "" {
-				stackName = tempCompose.Name
-			} else {
-				// Fallback: search for stack.name == XXX in constraints
-				for _, srv := range tempCompose.Services {
-					for _, constraint := range srv.Deploy.Placement.Constraints {
-						parts := strings.Split(constraint, "==")
-						if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
-							stackName = strings.TrimSpace(parts[1])
-							break
-						}
-					}
-					if stackName != "" {
-						break
-					}
+	// Try to infer it from the raw YAML if present
+	var tempCompose ComposeFile
+	if err := yaml.Unmarshal([]byte(req.ComposeRaw), &tempCompose); err == nil {
+		extractedName := ""
+		// Fallback: search for stack.name == XXX in constraints
+		for _, srv := range tempCompose.Services {
+			for _, constraint := range srv.Deploy.Placement.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+					extractedName = strings.TrimSpace(parts[1])
+					break
 				}
 			}
+			if extractedName != "" {
+				break
+			}
+		}
+		
+		if extractedName != "" {
+			stackName = extractedName // Constraint has highest priority
+		} else if stackName == "" && tempCompose.Name != "" {
+			stackName = tempCompose.Name
 		}
 	}
 
@@ -158,7 +159,11 @@ func StackDeployHandler(c *gin.Context) {
 		scheduleService(&service)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Stack deployed successfully", "stack_id": stackID})
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Stack deployed successfully",
+		"stack_id": stackID,
+		"name":     stackName,
+	})
 }
 
 func scheduleService(service *db.Service) {

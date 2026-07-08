@@ -584,25 +584,28 @@ func deployStackHandler(c *gin.Context) {
 
 	stackName := req.Name
 
-	if stackName == "" {
-		var tempCompose composeFile
-		if err := yaml.Unmarshal([]byte(req.Compose), &tempCompose); err == nil {
-			if tempCompose.Name != "" {
-				stackName = tempCompose.Name
-			} else {
-				for _, srv := range tempCompose.Services {
-					for _, constraint := range srv.Deploy.Placement.Constraints {
-						parts := strings.Split(constraint, "==")
-						if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
-							stackName = strings.TrimSpace(parts[1])
-							break
-						}
-					}
-					if stackName != "" {
-						break
-					}
+	// Try to infer it from the raw YAML if present
+	var tempCompose composeFile
+	if err := yaml.Unmarshal([]byte(req.Compose), &tempCompose); err == nil {
+		extractedName := ""
+		// Fallback: search for stack.name == XXX in constraints
+		for _, srv := range tempCompose.Services {
+			for _, constraint := range srv.Deploy.Placement.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+					extractedName = strings.TrimSpace(parts[1])
+					break
 				}
 			}
+			if extractedName != "" {
+				break
+			}
+		}
+
+		if extractedName != "" {
+			stackName = extractedName // Constraint has highest priority
+		} else if stackName == "" && tempCompose.Name != "" {
+			stackName = tempCompose.Name
 		}
 	}
 
