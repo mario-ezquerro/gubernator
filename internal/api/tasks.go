@@ -129,5 +129,11 @@ func TaskRmHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
 	}
+
+	go func() {
+		aqueducts.GenerateHostsFile()
+		aqueducts.GenerateCaddyfile()
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"message": "Task removed"})
 }

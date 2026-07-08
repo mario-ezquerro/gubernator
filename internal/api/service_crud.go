@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -58,6 +59,11 @@ func ServiceRmHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
 		return
 	}
+
+	go func() {
+		aqueducts.GenerateHostsFile()
+		aqueducts.GenerateCaddyfile()
+	}()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Service removed"})
 }

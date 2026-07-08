@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"runtime"
 
@@ -193,6 +194,24 @@ func GetJoinToken() string {
 	return config.JoinToken
 }
 
+// detectLocalIP returns the preferred outbound IP of this machine
+// by opening a UDP connection (no data is sent) and reading the local address.
+// If GBNT_HOST_IP is set, it will be prioritized.
+func detectLocalIP() string {
+	if envIP := os.Getenv("GBNT_HOST_IP"); envIP != "" {
+		return envIP
+	}
+
+	conn, err := net.Dial("udp", "8.8.8.8:53")
+	if err == nil {
+		defer conn.Close()
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		return localAddr.IP.String()
+	}
+	// Fallback to localhost if no connection
+	return "127.0.0.1"
+}
+
 // seedInitialData ensures that at least the local Manager node exists in the DB.
 func seedInitialData() {
 	var count int64
@@ -202,7 +221,7 @@ func seedInitialData() {
 		slog.Info("seeding initial manager node")
 		managerNode := Node{
 			ID:     "node-local-manager",
-			IP:     "127.0.0.1",
+			IP:     detectLocalIP(),
 			Role:   "manager",
 			Status: "active",
 			Labels: map[string]string{
@@ -216,6 +235,16 @@ func seedInitialData() {
 			slog.Error("failed to seed initial manager node", "err", err)
 		} else {
 			slog.Info("initial manager node seeded")
+		}
+	} else {
+		// Update the manager node with the real IP in case it was 127.0.0.1 or changed
+		var managerNode Node
+		if err := DB.First(&managerNode, "id = ?", "node-local-manager").Error; err == nil {
+			currentIP := detectLocalIP()
+			if managerNode.IP != currentIP {
+				DB.Model(&managerNode).Update("ip", currentIP)
+				slog.Info("updated manager node IP", "new_ip", currentIP)
+			}
 		}
 	}
 }

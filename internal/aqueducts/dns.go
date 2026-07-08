@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -17,6 +18,12 @@ func GenerateHostsFile() {
 	if err := db.DB.Where("status = ? AND container_ip != ?", "running", "").Find(&tasks).Error; err != nil {
 		slog.Error("failed to fetch tasks for DNS generation", "err", err)
 		return
+	}
+
+	var managerNode db.Node
+	hostIP := "127.0.0.1" // Fallback
+	if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
+		hostIP = managerNode.IP
 	}
 
 	content := "# Gubernator Auto-Generated CoreDNS Hosts File\n"
@@ -34,6 +41,25 @@ func GenerateHostsFile() {
 				// Short alias (e.g. web.mystack.gbnt points to the first container MVP)
 				shortDomain := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
 				content += fmt.Sprintf("%s\t%s\n", t.ContainerIP, shortDomain)
+			}
+		}
+	}
+
+	// Add records for ingress.host to point to the host IP
+	var services []db.Service
+	if err := db.DB.Find(&services).Error; err == nil {
+		seenHosts := make(map[string]bool)
+		for _, svc := range services {
+			for _, constraint := range svc.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					if (key == "ingress.host" || key == "node.labels.gbnt.ingress.host") && !seenHosts[val] {
+						seenHosts[val] = true
+						content += fmt.Sprintf("%s\t%s\n", hostIP, val)
+					}
+				}
 			}
 		}
 	}

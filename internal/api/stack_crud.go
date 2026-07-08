@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
@@ -107,6 +108,10 @@ func StackRmHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
 		return
 	}
+
+	// Trigger generation of DNS and Ingress now that the stack and its tasks are deleted
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Stack removed and containers stopped"})
 }
