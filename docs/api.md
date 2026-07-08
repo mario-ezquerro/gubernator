@@ -100,7 +100,7 @@ Workers call this endpoint after starting a container:
 ## Example: Deploy via curl
 
 ```bash
-COMPOSE=$(cat examples/example-101/docker-compose.yml)
+COMPOSE=$(cat examples/example-wordpress/docker-compose.yml)
 
 curl -s -X POST http://localhost:4000/v1/stack/deploy \
   -H "Authorization: Bearer admin" \

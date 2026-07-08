@@ -40,8 +40,8 @@ func (e *EnvSlice) UnmarshalYAML(value *yaml.Node) error {
 	return fmt.Errorf("invalid environment format: must be a list or map")
 }
 
-// ComposeFile represents a simplified structure of docker-compose.yml
 type ComposeFile struct {
+	Name     string                    `yaml:"name"` // Top-level name in compose file
 	Services map[string]ComposeService `yaml:"services"`
 }
 
@@ -63,7 +63,7 @@ type ComposeService struct {
 }
 
 type StackDeployRequest struct {
-	Name       string `json:"name" binding:"required"`
+	Name       string `json:"name"` // Optional if provided in compose file
 	ComposeRaw string `json:"compose_raw" binding:"required"`
 }
 
@@ -76,7 +76,6 @@ type StackDeployRequest struct {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /v1/stack/deploy [post]
-// func StackDeployHandler(c *gin.Context) { ... }
 func StackDeployHandler(c *gin.Context) {
 	var req StackDeployRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,10 +83,41 @@ func StackDeployHandler(c *gin.Context) {
 		return
 	}
 
-	// Replace placeholders like {{stack.name}} with the actual stack name
-	composeRaw := strings.ReplaceAll(req.ComposeRaw, "{{stack.name}}", req.Name)
+	stackName := req.Name
 
-	// Parse YAML
+	// If name not provided via API, try to infer it from the raw YAML
+	if stackName == "" {
+		var tempCompose ComposeFile
+		if err := yaml.Unmarshal([]byte(req.ComposeRaw), &tempCompose); err == nil {
+			if tempCompose.Name != "" {
+				stackName = tempCompose.Name
+			} else {
+				// Fallback: search for stack.name == XXX in constraints
+				for _, srv := range tempCompose.Services {
+					for _, constraint := range srv.Deploy.Placement.Constraints {
+						parts := strings.Split(constraint, "==")
+						if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+							stackName = strings.TrimSpace(parts[1])
+							break
+						}
+					}
+					if stackName != "" {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if stackName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name must be provided via API or defined in compose file as 'name: <name>' or 'stack.name == <name>' constraint"})
+		return
+	}
+
+	// Replace placeholders like {{stack.name}} with the actual stack name
+	composeRaw := strings.ReplaceAll(req.ComposeRaw, "{{stack.name}}", stackName)
+
+	// Parse YAML for actual deployment
 	var compose ComposeFile
 	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
@@ -98,7 +128,7 @@ func StackDeployHandler(c *gin.Context) {
 	stackID := uuid.New().String()
 	stack := db.Stack{
 		ID:             stackID,
-		Name:           req.Name,
+		Name:           stackName,
 		RawComposeFile: composeRaw,
 	}
 	db.DB.Create(&stack)

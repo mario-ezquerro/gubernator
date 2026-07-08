@@ -1,7 +1,0 @@
-services:
-  whoami:
-    image: traefik/whoami
-    ports:
-      - "8082:80"
-    deploy:
-      replicas: 2

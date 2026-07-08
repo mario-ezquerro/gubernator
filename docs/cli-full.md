@@ -50,6 +50,7 @@ Commands executed by the Manager to inspect and control the physical worker mach
 Commands for deploying and managing complex multi-container applications via Docker Compose syntax.
 
 - **`gbnt stack deploy -c [docker-compose.yml] [stack_name]`**
+  El parámetro `[stack_name]` es opcional si el fichero incluye una propiedad `name:` en la raíz, o una constraint `stack.name == <nombre>`.
   Deploys or updates an entire stack of services based on a Compose file. Supports parsing `deploy.placement.constraints` for targeted scheduling.
 
 - **`gbnt stack ls`**

@@ -1,4 +1,4 @@
-# Example 101 — Getting Started with WordPress on Gubernator
+# Example WordPress — Getting Started with WordPress on Gubernator
 
 This is the **first example** to run. It demonstrates the complete basic workflow of Gubernator on a **single node** (your local machine), showcasing a multi-service deployment (**WordPress + MySQL**) utilizing persistent volumes, internal DNS service discovery, and automatic Caddy Ingress routing.
 
@@ -6,7 +6,7 @@ This is the **first example** to run. It demonstrates the complete basic workflo
 
 ## What You Will Deploy
 
-The stack file `docker-compose.yml` located in `examples/example-101/` defines:
+The stack file `docker-compose.yml` located in `examples/example-wordpress/` defines:
 - **`db`**: A MySQL database container storing data in a persistent Docker volume (`db_data`).
 - **`wordpress`**: A WordPress container connected to the database via internal DNS and exposed to external traffic using Caddy Ingress.
 
@@ -73,7 +73,7 @@ In a **third terminal**, deploy the WordPress stack using the CLI:
 # Terminal 3
 export GBNT_API_TOKEN=admin
 
-./gbnt stack deploy -c examples/example-101/docker-compose.yml wp
+./gbnt stack deploy -c examples/example-wordpress/docker-compose.yml wp
 ```
 
 > [!IMPORTANT]

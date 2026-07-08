@@ -8,7 +8,6 @@ This page is your index to the progressive tutorials included with Gubernator. E
 
 ```
 ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐     ┌────────────────────┐
-│   Example 101      │ ──► │   The Empire        │ ──► │    SRE-01          │ ──► │   Example n8n      │ ──► │   Example Jupyter  │
 │   Single Node      │     │   Cluster + Ingress │     │   Full SRE Stack   │     │   AI & Automation  │     │   AI Notebook Stack│
 │   Basic stacks     │     │   CoreDNS + Caddy   │     │   Prometheus/Grafana│     │   n8n+Ollama+Qdrant│     │   Jupyter + PyTorch│
 │   10 min           │     │   30 min            │     │   60 min           │     │   40 min           │     │   15 min           │
@@ -18,39 +17,27 @@ This page is your index to the progressive tutorials included with Gubernator. E
 
 ---
 
-## Example 101 — Getting Started
+## Example WordPress — Getting Started
 
 **Target**: Beginner  
 **Goal**: Learn the basic Gubernator workflow on a single machine
 
-[Start Example 101 →](example-101.md)
+[Start Example WordPress →](example-wordpress.md)
 
 - Deploy a WordPress + MySQL stack
 - Learn how persistent volumes, multi-service dependencies, and internal DNS work
 - Verify containers with `docker ps | grep gbnt`
 - Explore automatic Caddy Ingress reverse proxying
 
----
-
-## The Empire — Cluster + Ingress
-
-**Target**: Intermediate  
-**Goal**: Run the full "Trifecta" — Gubernator + CoreDNS + Caddy
-
-[Start The Empire →](example-empire.md)
-
-- Launch the control plane with `docker compose up`
-- Deploy apps with automatic DNS resolution and Caddy routing
-- Use the Web UI compose editor to update and redeploy
 
 ---
 
-## SRE-01 — Full Observability Stack
+## Example SRE — Full Observability Stack
 
 **Target**: Advanced / SRE  
 **Goal**: A production-grade control plane managing Prometheus, Grafana, and Loki
 
-[Start SRE-01 →](example-sre01.md)
+[Start Example SRE →](example-sre.md)
 
 - Complete SRE tooling orchestrated by Gubernator itself
 - Prometheus scrapes Gubernator metrics

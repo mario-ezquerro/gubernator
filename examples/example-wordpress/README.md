@@ -29,7 +29,7 @@ WORDPRESS_DB_HOST: db.wp.gbnt:3306
 Ejecuta el siguiente comando en la terminal utilizando el CLI de Gubernator (o súbelo mediante el Dashboard Web en el puerto `4001`):
 
 ```bash
-gbnt stack deploy -c examples/example-101/docker-compose.yml wp
+gbnt stack deploy -c examples/example-wordpress/docker-compose.yml wp
 ```
 
 ### 2. Verificar el Despliegue

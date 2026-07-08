@@ -1,6 +1,6 @@
-# SRE-01 — Full Site Reliability Engineering Stack
+# Example SRE — Full Site Reliability Engineering Stack
 
-This is the **most advanced example**. It builds upon "The Empire" by deploying a complete SRE observability stack (Prometheus + Grafana + Loki) as a Gubernator-managed application, **scheduled and run by Gubernator itself**.
+This is the **most advanced example**. It builds upon "Example Empire" by deploying a complete SRE observability stack (Prometheus + Grafana + Loki) as a Gubernator-managed application, **scheduled and run by Gubernator itself**.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ This is the **most advanced example**. It builds upon "The Empire" by deploying 
 Open a terminal **inside this directory** and start the Empire base:
 
 ```bash
-cd examples/SRE-01
+cd examples/Example SRE
 docker compose up -d
 ```
 
@@ -94,7 +94,7 @@ Open a new terminal at the **repository root** and deploy:
 ```bash
 export GBNT_API_TOKEN=admin
 
-./gbnt stack deploy -c examples/SRE-01/monitoring-stack.yml sre-monitoring
+./gbnt stack deploy -c examples/Example SRE/monitoring-stack.yml sre-monitoring
 ```
 
 Gubernator will now:
@@ -176,6 +176,6 @@ export GBNT_API_TOKEN=admin
 ./gbnt stack rm <stack_id>
 
 # Shut down the control plane
-cd examples/SRE-01
+cd examples/Example SRE
 docker compose down -v
 ```

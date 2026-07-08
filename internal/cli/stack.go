@@ -22,10 +22,13 @@ var composeFile string
 
 var stackDeployCmd = &cobra.Command{
 	Use:   "deploy [name]",
-	Short: "Deploy a new stack from a docker-compose.yml file",
-	Args:  cobra.ExactArgs(1),
+	Short: "Deploy a new stack from a docker-compose.yml file (name is optional if defined in compose file)",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		name := args[0]
+		name := ""
+		if len(args) > 0 {
+			name = args[0]
+		}
 
 		if composeFile == "" {
 			fmt.Fprintln(os.Stderr, "Error: -c/--compose flag is required")

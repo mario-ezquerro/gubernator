@@ -10,7 +10,7 @@ You will deploy a stack containing 2 replicas of a lightweight HTTP server. Each
 
 - **Docker** running on your local machine.
 - **Gubernator compiled** (`gbnt` binary) or running in a container.
-- If running Gubernator as a Docker container, ensure the control plane is started (like in "The Empire" or the default setup).
+- If running Gubernator as a Docker container, ensure the control plane is started (like in "Example Empire" or the default setup).
 
 ---
 
@@ -21,7 +21,7 @@ From the root of the repository, deploy the stack using the Gubernator CLI:
 ```bash
 export GBNT_API_TOKEN=admin
 
-./gbnt stack deploy -c examples/example-102/01-hello-loadbalancer.yml hello-lb
+./gbnt stack deploy -c examples/example-loadbalancer/01-hello-loadbalancer.yml hello-lb
 ```
 
 This will:

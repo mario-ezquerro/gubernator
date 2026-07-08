@@ -16,7 +16,6 @@ It utilizes Gubernator's Caddy Ingress configuration to easily expose `n8n` to y
 ## Prerequisites
 
 - You must have `gbnt` installed and running locally with the Caddy Ingress enabled.
-- Ensure your DNS (like `CoreDNS` from `the-empire` example) is set up to resolve `*.gbnt.local` or map them in your `/etc/hosts` file:
   ```bash
   127.0.0.1 n8n.gbnt.local qdrant.gbnt.local ollama.gbnt.local
   ```

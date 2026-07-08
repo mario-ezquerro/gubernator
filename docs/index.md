@@ -53,7 +53,7 @@ export GBNT_API_TOKEN=admin
 ./gbnt legion join --token <TOKEN> --manager 127.0.0.1:4000
 
 # 4. In a third terminal — deploy a stack (WordPress + MySQL)
-./gbnt stack deploy -c examples/example-101/docker-compose.yml wp
+./gbnt stack deploy -c examples/example-wordpress/docker-compose.yml wp
 
 # 5. Verify
 curl http://localhost:8080          # WordPress setup page

@@ -62,6 +62,7 @@ func (e *envSlice) UnmarshalYAML(value *yaml.Node) error {
 // composeFile and composeService are local copies of the API types to avoid
 // circular imports (api → web → api). They must stay in sync with api.ComposeFile.
 type composeFile struct {
+	Name     string                    `yaml:"name"` // Top-level name in compose file
 	Services map[string]composeService `yaml:"services"`
 }
 
@@ -362,6 +363,9 @@ func deleteStackHandler(c *gin.Context) {
 	db.DB.Where("stack_id = ?", id).Delete(&db.Service{})
 	db.DB.Where("id = ?", id).Delete(&db.Stack{})
 
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
@@ -375,6 +379,10 @@ func deleteTaskHandler(c *gin.Context) {
 	}
 
 	db.DB.Where("id = ?", id).Delete(&db.Task{})
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
@@ -566,7 +574,7 @@ func updateStackComposeHandler(c *gin.Context) {
 
 func deployStackHandler(c *gin.Context) {
 	var req struct {
-		Name    string `json:"name" binding:"required"`
+		Name    string `json:"name"`
 		Compose string `json:"compose" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -574,8 +582,37 @@ func deployStackHandler(c *gin.Context) {
 		return
 	}
 
+	stackName := req.Name
+
+	if stackName == "" {
+		var tempCompose composeFile
+		if err := yaml.Unmarshal([]byte(req.Compose), &tempCompose); err == nil {
+			if tempCompose.Name != "" {
+				stackName = tempCompose.Name
+			} else {
+				for _, srv := range tempCompose.Services {
+					for _, constraint := range srv.Deploy.Placement.Constraints {
+						parts := strings.Split(constraint, "==")
+						if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+							stackName = strings.TrimSpace(parts[1])
+							break
+						}
+					}
+					if stackName != "" {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if stackName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name is required"})
+		return
+	}
+
 	// Replace placeholders like {{stack.name}} with the actual stack name
-	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", req.Name)
+	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", stackName)
 
 	// Re-parse the compose YAML
 	var compose composeFile
@@ -586,15 +623,15 @@ func deployStackHandler(c *gin.Context) {
 
 	// Check if stack name already exists to prevent duplicate/collisions
 	var existing db.Stack
-	if err := db.DB.First(&existing, "name = ?", req.Name).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Stack with name '%s' already exists", req.Name)})
+	if err := db.DB.First(&existing, "name = ?", stackName).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Stack with name '%s' already exists", stackName)})
 		return
 	}
 
 	stackID := uuid.New().String()
 	stack := db.Stack{
 		ID:             stackID,
-		Name:           req.Name,
+		Name:           stackName,
 		RawComposeFile: composeRaw,
 	}
 	db.DB.Create(&stack)

@@ -49,14 +49,14 @@ nav:
     - Full Command Reference: cli-full.md
   - Architecture: architecture.md
   - API & SDK: api.md
+  - Docker Compose Reference: compose.md
   - Web UI Dashboard: web-ui.md
   - Observability:
     - Health & Metrics: observability.md
   - Examples:
     - Overview: examples.md
-    - "101: Getting Started": example-101.md
-    - "The Empire: Cluster + Ingress": example-empire.md
-    - "SRE-01: Full Observability": example-sre01.md
+    - "WordPress": example-wordpress.md
+    - "SRE Observability": example-sre.md
     - "AI & Automation (n8n)": example-n8n.md
     - "AI Development (Jupyter)": example-jupyter.md
 
