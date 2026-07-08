@@ -1,4 +1,4 @@
-name: n8n-stack
+
 volumes:
   n8n_storage:
   postgres_storage:
@@ -76,6 +76,7 @@ services:
     deploy:
       placement:
         constraints:
+          - stack.name == n8n-stack
           - ingress.host == n8n.gbnt.local
 
   qdrant:

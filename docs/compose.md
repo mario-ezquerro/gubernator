@@ -13,20 +13,11 @@ Gubernator allows you to define the name of your stack directly inside the `dock
 Gubernator resolves the stack name in the following order:
 
 1. **Explicit argument** (e.g., CLI `[name]` argument).
-2. **Top-level `name` property** (Native Docker Compose standard).
-3. **`stack.name` constraint** (Gubernator specific extension).
+2. **`stack.name` constraint** (Gubernator specific extension, Recommended).
+3. **Top-level `name` property** (Native Docker Compose standard).
 
-### Option A: Top-level `name` (Recommended)
-You can use the standard Compose `name` attribute at the root level of your file:
-```yaml
-name: my-app-stack
-services:
-  web:
-    image: nginx
-```
-
-### Option B: The `stack.name` constraint
-If you prefer, you can define it within any service's placement constraints:
+### Option A: The `stack.name` constraint (Recommended)
+Because Gubernator makes heavy use of placement constraints for its engine, the recommended way to name your stack is within the first service's placement constraints using `stack.name == <name>`:
 ```yaml
 services:
   web:
@@ -35,6 +26,15 @@ services:
       placement:
         constraints:
           - stack.name == my-app-stack
+```
+
+### Option B: Top-level `name`
+Alternatively, you can use the standard Compose `name` attribute at the root level of your file:
+```yaml
+name: my-app-stack
+services:
+  web:
+    image: nginx
 ```
 
 ---

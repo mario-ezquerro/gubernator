@@ -1,4 +1,3 @@
-name: wp
 services:
   db:
     image: mysql:8.0
@@ -27,6 +26,7 @@ services:
       replicas: 1
       placement:
         constraints:
+          - stack.name == wp
           - ingress.host == hello-101.gbnt.local
     depends_on:
       - db

@@ -1,4 +1,4 @@
-name: jupyter-stack
+
 
 volumes:
   jupyter_workspace:
@@ -18,4 +18,5 @@ services:
     deploy:
       placement:
         constraints:
+          - stack.name == jupyter-stack
           - ingress.host == jupyter.gbnt.local

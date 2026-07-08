@@ -1,4 +1,3 @@
-name: test-app
 services:
   whoami:
     image: traefik/whoami
@@ -6,6 +5,7 @@ services:
       replicas: 1
       placement:
         constraints:
+          - stack.name == test-app
           - node.labels.gbnt.node.role == worker
           # The magic label that tells Gubernator to configure Caddy
           - ingress.host == whoami.gubernator.local

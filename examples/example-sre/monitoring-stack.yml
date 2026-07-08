@@ -1,4 +1,3 @@
-name: sre-monitoring
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -6,6 +5,9 @@ services:
       - "9090:9090"
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - stack.name == sre-monitoring
 
   grafana:
     image: grafana/grafana:latest
