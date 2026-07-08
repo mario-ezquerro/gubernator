@@ -73,11 +73,11 @@ In a **third terminal**, deploy the WordPress stack using the CLI:
 # Terminal 3
 export GBNT_API_TOKEN=admin
 
-./gbnt stack deploy -c examples/example-wordpress/docker-compose.yml wp
+./gbnt stack deploy -c examples/example-wordpress/docker-compose.yml
 ```
 
-> [!IMPORTANT]
-> The stack **must** be named **`wp`** during deployment. This ensures that the generated CoreDNS service domain resolves correctly to `db.wp.gbnt` as defined in WordPress's database connection settings.
+> [!NOTE]
+> The stack name is automatically defined as **`wp`** inside the `docker-compose.yml` file using the `stack.name` placement constraint. This ensures that the generated CoreDNS service domain resolves correctly to `db.wp.gbnt` as defined in WordPress's database connection settings.
 
 ---
 

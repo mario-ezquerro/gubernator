@@ -158,7 +158,7 @@ Tasks
 ## Deployment Workflow
 
 ```
-1. CLI: gbnt stack deploy -c compose.yml mystack
+1. CLI: gbnt stack deploy -c compose.yml
            ↓
 2. API:  POST /v1/stack/deploy (with Bearer token)
            ↓

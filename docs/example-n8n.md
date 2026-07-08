@@ -36,7 +36,7 @@ Deploy the stack using the CLI from the root of the Gubernator repository:
 export GBNT_API_TOKEN=admin
 
 # Deploy the stack and name it 'n8n-stack'
-./gbnt stack deploy n8n-stack -c examples/example-n8n/docker-compose.yml
+./gbnt stack deploy -c examples/example-n8n/docker-compose.yml
 ```
 
 ---

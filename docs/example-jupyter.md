@@ -37,7 +37,7 @@ Deploy the stack using the CLI from the root of the Gubernator repository:
 export GBNT_API_TOKEN=admin
 
 # Deploy the stack and name it 'jupyter-stack'
-./gbnt stack deploy jupyter-stack -c examples/example-jupyter/docker-compose.yml
+./gbnt stack deploy -c examples/example-jupyter/docker-compose.yml
 ```
 
 ---
