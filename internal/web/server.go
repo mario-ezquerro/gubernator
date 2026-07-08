@@ -138,6 +138,8 @@ func StartDashboard() {
 		return
 	}
 
+	sessionToken := uuid.New().String()
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
@@ -145,6 +147,15 @@ func StartDashboard() {
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 		user: pass,
 	}))
+
+	// Middleware to set SSO cookie on successful Basic Auth
+	authorized.Use(func(c *gin.Context) {
+		authUser := c.GetString(gin.AuthUserKey)
+		if authUser != "" {
+			c.SetCookie("gbnt_session", sessionToken, 3600*24, "/", "", false, true)
+		}
+		c.Next()
+	})
 
 	// API for dashboard
 	api := authorized.Group("/api")
@@ -186,10 +197,12 @@ func StartDashboard() {
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
 
-	authorized.GET("/grafana", func(c *gin.Context) {
+	r.GET("/grafana", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/grafana/")
 	})
-	authorized.Any("/grafana/*proxyPath", grafanaProxyHandler)
+	r.Any("/grafana/*proxyPath", func(c *gin.Context) {
+		grafanaProxyHandler(c, sessionToken, user, pass)
+	})
 
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
@@ -789,7 +802,7 @@ func redeploySREStack(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to write configs: %v", err)})
 		return
 	}
-	if err := monitor.DeployManagerStack(); err != nil {
+	if err := monitor.DeployManagerStack(os.Getenv("GBNT_WEB_USER"), os.Getenv("GBNT_WEB_PASSWORD")); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("SRE deploy failed: %v", err)})
 		return
 	}
@@ -1081,7 +1094,7 @@ func nodeLabelsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Node labels updated"})
 }
 
-func grafanaProxyHandler(c *gin.Context) {
+func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
 	targetHost := "gbnt-monitor-grafana:3000"
 	_, err := net.LookupHost("gbnt-monitor-grafana")
 	if err != nil {
@@ -1095,21 +1108,64 @@ func grafanaProxyHandler(c *gin.Context) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	originalDirector := proxy.Director
 
-	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
-		pr.SetURL(targetURL)
-		pr.Out.Host = targetHost
-		username, _, _ := pr.In.BasicAuth()
-		if username != "" {
-			pr.Out.Header.Set("X-WEBAUTH-USER", username)
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		
+		username := c.GetString(gin.AuthUserKey)
+		
+		if username == "" {
+			if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
+				username = expectedUser
+			}
 		}
-		pr.Out.Header.Del("Authorization")
+
+		if username == "" {
+			u, p, hasAuth := req.BasicAuth()
+			if hasAuth && u == expectedUser && p == expectedPass {
+				username = expectedUser
+			}
+		}
+
+		if username == "" {
+			return
+		}
+
+		req.Header.Set("X-WEBAUTH-USER", username)
+		req.Header.Del("Authorization")
 	}
 
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("X-Frame-Options")
 		resp.Header.Del("Content-Security-Policy")
+		
+		// If proxy.Director left username empty and we passed the request to Grafana without headers,
+		// Grafana might return 401 if it's strictly Auth Proxy.
+		// In our case we want to catch the 401 BEFORE it goes to Grafana if there's no username,
+		// but since httputil.ReverseProxy doesn't easily allow aborting from Director,
+		// we check it before calling ServeHTTP.
 		return nil
+	}
+
+	// Manually check auth before passing to proxy
+	username := c.GetString(gin.AuthUserKey)
+	if username == "" {
+		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
+			username = expectedUser
+		}
+	}
+	if username == "" {
+		u, p, hasAuth := c.Request.BasicAuth()
+		if hasAuth && u == expectedUser && p == expectedPass {
+			username = expectedUser
+		}
+	}
+
+	if username == "" {
+		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)

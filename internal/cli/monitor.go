@@ -55,8 +55,16 @@ Access points after deployment:
 			os.Exit(1)
 		}
 
-		// 3. Deploy all containers
-		if err := monitor.DeployManagerStack(); err != nil {
+		// 3. Deploy all containers (pass Gubernator web credentials for Grafana SSO)
+		webUser := os.Getenv("GBNT_WEB_USER")
+		webPass := os.Getenv("GBNT_WEB_PASSWORD")
+		if webUser == "" {
+			webUser = "admin"
+		}
+		if webPass == "" {
+			webPass = "admin"
+		}
+		if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
 			fmt.Fprintf(os.Stderr, "\n❌ Deployment failed: %v\n", err)
 			fmt.Fprintln(os.Stderr, "Run 'gbnt monitor stop' to clean up partially deployed containers.")
 			os.Exit(1)
@@ -66,7 +74,7 @@ Access points after deployment:
 		fmt.Println("═══════════════════════════════════════════════════════════")
 		fmt.Println("  ✅ SRE Monitoring Stack deployed successfully!")
 		fmt.Println()
-		fmt.Println("  📈 Grafana:     http://localhost:3000   (admin/admin)")
+		fmt.Printf("  📈 Grafana:     http://localhost:3000   (%s/***)\n", webUser)
 		fmt.Println("  🔥 Prometheus:  http://localhost:9090")
 		fmt.Println("  📋 Loki:        http://localhost:3100")
 		fmt.Println("  📊 cAdvisor:    http://localhost:8081")

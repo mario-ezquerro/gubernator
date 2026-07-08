@@ -85,7 +85,16 @@ func Start(ctx context.Context) error {
 				fmt.Printf("❌ SRE Monitor: failed to write configs: %v\n", err)
 				return
 			}
-			if err := monitor.DeployManagerStack(); err != nil {
+			// Pass Gubernator web credentials for Grafana SSO
+			webUser := os.Getenv("GBNT_WEB_USER")
+			webPass := os.Getenv("GBNT_WEB_PASSWORD")
+			if webUser == "" {
+				webUser = "admin"
+			}
+			if webPass == "" {
+				webPass = "admin"
+			}
+			if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
 				fmt.Printf("❌ SRE Monitor: deployment failed: %v\n", err)
 				return
 			}

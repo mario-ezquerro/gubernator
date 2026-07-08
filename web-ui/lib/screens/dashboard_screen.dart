@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -711,16 +712,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _openGrafana() async {
-    final url = Uri.parse('/grafana/');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open Grafana')),
-        );
-      }
-    }
-  }
 
   // ─── Build ──────────────────────────────────────────────────────────
   @override
@@ -773,10 +764,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             // Observability gear icon
             if (_state.monitorRunning)
-              IconButton(
-                icon: const Icon(Icons.analytics_outlined),
-                tooltip: 'Observability (Grafana)',
-                onPressed: _openGrafana,
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.analytics_outlined),
+                  tooltip: 'Observability (Grafana)',
+                  onPressed: () => html.window.open('/grafana/', '_blank'),
+                ),
               ),
             // Settings gear icon
             IconButton(

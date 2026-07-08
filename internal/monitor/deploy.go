@@ -38,7 +38,9 @@ func AllVolumes() []string {
 // DeployManagerStack deploys the full SRE monitoring stack on the Manager node.
 // It uses Docker named volumes populated via "docker cp" to avoid bind-mount issues
 // when gbnt itself runs inside a container.
-func DeployManagerStack() error {
+// webUser/webPass are the Gubernator web credentials (GBNT_WEB_USER / GBNT_WEB_PASSWORD)
+// used as Grafana admin credentials for SSO.
+func DeployManagerStack(webUser, webPass string) error {
 	// Connect Gubernator container to the monitor network
 	if err := ConnectGubernator(); err != nil {
 		fmt.Printf("⚠️  Warning: failed to connect Gubernator to monitor network: %v\n", err)
@@ -116,16 +118,19 @@ func DeployManagerStack() error {
 		"-p", "127.0.0.1:3000:3000",
 		"-v", VolGrafanaProv + ":/etc/grafana/provisioning:ro",
 		"-v", VolGrafanaData + ":/var/lib/grafana",
-		"-e", "GF_SECURITY_ADMIN_USER=admin",
-		"-e", "GF_SECURITY_ADMIN_PASSWORD=admin",
+		"-e", "GF_SECURITY_ADMIN_USER=" + webUser,
+		"-e", "GF_SECURITY_ADMIN_PASSWORD=" + webPass,
 		"-e", "GF_USERS_ALLOW_SIGN_UP=false",
 		"-e", "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/gubernator.json",
-		"-e", "GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/",
+		"-e", "GF_SERVER_ROOT_URL=/grafana/",
 		"-e", "GF_SERVER_SERVE_FROM_SUB_PATH=true",
+		"-e", "GF_SECURITY_ALLOW_EMBEDDING=true",
 		"-e", "GF_AUTH_PROXY_ENABLED=true",
 		"-e", "GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER",
 		"-e", "GF_AUTH_PROXY_HEADER_PROPERTY=username",
 		"-e", "GF_AUTH_PROXY_AUTO_SIGN_UP=true",
+		"-e", "GF_AUTH_DISABLE_LOGIN_FORM=true",
+		"-e", "GF_AUTH_DISABLE_SIGNOUT_MENU=true",
 		"grafana/grafana:latest",
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
