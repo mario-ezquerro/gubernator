@@ -75,6 +75,7 @@ docker run -d \
   -e GBNT_WEB=true \
   -e GBNT_WEB_USER=admin \
   -e GBNT_WEB_PASSWORD=admin \
+  -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
   marioezquerro/gubernator:latest serve
 ```
 

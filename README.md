@@ -90,6 +90,7 @@ docker run -d \
   -e GBNT_WEB_USER=admin \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
+  -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
   marioezquerro/gubernator:latest serve
 ```
 
@@ -376,6 +377,7 @@ Both tokens are generated with `crypto/rand` and stored in the `/data/gubernator
 | `GBNT_WEB_USER` | — | Username for the Web Dashboard Basic Auth |
 | `GBNT_WEB_PASSWORD` | — | Password for the Web Dashboard Basic Auth |
 | `GBNT_MONITOR` | `false` | Set to `true` to auto-deploy the SRE monitoring stack on startup |
+| `GBNT_DNS_FORWARDERS` | `8.8.8.8 1.1.1.1` | Space-separated list of external DNS servers for CoreDNS to use for internet resolution |
 
 ### Full Docker run example (all features)
 
@@ -392,6 +394,7 @@ docker run -d \
   -e GBNT_WEB_USER=admin \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
+  -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
   marioezquerro/gubernator:latest serve
 ```
 

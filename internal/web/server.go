@@ -182,6 +182,10 @@ func StartDashboard() {
 		api.POST("/node/:id/leave", nodeLeaveHandler)
 		api.POST("/node/:id/labels", nodeLabelsHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
+
+		// CoreDNS config
+		api.GET("/coredns/config", getCoreDNSConfigHandler)
+		api.PUT("/coredns/config", updateCoreDNSConfigHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -281,6 +285,46 @@ func stateHandler(c *gin.Context) {
 		"caddyfile":       caddyfileContent,
 	})
 }
+
+// --- CoreDNS Endpoints ---
+
+func getCoreDNSConfigHandler(c *gin.Context) {
+	content, err := os.ReadFile(coredns.CorefilePath())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read CoreDNS config: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"config": string(content)})
+}
+
+func updateCoreDNSConfigHandler(c *gin.Context) {
+	var req struct {
+		Config string `json:"config"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if req.Config == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Config cannot be empty"})
+		return
+	}
+
+	if err := os.WriteFile(coredns.CorefilePath(), []byte(req.Config), 0644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save CoreDNS config: " + err.Error()})
+		return
+	}
+
+	if err := coredns.Restart(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Config saved but failed to restart CoreDNS: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// --- Settings Endpoints ---
 
 func getSettingsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{

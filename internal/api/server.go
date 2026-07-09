@@ -166,6 +166,12 @@ func Start(ctx context.Context) error {
 			task.GET("/ls", TaskListHandler)
 			task.DELETE("/:id", TaskRmHandler)
 		}
+
+		corednsRoute := v1.Group("/coredns", authMiddleware)
+		{
+			corednsRoute.GET("/config", GetCoreDNSConfig)
+			corednsRoute.PUT("/config", UpdateCoreDNSConfig)
+		}
 	}
 
 	srv := &http.Server{Addr: ":4000", Handler: r}

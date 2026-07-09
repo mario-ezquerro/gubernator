@@ -59,11 +59,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ScrollController _dnsScrollController = ScrollController();
   final ScrollController _ingressScrollController = ScrollController();
 
+  int _coreDnsTabIndex = 0; // 0 = Records, 1 = Config
+  final TextEditingController _coreDnsConfigController = TextEditingController();
+  final TextEditingController _dnsForwardersController = TextEditingController();
+  bool _isLoadingCoreDnsConfig = false;
+
   @override
   void initState() {
     super.initState();
     _fetchData();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchData());
+
+    _coreDnsConfigController.addListener(() {
+      final lines = _coreDnsConfigController.text.split('\n');
+      for (var line in lines) {
+        if (line.trim().startsWith('forward . ')) {
+          final parts = line.trim().split(RegExp(r'\s+'));
+          final ips = parts.length > 2 ? parts.sublist(2).join(' ') : '';
+          if (_dnsForwardersController.text != ips) {
+            _dnsForwardersController.text = ips;
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  void _syncTextFromForwarders() {
+    final ipsStr = _dnsForwardersController.text.trim();
+    var newForward = '    forward .';
+    if (ipsStr.isNotEmpty) {
+      // Split by any whitespace and join by single space to clean it up
+      final ips = ipsStr.split(RegExp(r'\s+'));
+      newForward += ' ${ips.join(' ')}';
+    }
+
+    final lines = _coreDnsConfigController.text.split('\n');
+    bool found = false;
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].trim().startsWith('forward .')) {
+        lines[i] = newForward;
+        found = true;
+        break;
+      }
+    }
+    
+    if (found) {
+      final newText = lines.join('\n');
+      if (_coreDnsConfigController.text != newText) {
+        _coreDnsConfigController.text = newText;
+      }
+    }
   }
 
   @override
@@ -74,6 +120,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _taskScrollController.dispose();
     _dnsScrollController.dispose();
     _ingressScrollController.dispose();
+    _coreDnsConfigController.dispose();
+    _dnsForwardersController.dispose();
     super.dispose();
   }
 
@@ -2100,6 +2148,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _loadCoreDnsConfig() async {
+    setState(() => _isLoadingCoreDnsConfig = true);
+    try {
+      final config = await ApiService.getCoreDNSConfig();
+      if (mounted) {
+        setState(() {
+          _coreDnsConfigController.text = config;
+          _isLoadingCoreDnsConfig = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCoreDnsConfig = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load CoreDNS config: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveCoreDnsConfig() async {
+    setState(() => _isLoadingCoreDnsConfig = true);
+    try {
+      await ApiService.updateCoreDNSConfig(_coreDnsConfigController.text);
+      if (mounted) {
+        setState(() => _isLoadingCoreDnsConfig = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('CoreDNS configuration saved and container restarted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCoreDnsConfig = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save CoreDNS config: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildDnsSection(ThemeData theme) {
     final filteredDns = _state.dnsRecords.where((d) {
       if (_dnsSearchQuery.isEmpty) return true;
@@ -2118,71 +2206,157 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icon(Icons.dns_outlined,
                     size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
-                Text('CoreDNS Records (*.gbnt)',
+                Text('CoreDNS',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Records')),
+                    ButtonSegment(value: 1, label: Text('Configuration')),
+                  ],
+                  selected: {_coreDnsTabIndex},
+                  onSelectionChanged: (Set<int> newSelection) {
+                    setState(() {
+                      _coreDnsTabIndex = newSelection.first;
+                    });
+                    if (_coreDnsTabIndex == 1 && _coreDnsConfigController.text.isEmpty) {
+                      _loadCoreDnsConfig();
+                    }
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search DNS records...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            if (_coreDnsTabIndex == 0) ...[
+              TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Search DNS records...',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _dnsSearchQuery = val.toLowerCase();
+                  });
+                },
               ),
-              onChanged: (val) {
-                setState(() {
-                  _dnsSearchQuery = val.toLowerCase();
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            if (filteredDns.isEmpty)
-              _emptyState(_state.dnsRecords.isEmpty ? 'No DNS records found' : 'No matching records found', Icons.dns)
-            else
-              Scrollbar(
-                controller: _dnsScrollController,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
+              const SizedBox(height: 16),
+              if (filteredDns.isEmpty)
+                _emptyState(_state.dnsRecords.isEmpty ? 'No DNS records found' : 'No matching records found', Icons.dns)
+              else
+                Scrollbar(
                   controller: _dnsScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('IP ADDRESS')),
-                    DataColumn(label: Text('HOSTNAME (DOMAIN)')),
-                    DataColumn(label: Text('TEST RESOLUTION (CURL)')),
-                  ],
-                  rows: filteredDns.map((d) {
-                    return DataRow(cells: [
-                      DataCell(SelectableText(d.ip,
-                          style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
-                      DataCell(SelectableText(d.hostname,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Courier New', fontSize: 13))),
-                      DataCell(Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SelectableText('curl http://${d.hostname}',
-                              style: TextStyle(fontFamily: 'Courier New', fontSize: 12, color: theme.colorScheme.primary)),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 14),
-                            tooltip: 'Copy curl command',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: 'curl http://${d.hostname}'));
-                              _showSnackBar('Copied curl command to clipboard!');
-                            },
-                          ),
-                        ],
-                      )),
-                    ]);
-                  }).toList(),
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _dnsScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('IP ADDRESS')),
+                      DataColumn(label: Text('HOSTNAME (DOMAIN)')),
+                      DataColumn(label: Text('TEST RESOLUTION (CURL)')),
+                    ],
+                    rows: filteredDns.map((d) {
+                      return DataRow(cells: [
+                        DataCell(SelectableText(d.ip,
+                            style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
+                        DataCell(SelectableText(d.hostname,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Courier New', fontSize: 13))),
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SelectableText('curl http://${d.hostname}',
+                                style: TextStyle(fontFamily: 'Courier New', fontSize: 12, color: theme.colorScheme.primary)),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 14),
+                              tooltip: 'Copy curl command',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: 'curl http://${d.hostname}'));
+                                _showSnackBar('Copied curl command to clipboard!');
+                              },
+                            ),
+                          ],
+                        )),
+                      ]);
+                    }).toList(),
+                  ),
                 ),
               ),
-            ),
+            ] else ...[
+              if (_isLoadingCoreDnsConfig)
+                const Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: theme.colorScheme.outlineVariant),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.public, size: 20, color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text('External DNS Forwarders', style: theme.textTheme.titleMedium),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Gubernator uses these servers to resolve external internet domains. You can enter one or more IP addresses separated by spaces (e.g. 8.8.8.8 1.1.1.1). Changes here sync automatically with the raw JSON-like configuration below.',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7)),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _dnsForwardersController,
+                            decoration: const InputDecoration(
+                              labelText: 'DNS Forwarders (IP addresses separated by spaces)',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            onChanged: (_) => _syncTextFromForwarders(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text('Raw Corefile Configuration', style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _coreDnsConfigController,
+                      maxLines: 15,
+                      style: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'CoreDNS Corefile Configuration',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save & Restart CoreDNS'),
+                        onPressed: _saveCoreDnsConfig,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ],
         ),
       ),

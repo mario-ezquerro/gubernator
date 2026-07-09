@@ -99,6 +99,8 @@ As containers start (via either executor), Gubernator writes two files:
 | `gubernator.hosts` | CoreDNS `hosts` plugin | `<IP>  <service>.<stack>.gbnt` |
 | `Caddyfile` | Caddy | Reverse-proxy rules from `ingress.host` labels |
 
+> **Note on External DNS:** CoreDNS can resolve external internet requests by forwarding them. You can configure this via the Web UI (CoreDNS tab) or by setting the `GBNT_DNS_FORWARDERS` environment variable to a space-separated list of IP addresses (e.g., `"8.8.8.8 4.4.4.4"`).
+
 ### 5. Observability (The Watchtowers)
 
 Port 4002 exposes:

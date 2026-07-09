@@ -71,7 +71,11 @@ func EnsureConfigDir() error {
 // Uses the 'hosts' plugin to serve *.gbnt from gubernator.hosts,
 // with auto-reload every 3s. Unknown queries are forwarded to public DNS.
 func defaultCorefile() string {
-	return `# Gubernator CoreDNS Configuration
+	forwarders := os.Getenv("GBNT_DNS_FORWARDERS")
+	if forwarders == "" {
+		forwarders = "8.8.8.8 1.1.1.1"
+	}
+	return fmt.Sprintf(`# Gubernator CoreDNS Configuration
 # Managed automatically — do not edit manually.
 
 gbnt {
@@ -85,12 +89,12 @@ gbnt {
 }
 
 . {
-    forward . 8.8.8.8 1.1.1.1
+    forward . %s
     cache 30
     log
     errors
 }
-`
+`, forwarders)
 }
 
 // EnsureRunning starts the CoreDNS container if it is not already running.
@@ -174,6 +178,12 @@ func Stop() {
 	exec.Command("docker", "stop", ContainerName).Run()
 	exec.Command("docker", "rm", "-f", ContainerName).Run()
 	exec.Command("docker", "volume", "rm", "-f", VolumeName).Run()
+}
+
+// Restart stops and starts the CoreDNS container.
+func Restart() error {
+	Stop()
+	return EnsureRunning()
 }
 
 // Status prints the current status of the CoreDNS container.

@@ -73,6 +73,10 @@ services:
       # and Promtail as sibling containers via the Docker socket.
       GBNT_MONITOR: "true"
 
+      # --- External DNS Forwarders ---
+      # Used by CoreDNS to resolve external domains (defaults to 8.8.8.8 1.1.1.1)
+      GBNT_DNS_FORWARDERS: "8.8.8.8 4.4.4.4"
+
     # ── Health check ───────────────────────────────────────────────────────
     healthcheck:
       test: ["CMD", "/app/gbnt", "health"]

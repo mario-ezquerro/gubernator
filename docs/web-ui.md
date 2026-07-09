@@ -127,6 +127,15 @@ Lists all container instances with:
 
 ---
 
+### CoreDNS (Internal DNS)
+
+Displays the active internal DNS records and allows you to configure external forwarders.
+
+- **Records Tab:** View all dynamically generated internal DNS records (e.g. `web.mystack.gbnt -> 10.0.0.5`).
+- **Configuration Tab:** Add one or more External DNS Forwarders (e.g. `8.8.8.8 1.1.1.1`) separated by spaces. The raw JSON-like `Corefile` configuration is updated automatically.
+
+---
+
 ## Compose Editor
 
 Click **Edit YAML** on any stack to open the compose editor dialog:

@@ -170,5 +170,25 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  /// Gets the CoreDNS configuration (Corefile).
+  static Future<String> getCoreDNSConfig() async {
+    final response = await http.get(Uri.parse('/api/coredns/config'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['config'] ?? '';
+    }
+    throw Exception('Failed to fetch CoreDNS config');
+  }
+
+  /// Updates the CoreDNS configuration (Corefile).
+  static Future<bool> updateCoreDNSConfig(String config) async {
+    final response = await http.put(
+      Uri.parse('/api/coredns/config'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'config': config}),
+    );
+    return response.statusCode == 200;
+  }
 }
 
