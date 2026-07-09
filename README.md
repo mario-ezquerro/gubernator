@@ -286,6 +286,7 @@ curl http://localhost:4002/health
 Gubernator runs native Docker containers. Once a stack is deployed, the Centurions (Worker nodes) pull their assigned tasks and talk directly to the local Docker socket to:
 1. `docker pull` the required images.
 2. `docker run -d` the containers, labeling them automatically with the Gubernator Task ID.
+3. Automatically inject `--dns <CoreDNS_IP>` so every container inherently uses Gubernator's DNS.
 
 You don't need any special runners; if the machine has `dockerd` running, Gubernator can orchestrate it.
 
