@@ -1563,7 +1563,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final List<PlutoRow> newRows = _getPlutoRows(theme);
 
-    final currentRows = _taskGridStateManager!.rows;
+    final currentRows = _taskGridStateManager!.refRows.originalList;
     final Map<String, PlutoRow> currentRowsMap = {
       for (var row in currentRows) row.cells['task_id']!.value.toString(): row
     };
