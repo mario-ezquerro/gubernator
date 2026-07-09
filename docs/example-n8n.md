@@ -20,9 +20,9 @@ The stack file `docker-compose.yml` located in `examples/example-n8n/` defines:
 ## Prerequisites
 
 - **Gubernator** running on your manager node with Caddy Ingress and CoreDNS enabled.
-- Add the following domains to your local `/etc/hosts` file (or set up wildcard DNS resolution for `*.gbnt.local`):
+- Add the following domains to your local `/etc/hosts` file (or set up wildcard DNS resolution for `*.gbnt.test`):
   ```bash
-  127.0.0.1 n8n.gbnt.local qdrant.gbnt.local ollama.gbnt.local
+  127.0.0.1 n8n.gbnt.test qdrant.gbnt.test ollama.gbnt.test
   ```
 
 ---
@@ -54,20 +54,20 @@ You should see all 5 tasks (`postgres`, `n8n`, `qdrant`, `ollama`, `ollama-pull-
 
 ### 2. Verify Caddy Ingress
 Gubernator's Ingress engine auto-detects the internal container ports and configures Caddy to reverse proxy external requests to the correct targets:
-* **n8n**: Routes traffic for `n8n.gbnt.local` to the container's port `5678`.
-* **qdrant**: Routes traffic for `qdrant.gbnt.local` to the container's port `6333`.
-* **ollama**: Routes traffic for `ollama.gbnt.local` to the container's port `11434`.
+* **n8n**: Routes traffic for `n8n.gbnt.test` to the container's port `5678`.
+* **qdrant**: Routes traffic for `qdrant.gbnt.test` to the container's port `6333`.
+* **ollama**: Routes traffic for `ollama.gbnt.test` to the container's port `11434`.
 
 Test the connections with curl:
 ```bash
 # Verify n8n
-curl -k -i https://n8n.gbnt.local --resolve n8n.gbnt.local:443:127.0.0.1 --head
+curl -k -i https://n8n.gbnt.test --resolve n8n.gbnt.test:443:127.0.0.1 --head
 
 # Verify Qdrant API
-curl -k -i https://qdrant.gbnt.local --resolve qdrant.gbnt.local:443:127.0.0.1
+curl -k -i https://qdrant.gbnt.test --resolve qdrant.gbnt.test:443:127.0.0.1
 
 # Verify Ollama API
-curl -k -i https://ollama.gbnt.local --resolve ollama.gbnt.local:443:127.0.0.1
+curl -k -i https://ollama.gbnt.test --resolve ollama.gbnt.test:443:127.0.0.1
 ```
 
 ### 3. Verify Model Download
@@ -81,8 +81,8 @@ docker logs gbnt-<task_id>-...
 
 ## Step 3: Accessing the Web Interfaces
 
-- **n8n Workflow Editor**: Open [https://n8n.gbnt.local](https://n8n.gbnt.local) in your browser. Complete the initial setup screen to start building workflows.
-- **Qdrant Dashboard**: Open [https://qdrant.gbnt.local/dashboard](https://qdrant.gbnt.local/dashboard) in your browser to inspect collections.
+- **n8n Workflow Editor**: Open [https://n8n.gbnt.test](https://n8n.gbnt.test) in your browser. Complete the initial setup screen to start building workflows.
+- **Qdrant Dashboard**: Open [https://qdrant.gbnt.test/dashboard](https://qdrant.gbnt.test/dashboard) in your browser to inspect collections.
 
 ---
 

@@ -88,6 +88,16 @@ gbnt {
     errors
 }
 
+# Auto-resolve *.gbnt.test to localhost for seamless Caddy Ingress
+gbnt.test {
+    template IN A {
+        match "^.*$"
+        answer "{{ .Name }} 60 IN A 127.0.0.1"
+    }
+    log
+    errors
+}
+
 . {
     forward . %s
     cache 30

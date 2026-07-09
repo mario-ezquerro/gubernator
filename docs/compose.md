@@ -81,7 +81,7 @@ services:
     deploy:
       placement:
         constraints:
-          - ingress.host == myapp.gbnt.local
+          - ingress.host == myapp.gbnt.test
 ```
 
 If your container exposes a port other than `80`, define it in the standard `ports` array. Gubernator will read the **first port** defined and route traffic to it:
@@ -95,7 +95,7 @@ services:
     deploy:
       placement:
         constraints:
-          - ingress.host == myapp.gbnt.local
+          - ingress.host == myapp.gbnt.test
 ```
 
 ---
