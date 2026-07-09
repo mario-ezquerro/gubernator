@@ -7,5 +7,5 @@ services:
       placement:
         constraints:
           - stack.name == hello-lb
-          - ingress.host == hello-102.gbnt.local
+          - ingress.host == hello-102.gbnt.test
 

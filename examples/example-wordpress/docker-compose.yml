@@ -27,7 +27,7 @@ services:
       placement:
         constraints:
           - stack.name == wp
-          - ingress.host == hello-101.gbnt.local
+          - ingress.host == hello-101.gbnt.test
     depends_on:
       - db
     volumes:
