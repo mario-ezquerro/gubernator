@@ -20,10 +20,7 @@ The stack file `docker-compose.yml` located in `examples/example-n8n/` defines:
 ## Prerequisites
 
 - **Gubernator** running on your manager node with Caddy Ingress and CoreDNS enabled.
-- Add the following domains to your local `/etc/hosts` file (or set up wildcard DNS resolution for `*.gbnt.test`):
-  ```bash
-  127.0.0.1 n8n.gbnt.test qdrant.gbnt.test ollama.gbnt.test
-  ```
+- Configure your host OS resolver to use Gubernator's DNS for `.gbnt` and `.gbnt.test` domains (see Installation guide). No `/etc/hosts` modifications needed!
 
 ---
 

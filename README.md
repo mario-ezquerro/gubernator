@@ -300,6 +300,9 @@ When a task starts, the worker extracts its internal Docker IP. Gubernator then 
 
 To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same directory alongside the Manager, and they will pick up these auto-generated routing tables!
 
+> **Pro Tip (Host DNS):** Want to access `*.gbnt.test` and `*.gbnt` domains from your host browser without touching `/etc/hosts`? Configure your OS resolver! On macOS, just run:
+> `sudo mkdir -p /etc/resolver && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt' && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt.test'`
+
 ---
 
 ##  Web UI Dashboard (Flutter)

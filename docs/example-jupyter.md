@@ -21,10 +21,7 @@ The stack file `docker-compose.yml` located in `examples/example-jupyter/` defin
 ## Prerequisites
 
 - **Gubernator** running on your manager node with Caddy Ingress active.
-- Add the following entry to your local `/etc/hosts` file:
-  ```bash
-  127.0.0.1 jupyter.gbnt.test
-  ```
+- Configure your host OS resolver to use Gubernator's DNS for `.gbnt` and `.gbnt.test` domains (see Installation guide). No `/etc/hosts` modifications needed!
 
 ---
 

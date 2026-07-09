@@ -129,6 +129,38 @@ You can use the provided `docker-compose.yml` and `.env` files in the root of th
 docker compose up -d
 ```
 
+---
+
+## 3. Host OS DNS Configuration (Optional but Recommended)
+
+Gubernator comes with a built-in CoreDNS server and an automatic Caddy Ingress. It automatically creates internal domains (`*.gbnt`) and ingress domains (`*.gbnt.test`).
+
+To browse to these local domains (e.g., `http://hello-101.gbnt.test`) directly from your host machine's browser **without editing `/etc/hosts`**, you can configure your OS to query Gubernator's CoreDNS.
+
+### macOS
+macOS allows domain-specific DNS resolvers. Run this command once to point all `.gbnt` and `.gbnt.test` queries to Gubernator's CoreDNS (which listens locally on port 53):
+
+```bash
+sudo mkdir -p /etc/resolver
+sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt'
+sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt.test'
+```
+*(Note: Do not use `.local` for domains on macOS, as Apple reserves it for Multicast DNS/Bonjour).*
+
+### Linux (systemd-resolved)
+Create a drop-in config for systemd-resolved:
+```bash
+sudo mkdir -p /etc/systemd/resolved.conf.d
+sudo sh -c 'cat << EOF > /etc/systemd/resolved.conf.d/gbnt.conf
+[Resolve]
+DNS=127.0.0.1:5354
+Domains=~gbnt ~gbnt.test
+EOF'
+sudo systemctl restart systemd-resolved
+```
+
+---
+
 ### Run CLI Commands via Docker
 
 To retrieve the initial tokens or see the startup logs, especially if running in detached mode (`-d`), you can use:
