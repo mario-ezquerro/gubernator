@@ -2,6 +2,7 @@ package coredns
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +42,22 @@ func CorefilePath() string {
 	return filepath.Join(CoreDNSDir(), "Corefile")
 }
 
+// detectLocalIP returns the preferred outbound IP of this machine.
+// If GBNT_HOST_IP is set, it will be prioritized.
+func detectLocalIP() string {
+	if envIP := os.Getenv("GBNT_HOST_IP"); envIP != "" {
+		return envIP
+	}
+
+	conn, err := net.Dial("udp", "8.8.8.8:53")
+	if err == nil {
+		defer conn.Close()
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		return localAddr.IP.String()
+	}
+	return "127.0.0.1"
+}
+
 // EnsureConfigDir creates the CoreDNS config directory and writes default config files if they don't exist.
 func EnsureConfigDir() error {
 	dir := CoreDNSDir()
@@ -48,12 +65,10 @@ func EnsureConfigDir() error {
 		return fmt.Errorf("failed to create coredns config dir: %w", err)
 	}
 
-	// Write Corefile if it doesn't exist
+	// Always write Corefile to ensure the dynamic hostIP (GBNT_HOST_IP) is up to date
 	corefilePath := CorefilePath()
-	if _, err := os.Stat(corefilePath); os.IsNotExist(err) {
-		if err := os.WriteFile(corefilePath, []byte(defaultCorefile()), 0644); err != nil {
-			return fmt.Errorf("failed to write Corefile: %w", err)
-		}
+	if err := os.WriteFile(corefilePath, []byte(defaultCorefile()), 0644); err != nil {
+		return fmt.Errorf("failed to write Corefile: %w", err)
 	}
 
 	// Write empty hosts file if it doesn't exist
@@ -68,31 +83,26 @@ func EnsureConfigDir() error {
 }
 
 // defaultCorefile returns the CoreDNS configuration.
-// Uses the 'hosts' plugin to serve *.gbnt from gubernator.hosts,
-// with auto-reload every 3s. Unknown queries are forwarded to public DNS.
+// Uses the 'hosts' plugin to serve *.gbnt and *.gbnt.test from gubernator.hosts,
+// falling back to templated host IP, and forwarding other queries to public DNS.
 func defaultCorefile() string {
 	forwarders := os.Getenv("GBNT_DNS_FORWARDERS")
 	if forwarders == "" {
 		forwarders = "8.8.8.8 1.1.1.1"
 	}
+	hostIP := detectLocalIP()
 	return fmt.Sprintf(`# Gubernator CoreDNS Configuration
 # Managed automatically — do not edit manually.
 
-gbnt {
+gbnt gbnt.test {
     hosts /etc/coredns/gubernator.hosts {
         ttl 5
         reload 3s
         fallthrough
     }
-    log
-    errors
-}
-
-# Auto-resolve *.gbnt.test to localhost for seamless Caddy Ingress
-gbnt.test {
     template IN A {
         match "^.*$"
-        answer "{{ .Name }} 60 IN A 127.0.0.1"
+        answer "{{ .Name }} 60 IN A %s"
     }
     log
     errors
@@ -104,7 +114,7 @@ gbnt.test {
     log
     errors
 }
-`, forwarders)
+`, hostIP, forwarders)
 }
 
 // EnsureRunning starts the CoreDNS container if it is not already running.
