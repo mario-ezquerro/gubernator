@@ -123,7 +123,7 @@ func EnsureRunning() error {
 
 	fmt.Println("🌐 Starting CoreDNS container (gbnt-coredns)...")
 
-	args := []string{
+	baseArgs := []string{
 		"run", "-d",
 		"--name", ContainerName,
 		"--restart", "unless-stopped",
@@ -131,15 +131,32 @@ func EnsureRunning() error {
 		"-p", DNSPort,
 		"-p", strings.Replace(DNSPort, "udp", "tcp", 1),
 		"-v", VolumeName + ":" + ConfigMountPath + ":ro",
-		ImageName,
-		"-conf", "/etc/coredns/Corefile",
 	}
 
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Try with privileged port 53 mapping first (for macOS resolver compatibility)
+	argsPrivileged := append([]string{}, baseArgs...)
+	argsPrivileged = append(argsPrivileged, 
+		"-p", "127.0.0.1:53:53/udp", 
+		"-p", "127.0.0.1:53:53/tcp", 
+		ImageName, 
+		"-conf", "/etc/coredns/Corefile")
+
+	cmd := exec.Command("docker", argsPrivileged...)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to start CoreDNS container: %w", err)
+		// Clean up the failed container attempt
+		exec.Command("docker", "rm", "-f", ContainerName).Run()
+		
+		fmt.Println("⚠️  Could not bind to local port 53 (in use). Falling back to 5354 only...")
+		
+		argsFallback := append(baseArgs, ImageName, "-conf", "/etc/coredns/Corefile")
+		cmdFallback := exec.Command("docker", argsFallback...)
+		cmdFallback.Stdout = os.Stdout
+		cmdFallback.Stderr = os.Stderr
+		if err := cmdFallback.Run(); err != nil {
+			return fmt.Errorf("failed to start CoreDNS container: %w", err)
+		}
+	} else {
+		fmt.Println("🌟 Bound successfully to 127.0.0.1:53 (macOS native resolver compatibility active!)")
 	}
 
 	fmt.Println("✅ CoreDNS started successfully. DNS domain: *.gbnt")
