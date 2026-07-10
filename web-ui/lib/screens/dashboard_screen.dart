@@ -1679,6 +1679,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final gridHeight = (screenHeight - 620).clamp(300.0, double.infinity);
+
     final List<PlutoColumn> columns = [
       PlutoColumn(
         title: 'TASK ID',
@@ -1881,7 +1884,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             Container(
-              height: 400,
+              height: gridHeight,
               decoration: BoxDecoration(
                 border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
                 borderRadius: BorderRadius.circular(12),
