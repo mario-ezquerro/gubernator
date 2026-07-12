@@ -1626,13 +1626,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           t.status.toLowerCase().contains(_taskSearchQuery) ||
           (svc != null && svc.name.toLowerCase().contains(_taskSearchQuery)) ||
           (svc != null && svc.image.toLowerCase().contains(_taskSearchQuery)) ||
-          (node != null && node.id.toLowerCase().contains(_taskSearchQuery));
+          (node != null && (node.id.toLowerCase().contains(_taskSearchQuery) || node.ip.toLowerCase().contains(_taskSearchQuery)));
     }).toList();
 
     return filteredTasks.map((t) {
       final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
       final stack = _state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
       final stackName = stack?.name ?? svc?.stackId ?? '-';
+      final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
+      final nodeVal = node != null ? '${node.id} (${node.ip})' : t.nodeId;
       
       return PlutoRow(
         cells: {
@@ -1640,7 +1642,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'service': PlutoCell(value: svc?.name ?? 'unknown'),
           'stack': PlutoCell(value: stackName),
           'container': PlutoCell(value: t.containerName.isEmpty ? '-' : t.containerName),
-          'node': PlutoCell(value: t.nodeId),
+          'node': PlutoCell(value: nodeVal),
           'status': PlutoCell(value: t.status),
           'ip': PlutoCell(value: t.containerIp.isEmpty ? '-' : t.containerIp),
           'created': PlutoCell(value: t.createdAt),
@@ -1768,18 +1770,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'NODE',
         field: 'node',
         type: PlutoColumnType.text(),
-        width: 150,
+        width: 160,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
           final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SelectableText(
-                  node != null && node.id.length > 8
-                      ? node.id.substring(0, 8)
-                      : node?.id ?? 'unknown',
-                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SelectableText(
+                      node != null && node.id.length > 8
+                          ? node.id.substring(0, 8)
+                          : node?.id ?? 'unknown',
+                      style: const TextStyle(
+                          fontFamily: 'Courier New',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  if (node != null && node.ip.isNotEmpty)
+                    Text(
+                      node.ip,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontFamily: 'Courier New',
+                      ),
+                    ),
+                ],
+              ),
               if (node != null) ...[
                 const SizedBox(width: 4),
                 IconButton(
