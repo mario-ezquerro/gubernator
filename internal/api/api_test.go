@@ -20,15 +20,15 @@ var testDBMutex sync.Mutex
 
 // setupRouter builds a test router with auth middleware and all routes, backed
 // by an isolated in-memory SQLite database.
-func setupRouter(t *testing.T) (*gin.Engine, string) {
+func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 	t.Helper()
-	
+
 	// Lock to ensure sequential database initialization
 	testDBMutex.Lock()
 	t.Cleanup(func() {
 		testDBMutex.Unlock()
 	})
-	
+
 	gin.SetMode(gin.TestMode)
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
@@ -95,7 +95,7 @@ func authHeader(token string) string { return "Bearer " + token }
 func TestAuth_MissingToken(t *testing.T) {
 	r, _ := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/ls", http.NoBody)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", w.Code)
@@ -105,7 +105,7 @@ func TestAuth_MissingToken(t *testing.T) {
 func TestAuth_WrongToken(t *testing.T) {
 	r, _ := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/ls", http.NoBody)
 	req.Header.Set("Authorization", "Bearer wrong-token")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusUnauthorized {
@@ -116,7 +116,7 @@ func TestAuth_WrongToken(t *testing.T) {
 func TestAuth_ValidToken(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -129,7 +129,7 @@ func TestAuth_ValidToken(t *testing.T) {
 func TestNodeList_ContainsManagerNode(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 
@@ -144,7 +144,7 @@ func TestNodeList_ContainsManagerNode(t *testing.T) {
 func TestNodeInspect_Found(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/node-local-manager", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/node-local-manager", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -155,7 +155,7 @@ func TestNodeInspect_Found(t *testing.T) {
 func TestNodeInspect_NotFound(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/does-not-exist", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/does-not-exist", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
@@ -184,7 +184,7 @@ func TestNodeJoin_ValidToken(t *testing.T) {
 
 	// Node should now appear in the list
 	w2 := httptest.NewRecorder()
-	req2, _ := http.NewRequest("GET", "/v1/node/worker-test", nil)
+	req2, _ := http.NewRequest("GET", "/v1/node/worker-test", http.NoBody)
 	req2.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusOK {
@@ -251,7 +251,7 @@ func TestNodeAvailability_Drain(t *testing.T) {
 func TestNodeLeave(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/node/node-local-manager/leave", nil)
+	req, _ := http.NewRequest("POST", "/v1/node/node-local-manager/leave", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -264,7 +264,7 @@ func TestNodeLeave(t *testing.T) {
 func TestStackList_Empty(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/stack/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/stack/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -296,7 +296,7 @@ services:
 
 	// Stack should now appear in list
 	w2 := httptest.NewRecorder()
-	req2, _ := http.NewRequest("GET", "/v1/stack/ls", nil)
+	req2, _ := http.NewRequest("GET", "/v1/stack/ls", http.NoBody)
 	req2.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w2, req2)
 	if !bytes.Contains(w2.Body.Bytes(), []byte("teststack")) {
@@ -307,7 +307,7 @@ services:
 func TestStackDelete_NotFound(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/v1/stack/nonexistent", nil)
+	req, _ := http.NewRequest("DELETE", "/v1/stack/nonexistent", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
@@ -320,7 +320,7 @@ func TestStackDelete_NotFound(t *testing.T) {
 func TestServiceList_Empty(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/service/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/service/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -331,7 +331,7 @@ func TestServiceList_Empty(t *testing.T) {
 func TestServiceDelete_NotFound(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/v1/service/nonexistent", nil)
+	req, _ := http.NewRequest("DELETE", "/v1/service/nonexistent", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
@@ -344,7 +344,7 @@ func TestServiceDelete_NotFound(t *testing.T) {
 func TestTaskList_Empty(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/task/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/task/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -355,7 +355,7 @@ func TestTaskList_Empty(t *testing.T) {
 func TestTaskDelete_NotFound(t *testing.T) {
 	r, tok := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/v1/task/nonexistent", nil)
+	req, _ := http.NewRequest("DELETE", "/v1/task/nonexistent", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
@@ -368,7 +368,7 @@ func TestTaskDelete_NotFound(t *testing.T) {
 func TestClusterToken_FromLocalhost(t *testing.T) {
 	r, _ := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/cluster/token", nil)
+	req, _ := http.NewRequest("GET", "/v1/cluster/token", http.NoBody)
 	req.RemoteAddr = "127.0.0.1:9999" // fake localhost
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -382,7 +382,7 @@ func TestClusterToken_FromLocalhost(t *testing.T) {
 func TestClusterToken_FromRemote(t *testing.T) {
 	r, _ := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/cluster/token", nil)
+	req, _ := http.NewRequest("GET", "/v1/cluster/token", http.NoBody)
 	req.RemoteAddr = "203.0.113.5:9999" // non-local address
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden {
@@ -393,7 +393,7 @@ func TestClusterToken_FromRemote(t *testing.T) {
 func TestClusterInfo_FromLocalhost(t *testing.T) {
 	r, _ := setupRouter(t)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/cluster/info", nil)
+	req, _ := http.NewRequest("GET", "/v1/cluster/info", http.NoBody)
 	req.RemoteAddr = "127.0.0.1:9999"
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -454,7 +454,7 @@ func TestStackServices_AfterDeploy(t *testing.T) {
 	stackID := deployTestStack(t, r, tok)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/stack/"+stackID+"/services", nil)
+	req, _ := http.NewRequest("GET", "/v1/stack/"+stackID+"/services", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -470,7 +470,7 @@ func TestNodeTasks_AfterDeploy(t *testing.T) {
 	deployTestStack(t, r, tok)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/node/tasks/node-local-manager", nil)
+	req, _ := http.NewRequest("GET", "/v1/node/tasks/node-local-manager", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -484,7 +484,7 @@ func TestServiceScale_AfterDeploy(t *testing.T) {
 
 	// Fetch the created service ID
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/service/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/service/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 
@@ -511,7 +511,7 @@ func TestServiceTasks_AfterDeploy(t *testing.T) {
 	deployTestStack(t, r, tok)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/service/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/service/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 
@@ -523,7 +523,7 @@ func TestServiceTasks_AfterDeploy(t *testing.T) {
 	svcID := fmt.Sprintf("%v", services[0]["id"])
 
 	w2 := httptest.NewRecorder()
-	req2, _ := http.NewRequest("GET", "/v1/service/"+svcID+"/tasks", nil)
+	req2, _ := http.NewRequest("GET", "/v1/service/"+svcID+"/tasks", http.NoBody)
 	req2.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusOK {
@@ -537,7 +537,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 
 	// Get a task ID
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/task/ls", nil)
+	req, _ := http.NewRequest("GET", "/v1/task/ls", http.NoBody)
 	req.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w, req)
 
@@ -581,7 +581,7 @@ func TestNodeLabelsUpdate(t *testing.T) {
 
 	// Fetch node details to verify labels
 	w2 := httptest.NewRecorder()
-	req2, _ := http.NewRequest("GET", "/v1/node/node-local-manager", nil)
+	req2, _ := http.NewRequest("GET", "/v1/node/node-local-manager", http.NoBody)
 	req2.Header.Set("Authorization", authHeader(tok))
 	r.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusOK {
