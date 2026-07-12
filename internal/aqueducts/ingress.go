@@ -5,16 +5,23 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
+
+// aqueductMutex protects concurrent access to file generation and database queries
+var aqueductMutex sync.Mutex
 
 // GenerateCaddyfile creates a Caddyfile based on Service constraints/labels.
 // It groups all upstreams by ingress hostname to avoid duplicate site definitions.
 // Only services with running tasks are included — no DNS fallback blocks are emitted
 // since those cause "ambiguous site definition" errors when combined with IP-based blocks.
 func GenerateCaddyfile() {
+	aqueductMutex.Lock()
+	defer aqueductMutex.Unlock()
+
 	var services []db.Service
 	if err := db.DB.Find(&services).Error; err != nil {
 		slog.Error("failed to fetch services for ingress", "err", err)
