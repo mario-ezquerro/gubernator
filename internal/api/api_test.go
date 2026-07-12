@@ -7,16 +7,28 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
+// testDBMutex ensures only one test at a time can initialize and use the database
+// to prevent race conditions from concurrent database access
+var testDBMutex sync.Mutex
+
 // setupRouter builds a test router with auth middleware and all routes, backed
 // by an isolated in-memory SQLite database.
 func setupRouter(t *testing.T) (*gin.Engine, string) {
 	t.Helper()
+	
+	// Lock to ensure sequential database initialization
+	testDBMutex.Lock()
+	t.Cleanup(func() {
+		testDBMutex.Unlock()
+	})
+	
 	gin.SetMode(gin.TestMode)
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
@@ -78,7 +90,7 @@ func setupRouter(t *testing.T) (*gin.Engine, string) {
 
 func authHeader(token string) string { return "Bearer " + token }
 
-// ── Auth middleware ───────────────────────────────────────────────────────────
+// ── Auth middleware ────────────────────────────────────────────────────────────
 
 func TestAuth_MissingToken(t *testing.T) {
 	r, _ := setupRouter(t)
@@ -303,7 +315,7 @@ func TestStackDelete_NotFound(t *testing.T) {
 	}
 }
 
-// ── Service handlers ──────────────────────────────────────────────────────────
+// ── Service handlers ────────────────────────────────────────────────────────────
 
 func TestServiceList_Empty(t *testing.T) {
 	r, tok := setupRouter(t)
@@ -351,7 +363,7 @@ func TestTaskDelete_NotFound(t *testing.T) {
 	}
 }
 
-// ── Cluster endpoints ─────────────────────────────────────────────────────────
+// ── Cluster endpoints ───────────────────────────────────────────────────────────
 
 func TestClusterToken_FromLocalhost(t *testing.T) {
 	r, _ := setupRouter(t)
@@ -594,4 +606,3 @@ func TestNodeLabelsUpdate(t *testing.T) {
 		t.Errorf("expected custom-key to be 'custom-val', got: %s", node.Labels["custom-key"])
 	}
 }
-
