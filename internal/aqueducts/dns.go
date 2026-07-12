@@ -5,14 +5,21 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
+// aqueductMutex protects concurrent access to file generation and database queries
+var aqueductMutex sync.Mutex
+
 // GenerateHostsFile queries the DB for all running tasks and regenerates the CoreDNS hosts file.
 // After writing, it signals CoreDNS to reload the new records.
 func GenerateHostsFile() {
+	aqueductMutex.Lock()
+	defer aqueductMutex.Unlock()
+
 	var tasks []db.Task
 	// Only fetch tasks that have an IP
 	if err := db.DB.Where("status = ? AND container_ip != ?", "running", "").Find(&tasks).Error; err != nil {
