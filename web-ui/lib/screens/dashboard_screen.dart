@@ -1689,7 +1689,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'TASK ID',
         field: 'task_id',
         type: PlutoColumnType.text(),
-        width: 150,
+        width: 110,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
           return Row(
@@ -1717,7 +1717,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'SERVICE',
         field: 'service',
         type: PlutoColumnType.text(),
-        width: 150,
+        width: 220,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
           final svc = _state.services.where((s) => s.id == t.serviceId).firstOrNull;
@@ -1764,13 +1764,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'CONTAINER',
         field: 'container',
         type: PlutoColumnType.text(),
-        width: 150,
+        width: 160,
       ),
       PlutoColumn(
         title: 'NODE',
         field: 'node',
         type: PlutoColumnType.text(),
-        width: 160,
+        width: 180,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
           final node = _state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
@@ -1782,8 +1782,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SelectableText(
-                      node != null && node.id.length > 8
-                          ? node.id.substring(0, 8)
+                      node != null && node.id.length > 16
+                          ? '${node.id.substring(0, 16)}...'
                           : node?.id ?? 'unknown',
                       style: const TextStyle(
                           fontFamily: 'Courier New',
@@ -1837,7 +1837,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'CREATED',
         field: 'created',
         type: PlutoColumnType.text(),
-        width: 150,
+        width: 120,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
           return Text(_timeAgo(t.createdAt),
@@ -1860,7 +1860,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: 'ACTIONS',
         field: 'actions',
         type: PlutoColumnType.text(),
-        width: 100,
+        width: 80,
         enableSorting: false,
         renderer: (rendererContext) {
           final t = rendererContext.row.cells['task_raw']!.value as Task;
@@ -1931,7 +1931,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ? const PlutoGridStyleConfig.dark()
                         : const PlutoGridStyleConfig(),
                     columnSize: const PlutoGridColumnSizeConfig(
-                      autoSizeMode: PlutoAutoSizeMode.none,
+                      autoSizeMode: PlutoAutoSizeMode.scale,
                     ),
                   ),
                 ),
