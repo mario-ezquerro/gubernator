@@ -110,8 +110,7 @@ func StackRmHandler(c *gin.Context) {
 	}
 
 	// Trigger generation of DNS and Ingress now that the stack and its tasks are deleted
-	go aqueducts.GenerateHostsFile()
-	go aqueducts.GenerateCaddyfile()
+	aqueducts.GenerateAllAsync()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Stack removed and containers stopped"})
 }

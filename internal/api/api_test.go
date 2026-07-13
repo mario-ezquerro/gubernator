@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -26,6 +27,7 @@ func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 	// Lock to ensure sequential database initialization
 	testDBMutex.Lock()
 	t.Cleanup(func() {
+		aqueducts.WG.Wait()
 		testDBMutex.Unlock()
 	})
 

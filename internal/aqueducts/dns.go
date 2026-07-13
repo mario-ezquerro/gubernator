@@ -14,6 +14,19 @@ import (
 // aqueductMutex protects concurrent access to file generation and database queries
 var aqueductMutex sync.Mutex
 
+// WG tracks background/asynchronous config generation tasks (primarily used in tests)
+var WG sync.WaitGroup
+
+// GenerateAllAsync triggers hosts and caddy file generation asynchronously.
+func GenerateAllAsync() {
+	WG.Add(1)
+	go func() {
+		defer WG.Done()
+		GenerateHostsFile()
+		GenerateCaddyfile()
+	}()
+}
+
 // GenerateHostsFile queries the DB for all running tasks and regenerates the CoreDNS hosts file.
 // After writing, it signals CoreDNS to reload the new records.
 func GenerateHostsFile() {

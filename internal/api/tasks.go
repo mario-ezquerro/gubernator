@@ -92,10 +92,7 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 	}
 
 	// Trigger CoreDNS & Caddy update
-	go func() {
-		aqueducts.GenerateHostsFile()
-		aqueducts.GenerateCaddyfile()
-	}()
+	aqueducts.GenerateAllAsync()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
 }
@@ -130,10 +127,7 @@ func TaskRmHandler(c *gin.Context) {
 		return
 	}
 
-	go func() {
-		aqueducts.GenerateHostsFile()
-		aqueducts.GenerateCaddyfile()
-	}()
+	aqueducts.GenerateAllAsync()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task removed"})
 }
