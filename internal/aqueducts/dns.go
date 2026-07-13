@@ -53,14 +53,22 @@ func GenerateHostsFile() {
 		if err := db.DB.First(&svc, "id = ?", t.ServiceID).Error; err == nil {
 			var stack db.Stack
 			if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
+				targetIP := t.ContainerIP
+				if t.NodeID != "node-local-manager" {
+					var taskNode db.Node
+					if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil && taskNode.IP != "" {
+						targetIP = taskNode.IP
+					}
+				}
+
 				// Format: IP task.service.stack.gbnt
 				// Example: 172.17.0.2 task-abc.web.mystack.gbnt
 				domain := fmt.Sprintf("%s.%s.%s.gbnt", t.ID, svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s\n", t.ContainerIP, domain)
+				content += fmt.Sprintf("%s\t%s\n", targetIP, domain)
 
 				// Short alias (e.g. web.mystack.gbnt points to the first container MVP)
 				shortDomain := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s\n", t.ContainerIP, shortDomain)
+				content += fmt.Sprintf("%s\t%s\n", targetIP, shortDomain)
 			}
 		}
 	}
