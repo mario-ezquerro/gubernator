@@ -210,6 +210,7 @@ func scheduleService(service *db.Service, targetNode string) {
 				break // Found a matching node (MVP: picks the first one)
 			}
 		}
+		}
 
 		if selectedNode != nil {
 			task := db.Task{
