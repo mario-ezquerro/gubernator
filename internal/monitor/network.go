@@ -44,7 +44,8 @@ func ConnectGubernator() error {
 	}
 
 	// Check if this hostname is a docker container by trying to inspect it
-	if err := exec.Command("docker", "inspect", hostname).Run(); err != nil {
+	err = exec.Command("docker", "inspect", hostname).Run()
+	if err != nil {
 		// Not running inside a docker container, or docker CLI is not available
 		return nil
 	}

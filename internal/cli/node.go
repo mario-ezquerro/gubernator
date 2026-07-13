@@ -197,7 +197,8 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	var node struct {
 		Labels map[string]string `json:"labels"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&node); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(&node)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error decoding node response: %v\n", err)
 		os.Exit(1)
 	}

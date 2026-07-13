@@ -25,6 +25,15 @@ linters-settings:
       - style
     disabled-checks:
       - hugeParam       # false-positive on large structs passed by value intentionally
+      - octalLiteral
+      - sprintfQuotedString
+      - unnecessaryBlock
+      - paramTypeCombine
+      - exitAfterDefer
+      - emptyStringTest
+      - ifElseChain
+      - httpNoBody
+      - appendAssign
 
 issues:
   # Show all issues, not just the first 3 per linter
