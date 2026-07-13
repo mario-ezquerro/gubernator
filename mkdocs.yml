@@ -44,6 +44,7 @@ nav:
   - Home: index.md
   - Roadmap: roadmap.md
   - Installation: install.md
+  - Multi-Host Clustering: cluster.md
   - CLI Reference:
     - Overview: cli.md
     - Full Command Reference: cli-full.md
