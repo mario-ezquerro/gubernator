@@ -65,6 +65,7 @@ type ComposeService struct {
 type StackDeployRequest struct {
 	Name       string `json:"name"` // Optional if provided in compose file
 	ComposeRaw string `json:"compose_raw" binding:"required"`
+	TargetNode string `json:"target_node"`
 }
 
 // @Summary Deploy a Stack
@@ -156,7 +157,7 @@ func StackDeployHandler(c *gin.Context) {
 		db.DB.Create(&service)
 
 		// Scheduler: assign Tasks to Nodes based on Constraints
-		scheduleService(&service)
+		scheduleService(&service, req.TargetNode)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -166,16 +167,24 @@ func StackDeployHandler(c *gin.Context) {
 	})
 }
 
-func scheduleService(service *db.Service) {
+func scheduleService(service *db.Service, targetNode string) {
 	// For each replica, find a suitable node
 	for i := 0; i < service.DesiredReplicas; i++ {
-		var allNodes []db.Node
-		db.DB.Where("status = ?", "active").Find(&allNodes)
-
 		var selectedNode *db.Node
 
-		// MVP constraint matching
-		for _, node := range allNodes {
+		if targetNode != "" && targetNode != "auto" {
+			var n db.Node
+			if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
+				selectedNode = &n
+			}
+		}
+
+		if selectedNode == nil {
+			var allNodes []db.Node
+			db.DB.Where("status = ?", "active").Find(&allNodes)
+
+			// MVP constraint matching
+			for _, node := range allNodes {
 			matchesAll := true
 			for _, constraint := range service.Constraints {
 				// Constraint example: "node.labels.gbnt.node.gpu == nvidia"

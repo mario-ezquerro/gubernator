@@ -81,33 +81,43 @@ type composeService struct {
 }
 
 // webScheduleService schedules tasks for a service (same logic as api.scheduleService).
-func webScheduleService(service *db.Service) {
+func webScheduleService(service *db.Service, targetNode string) {
 	for i := 0; i < service.DesiredReplicas; i++ {
-		var allNodes []db.Node
-		db.DB.Where("status = ?", "active").Find(&allNodes)
-
 		var selectedNode *db.Node
-		for _, node := range allNodes {
-			matchesAll := true
-			for _, constraint := range service.Constraints {
-				parts := strings.Split(constraint, "==")
-				if len(parts) == 2 {
-					leftSide := strings.TrimSpace(parts[0])
-					if !strings.HasPrefix(leftSide, "node.labels.") {
-						// Skip non-node-placement constraints (like ingress.host)
-						continue
-					}
-					key := strings.TrimPrefix(leftSide, "node.labels.")
-					val := strings.TrimSpace(parts[1])
-					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
-						matchesAll = false
-						break
+
+		if targetNode != "" && targetNode != "auto" {
+			var n db.Node
+			if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
+				selectedNode = &n
+			}
+		}
+
+		if selectedNode == nil {
+			var allNodes []db.Node
+			db.DB.Where("status = ?", "active").Find(&allNodes)
+
+			for _, node := range allNodes {
+				matchesAll := true
+				for _, constraint := range service.Constraints {
+					parts := strings.Split(constraint, "==")
+					if len(parts) == 2 {
+						leftSide := strings.TrimSpace(parts[0])
+						if !strings.HasPrefix(leftSide, "node.labels.") {
+							// Skip non-node-placement constraints (like ingress.host)
+							continue
+						}
+						key := strings.TrimPrefix(leftSide, "node.labels.")
+						val := strings.TrimSpace(parts[1])
+						if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+							matchesAll = false
+							break
+						}
 					}
 				}
-			}
-			if matchesAll {
-				selectedNode = &node
-				break
+				if matchesAll {
+					selectedNode = &node
+					break
+				}
 			}
 		}
 
@@ -117,6 +127,15 @@ func webScheduleService(service *db.Service) {
 				ServiceID: service.ID,
 				NodeID:    selectedNode.ID,
 				Status:    "pending",
+			}
+			db.DB.Create(&task)
+		} else {
+			task := db.Task{
+				ID:        uuid.New().String(),
+				ServiceID: service.ID,
+				NodeID:    "none",
+				Status:    "dead",
+				Error:     "No suitable node found for placement constraints",
 			}
 			db.DB.Create(&task)
 		}
@@ -631,8 +650,9 @@ func updateStackComposeHandler(c *gin.Context) {
 
 func deployStackHandler(c *gin.Context) {
 	var req struct {
-		Name    string `json:"name"`
-		Compose string `json:"compose" binding:"required"`
+		Name       string `json:"name"`
+		Compose    string `json:"compose" binding:"required"`
+		TargetNode string `json:"target_node"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -715,7 +735,7 @@ func deployStackHandler(c *gin.Context) {
 			Command:         srvDef.Command,
 		}
 		db.DB.Create(&service)
-		webScheduleService(&service)
+		webScheduleService(&service, req.TargetNode)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
@@ -775,7 +795,7 @@ func redeployStackHandler(c *gin.Context) {
 				slog.Info("redeploy: definition changed, full recreate", "service", srvName)
 				stopAllTasksForService(existing.ID)
 				updateServiceRecord(&existing, srvDef, newReplicas)
-				webScheduleService(&existing)
+				webScheduleService(&existing, "")
 				summary = append(summary, fmt.Sprintf("%s: recreated (%d replicas)", srvName, newReplicas))
 			} else if existing.DesiredReplicas != newReplicas {
 				// Only replica count changed → incremental scale
@@ -810,7 +830,7 @@ func redeployStackHandler(c *gin.Context) {
 				Command:         srvDef.Command,
 			}
 			db.DB.Create(&service)
-			webScheduleService(&service)
+			webScheduleService(&service, "")
 			summary = append(summary, fmt.Sprintf("%s: created (%d replicas)", srvName, newReplicas))
 		}
 	}

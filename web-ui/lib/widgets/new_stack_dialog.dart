@@ -1,15 +1,18 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import '../models/models.dart' as models;
 
 /// A dialog to define and deploy a new Docker Compose stack.
 class NewStackDialog extends StatefulWidget {
-  final Future<String?> Function(String name, String yaml) onDeploy;
+  final Future<String?> Function(String name, String yaml, String targetNode) onDeploy;
+  final List<models.Node> nodes;
   final String? initialName;
   final String? initialYaml;
 
   const NewStackDialog({
     super.key,
     required this.onDeploy,
+    required this.nodes,
     this.initialName,
     this.initialYaml,
   });
@@ -23,6 +26,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _yamlController;
   bool _deploying = false;
+  String _selectedNode = 'auto';
 
   @override
   void initState() {
@@ -152,6 +156,41 @@ class _NewStackDialogState extends State<NewStackDialog> {
                       ),
                       const SizedBox(height: 24),
 
+                      // Target Node Selection
+                      Text(
+                        'Target Placement Node',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedNode,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'auto',
+                            child: Text('Automatic Scheduler (Load Balanced)'),
+                          ),
+                          ...widget.nodes
+                              .where((n) => n.status == 'active')
+                              .map((n) => DropdownMenuItem(
+                                    value: n.id,
+                                    child: Text('${n.id} (${n.ip} - ${n.role.toUpperCase()})'),
+                                  )),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedNode = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
                       // Compose YAML Input
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -232,7 +271,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                 setState(() => _deploying = true);
                                 final name = _nameController.text.trim();
                                 final yaml = _yamlController.text;
-                                final errorMsg = await widget.onDeploy(name, yaml);
+                                final errorMsg = await widget.onDeploy(name, yaml, _selectedNode);
                                 setState(() => _deploying = false);
                                 if (errorMsg == null && context.mounted) {
                                   Navigator.of(context).pop();

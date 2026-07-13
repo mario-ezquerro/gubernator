@@ -25,13 +25,14 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  static Future<String?> deployStack(String name, String compose) async {
+  static Future<String?> deployStack(String name, String compose, {String? targetNode}) async {
     final response = await http.post(
       Uri.parse('/api/stack'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'name': name,
         'compose': compose,
+        'target_node': targetNode,
       }),
     );
     if (response.statusCode == 200) {
