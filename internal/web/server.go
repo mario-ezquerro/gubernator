@@ -1233,7 +1233,12 @@ func nodeShellHandler(c *gin.Context) {
 	defer ws.Close()
 
 	// Use nsenter inside a privileged container to get host shell
-	cmd := exec.Command("docker", "run", "-it", "--rm", "--privileged", "--pid=host", "alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh")
+	var cmd *exec.Cmd
+	if node.Role == "manager" {
+		cmd = exec.Command("docker", "run", "-it", "--rm", "--privileged", "--pid=host", "alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh")
+	} else {
+		cmd = exec.Command("ssh", "-t", "-o", "StrictHostKeyChecking=no", "ubuntu@"+node.IP, "docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
+	}
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start host shell: %v\r\n", err)))
