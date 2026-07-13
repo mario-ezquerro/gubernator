@@ -5,14 +5,10 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
-
-// aqueductMutex protects concurrent access to file generation and database queries
-var aqueductMutex sync.Mutex
 
 // GenerateCaddyfile creates a Caddyfile based on Service constraints/labels.
 // It groups all upstreams by ingress hostname to avoid duplicate site definitions.
