@@ -14,6 +14,8 @@ services:
       - gubernator-data:/data
       # Persistencia de configuraciones de monitoreo y DNS/Ingress
       - gubernator-home:/root/.gbnt
+      # Claves SSH del host para comunicación segura con nodos Worker
+      - ~/.ssh:/root/.ssh:ro
     environment:
       # Servidores DNS externos usados por CoreDNS (por defecto 8.8.8.8 1.1.1.1)
       - GBNT_DNS_FORWARDERS=8.8.8.8 4.4.4.4

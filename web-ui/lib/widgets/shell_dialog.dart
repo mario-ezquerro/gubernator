@@ -86,7 +86,8 @@ class _ShellDialogState extends State<ShellDialog> {
   Future<void> _handleCopy() async {
     final selection = _controller.selection;
     if (selection != null) {
-      final text = terminal.buffer.getText(selection);
+      var text = terminal.buffer.getText(selection);
+      text = text.replaceAll('\x00', '').trim();
       if (text.isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: text));
         _showSnackBar('Copied selection to clipboard!');
@@ -94,7 +95,8 @@ class _ShellDialogState extends State<ShellDialog> {
       }
     }
     // Fallback: Copy all text
-    final text = terminal.buffer.getText();
+    var text = terminal.buffer.getText();
+    text = text.replaceAll('\x00', '').trim();
     await Clipboard.setData(ClipboardData(text: text));
     _showSnackBar('Copied all terminal output!');
   }
@@ -171,7 +173,8 @@ class _ShellDialogState extends State<ShellDialog> {
               if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
                 final selection = _controller.selection;
                 if (selection != null) {
-                  final text = terminal.buffer.getText(selection);
+                  var text = terminal.buffer.getText(selection);
+                  text = text.replaceAll('\x00', '').trim();
                   if (text.isNotEmpty) {
                     Clipboard.setData(ClipboardData(text: text));
                     _showSnackBar('Copied to clipboard!');

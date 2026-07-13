@@ -28,7 +28,7 @@ ENV PATH="/app:${PATH}"
 ENV GBNT_DATA_DIR="/data"
 
 # Add certificates, timezone data, sqlite, and Docker CLI (needed for local executor)
-RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli
+RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli openssh-client
 
 # Copy the pre-built binary
 COPY --from=builder /app/gbnt .
