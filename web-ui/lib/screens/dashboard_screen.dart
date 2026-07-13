@@ -52,6 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _taskSortAscending = true;
   PlutoGridStateManager? _taskGridStateManager;
   List<String> _layoutOrder = ['stacks', 'nodes'];
+  double _stacksRatio = 0.5;
 
   final ScrollController _stackScrollController = ScrollController();
   final ScrollController _nodeScrollController = ScrollController();
@@ -1031,13 +1032,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    // Wide screen → side by side.
-    final cardWidth = (availableWidth - gap) / 2;
-    final children = _layoutOrder.map((type) {
+    // Wide screen → side by side with resizable split view
+    final double leftWidth = _layoutOrder[0] == 'stacks'
+        ? availableWidth * _stacksRatio - (gap / 2)
+        : availableWidth * (1.0 - _stacksRatio) - (gap / 2);
+
+    final double rightWidth = _layoutOrder[0] == 'stacks'
+        ? availableWidth * (1.0 - _stacksRatio) - (gap / 2)
+        : availableWidth * _stacksRatio - (gap / 2);
+
+    final children = _layoutOrder.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final type = entry.value;
       final card = type == 'stacks' ? _buildStacksCard(theme) : _buildNodesCard(theme);
+      final width = idx == 0 ? leftWidth : rightWidth;
       return SizedBox(
-        width: cardWidth,
-        child: _buildDraggableCard(type, card, cardWidth),
+        width: width,
+        child: _buildDraggableCard(type, card, width),
       );
     }).toList();
 
@@ -1047,7 +1058,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           children[0],
-          const SizedBox(width: gap),
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragUpdate: (details) {
+              setState(() {
+                double deltaRatio = details.delta.dx / availableWidth;
+                if (_layoutOrder[0] != 'stacks') {
+                  deltaRatio = -deltaRatio;
+                }
+                _stacksRatio = (_stacksRatio + deltaRatio).clamp(0.2, 0.8);
+              });
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.resizeLeftRight,
+              child: SizedBox(
+                width: gap,
+                height: 350,
+                child: Center(
+                  child: Container(
+                    width: 4,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           children[1],
         ],
       ),
