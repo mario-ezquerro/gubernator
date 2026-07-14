@@ -268,5 +268,12 @@ func startWatchtowers(ctx context.Context) {
 			Where("updated_at < ?", threshold).
 			Where("status = ?", "active").
 			Updates(map[string]interface{}{"status": "down"})
+
+		// Also mark tasks of down nodes as dead
+		var downNodes []db.Node
+		db.DB.Where("role = ? AND status = ?", "worker", "down").Find(&downNodes)
+		for _, dn := range downNodes {
+			db.DB.Model(&db.Task{}).Where("node_id = ? AND service_id LIKE ?", dn.ID, "core-svc-%").Updates(map[string]interface{}{"status": "dead"})
+		}
 	}
 }

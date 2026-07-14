@@ -8,8 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/mario-ezquerro/gubernator/internal/caddy"
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/spf13/cobra"
@@ -118,6 +121,31 @@ var legionJoinCmd = &cobra.Command{
 		fmt.Printf("   Local IP : %s\n", localIP)
 		fmt.Printf("   Manager  : %s\n", addr)
 
+		// Parse manager IP from managerAddr
+		managerIP := "127.0.0.1"
+		cleanAddr := managerAddr
+		if strings.Contains(cleanAddr, "://") {
+			cleanAddr = strings.Split(cleanAddr, "://")[1]
+		}
+		if strings.Contains(cleanAddr, ":") {
+			managerIP = strings.Split(cleanAddr, ":")[0]
+		} else {
+			managerIP = cleanAddr
+		}
+
+		// Ensure network and start CoreDNS & Caddy locally on worker node
+		fmt.Println("🌐 Starting local CoreDNS and Caddy Ingress on worker node...")
+		if err := coredns.EnsureNetwork(); err != nil {
+			fmt.Printf("⚠️ Failed to create gbnt-net network: %v\n", err)
+		} else {
+			if err := coredns.EnsureRunningWorker(managerIP); err != nil {
+				fmt.Printf("⚠️ Failed to start worker CoreDNS: %v\n", err)
+			}
+			if err := caddy.EnsureRunning(); err != nil {
+				fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
+			}
+		}
+
 		// Start heartbeat loop
 		fmt.Println("\n💓 Starting background loops (Heartbeat & Executor)...")
 
@@ -157,56 +185,125 @@ var legionJoinCmd = &cobra.Command{
 			var data struct {
 				Tasks []struct {
 					Task struct {
-						ID string `json:"id"`
+						ID          string `json:"id"`
+						Status      string `json:"status"`
+						ContainerIP string `json:"container_ip"`
 					} `json:"task"`
-					Image   string   `json:"image"`
-					Ports   []string `json:"ports"`
-					Env     []string `json:"env"`
-					Volumes []string `json:"volumes"`
-					Command string   `json:"command"`
+					Image       string   `json:"image"`
+					Ports       []string `json:"ports"`
+					Env         []string `json:"env"`
+					Volumes     []string `json:"volumes"`
+					Command     string   `json:"command"`
+					Constraints []string `json:"constraints"`
 				} `json:"tasks"`
 			}
 
 			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
-				for _, t := range data.Tasks {
-					fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
+				for i, t := range data.Tasks {
+					if t.Task.Status == "pending" {
+						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
 
-					fmt.Printf("Pulling image %s...\n", t.Image)
-					if err := docker.PullImage(t.Image); err != nil {
-						fmt.Printf("Failed to pull image: %v\n", err)
-						continue
-					}
-
-					cfg := docker.ContainerConfig{
-						TaskID:  t.Task.ID,
-						Image:   t.Image,
-						Ports:   t.Ports,
-						Env:     t.Env,
-						Volumes: t.Volumes,
-						Command: t.Command,
-					}
-
-					fmt.Printf("Starting container for task %s...\n", t.Task.ID)
-					containerName, ip, err := docker.StartContainer(cfg)
-					if err != nil {
-						fmt.Printf("Failed to start container: %v\n", err)
-						continue
-					}
-
-					fmt.Printf("Container %s started successfully with IP: %s\n", containerName, ip)
-
-					statusPayload, _ := json.Marshal(map[string]string{
-						"status":         "running",
-						"container_ip":   ip,
-						"container_name": containerName,
-					})
-					statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
-					if err == nil {
-						statusReq.Header.Set("Content-Type", "application/json")
-						if apiToken != "" {
-							statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+						fmt.Printf("Pulling image %s...\n", t.Image)
+						if err := docker.PullImage(t.Image); err != nil {
+							fmt.Printf("Failed to pull image: %v\n", err)
+							continue
 						}
-						http.DefaultClient.Do(statusReq)
+
+						cfg := docker.ContainerConfig{
+							TaskID:  t.Task.ID,
+							Image:   t.Image,
+							Ports:   t.Ports,
+							Env:     t.Env,
+							Volumes: t.Volumes,
+							Command: t.Command,
+						}
+
+						fmt.Printf("Starting container for task %s...\n", t.Task.ID)
+						containerName, ip, err := docker.StartContainer(cfg)
+						if err != nil {
+							fmt.Printf("Failed to start container: %v\n", err)
+							continue
+						}
+
+						fmt.Printf("Container %s started successfully with IP: %s\n", containerName, ip)
+
+						statusPayload, _ := json.Marshal(map[string]string{
+							"status":         "running",
+							"container_ip":   ip,
+							"container_name": containerName,
+						})
+						statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
+						if err == nil {
+							statusReq.Header.Set("Content-Type", "application/json")
+							if apiToken != "" {
+								statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+							}
+							http.DefaultClient.Do(statusReq)
+						}
+						// Update local t.Task details for immediate Caddyfile update
+						data.Tasks[i].Task.Status = "running"
+						data.Tasks[i].Task.ContainerIP = ip
+					}
+				}
+
+				// Generate local Caddyfile for all running tasks on this worker node
+				hostUpstreams := make(map[string][]string)
+				var hostOrder []string
+
+				for _, t := range data.Tasks {
+					taskIP := t.Task.ContainerIP
+					if t.Task.Status != "running" || taskIP == "" {
+						continue
+					}
+
+					for _, constraint := range t.Constraints {
+						parts := strings.Split(constraint, "==")
+						if len(parts) != 2 {
+							continue
+						}
+						key := strings.TrimSpace(parts[0])
+						val := strings.TrimSpace(parts[1])
+
+						if key != "ingress.host" && key != "node.labels.gbnt.ingress.host" {
+							continue
+						}
+
+						port := "80"
+						if len(t.Ports) > 0 {
+							p := t.Ports[0]
+							parts := strings.Split(p, ":")
+							lastPart := parts[len(parts)-1]
+							cleaned := strings.TrimSpace(strings.Split(lastPart, "/")[0])
+							if cleaned != "" {
+								port = cleaned
+							}
+						}
+
+						if _, seen := hostUpstreams[val]; !seen {
+							hostOrder = append(hostOrder, val)
+						}
+						hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:%s", taskIP, port))
+					}
+				}
+
+				caddyfileContent := "# Gubernator Worker Auto-Generated Caddyfile\n\n"
+				for _, host := range hostOrder {
+					upstreams := hostUpstreams[host]
+					caddyfileContent += fmt.Sprintf(
+						"%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
+						host, strings.Join(upstreams, " "),
+					)
+				}
+
+				if len(hostOrder) == 0 {
+					caddyfileContent += ":80 {\n\trespond \"Gubernator Worker Caddy Ingress is running!\" 200\n}\n"
+				}
+
+				caddyfilePath := caddy.CaddyfilePath()
+				currContent, _ := os.ReadFile(caddyfilePath)
+				if string(currContent) != caddyfileContent {
+					if err := os.WriteFile(caddyfilePath, []byte(caddyfileContent), 0644); err == nil {
+						caddy.ReloadConfig()
 					}
 				}
 			}

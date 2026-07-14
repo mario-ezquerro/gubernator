@@ -117,6 +117,45 @@ gbnt gbnt.test {
 `, hostIP, forwarders)
 }
 
+// EnsureRunningWorker starts the CoreDNS container in worker mode (forwarding gbnt queries to the manager).
+func EnsureRunningWorker(managerIP string) error {
+	dir := CoreDNSDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create coredns config dir: %w", err)
+	}
+
+	// Write Corefile that forwards gbnt to the manager
+	corefileContent := fmt.Sprintf(`# Gubernator CoreDNS Worker Configuration
+gbnt gbnt.test {
+    forward . %s:5354
+    log
+    errors
+}
+
+. {
+    forward . 8.8.8.8 1.1.1.1
+    cache 30
+    log
+    errors
+}
+`, managerIP)
+
+	corefilePath := CorefilePath()
+	if err := os.WriteFile(corefilePath, []byte(corefileContent), 0644); err != nil {
+		return fmt.Errorf("failed to write Corefile: %w", err)
+	}
+
+	// Write empty hosts file if it doesn't exist
+	hostsPath := HostsFilePath()
+	if _, err := os.Stat(hostsPath); os.IsNotExist(err) {
+		if err := os.WriteFile(hostsPath, []byte("# Gubernator Auto-Generated CoreDNS Hosts File\n"), 0644); err != nil {
+			return fmt.Errorf("failed to write initial hosts file: %w", err)
+		}
+	}
+
+	return EnsureRunning()
+}
+
 // EnsureRunning starts the CoreDNS container if it is not already running.
 // This function is idempotent: calling it multiple times is safe.
 func EnsureRunning() error {

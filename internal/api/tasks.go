@@ -14,16 +14,17 @@ type TaskResponse struct {
 }
 
 type TaskWithImage struct {
-	Task    db.Task  `json:"task"`
-	Image   string   `json:"image"`
-	Ports   []string `json:"ports"`
-	Env     []string `json:"env"`
-	Volumes []string `json:"volumes"`
-	Command string   `json:"command"`
+	Task        db.Task  `json:"task"`
+	Image       string   `json:"image"`
+	Ports       []string `json:"ports"`
+	Env         []string `json:"env"`
+	Volumes     []string `json:"volumes"`
+	Command     string   `json:"command"`
+	Constraints []string `json:"constraints"`
 }
 
 // @Summary Get assigned tasks for a node
-// @Description Fetches pending tasks for the worker to execute
+// @Description Fetches active tasks for the worker to execute and proxy
 // @Tags tasks
 // @Produce json
 // @Param node_id path string true "Node ID"
@@ -33,7 +34,7 @@ func NodeTasksHandler(c *gin.Context) {
 	nodeID := c.Param("node_id")
 
 	var tasks []db.Task
-	if err := db.DB.Where("node_id = ? AND status = ?", nodeID, "pending").Find(&tasks).Error; err != nil {
+	if err := db.DB.Where("node_id = ? AND status != ?", nodeID, "dead").Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return
 	}
@@ -43,12 +44,13 @@ func NodeTasksHandler(c *gin.Context) {
 		var svc db.Service
 		db.DB.First(&svc, "id = ?", t.ServiceID)
 		response = append(response, TaskWithImage{
-			Task:    t,
-			Image:   svc.Image,
-			Ports:   svc.Ports,
-			Env:     svc.Env,
-			Volumes: svc.Volumes,
-			Command: svc.Command,
+			Task:        t,
+			Image:       svc.Image,
+			Ports:       svc.Ports,
+			Env:         svc.Env,
+			Volumes:     svc.Volumes,
+			Command:     svc.Command,
+			Constraints: svc.Constraints,
 		})
 	}
 
