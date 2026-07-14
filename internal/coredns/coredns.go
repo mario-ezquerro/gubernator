@@ -182,6 +182,8 @@ func EnsureRunning() error {
 
 	fmt.Println("🌐 Starting CoreDNS container (gbnt-coredns)...")
 
+	hostIP := detectLocalIP()
+
 	baseArgs := []string{
 		"run", "-d",
 		"--name", ContainerName,
@@ -195,8 +197,8 @@ func EnsureRunning() error {
 	// Try with privileged port 53 mapping first (for macOS resolver compatibility)
 	argsPrivileged := append([]string{}, baseArgs...)
 	argsPrivileged = append(argsPrivileged, 
-		"-p", "127.0.0.1:53:53/udp", 
-		"-p", "127.0.0.1:53:53/tcp", 
+		"-p", fmt.Sprintf("%s:53:53/udp", hostIP), 
+		"-p", fmt.Sprintf("%s:53:53/tcp", hostIP), 
 		ImageName, 
 		"-conf", "/etc/coredns/Corefile")
 
@@ -215,7 +217,7 @@ func EnsureRunning() error {
 			return fmt.Errorf("failed to start CoreDNS container: %w", err)
 		}
 	} else {
-		fmt.Println("🌟 Bound successfully to 127.0.0.1:53 (macOS native resolver compatibility active!)")
+		fmt.Printf("🌟 Bound successfully to %s:53 (macOS native resolver compatibility active!)\n", hostIP)
 	}
 
 	fmt.Println("✅ CoreDNS started successfully. DNS domain: *.gbnt")
