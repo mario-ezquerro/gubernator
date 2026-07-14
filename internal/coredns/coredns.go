@@ -100,6 +100,12 @@ gbnt gbnt.test {
         reload 3s
         fallthrough
     }
+    forward . 127.0.0.1:1053
+    log
+    errors
+}
+
+gbnt:1053 gbnt.test:1053 {
     template IN A {
         match "^.*$"
         answer "{{ .Name }} 60 IN A %s"
