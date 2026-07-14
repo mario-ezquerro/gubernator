@@ -16,6 +16,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/spf13/cobra"
 )
 
@@ -146,6 +147,12 @@ var legionJoinCmd = &cobra.Command{
 			}
 			if err := caddy.EnsureRunning(); err != nil {
 				fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
+			}
+			// Start cAdvisor telemetry container on worker node
+			if err := monitor.EnsureCadvisorRunning(); err != nil {
+				fmt.Printf("⚠️ Failed to start worker cAdvisor telemetry: %v\n", err)
+			} else {
+				fmt.Println("📊 Worker cAdvisor telemetry started successfully.")
 			}
 		}
 

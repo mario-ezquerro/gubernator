@@ -261,3 +261,23 @@ func runContainer(name string, args []string) error {
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
+
+// EnsureCadvisorRunning starts cAdvisor locally on the node (used on workers).
+func EnsureCadvisorRunning() error {
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", CadvisorName).Output()
+	if err == nil && strings.TrimSpace(string(out)) == "running" {
+		return nil
+	}
+
+	return runContainer(CadvisorName, []string{
+		"--privileged",
+		"-p", "8081:8080",
+		"-v", "/:/rootfs:ro",
+		"-v", "/var/run:/var/run:ro",
+		"-v", "/sys:/sys:ro",
+		"-v", "/var/lib/docker/:/var/lib/docker:ro",
+		"-v", "/dev/disk/:/dev/disk:ro",
+		"--device", "/dev/kmsg",
+		"gcr.io/cadvisor/cadvisor:latest",
+	})
+}
