@@ -110,9 +110,15 @@ func UnregisterFromDB(database *gorm.DB) {
 // getContainerIP inspects a Docker container and returns its IP address.
 func getContainerIP(name string) string {
 	out, err := exec.Command("docker", "inspect", "--format",
-		"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name).Output()
+		"{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}", name).Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	ips := strings.Fields(strings.TrimSpace(string(out)))
+	for _, ip := range ips {
+		if ip != "" {
+			return ip
+		}
+	}
+	return ""
 }
