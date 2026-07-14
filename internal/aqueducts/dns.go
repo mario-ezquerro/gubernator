@@ -73,7 +73,7 @@ func GenerateHostsFile() {
 		}
 	}
 
-	// Add records for ingress.host to point to the host IP
+	// Add records for ingress.host to point to the correct node IPs where the tasks are running
 	var services []db.Service
 	if err := db.DB.Find(&services).Error; err == nil {
 		seenHosts := make(map[string]bool)
@@ -83,9 +83,28 @@ func GenerateHostsFile() {
 				if len(parts) == 2 {
 					key := strings.TrimSpace(parts[0])
 					val := strings.TrimSpace(parts[1])
-					if (key == "ingress.host" || key == "node.labels.gbnt.ingress.host") && !seenHosts[val] {
-						seenHosts[val] = true
-						content += fmt.Sprintf("%s\t%s\n", hostIP, val)
+					if key == "ingress.host" || key == "node.labels.gbnt.ingress.host" {
+						// Find all running tasks for this service
+						var tasks []db.Task
+						if err := db.DB.Where("service_id = ? AND status = ?", svc.ID, "running").Find(&tasks).Error; err == nil && len(tasks) > 0 {
+							nodeIPs := make(map[string]bool)
+							for _, t := range tasks {
+								var node db.Node
+								if err := db.DB.First(&node, "id = ?", t.NodeID).Error; err == nil && node.IP != "" {
+									nodeIPs[node.IP] = true
+								}
+							}
+							for ip := range nodeIPs {
+								content += fmt.Sprintf("%s\t%s\n", ip, val)
+							}
+							seenHosts[val] = true
+						} else {
+							// Fallback if no tasks are running yet, point to Manager IP
+							if !seenHosts[val] {
+								seenHosts[val] = true
+								content += fmt.Sprintf("%s\t%s\n", hostIP, val)
+							}
+						}
 					}
 				}
 			}
