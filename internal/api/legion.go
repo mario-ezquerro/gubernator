@@ -13,10 +13,12 @@ import (
 
 // JoinRequest represents the payload for joining the cluster
 type JoinRequest struct {
-	ID     string            `json:"id" binding:"required"`
-	IP     string            `json:"ip" binding:"required"`
-	Token  string            `json:"token" binding:"required"`
-	Labels map[string]string `json:"labels"`
+	ID          string            `json:"id" binding:"required"`
+	IP          string            `json:"ip" binding:"required"`
+	Token       string            `json:"token" binding:"required"`
+	Labels      map[string]string `json:"labels"`
+	CaddyStatus string            `json:"caddy_status"`
+	Caddyfile   string            `json:"caddyfile"`
 }
 
 // @Summary Join the cluster
@@ -49,11 +51,13 @@ func NodeJoinHandler(c *gin.Context) {
 
 	// Register or Update Node
 	node := db.Node{
-		ID:     req.ID,
-		IP:     req.IP,
-		Role:   "worker",
-		Status: "active",
-		Labels: req.Labels,
+		ID:          req.ID,
+		IP:          req.IP,
+		Role:        "worker",
+		Status:      "active",
+		Labels:      req.Labels,
+		CaddyStatus: req.CaddyStatus,
+		Caddyfile:   req.Caddyfile,
 	}
 
 	if err := db.DB.Save(&node).Error; err != nil {
@@ -124,7 +128,9 @@ func NodeJoinHandler(c *gin.Context) {
 
 // HeartbeatRequest represents the payload for node heartbeats
 type HeartbeatRequest struct {
-	ID string `json:"id" binding:"required"`
+	ID          string `json:"id" binding:"required"`
+	CaddyStatus string `json:"caddy_status"`
+	Caddyfile   string `json:"caddyfile"`
 }
 
 // @Summary Node Heartbeat
@@ -143,8 +149,10 @@ func NodeHeartbeatHandler(c *gin.Context) {
 	}
 
 	result := db.DB.Model(&db.Node{}).Where("id = ?", req.ID).Updates(map[string]interface{}{
-		"status":     "active",
-		"updated_at": time.Now(),
+		"status":       "active",
+		"caddy_status": req.CaddyStatus,
+		"caddyfile":    req.Caddyfile,
+		"updated_at":   time.Now(),
 	})
 
 	if result.Error != nil || result.RowsAffected == 0 {

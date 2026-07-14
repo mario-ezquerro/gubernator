@@ -13,10 +13,12 @@ type Node struct {
 	IP        string            `gorm:"type:varchar(255);not null" json:"ip"`
 	Role      string            `gorm:"type:varchar(50);not null" json:"role"`   // e.g., "manager", "worker"
 	Status    string            `gorm:"type:varchar(50);not null" json:"status"` // e.g., "active", "down", "drain"
-	LabelsRaw []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
-	Labels    map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	LabelsRaw   []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
+	Labels      map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
+	CaddyStatus string            `gorm:"type:text" json:"caddy_status"`
+	Caddyfile   string            `gorm:"type:text" json:"caddyfile"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
 // BeforeSave hook to marshal Labels into LabelsRaw before saving to DB

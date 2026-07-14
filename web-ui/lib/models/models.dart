@@ -6,6 +6,8 @@ class Node {
   final String role;
   final String status;
   final Map<String, dynamic> labels;
+  final String caddyStatus;
+  final String caddyfile;
   final String createdAt;
   final String updatedAt;
 
@@ -15,6 +17,8 @@ class Node {
     required this.role,
     required this.status,
     this.labels = const {},
+    this.caddyStatus = '',
+    this.caddyfile = '',
     this.createdAt = '',
     this.updatedAt = '',
   });
@@ -26,6 +30,8 @@ class Node {
       role: json['role'] ?? '',
       status: json['status'] ?? '',
       labels: json['labels'] ?? {},
+      caddyStatus: json['caddy_status'] ?? '',
+      caddyfile: json['caddyfile'] ?? '',
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );

@@ -53,6 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   PlutoGridStateManager? _taskGridStateManager;
   List<String> _layoutOrder = ['stacks', 'nodes'];
   double _stacksRatio = 0.5;
+  String _selectedCaddyNode = 'node-local-manager';
 
   final ScrollController _stackScrollController = ScrollController();
   final ScrollController _nodeScrollController = ScrollController();
@@ -2428,8 +2429,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildCaddySection(ThemeData theme) {
-    final status = _state.caddyStatus;
-    final caddyfile = _state.caddyfile;
+    // Fallback logic to get selected node
+    final selectedNode = _state.nodes.firstWhere(
+      (n) => n.id == _selectedCaddyNode,
+      orElse: () => _state.nodes.firstWhere(
+        (n) => n.role == 'manager',
+        orElse: () => Node(
+          id: 'node-local-manager',
+          ip: '127.0.0.1',
+          role: 'manager',
+          status: 'active',
+          caddyStatus: _state.caddyStatus,
+          caddyfile: _state.caddyfile,
+        ),
+      ),
+    );
+
+    final status = selectedNode.caddyStatus.isNotEmpty ? selectedNode.caddyStatus : 'not running';
+    final caddyfile = selectedNode.caddyfile;
     final isDark = theme.brightness == Brightness.dark;
 
     final rules = _parseCaddyfile(caddyfile);
@@ -2437,6 +2454,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Dropdown to select Node Caddy Ingress
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.dns, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Select Node Ingress Proxy:',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 16),
+                DropdownButton<String>(
+                  value: _state.nodes.any((n) => n.id == _selectedCaddyNode)
+                      ? _selectedCaddyNode
+                      : (_state.nodes.any((n) => n.role == 'manager')
+                          ? _state.nodes.firstWhere((n) => n.role == 'manager').id
+                          : (_state.nodes.isNotEmpty ? _state.nodes.first.id : 'node-local-manager')),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedCaddyNode = val;
+                      });
+                    }
+                  },
+                  items: _state.nodes.map((node) {
+                    final displayName = node.role == 'manager' ? '${node.id} (Manager)' : node.id;
+                    return DropdownMenuItem<String>(
+                      value: node.id,
+                      child: Text(displayName),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
         // Status Card
         Card(
           child: Padding(

@@ -293,6 +293,14 @@ func stateHandler(c *gin.Context) {
 		caddyfileContent = string(content)
 	}
 
+	// Dynamic population of the Manager's live Caddy configuration inside the nodes list
+	for i, n := range nodes {
+		if n.Role == "manager" {
+			nodes[i].CaddyStatus = caddy.Status()
+			nodes[i].Caddyfile = caddyfileContent
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"nodes":           nodes,
 		"stacks":          stacks,

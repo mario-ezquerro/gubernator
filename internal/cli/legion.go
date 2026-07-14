@@ -88,6 +88,8 @@ var legionJoinCmd = &cobra.Command{
 				"gbnt.node.hostname": hostname,
 				"gbnt.node.arch":     db.DetectArch(),
 			},
+			"caddy_status": caddy.Status(),
+			"caddyfile":    readLocalCaddyfile(),
 		}
 
 		body, _ := json.Marshal(payload)
@@ -152,7 +154,11 @@ var legionJoinCmd = &cobra.Command{
 		go func() {
 			for {
 				time.Sleep(10 * time.Second)
-				hbPayload, _ := json.Marshal(map[string]string{"id": nodeID})
+				hbPayload, _ := json.Marshal(map[string]interface{}{
+					"id":           nodeID,
+					"caddy_status": caddy.Status(),
+					"caddyfile":    readLocalCaddyfile(),
+				})
 				req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/heartbeat", addr), bytes.NewBuffer(hbPayload))
 				if err != nil {
 					continue
@@ -434,4 +440,12 @@ var legionLeaveCmd = &cobra.Command{
 		}
 		os.Exit(0)
 	},
+}
+
+func readLocalCaddyfile() string {
+	content, err := os.ReadFile(caddy.CaddyfilePath())
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }
