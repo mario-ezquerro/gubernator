@@ -63,26 +63,16 @@ func GenerateCaddyfile() {
 				}
 			}
 
-			if _, seen := hostUpstreams[val]; !seen {
-				hostOrder = append(hostOrder, val)
-			}
 			for _, t := range tasks {
+				if t.NodeID != "node-local-manager" {
+					continue
+				}
 				targetIP := t.ContainerIP
 				targetPort := port
 
-				if t.NodeID != "node-local-manager" {
-					var taskNode db.Node
-					if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil && taskNode.IP != "" {
-						targetIP = taskNode.IP
-						if len(svc.Ports) > 0 {
-							parts := strings.Split(svc.Ports[0], ":")
-							if len(parts) > 1 {
-								targetPort = strings.TrimSpace(parts[0])
-							}
-						}
-					}
+				if _, seen := hostUpstreams[val]; !seen {
+					hostOrder = append(hostOrder, val)
 				}
-
 				hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:%s", targetIP, targetPort))
 			}
 		}
