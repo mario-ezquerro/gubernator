@@ -46,3 +46,5 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           tags: marioezquerro/gubernator:latest, marioezquerro/gubernator:${{ env.VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ env.VERSION }}

@@ -13,7 +13,8 @@ RUN go mod download
 COPY . .
 
 # Build the binary with CGO enabled
-RUN CGO_ENABLED=1 GOOS=linux go build -o gbnt ./cmd/gbnt
+ARG VERSION=dev
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o gbnt ./cmd/gbnt
 
 FROM alpine:edge
 
