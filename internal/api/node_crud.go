@@ -3,8 +3,11 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"os/exec"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
@@ -92,7 +95,7 @@ func NodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	// Update status logic (if drain, we might want to kill tasks, but for MVP we just mark it)
+	// Update status logic
 	status := "active"
 	if req.Availability != "active" {
 		status = req.Availability
@@ -102,6 +105,11 @@ func NodeAvailabilityHandler(c *gin.Context) {
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
+	}
+
+	// Trigger node task draining if status is drain
+	if status == "drain" {
+		go drainNodeTasks(id)
 	}
 
 	// Trigger Prometheus targets reload
@@ -167,5 +175,47 @@ func NodeLabelsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node labels updated"})
+}
+
+func drainNodeTasks(nodeID string) {
+	var tasks []db.Task
+	if err := db.DB.Where("node_id = ? AND status != ?", nodeID, "dead").Find(&tasks).Error; err != nil {
+		return
+	}
+
+	for _, task := range tasks {
+		var svc db.Service
+		if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
+			continue
+		}
+
+		// Filter out core system and monitoring stacks
+		if svc.StackID == "core-gbnt-stack" || svc.StackID == "sre-monitor-stack" ||
+			strings.Contains(strings.ToLower(svc.StackID), "core-gbnt") ||
+			strings.Contains(strings.ToLower(svc.StackID), "monitor") {
+			continue
+		}
+
+		slog.Info("Draining task from node", "task_id", task.ID, "node_id", nodeID, "service_id", svc.ID)
+
+		// 1. Stop local container if it was running on the manager node itself
+		if task.NodeID == "node-local-manager" && task.ContainerName != "" {
+			exec.Command("docker", "stop", task.ContainerName).Run()
+			exec.Command("docker", "rm", "-f", task.ContainerName).Run()
+		}
+
+		// 2. Mark the task as dead in DB (the worker agent will clean up its local container)
+		db.DB.Model(&task).Updates(map[string]interface{}{
+			"status":       "dead",
+			"container_ip": "",
+		})
+
+		// 3. Reschedule a new replica (will be placed on another ACTIVE node)
+		scheduleService(&svc, "")
+	}
+
+	// Regenerate configurations
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
 }
 

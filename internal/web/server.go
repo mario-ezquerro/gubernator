@@ -1122,6 +1122,11 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
+	// Trigger node task draining if status is drain
+	if status == "drain" {
+		go webDrainNodeTasks(id)
+	}
+
 	// Trigger Prometheus targets reload
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
 		slog.Warn("failed to update Prometheus config on node availability change", "err", err)
@@ -1306,4 +1311,46 @@ func nodeShellHandler(c *gin.Context) {
 			break
 		}
 	}
+}
+
+func webDrainNodeTasks(nodeID string) {
+	var tasks []db.Task
+	if err := db.DB.Where("node_id = ? AND status != ?", nodeID, "dead").Find(&tasks).Error; err != nil {
+		return
+	}
+
+	for _, task := range tasks {
+		var svc db.Service
+		if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
+			continue
+		}
+
+		// Filter out core system and monitoring stacks
+		if svc.StackID == "core-gbnt-stack" || svc.StackID == "sre-monitor-stack" ||
+			strings.Contains(strings.ToLower(svc.StackID), "core-gbnt") ||
+			strings.Contains(strings.ToLower(svc.StackID), "monitor") {
+			continue
+		}
+
+		slog.Info("Draining task from node", "task_id", task.ID, "node_id", nodeID, "service_id", svc.ID)
+
+		// 1. Stop local container if it was running on the manager node itself
+		if task.NodeID == "node-local-manager" && task.ContainerName != "" {
+			exec.Command("docker", "stop", task.ContainerName).Run()
+			exec.Command("docker", "rm", "-f", task.ContainerName).Run()
+		}
+
+		// 2. Mark the task as dead in DB (the worker agent will clean up its local container)
+		db.DB.Model(&task).Updates(map[string]interface{}{
+			"status":       "dead",
+			"container_ip": "",
+		})
+
+		// 3. Reschedule a new replica (will be placed on another ACTIVE node)
+		webScheduleService(&svc, "")
+	}
+
+	// Regenerate configurations
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
 }

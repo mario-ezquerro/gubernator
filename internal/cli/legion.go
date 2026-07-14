@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -205,6 +206,11 @@ var legionJoinCmd = &cobra.Command{
 			}
 
 			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+				activeTasks := make(map[string]bool)
+				for _, t := range data.Tasks {
+					activeTasks[t.Task.ID] = true
+				}
+
 				for i, t := range data.Tasks {
 					if t.Task.Status == "pending" {
 						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
@@ -249,6 +255,28 @@ var legionJoinCmd = &cobra.Command{
 						// Update local t.Task details for immediate Caddyfile update
 						data.Tasks[i].Task.Status = "running"
 						data.Tasks[i].Task.ContainerIP = ip
+					}
+				}
+
+				// Reconcile and clean up orphaned containers on this worker node
+				out, err := exec.Command("docker", "ps", "-a", "--filter", "name=gbnt-", "--format", "{{.Names}}").Output()
+				if err == nil {
+					lines := strings.Split(string(out), "\n")
+					for _, line := range lines {
+						containerName := strings.TrimSpace(line)
+						if containerName == "" {
+							continue
+						}
+						// Skip system core/monitoring containers
+						if containerName == "gbnt-manager" || containerName == "gbnt-coredns" || containerName == "gbnt-caddy" || strings.HasPrefix(containerName, "gbnt-monitor-") {
+							continue
+						}
+						// Extract task ID from name "gbnt-<taskID>"
+						taskID := strings.TrimPrefix(containerName, "gbnt-")
+						if !activeTasks[taskID] {
+							fmt.Printf("Reconciliation: stopping and removing orphaned container %s\n", containerName)
+							docker.StopContainer(containerName)
+						}
 					}
 				}
 
