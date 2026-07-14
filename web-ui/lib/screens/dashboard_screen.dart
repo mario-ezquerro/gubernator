@@ -1407,7 +1407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       DataCell(Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SelectableText(n.id.length > 8 ? n.id.substring(0, 8) : n.id,
+                          SelectableText(n.id,
                               style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
                           const SizedBox(width: 4),
                           IconButton(
@@ -1824,9 +1824,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SelectableText(
-                      node != null && node.id.length > 16
-                          ? '${node.id.substring(0, 16)}...'
-                          : node?.id ?? 'unknown',
+                      node?.id ?? 'unknown',
                       style: const TextStyle(
                           fontFamily: 'Courier New',
                           fontSize: 13,
