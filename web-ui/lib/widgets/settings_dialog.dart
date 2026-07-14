@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/models.dart';
 
 /// Settings dialog with user profile, password change, and theme toggle.
 class SettingsDialog extends StatefulWidget {
@@ -6,6 +7,8 @@ class SettingsDialog extends StatefulWidget {
   final ValueChanged<bool> onThemeChanged;
   final String displayName;
   final ValueChanged<String> onNameChanged;
+  final String version;
+  final List<Node> nodes;
 
   const SettingsDialog({
     super.key,
@@ -13,6 +16,8 @@ class SettingsDialog extends StatefulWidget {
     required this.onThemeChanged,
     required this.displayName,
     required this.onNameChanged,
+    required this.version,
+    required this.nodes,
   });
 
   @override
@@ -33,7 +38,7 @@ class _SettingsDialogState extends State<SettingsDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _nameCtrl = TextEditingController(text: widget.displayName);
   }
 
@@ -88,6 +93,7 @@ class _SettingsDialogState extends State<SettingsDialog>
                 Tab(icon: Icon(Icons.person), text: 'Profile'),
                 Tab(icon: Icon(Icons.lock), text: 'Password'),
                 Tab(icon: Icon(Icons.palette), text: 'Appearance'),
+                Tab(icon: Icon(Icons.info_outline), text: 'About'),
               ],
             ),
             const Divider(height: 1),
@@ -100,6 +106,7 @@ class _SettingsDialogState extends State<SettingsDialog>
                   _buildProfileTab(theme, isDark),
                   _buildPasswordTab(theme),
                   _buildAppearanceTab(theme, isDark),
+                  _buildAboutTab(theme),
                 ],
               ),
             ),
@@ -373,6 +380,108 @@ class _SettingsDialogState extends State<SettingsDialog>
               onChanged: (val) => widget.onThemeChanged(val),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutTab(ThemeData theme) {
+    final managerNode = widget.nodes.firstWhere(
+      (n) => n.role == 'manager',
+      orElse: () => Node(id: 'node-local-manager', ip: '127.0.0.1', role: 'manager', status: 'active'),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+            child: Icon(Icons.rocket_launch, size: 36, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Gubernator Orchestrator',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              widget.version,
+              style: TextStyle(
+                fontFamily: 'Courier New',
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          _buildInfoRow('Role', 'Central Manager'),
+          _buildInfoRow('Host IP', managerNode.ip),
+          _buildInfoRow('Status', managerNode.status.toUpperCase(), isStatus: true, statusColor: managerNode.status == 'active' ? Colors.green : Colors.orange),
+          _buildInfoRow('Centurions (Nodes)', '${widget.nodes.length} registered'),
+          _buildInfoRow('Database Engine', 'SQLite 3 (Centralized)'),
+          const SizedBox(height: 20),
+          Text(
+            'Gubernator combines Swarm simplicity with Nomad flexibility.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, {bool isStatus = false, Color? statusColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          ),
+          isStatus
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (statusColor ?? Colors.grey).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
+                  ),
+                )
+              : SelectableText(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'Courier New',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
         ],
       ),
     );

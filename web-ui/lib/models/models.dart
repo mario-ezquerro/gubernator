@@ -148,6 +148,7 @@ class DashboardState {
   final bool monitorRunning;
   final String caddyStatus;
   final String caddyfile;
+  final String version;
 
   DashboardState({
     this.nodes = const [],
@@ -158,6 +159,7 @@ class DashboardState {
     this.monitorRunning = false,
     this.caddyStatus = 'not running',
     this.caddyfile = '',
+    this.version = 'dev',
   });
 
   factory DashboardState.fromJson(Map<String, dynamic> json) {
@@ -180,6 +182,7 @@ class DashboardState {
       monitorRunning: json['monitor_running'] ?? false,
       caddyStatus: json['caddy_status'] ?? 'not running',
       caddyfile: json['caddyfile'] ?? '',
+      version: json['version'] ?? 'dev',
     );
   }
 }

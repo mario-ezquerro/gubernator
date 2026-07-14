@@ -30,6 +30,10 @@ import (
 //go:embed flutter/*
 var flutterFS embed.FS
 
+// Version is the current version of Gubernator, populated by main.
+var Version = "dev"
+
+
 // envSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
 type envSlice []string
 
@@ -310,6 +314,7 @@ func stateHandler(c *gin.Context) {
 		"dns_records":     getDNSRecords(),
 		"caddy_status":    caddy.Status(),
 		"caddyfile":       caddyfileContent,
+		"version":         Version,
 	})
 }
 

@@ -760,6 +760,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onThemeChanged: widget.onThemeChanged,
         displayName: widget.displayName,
         onNameChanged: widget.onNameChanged,
+        version: _state.version,
+        nodes: _state.nodes,
       ),
     );
   }

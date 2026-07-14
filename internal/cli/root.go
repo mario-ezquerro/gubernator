@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:   "gbnt",
 	Short: "Gubernator is a lightweight container orchestrator",
