@@ -190,6 +190,7 @@ func grafanaDatasources() string {
 datasources:
   - name: Prometheus
     type: prometheus
+    uid: prometheus
     access: proxy
     url: http://gbnt-monitor-prometheus:9090
     isDefault: true
@@ -200,6 +201,7 @@ datasources:
 
   - name: Loki
     type: loki
+    uid: loki
     access: proxy
     url: http://gbnt-monitor-loki:3100
     editable: false
