@@ -20,3 +20,5 @@ services:
         constraints:
           - stack.name == jupyter-stack
           - ingress.host == jupyter.gbnt.test
+          - node.labels.gbnt.node.hostname == gbnt-worker2
+
