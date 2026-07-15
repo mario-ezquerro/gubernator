@@ -310,7 +310,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{container_name=\"\"}[5m])) by (instance)",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{id=\"/\"}[5m])) by (instance)",
           "legendFormat": "Node CPU: {{instance}}",
           "refId": "A"
         }
@@ -344,7 +344,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(container_memory_working_set_bytes{container_name=\"\"}) by (instance)",
+          "expr": "sum(container_memory_working_set_bytes{id=\"/\"}) by (instance)",
           "legendFormat": "Node Memory: {{instance}}",
           "refId": "A"
         }
@@ -385,8 +385,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{container_name!=\"\", container_name!~\"POD\"}[5m])) by (container_name)",
-          "legendFormat": "{{container_name}}",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name!=\"\", name!~\"POD\"}[5m])) by (name)",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -419,8 +419,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(container_memory_working_set_bytes{container_name!=\"\", container_name!~\"POD\"}) by (container_name)",
-          "legendFormat": "{{container_name}}",
+          "expr": "sum(container_memory_working_set_bytes{name!=\"\", name!~\"POD\"}) by (name)",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
