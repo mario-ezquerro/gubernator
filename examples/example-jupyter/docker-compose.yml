@@ -5,7 +5,7 @@ volumes:
 
 services:
   jupyter:
-    image: quay.io/jupyter/pytorch-notebook:latest
+    image: quay.io/jupyter/minimal-notebook:latest
     container_name: jupyter_notebook
     restart: unless-stopped
     ports:

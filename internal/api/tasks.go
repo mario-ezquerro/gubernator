@@ -60,6 +60,7 @@ func NodeTasksHandler(c *gin.Context) {
 type TaskStatusRequest struct {
 	Status      string `json:"status" binding:"required"`
 	ContainerIP string `json:"container_ip"`
+	Error       string `json:"error"`
 }
 
 // @Summary Update task status
@@ -70,6 +71,7 @@ type TaskStatusRequest struct {
 // @Param task_id path string true "Task ID"
 // @Param request body TaskStatusRequest true "Status Update"
 // @Success 200 {object} map[string]string
+// @Router /v1/node/tasks/{task_id}/status [post]
 // @Router /v1/node/tasks/{task_id}/status [post]
 func UpdateTaskStatusHandler(c *gin.Context) {
 	taskID := c.Param("task_id")
@@ -85,6 +87,9 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 	}
 	if req.ContainerIP != "" {
 		updates["container_ip"] = req.ContainerIP
+	}
+	if req.Error != "" {
+		updates["error"] = req.Error
 	}
 
 	res := db.DB.Model(&db.Task{}).Where("id = ?", taskID).Updates(updates)

@@ -222,9 +222,27 @@ var legionJoinCmd = &cobra.Command{
 					if t.Task.Status == "pending" {
 						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
 
+						reportStatus := func(status, ip, containerName, errMsg string) {
+							statusPayload, _ := json.Marshal(map[string]string{
+								"status":         status,
+								"container_ip":   ip,
+								"container_name": containerName,
+								"error":          errMsg,
+							})
+							statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
+							if err == nil {
+								statusReq.Header.Set("Content-Type", "application/json")
+								if apiToken != "" {
+									statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+								}
+								http.DefaultClient.Do(statusReq)
+							}
+						}
+
 						fmt.Printf("Pulling image %s...\n", t.Image)
 						if err := docker.PullImage(t.Image); err != nil {
 							fmt.Printf("Failed to pull image: %v\n", err)
+							reportStatus("dead", "", "", fmt.Sprintf("pull failed: %v", err))
 							continue
 						}
 
@@ -241,24 +259,14 @@ var legionJoinCmd = &cobra.Command{
 						containerName, ip, err := docker.StartContainer(cfg)
 						if err != nil {
 							fmt.Printf("Failed to start container: %v\n", err)
+							reportStatus("dead", "", "", fmt.Sprintf("start failed: %v", err))
 							continue
 						}
 
 						fmt.Printf("Container %s started successfully with IP: %s\n", containerName, ip)
 
-						statusPayload, _ := json.Marshal(map[string]string{
-							"status":         "running",
-							"container_ip":   ip,
-							"container_name": containerName,
-						})
-						statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
-						if err == nil {
-							statusReq.Header.Set("Content-Type", "application/json")
-							if apiToken != "" {
-								statusReq.Header.Set("Authorization", "Bearer "+apiToken)
-							}
-							http.DefaultClient.Do(statusReq)
-						}
+						reportStatus("running", ip, containerName, "")
+
 						// Update local t.Task details for immediate Caddyfile update
 						data.Tasks[i].Task.Status = "running"
 						data.Tasks[i].Task.ContainerIP = ip
