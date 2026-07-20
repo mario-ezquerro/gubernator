@@ -14,6 +14,7 @@ import '../widgets/new_stack_dialog.dart';
 import '../widgets/shell_dialog.dart';
 import '../widgets/stack_diagram_dialog.dart';
 import '../widgets/node_labels_dialog.dart';
+import '../utils/clipboard_service.dart';
 
 /// Main dashboard screen.
 class DashboardScreen extends StatefulWidget {
@@ -1290,7 +1291,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () {
-                              Clipboard.setData(ClipboardData(text: s.id));
+                              ClipboardService.copy(s.id);
                               _showSnackBar('Copied Stack ID to clipboard!');
                             },
                           ),
@@ -1447,7 +1448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () {
-                              Clipboard.setData(ClipboardData(text: n.id));
+                              ClipboardService.copy(n.id);
                               _showSnackBar('Copied Node ID to clipboard!');
                             },
                           ),
@@ -1818,7 +1819,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: t.id));
+                  ClipboardService.copy(t.id);
                   _showSnackBar('Copied Task ID to clipboard!');
                 },
               ),
@@ -1858,7 +1859,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: svc.id));
+                    ClipboardService.copy(svc.id);
                     _showSnackBar('Copied Service ID to clipboard!');
                   },
                 ),
@@ -1919,7 +1920,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: node.id));
+                    ClipboardService.copy(node.id);
                     _showSnackBar('Copied Node ID to clipboard!');
                   },
                 ),
@@ -2411,7 +2412,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               onPressed: () {
-                                Clipboard.setData(ClipboardData(text: 'curl http://${d.hostname}'));
+                                ClipboardService.copy('curl http://${d.hostname}');
                                 _showSnackBar('Copied curl command to clipboard!');
                               },
                             ),

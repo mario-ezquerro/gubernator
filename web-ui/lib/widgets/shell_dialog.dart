@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:xterm/xterm.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/clipboard_service.dart';
 
 class ShellDialog extends StatefulWidget {
   final String taskId;
@@ -89,30 +90,43 @@ class _ShellDialogState extends State<ShellDialog> {
       var text = terminal.buffer.getText(selection);
       text = text.replaceAll('\x00', '').trim();
       if (text.isNotEmpty) {
-        await Clipboard.setData(ClipboardData(text: text));
-        _showSnackBar('Copied selection to clipboard!');
+        final ok = await ClipboardService.copy(text);
+        if (ok) {
+          _showSnackBar('Copied selection to clipboard!');
+        } else {
+          _showSnackBar('Failed to copy to clipboard', isError: true);
+        }
         return;
       }
     }
     // Fallback: Copy all text
     var text = terminal.buffer.getText();
     text = text.replaceAll('\x00', '').trim();
-    await Clipboard.setData(ClipboardData(text: text));
-    _showSnackBar('Copied all terminal output!');
-  }
-
-  Future<void> _handlePaste() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data != null && data.text != null) {
-      channel?.sink.add(data.text!);
-      _showSnackBar('Pasted from clipboard!');
+    if (text.isNotEmpty) {
+      final ok = await ClipboardService.copy(text);
+      if (ok) {
+        _showSnackBar('Copied all terminal output!');
+      } else {
+        _showSnackBar('Failed to copy to clipboard', isError: true);
+      }
     }
   }
 
-  void _showSnackBar(String message) {
+  Future<void> _handlePaste() async {
+    final text = await ClipboardService.paste();
+    if (text != null && text.isNotEmpty) {
+      channel?.sink.add(text);
+      _showSnackBar('Pasted from clipboard!');
+    } else {
+      _showSnackBar('Clipboard is empty or access denied', isError: true);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : null,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -168,6 +182,7 @@ class _ShellDialogState extends State<ShellDialog> {
             if (event is KeyDownEvent) {
               final isControlPressed = HardwareKeyboard.instance.isControlPressed;
               final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
+              final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
               final isShortcutModifier = isControlPressed || isMetaPressed;
 
               if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
@@ -176,10 +191,14 @@ class _ShellDialogState extends State<ShellDialog> {
                   var text = terminal.buffer.getText(selection);
                   text = text.replaceAll('\x00', '').trim();
                   if (text.isNotEmpty) {
-                    Clipboard.setData(ClipboardData(text: text));
-                    _showSnackBar('Copied to clipboard!');
+                    ClipboardService.copy(text);
+                    _showSnackBar('Copied selection to clipboard!');
                     return KeyEventResult.handled;
                   }
+                }
+                if (isShiftPressed) {
+                  _handleCopy();
+                  return KeyEventResult.handled;
                 }
               }
 
