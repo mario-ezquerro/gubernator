@@ -1299,7 +1299,23 @@ func nodeShellHandler(c *gin.Context) {
 	if node.Role == "manager" {
 		cmd = exec.Command("docker", "run", "-it", "--rm", "--privileged", "--pid=host", "alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh")
 	} else {
-		cmd = exec.Command("ssh", "-t", "-o", "StrictHostKeyChecking=no", "ubuntu@"+node.IP, "docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
+		sshArgs := []string{"-t", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519",
+			"/root/.ssh/id_rsa",
+			"/data/id_ed25519",
+			"/data/id_rsa",
+			"/data/ssh/id_ed25519",
+			"/data/ssh/id_rsa",
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		sshArgs = append(sshArgs, "ubuntu@"+node.IP, "docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
+		cmd = exec.Command("ssh", sshArgs...)
 	}
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
