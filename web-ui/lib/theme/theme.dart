@@ -214,6 +214,9 @@ class GubernatorTheme {
         return _successGreen;
       case 'pending':
       case 'starting':
+      case 'pause':
+      case 'drain':
+      case 'maintenance':
         return _warningAmber;
       case 'dead':
       case 'down':

@@ -1106,7 +1106,7 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	if req.Availability != "active" && req.Availability != "pause" && req.Availability != "drain" {
+	if req.Availability != "active" && req.Availability != "pause" && req.Availability != "drain" && req.Availability != "maintenance" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid availability"})
 		return
 	}
@@ -1122,8 +1122,8 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	// Trigger node task draining if status is drain
-	if status == "drain" {
+	// Trigger node task draining if status is drain or maintenance
+	if status == "drain" || status == "maintenance" {
 		go webDrainNodeTasks(id)
 	}
 

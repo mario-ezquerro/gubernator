@@ -106,7 +106,14 @@ Lists all registered cluster nodes with their:
 - **ID** (first 8 chars, monospace)
 - **IP** address
 - **Role** badge — `manager` (blue) or `worker` (cyan)
-- **Status** badge — `active` (green), `down` (red), `drain` (amber)
+- **Status** badge — `active` (green), `maintenance` (amber/orange), `pause` (amber), `drain` (amber/red), `down` (red)
+
+#### Node Context Menu Actions
+Clicking the `⋮` (Node Actions) button on a node opens a context menu with options to:
+- **Poner en Mantenimiento / Enter Maintenance**: Automatically drains running containers off the host and sets its status to `maintenance`.
+- **Sacar de Mantenimiento / Exit Maintenance**: Dynamically displayed when a node is in `maintenance` mode; restores status to `active` and re-enables scheduling.
+- **Shell**: Opens an embedded web shell to the host node.
+- **Edit Labels / Inspect / Promote / Demote**: Modify node labels, view JSON inspect data, or switch node roles.
 
 ---
 

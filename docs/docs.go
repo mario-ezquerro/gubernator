@@ -15,6 +15,29 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/cluster/info": {
+            "get": {
+                "description": "Returns join token, API token, and ready-to-use CLI commands. Localhost only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legion"
+                ],
+                "summary": "Get Cluster Bootstrap Info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/cluster/token": {
             "get": {
                 "description": "Retrieve the current global join token (requires local access)",
@@ -25,6 +48,61 @@ const docTemplate = `{
                     "legion"
                 ],
                 "summary": "Get Cluster Join Token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/coredns/config": {
+            "get": {
+                "description": "Returns the raw text of the Corefile",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "CoreDNS"
+                ],
+                "summary": "Get CoreDNS Configuration",
+                "responses": {
+                    "200": {
+                        "description": "CoreDNS configuration content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Overwrites the Corefile and restarts the CoreDNS container",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CoreDNS"
+                ],
+                "summary": "Update CoreDNS Configuration",
+                "parameters": [
+                    {
+                        "description": "New configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateConfigRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -58,7 +136,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.HeartbeatRequest"
+                            "$ref": "#/definitions/api.HeartbeatRequest"
                         }
                     }
                 ],
@@ -95,7 +173,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.JoinRequest"
+                            "$ref": "#/definitions/api.JoinRequest"
                         }
                     }
                 ],
@@ -135,7 +213,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.NodeListResponse"
+                            "$ref": "#/definitions/api.NodeListResponse"
                         }
                     }
                 }
@@ -143,7 +221,7 @@ const docTemplate = `{
         },
         "/v1/node/tasks/{node_id}": {
             "get": {
-                "description": "Fetches pending tasks for the worker to execute",
+                "description": "Fetches active tasks for the worker to execute and proxy",
                 "produces": [
                     "application/json"
                 ],
@@ -164,7 +242,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.TaskResponse"
+                            "$ref": "#/definitions/api.TaskResponse"
                         }
                     }
                 }
@@ -197,7 +275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.TaskStatusRequest"
+                            "$ref": "#/definitions/api.TaskStatusRequest"
                         }
                     }
                 ],
@@ -208,6 +286,330 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}": {
+            "get": {
+                "description": "Fetch full details of a specific node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Inspect Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/db.Node"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/availability": {
+            "post": {
+                "description": "Pause or drain a node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Update Node Availability",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Availability Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeAvailabilityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/labels": {
+            "post": {
+                "description": "Add, update, or remove node labels",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Update Node Labels",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Labels Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeLabelsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/leave": {
+            "post": {
+                "description": "Mark node as left",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Leave Legion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/role": {
+            "post": {
+                "description": "Change the role of a node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Promote/Demote Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/ls": {
+            "get": {
+                "description": "List all services",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "List Services",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}": {
+            "delete": {
+                "description": "Delete a service and its tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "Remove Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}/scale": {
+            "post": {
+                "description": "Update the replicas of a service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "Scale Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Replicas Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ScaleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}/tasks": {
+            "get": {
+                "description": "List tasks belonging to a service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "List Service Tasks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Task"
                             }
                         }
                     }
@@ -234,7 +636,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.StackDeployRequest"
+                            "$ref": "#/definitions/api.StackDeployRequest"
                         }
                     }
                 ],
@@ -259,12 +661,360 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/stack/ls": {
+            "get": {
+                "description": "List all deployed stacks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "List Stacks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Stack"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}": {
+            "delete": {
+                "description": "Delete a stack, stop its containers, and remove all related records",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Remove Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/services": {
+            "get": {
+                "description": "List services belonging to a stack",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "List Stack Services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/task/ls": {
+            "get": {
+                "description": "Get a list of all tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "List all tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Task"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/task/{id}": {
+            "delete": {
+                "description": "Delete a task by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Remove a task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "github_com_mario-ezquerro_gubernator_internal_db.Node": {
+        "api.HeartbeatRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.JoinRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "ip",
+                "token"
+            ],
+            "properties": {
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.NodeAvailabilityRequest": {
+            "type": "object",
+            "required": [
+                "availability"
+            ],
+            "properties": {
+                "availability": {
+                    "description": "\"active\", \"pause\", \"drain\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.NodeLabelsRequest": {
+            "type": "object",
+            "required": [
+                "labels"
+            ],
+            "properties": {
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.NodeListResponse": {
             "type": "object",
             "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.Node"
+                    }
+                }
+            }
+        },
+        "api.NodeRoleRequest": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "description": "\"worker\" or \"manager\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.ScaleRequest": {
+            "type": "object",
+            "required": [
+                "replicas"
+            ],
+            "properties": {
+                "replicas": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.StackDeployRequest": {
+            "type": "object",
+            "required": [
+                "compose_raw"
+            ],
+            "properties": {
+                "compose_raw": {
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Optional if provided in compose file",
+                    "type": "string"
+                },
+                "target_node": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TaskResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TaskWithImage"
+                    }
+                }
+            }
+        },
+        "api.TaskStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "container_ip": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TaskWithImage": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "image": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "task": {
+                    "$ref": "#/definitions/db.Task"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.UpdateConfigRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.Node": {
+            "type": "object",
+            "properties": {
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -294,10 +1044,95 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_mario-ezquerro_gubernator_internal_db.Task": {
+        "db.Service": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "desired_replicas": {
+                    "type": "integer"
+                },
+                "env": {
+                    "description": "e.g. [\"FOO=bar\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ports": {
+                    "description": "e.g. [\"8080:80\", \"443:443\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "stack_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "volumes": {
+                    "description": "e.g. [\"/host:/container\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "db.Stack": {
             "type": "object",
             "properties": {
                 "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "raw_compose_file": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.Task": {
+            "type": "object",
+            "properties": {
+                "container_ip": {
+                    "type": "string"
+                },
+                "container_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error": {
                     "type": "string"
                 },
                 "id": {
@@ -317,113 +1152,18 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "internal_api.HeartbeatRequest": {
-            "type": "object",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.JoinRequest": {
-            "type": "object",
-            "required": [
-                "id",
-                "ip",
-                "token"
-            ],
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "ip": {
-                    "type": "string"
-                },
-                "labels": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.NodeListResponse": {
-            "type": "object",
-            "properties": {
-                "nodes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_mario-ezquerro_gubernator_internal_db.Node"
-                    }
-                }
-            }
-        },
-        "internal_api.StackDeployRequest": {
-            "type": "object",
-            "required": [
-                "compose_raw",
-                "name"
-            ],
-            "properties": {
-                "compose_raw": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.TaskResponse": {
-            "type": "object",
-            "properties": {
-                "tasks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.TaskWithImage"
-                    }
-                }
-            }
-        },
-        "internal_api.TaskStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.TaskWithImage": {
-            "type": "object",
-            "properties": {
-                "image": {
-                    "type": "string"
-                },
-                "task": {
-                    "$ref": "#/definitions/github_com_mario-ezquerro_gubernator_internal_db.Task"
-                }
-            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:4000",
-	BasePath:         "/",
+	Version:          "",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "Gubernator API",
-	Description:      "This is the API Server for Gubernator orchestration.",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

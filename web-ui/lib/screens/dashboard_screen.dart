@@ -1479,6 +1479,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _updateNodeRole(n.id, 'worker');
                             } else if (action == 'active') {
                               _updateNodeAvailability(n.id, 'active');
+                            } else if (action == 'maintenance') {
+                              _updateNodeAvailability(n.id, 'maintenance');
+                            } else if (action == 'exit_maintenance') {
+                              _updateNodeAvailability(n.id, 'active');
                             } else if (action == 'pause') {
                               _updateNodeAvailability(n.id, 'pause');
                             } else if (action == 'drain') {
@@ -1543,6 +1547,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             const PopupMenuDivider(),
+                            if (n.status == 'maintenance')
+                              const PopupMenuItem(
+                                value: 'exit_maintenance',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text('Sacar de Mantenimiento'),
+                                  ],
+                                ),
+                              )
+                            else
+                              const PopupMenuItem(
+                                value: 'maintenance',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.build_circle_outlined, size: 18, color: Colors.orange),
+                                    SizedBox(width: 8),
+                                    Text('Poner en Mantenimiento'),
+                                  ],
+                                ),
+                              ),
                             PopupMenuItem(
                               value: 'active',
                               enabled: n.status != 'active',

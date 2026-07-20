@@ -267,7 +267,7 @@ func init() {
 	nodeCmd.AddCommand(nodeUpdateCmd)
 	nodeCmd.AddCommand(nodeLabelCmd)
 
-	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain)")
+	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain, maintenance)")
 	nodeUpdateCmd.Flags().StringSliceVar(&nodeLabelAdd, "label-add", []string{}, "Add or update labels (key=value)")
 	nodeUpdateCmd.Flags().StringSliceVar(&nodeLabelRm, "label-rm", []string{}, "Remove labels by key")
 }

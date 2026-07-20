@@ -40,8 +40,8 @@ Commands executed by the Manager to inspect and control the physical worker mach
 - **`gbnt node demote [node_id]`**
   Demotes a Manager node back to a standard Worker role.
 
-- **`gbnt node update --availability [active|pause|drain] [node_id]`**
-  Changes the scheduling state of a node. (e.g., set to `drain` for maintenance, preventing new tasks from being scheduled there).
+- **`gbnt node update --availability [active|pause|drain|maintenance] [node_id]`**
+  Changes the scheduling state of a node (e.g., set to `maintenance` or `drain` to gracefully evacuate running tasks and prevent new tasks from being assigned).
 
 ---
 
