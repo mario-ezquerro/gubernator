@@ -430,6 +430,38 @@
                 }
             }
         },
+        "/v1/node/{id}/reboot": {
+            "post": {
+                "description": "Drain tasks and initiate host reboot",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Reboot Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/node/{id}/role": {
             "post": {
                 "description": "Change the role of a node",

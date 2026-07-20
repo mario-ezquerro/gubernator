@@ -202,6 +202,7 @@ func StartDashboard() {
 		api.GET("/node/:id", nodeInspectHandler)
 		api.POST("/node/:id/role", nodeRoleHandler)
 		api.POST("/node/:id/availability", nodeAvailabilityHandler)
+		api.POST("/node/:id/reboot", nodeRebootHandler)
 		api.POST("/node/:id/leave", nodeLeaveHandler)
 		api.POST("/node/:id/labels", nodeLabelsHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
@@ -1133,6 +1134,29 @@ func nodeAvailabilityHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
+}
+
+func nodeRebootHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// 1. Mark status as maintenance and evacuate tasks
+	db.DB.Model(&node).Update("status", "maintenance")
+	go webDrainNodeTasks(id)
+
+	// 2. Trigger reboot asynchronously
+	go func() {
+		time.Sleep(1 * time.Second)
+		slog.Info("node reboot initiated via web API", "id", id)
+		exec.Command("sudo", "reboot").Run()
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node reboot initiated"})
 }
 
 func nodeLeaveHandler(c *gin.Context) {

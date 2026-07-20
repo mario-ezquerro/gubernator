@@ -583,6 +583,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _rebootNode(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reboot Node'),
+        content: const Text('Are you sure you want to reboot this node? Running containers will be evacuated first.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reboot Host'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final ok = await ApiService.rebootNode(id);
+      if (ok) {
+        _showSnackBar('Node reboot initiated successfully!');
+        _fetchData();
+      } else {
+        _showSnackBar('Failed to initiate node reboot.', isError: true);
+      }
+    }
+  }
+
   Future<void> _leaveNode(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1477,6 +1506,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _updateNodeRole(n.id, 'manager');
                             } else if (action == 'demote') {
                               _updateNodeRole(n.id, 'worker');
+                            } else if (action == 'reboot') {
+                              _rebootNode(n.id);
                             } else if (action == 'active') {
                               _updateNodeAvailability(n.id, 'active');
                             } else if (action == 'maintenance') {
@@ -1485,10 +1516,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _updateNodeAvailability(n.id, 'active');
                             } else if (action == 'pause') {
                               _updateNodeAvailability(n.id, 'pause');
-                            } else if (action == 'drain') {
-                              _updateNodeAvailability(n.id, 'drain');
                             } else if (action == 'leave') {
                               _leaveNode(n.id);
+                            } else if (action == 'drain') {
+                              _updateNodeAvailability(n.id, 'drain');
                             }
                           },
                           itemBuilder: (context) => [
@@ -1547,7 +1578,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             const PopupMenuDivider(),
-                            if (n.status == 'maintenance')
+                            if (n.status == 'pause')
+                              const PopupMenuItem(
+                                value: 'active',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.play_arrow, size: 18, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text('Reanudar Nodo (Activar)'),
+                                  ],
+                                ),
+                              )
+                            else
+                              PopupMenuItem(
+                                value: 'pause',
+                                enabled: n.status == 'active',
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.pause, size: 18, color: Colors.amber),
+                                    SizedBox(width: 8),
+                                    Text('Pausar Nodo'),
+                                  ],
+                                ),
+                              ),
+                            if (n.status == 'maintenance' || n.status == 'drain')
                               const PopupMenuItem(
                                 value: 'exit_maintenance',
                                 child: Row(
@@ -1569,25 +1623,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ],
                                 ),
                               ),
-                            PopupMenuItem(
-                              value: 'active',
-                              enabled: n.status != 'active',
-                              child: const Row(
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: 'reboot',
+                              child: Row(
                                 children: [
-                                  Icon(Icons.play_arrow, size: 18, color: Colors.green),
+                                  Icon(Icons.restart_alt, size: 18, color: Colors.orangeAccent),
                                   SizedBox(width: 8),
-                                  Text('Set Active'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'pause',
-                              enabled: n.status != 'pause',
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.pause, size: 18, color: Colors.amber),
-                                  SizedBox(width: 8),
-                                  Text('Set Pause'),
+                                  Text('Reiniciar Nodo (Reboot)'),
                                 ],
                               ),
                             ),

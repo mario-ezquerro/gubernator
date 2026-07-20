@@ -135,6 +135,7 @@ func Start(ctx context.Context) error {
 			node.GET("/:id", NodeInspectHandler)
 			node.POST("/:id/role", NodeRoleHandler)
 			node.POST("/:id/availability", NodeAvailabilityHandler)
+			node.POST("/:id/reboot", NodeRebootHandler)
 			node.POST("/:id/leave", NodeLeaveHandler)
 			node.POST("/:id/labels", NodeLabelsHandler)
 		}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
@@ -118,6 +119,36 @@ func NodeAvailabilityHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
+}
+
+// @Summary Reboot Node
+// @Description Drain tasks and initiate host reboot
+// @Tags nodes
+// @Produce json
+// @Param id path string true "Node ID"
+// @Success 200 {object} map[string]string
+// @Router /v1/node/{id}/reboot [post]
+func NodeRebootHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// 1. Mark status as maintenance and evacuate tasks
+	db.DB.Model(&node).Update("status", "maintenance")
+	go drainNodeTasks(id)
+
+	// 2. Trigger reboot asynchronously
+	go func() {
+		time.Sleep(1 * time.Second)
+		slog.Info("node reboot initiated", "id", id)
+		exec.Command("sudo", "reboot").Run()
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Node reboot initiated"})
 }
 
 // @Summary Leave Legion

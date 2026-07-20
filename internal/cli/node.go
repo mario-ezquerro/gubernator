@@ -258,6 +258,21 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	fmt.Printf("Node %s labels updated successfully.\n", nodeID)
 }
 
+var nodeRebootCmd = &cobra.Command{
+	Use:   "reboot [node_id]",
+	Short: "Reboot a node",
+	Long:  "Drain tasks off the node, mark it as maintenance, and trigger a system reboot on the host.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("POST", "/v1/node/"+args[0]+"/reboot", nil)
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Node %s reboot initiated. Host is draining tasks and rebooting...\n", args[0])
+		} else {
+			fmt.Printf("Failed to initiate reboot for node %s.\n", args[0])
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(nodeCmd)
 	nodeCmd.AddCommand(nodeLsCmd)
@@ -266,6 +281,7 @@ func init() {
 	nodeCmd.AddCommand(nodeDemoteCmd)
 	nodeCmd.AddCommand(nodeUpdateCmd)
 	nodeCmd.AddCommand(nodeLabelCmd)
+	nodeCmd.AddCommand(nodeRebootCmd)
 
 	nodeUpdateCmd.Flags().StringVar(&nodeAvailability, "availability", "", "Availability of the node (active, pause, drain, maintenance)")
 	nodeUpdateCmd.Flags().StringSliceVar(&nodeLabelAdd, "label-add", []string{}, "Add or update labels (key=value)")

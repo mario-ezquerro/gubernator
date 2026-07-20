@@ -109,9 +109,12 @@ Lists all registered cluster nodes with their:
 - **Status** badge — `active` (green), `maintenance` (amber/orange), `pause` (amber), `drain` (amber/red), `down` (red)
 
 #### Node Context Menu Actions
-Clicking the `⋮` (Node Actions) button on a node opens a context menu with options to:
-- **Poner en Mantenimiento / Enter Maintenance**: Automatically drains running containers off the host and sets its status to `maintenance`.
-- **Sacar de Mantenimiento / Exit Maintenance**: Dynamically displayed when a node is in `maintenance` mode; restores status to `active` and re-enables scheduling.
+Clicking the `⋮` (Node Actions) button on a node opens a context menu with streamlined, mutually exclusive actions:
+- **Pausar Nodo / Pause Node**: Keeps existing containers running on the host, but stops scheduling any new tasks (`pause` status).
+- **Reanudar Nodo (Activar) / Resume Node**: Displayed when a node is paused; restores its status to `active` to allow scheduling new tasks.
+- **Poner en Mantenimiento / Enter Maintenance**: Evacuates/drains all running containers off the host and sets its status to `maintenance`.
+- **Sacar de Mantenimiento / Exit Maintenance**: Displayed when a node is in `maintenance` or `drain` mode; restores status to `active`.
+- **Reiniciar Nodo / Reboot Node**: Prompts confirmation to evacuate all containers, set status to `maintenance`, and trigger a host system reboot (`sudo reboot`).
 - **Shell**: Opens an embedded web shell to the host node.
 - **Edit Labels / Inspect / Promote / Demote**: Modify node labels, view JSON inspect data, or switch node roles.
 

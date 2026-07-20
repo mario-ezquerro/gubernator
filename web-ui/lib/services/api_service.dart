@@ -162,6 +162,12 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Triggers a reboot for the node.
+  static Future<bool> rebootNode(String id) async {
+    final response = await http.post(Uri.parse('/api/node/$id/reboot'));
+    return response.statusCode == 200;
+  }
+
   /// Updates a node's labels.
   static Future<bool> updateNodeLabels(String id, Map<String, String> labels) async {
     final response = await http.post(

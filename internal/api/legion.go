@@ -148,17 +148,25 @@ func NodeHeartbeatHandler(c *gin.Context) {
 		return
 	}
 
-	result := db.DB.Model(&db.Node{}).Where("id = ?", req.ID).Updates(map[string]interface{}{
-		"status":       "active",
-		"caddy_status": req.CaddyStatus,
-		"caddyfile":    req.Caddyfile,
-		"updated_at":   time.Now(),
-	})
-
-	if result.Error != nil || result.RowsAffected == 0 {
+	var existingNode db.Node
+	if err := db.DB.First(&existingNode, "id = ?", req.ID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
 	}
+
+	updates := map[string]interface{}{
+		"caddy_status": req.CaddyStatus,
+		"caddyfile":    req.Caddyfile,
+		"updated_at":   time.Now(),
+	}
+
+	// Only transition status to "active" if it was "down" or empty.
+	// Preserve maintenance, pause, drain, and left states during heartbeats!
+	if existingNode.Status == "down" || existingNode.Status == "" {
+		updates["status"] = "active"
+	}
+
+	db.DB.Model(&existingNode).Updates(updates)
 
 	// Also mark core tasks for this node as running
 	db.DB.Model(&db.Task{}).Where("node_id = ? AND service_id LIKE ?", req.ID, "core-svc-%").Updates(map[string]interface{}{

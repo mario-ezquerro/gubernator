@@ -55,6 +55,9 @@ Commands executed by the Manager to inspect and control the physical worker mach
 - **`gbnt node update --availability [active|pause|drain|maintenance] [node_id]`**
   Changes the scheduling state of a node (e.g., set to `maintenance` or `drain` to gracefully evacuate running tasks and prevent new tasks from being assigned).
 
+- **`gbnt node reboot [node_id]`**
+  Drains running tasks off the specified node, sets its status to `maintenance`, and initiates a host system reboot. When the machine powers back up, the worker agent automatically restores the node to `active` status.
+
 ---
 
 ## The Command (Stack Management)
