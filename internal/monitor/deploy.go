@@ -281,3 +281,61 @@ func EnsureCadvisorRunning() error {
 		"gcr.io/cadvisor/cadvisor:latest",
 	})
 }
+
+// EnsureWorkerMonitoring starts cAdvisor and Promtail locally on a worker node.
+// managerIP is the IP of the Manager node hosting the Loki log aggregator on port :3100.
+func EnsureWorkerMonitoring(managerIP string) error {
+	// 1) Ensure cAdvisor is running on port 8081
+	if err := EnsureCadvisorRunning(); err != nil {
+		fmt.Printf("⚠️ Failed to start cAdvisor: %v\n", err)
+	}
+
+	// 2) Ensure Promtail is running pointing to Manager Loki
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", PromtailName).Output()
+	if err == nil && strings.TrimSpace(string(out)) == "running" {
+		return nil
+	}
+
+	// Generate worker promtail config pointing to Manager Loki:3100
+	lokiURL := fmt.Sprintf("http://%s:3100/loki/api/v1/push", managerIP)
+	promtailYaml := fmt.Sprintf(`server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: %s
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+`, lokiURL)
+
+	// Populate promtail config volume
+	exec.Command("docker", "volume", "create", VolPromtail).Run()
+	helperName := "gbnt-vol-helper-" + VolPromtail
+	exec.Command("docker", "rm", "-f", helperName).Run()
+	if err := exec.Command("docker", "create", "--name", helperName, "-v", VolPromtail+":/data", "alpine:latest").Run(); err == nil {
+		cmd := exec.Command("docker", "exec", "-i", helperName, "sh", "-c", "cat > /data/promtail-config.yml")
+		cmd.Stdin = strings.NewReader(promtailYaml)
+		_ = cmd.Run()
+		exec.Command("docker", "rm", "-f", helperName).Run()
+	}
+
+	return runContainer(PromtailName, []string{
+		"-v", VolPromtail + ":/etc/promtail:ro",
+		"-v", "/var/log:/var/log:ro",
+		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
+		"-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+		"grafana/promtail:latest",
+		"-config.file=/etc/promtail/promtail-config.yml",
+	})
+}

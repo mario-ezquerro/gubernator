@@ -148,11 +148,11 @@ var legionJoinCmd = &cobra.Command{
 			if err := caddy.EnsureRunning(); err != nil {
 				fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
 			}
-			// Start cAdvisor telemetry container on worker node
-			if err := monitor.EnsureCadvisorRunning(); err != nil {
-				fmt.Printf("⚠️ Failed to start worker cAdvisor telemetry: %v\n", err)
+			// Start cAdvisor metrics & Promtail log shipper on worker node
+			if err := monitor.EnsureWorkerMonitoring(managerIP); err != nil {
+				fmt.Printf("⚠️ Failed to start worker cAdvisor/Promtail monitoring: %v\n", err)
 			} else {
-				fmt.Println("📊 Worker cAdvisor telemetry started successfully.")
+				fmt.Println("📊 Worker cAdvisor & Promtail monitoring started successfully.")
 			}
 		}
 
