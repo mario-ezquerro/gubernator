@@ -26,6 +26,7 @@ class _ShellDialogState extends State<ShellDialog> {
   late final Terminal terminal;
   late final TerminalController _controller;
   late final FocusNode _focusNode;
+  final TextEditingController _inputController = TextEditingController();
   WebSocketChannel? channel;
 
   @override
@@ -90,33 +91,48 @@ class _ShellDialogState extends State<ShellDialog> {
     }
   }
 
-  Future<void> _handleCopy() async {
+  String _getTerminalText() {
     final selection = _controller.selection;
     if (selection != null) {
-      var text = terminal.buffer.getText(selection);
-      text = text.replaceAll('\x00', '').trim();
-      if (text.isNotEmpty) {
-        final ok = await ClipboardService.copy(text);
-        if (ok) {
-          _showSnackBar('¡Copiada la selección al portapapeles!');
-        } else {
-          _showSnackBar('Error al copiar la selección', isError: true);
-        }
-        return;
-      }
+      try {
+        final selected = terminal.buffer.getText(selection);
+        final clean = selected.replaceAll('\x00', '').trim();
+        if (clean.isNotEmpty) return clean;
+      } catch (_) {}
     }
-    // Fallback: Copy all text
-    var text = terminal.buffer.getText();
-    text = text.replaceAll('\x00', '').trim();
-    if (text.isNotEmpty) {
-      final ok = await ClipboardService.copy(text);
-      if (ok) {
-        _showSnackBar('¡Copiado todo el texto de la terminal!');
-      } else {
-        _showSnackBar('Error al copiar el texto', isError: true);
+
+    final sb = StringBuffer();
+    try {
+      for (var i = 0; i < terminal.buffer.lines.length; i++) {
+        final lineText = terminal.buffer.lines[i].toString();
+        final cleanLine = lineText.replaceAll('\x00', '').trimRight();
+        if (cleanLine.isNotEmpty) {
+          sb.writeln(cleanLine);
+        }
       }
-    } else {
+    } catch (_) {}
+    return sb.toString().trim();
+  }
+
+  void _handleCopy() {
+    final text = _getTerminalText();
+    if (text.isEmpty) {
       _showSnackBar('No hay texto en la terminal para copiar', isError: true);
+      return;
+    }
+
+    // Try synchronous execCommand FIRST
+    final ok = ClipboardService.copySync(text);
+    if (ok) {
+      _showSnackBar('¡Texto copiado al portapapeles!');
+    } else {
+      ClipboardService.copy(text).then((success) {
+        if (success) {
+          _showSnackBar('¡Texto copiado al portapapeles!');
+        } else {
+          _showSnackBar('Error al copiar texto', isError: true);
+        }
+      });
     }
   }
 
@@ -140,7 +156,7 @@ class _ShellDialogState extends State<ShellDialog> {
           children: [
             Icon(Icons.content_paste, color: Colors.blueAccent),
             SizedBox(width: 8),
-            Text('Pegar en Terminal'),
+            Text('Pegar Texto / Comandos'),
           ],
         ),
         content: Column(
@@ -158,7 +174,7 @@ class _ShellDialogState extends State<ShellDialog> {
               maxLines: 5,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Pega aquí tus comandos...',
+                hintText: 'Pega aquí tus comandos o scripts...',
               ),
             ),
           ],
@@ -185,6 +201,15 @@ class _ShellDialogState extends State<ShellDialog> {
     );
   }
 
+  void _sendQuickCommand() {
+    final text = _inputController.text;
+    if (text.isNotEmpty) {
+      channel?.sink.add('$text\n');
+      _inputController.clear();
+      _focusNode.requestFocus();
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -198,6 +223,7 @@ class _ShellDialogState extends State<ShellDialog> {
   @override
   void dispose() {
     _focusNode.dispose();
+    _inputController.dispose();
     channel?.sink.close();
     _controller.dispose();
     super.dispose();
@@ -218,15 +244,22 @@ class _ShellDialogState extends State<ShellDialog> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.copy),
-                tooltip: 'Copiar texto (Selección o Todo)',
+              TextButton.icon(
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copiar'),
                 onPressed: _handleCopy,
               ),
-              IconButton(
-                icon: const Icon(Icons.paste),
-                tooltip: 'Pegar desde portapapeles',
+              const SizedBox(width: 4),
+              TextButton.icon(
+                icon: const Icon(Icons.content_paste, size: 18),
+                label: const Text('Pegar'),
                 onPressed: _handlePaste,
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
+                tooltip: 'Abrir cuadro para pegar texto largo / script',
+                onPressed: _showPasteDialog,
               ),
               const SizedBox(width: 8),
               IconButton(
@@ -238,39 +271,74 @@ class _ShellDialogState extends State<ShellDialog> {
         ],
       ),
       content: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.7,
+        width: MediaQuery.of(context).size.width * 0.85,
+        height: MediaQuery.of(context).size.height * 0.75,
         color: Colors.black,
-        child: Focus(
-          focusNode: _focusNode,
-          autofocus: true,
-          onKeyEvent: (FocusNode node, KeyEvent event) {
-            if (event is KeyDownEvent) {
-              final isControlPressed = HardwareKeyboard.instance.isControlPressed;
-              final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
-              final isShortcutModifier = isControlPressed || isMetaPressed;
+        child: Column(
+          children: [
+            Expanded(
+              child: Focus(
+                focusNode: _focusNode,
+                autofocus: true,
+                onKeyEvent: (FocusNode node, KeyEvent event) {
+                  if (event is KeyDownEvent) {
+                    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
+                    final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
+                    final isShortcutModifier = isControlPressed || isMetaPressed;
 
-              if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
-                _handleCopy();
-                return KeyEventResult.handled;
-              }
+                    if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
+                      _handleCopy();
+                      return KeyEventResult.handled;
+                    }
 
-              if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
-                _handlePaste();
-                return KeyEventResult.handled;
-              }
-            }
-            return KeyEventResult.ignored;
-          },
-          child: TerminalView(
-            terminal,
-            controller: _controller,
-            autofocus: true,
-            textStyle: TerminalStyle(
-              fontFamily: GoogleFonts.robotoMono().fontFamily ?? 'Courier New',
-              fontSize: 14,
+                    if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
+                      _handlePaste();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TerminalView(
+                  terminal,
+                  controller: _controller,
+                  autofocus: true,
+                  textStyle: TerminalStyle(
+                    fontFamily: GoogleFonts.robotoMono().fontFamily ?? 'Courier New',
+                    fontSize: 14,
+                  ),
+                ),
+              ),
             ),
-          ),
+            // Quick Command Input Bar at bottom of Terminal
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: const Color(0xFF1E1E1E),
+              child: Row(
+                children: [
+                  const Icon(Icons.terminal, color: Colors.greenAccent, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      style: const TextStyle(color: Colors.white, fontFamily: 'Courier New', fontSize: 13),
+                      decoration: const InputDecoration(
+                        hintText: 'Comando rápido: escribe o pega aquí (Ctrl+V) y pulsa Enter...',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
+                        isDense: true,
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: (_) => _sendQuickCommand(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: Colors.lightBlueAccent, size: 18),
+                    tooltip: 'Enviar comando (Enter)',
+                    onPressed: _sendQuickCommand,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
