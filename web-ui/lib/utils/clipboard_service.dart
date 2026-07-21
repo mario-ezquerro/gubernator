@@ -2,7 +2,7 @@ import 'dart:html' as html;
 import 'package:flutter/services.dart';
 
 class ClipboardService {
-  /// Copies text to browser clipboard with web API & Flutter fallback.
+  /// Copies text to browser clipboard with web API, execCommand & Flutter fallback.
   static Future<bool> copy(String text) async {
     if (text.isEmpty) return false;
     bool ok = false;
@@ -17,6 +17,20 @@ class ClipboardService {
         ok = true;
       }
     } catch (_) {}
+
+    // Fallback for HTTP non-secure contexts: document.execCommand('copy')
+    try {
+      final textarea = html.TextAreaElement()
+        ..value = text
+        ..style.position = 'fixed'
+        ..style.opacity = '0';
+      html.document.body?.append(textarea);
+      textarea.select();
+      final success = html.document.execCommand('copy');
+      if (success) ok = true;
+      textarea.remove();
+    } catch (_) {}
+
     return ok;
   }
 
@@ -40,3 +54,4 @@ class ClipboardService {
     return null;
   }
 }
+

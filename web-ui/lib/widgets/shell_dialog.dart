@@ -25,6 +25,7 @@ class ShellDialog extends StatefulWidget {
 class _ShellDialogState extends State<ShellDialog> {
   late final Terminal terminal;
   late final TerminalController _controller;
+  late final FocusNode _focusNode;
   WebSocketChannel? channel;
 
   @override
@@ -32,7 +33,12 @@ class _ShellDialogState extends State<ShellDialog> {
     super.initState();
     terminal = Terminal();
     _controller = TerminalController();
+    _focusNode = FocusNode();
     _connectWebSocket();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   void _connectWebSocket() {
@@ -92,9 +98,9 @@ class _ShellDialogState extends State<ShellDialog> {
       if (text.isNotEmpty) {
         final ok = await ClipboardService.copy(text);
         if (ok) {
-          _showSnackBar('Copied selection to clipboard!');
+          _showSnackBar('¡Copiada la selección al portapapeles!');
         } else {
-          _showSnackBar('Failed to copy to clipboard', isError: true);
+          _showSnackBar('Error al copiar la selección', isError: true);
         }
         return;
       }
@@ -105,10 +111,12 @@ class _ShellDialogState extends State<ShellDialog> {
     if (text.isNotEmpty) {
       final ok = await ClipboardService.copy(text);
       if (ok) {
-        _showSnackBar('Copied all terminal output!');
+        _showSnackBar('¡Copiado todo el texto de la terminal!');
       } else {
-        _showSnackBar('Failed to copy to clipboard', isError: true);
+        _showSnackBar('Error al copiar el texto', isError: true);
       }
+    } else {
+      _showSnackBar('No hay texto en la terminal para copiar', isError: true);
     }
   }
 
@@ -116,10 +124,65 @@ class _ShellDialogState extends State<ShellDialog> {
     final text = await ClipboardService.paste();
     if (text != null && text.isNotEmpty) {
       channel?.sink.add(text);
-      _showSnackBar('Pasted from clipboard!');
-    } else {
-      _showSnackBar('Clipboard is empty or access denied', isError: true);
+      _showSnackBar('¡Pegado desde el portapapeles!');
+      return;
     }
+    // Fallback for HTTP contexts or browser restrictions
+    _showPasteDialog();
+  }
+
+  void _showPasteDialog() {
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.content_paste, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text('Pegar en Terminal'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pega el texto aquí (Ctrl+V / Cmd+V o botón derecho -> Pegar) y pulsa Enviar:',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: textController,
+              autofocus: true,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Pega aquí tus comandos...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send),
+            label: const Text('Enviar a Terminal'),
+            onPressed: () {
+              final text = textController.text;
+              if (text.isNotEmpty) {
+                channel?.sink.add(text);
+                _showSnackBar('Comando enviado a la terminal');
+              }
+              Navigator.of(ctx).pop();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -134,6 +197,7 @@ class _ShellDialogState extends State<ShellDialog> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     channel?.sink.close();
     _controller.dispose();
     super.dispose();
@@ -156,12 +220,12 @@ class _ShellDialogState extends State<ShellDialog> {
             children: [
               IconButton(
                 icon: const Icon(Icons.copy),
-                tooltip: 'Copy text (Selection or All)',
+                tooltip: 'Copiar texto (Selección o Todo)',
                 onPressed: _handleCopy,
               ),
               IconButton(
                 icon: const Icon(Icons.paste),
-                tooltip: 'Paste from clipboard',
+                tooltip: 'Pegar desde portapapeles',
                 onPressed: _handlePaste,
               ),
               const SizedBox(width: 8),
@@ -178,28 +242,17 @@ class _ShellDialogState extends State<ShellDialog> {
         height: MediaQuery.of(context).size.height * 0.7,
         color: Colors.black,
         child: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
           onKeyEvent: (FocusNode node, KeyEvent event) {
             if (event is KeyDownEvent) {
               final isControlPressed = HardwareKeyboard.instance.isControlPressed;
               final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
-              final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
               final isShortcutModifier = isControlPressed || isMetaPressed;
 
               if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyC) {
-                final selection = _controller.selection;
-                if (selection != null) {
-                  var text = terminal.buffer.getText(selection);
-                  text = text.replaceAll('\x00', '').trim();
-                  if (text.isNotEmpty) {
-                    ClipboardService.copy(text);
-                    _showSnackBar('Copied selection to clipboard!');
-                    return KeyEventResult.handled;
-                  }
-                }
-                if (isShiftPressed) {
-                  _handleCopy();
-                  return KeyEventResult.handled;
-                }
+                _handleCopy();
+                return KeyEventResult.handled;
               }
 
               if (isShortcutModifier && event.logicalKey == LogicalKeyboardKey.keyV) {
@@ -212,6 +265,7 @@ class _ShellDialogState extends State<ShellDialog> {
           child: TerminalView(
             terminal,
             controller: _controller,
+            autofocus: true,
             textStyle: TerminalStyle(
               fontFamily: GoogleFonts.robotoMono().fontFamily ?? 'Courier New',
               fontSize: 14,
@@ -222,7 +276,7 @@ class _ShellDialogState extends State<ShellDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text('Cerrar'),
         ),
       ],
     );
