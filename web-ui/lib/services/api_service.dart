@@ -53,6 +53,16 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Migrates a stack to a target node.
+  static Future<bool> migrateStack(String stackId, String targetNode) async {
+    final response = await http.post(
+      Uri.parse('/api/stack/$stackId/migrate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'target_node': targetNode}),
+    );
+    return response.statusCode == 200;
+  }
+
   /// Sends an action (pause, unpause, restart, start, stop) to a task
   static Future<bool> taskAction(String id, String action) async {
     final response = await http.post(

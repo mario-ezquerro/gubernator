@@ -106,7 +106,7 @@ func webScheduleService(service *db.Service, targetNode string) {
 
 		if targetNode != "" && targetNode != "auto" {
 			var n db.Node
-			if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
+			if err := db.DB.First(&n, "id = ? OR ip = ?", targetNode, targetNode).Error; err == nil {
 				selectedNode = &n
 			}
 		}
@@ -204,6 +204,7 @@ func StartDashboard() {
 		api.POST("/stack/:id/redeploy", redeployStackHandler)
 		api.POST("/stack", deployStackHandler)
 		api.DELETE("/stack/:id", deleteStackHandler)
+		api.POST("/stack/:id/migrate", migrateStackHandler)
 		api.DELETE("/task/:id", deleteTaskHandler)
 		api.POST("/task/:id/action", taskActionHandler)
 		api.GET("/task/:id/logs", taskLogsHandler)
@@ -966,6 +967,65 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 		return true
 	}
 	return false
+}
+
+func migrateStackHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		TargetNode string `json:"target_node" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Target node is required"})
+		return
+	}
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// Reject system infrastructure stacks from manual host migration
+	if id == monitor.SREStackID || id == coredns.CoreStackID ||
+		strings.Contains(strings.ToLower(stack.Name), "sre") ||
+		strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Infrastructure stacks cannot be manually migrated"})
+		return
+	}
+
+	// Validate target node exists and is active
+	var targetNode db.Node
+	if err := db.DB.First(&targetNode, "id = ? OR ip = ?", req.TargetNode, req.TargetNode).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target node not found"})
+		return
+	}
+	if targetNode.Status != "active" && targetNode.Status != "ready" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Target node %s is not active (status: %s)", targetNode.ID, targetNode.Status)})
+		return
+	}
+
+	// Load all services belonging to this stack
+	var services []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&services)
+
+	for _, svc := range services {
+		slog.Info("Migrating service tasks to target node", "stack", stack.Name, "service", svc.Name, "target_node", targetNode.ID)
+		// 1. Stop and remove existing tasks for this service
+		stopAllTasksForService(svc.ID)
+		// 2. Schedule new replicas explicitly targeting the new target node
+		webScheduleService(&svc, targetNode.ID)
+	}
+
+	// Regenerate DNS & Caddy ingress
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":      "migrated",
+		"stack_id":    id,
+		"target_node": targetNode.ID,
+		"target_ip":   targetNode.IP,
+	})
 }
 
 // stringSlicesEqual compares two string slices for equality (order-sensitive).

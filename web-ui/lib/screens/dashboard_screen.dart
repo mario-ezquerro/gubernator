@@ -395,6 +395,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _showMigrateStackDialog(StackModel s) {
+    final activeNodes = _state.nodes.where((n) => n.status == 'active' || n.status == 'ready').toList();
+    if (activeNodes.isEmpty) {
+      _showSnackBar('No active nodes available to migrate stack', isError: true);
+      return;
+    }
+
+    String selectedNodeId = activeNodes.first.id;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.swap_horiz, color: Colors.blueAccent),
+                  const SizedBox(width: 8),
+                  Text('Migrate Stack: ${s.name}'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select the target host to move this stack to. All containers for "${s.name}" '
+                    'will be removed from their current host and redeployed on the selected target node.',
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Target Node:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedNodeId,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: activeNodes.map((n) {
+                      final label = '${n.id} (${n.ip}) [${n.role.toUpperCase()}]';
+                      return DropdownMenuItem<String>(
+                        value: n.id,
+                        child: Text(label, style: const TextStyle(fontSize: 13, fontFamily: 'Courier New')),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedNodeId = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  icon: const Icon(Icons.swap_horiz, size: 18),
+                  label: const Text('Migrate Stack'),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final ok = await ApiService.migrateStack(s.id, selectedNodeId);
+                    if (ok) {
+                      _showSnackBar('Stack "${s.name}" successfully migrated to $selectedNodeId');
+                      _fetchData();
+                    } else {
+                      _showSnackBar('Failed to migrate stack "${s.name}"', isError: true);
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showNewStackDialog() {
     showDialog(
       context: context,
@@ -1316,6 +1398,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const Color(0xFF10B981), () => _duplicateStack(s)),
                           _actionBtn(Icons.rocket_launch, 'Redeploy',
                               const Color(0xFFD29922), () => _redeployStack(s.id)),
+                          if (s.id != 'core-gbnt-stack' &&
+                              s.id != 'sre-monitor-stack' &&
+                              !s.name.toLowerCase().contains('core-gbnt') &&
+                              !s.name.toLowerCase().contains('monitor'))
+                            _actionBtn(Icons.swap_horiz, 'Change Target Host',
+                                const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
                           _actionBtn(
                               Icons.delete,
                               (s.id == 'core-gbnt-stack' || s.name.toLowerCase().contains('core-gbnt'))
