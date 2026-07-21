@@ -1,12 +1,12 @@
 package api
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
@@ -65,58 +65,9 @@ func NodeJoinHandler(c *gin.Context) {
 		return
 	}
 
-	// Register worker coredns and caddy core tasks in the DB so they appear in the dashboard
-	now := time.Now()
-	workerServices := []struct {
-		Name          string
-		ContainerName string
-		Image         string
-		Ports         []string
-	}{
-		{Name: "coredns", ContainerName: "gbnt-coredns", Image: "coredns/coredns:latest", Ports: []string{"5354:53/udp"}},
-		{Name: "caddy", ContainerName: "gbnt-caddy", Image: "caddy:latest", Ports: []string{"80:80", "443:443"}},
-	}
-
-	for _, ms := range workerServices {
-		serviceID := fmt.Sprintf("core-svc-%s-%s", ms.Name, req.ID)
-		
-		var existingSvc db.Service
-		if err := db.DB.First(&existingSvc, "id = ?", serviceID).Error; err != nil {
-			service := db.Service{
-				ID:              serviceID,
-				StackID:         "core-gbnt-stack",
-				Name:            fmt.Sprintf("%s-%s", ms.Name, req.ID),
-				Image:           ms.Image,
-				DesiredReplicas: 1,
-				Ports:           ms.Ports,
-				CreatedAt:       now,
-				UpdatedAt:       now,
-			}
-			db.DB.Create(&service)
-		}
-
-		taskID := fmt.Sprintf("core-task-%s-%s", ms.Name, req.ID)
-		var existingTask db.Task
-		if err := db.DB.First(&existingTask, "id = ?", taskID).Error; err != nil {
-			task := db.Task{
-				ID:            taskID,
-				ServiceID:     serviceID,
-				NodeID:        req.ID,
-				Status:        "running",
-				ContainerIP:   req.IP,
-				ContainerName: ms.ContainerName,
-				CreatedAt:     now,
-				UpdatedAt:     now,
-			}
-			db.DB.Create(&task)
-		} else {
-			db.DB.Model(&db.Task{}).Where("id = ?", taskID).Updates(map[string]interface{}{
-				"status":       "running",
-				"container_ip":  req.IP,
-				"updated_at":   now,
-			})
-		}
-	}
+	// Synchronize Worker Core & SRE Stacks in DB
+	coredns.SyncWorkerCoreStacks(db.DB)
+	monitor.SyncWorkerSreStacks(db.DB)
 
 	// Regenerate and reload Prometheus configurations with the new worker target
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
@@ -168,11 +119,9 @@ func NodeHeartbeatHandler(c *gin.Context) {
 
 	db.DB.Model(&existingNode).Updates(updates)
 
-	// Also mark core tasks for this node as running
-	db.DB.Model(&db.Task{}).Where("node_id = ? AND service_id LIKE ?", req.ID, "core-svc-%").Updates(map[string]interface{}{
-		"status":     "running",
-		"updated_at": time.Now(),
-	})
+	// Ensure Worker Core & SRE Stacks are synced in DB
+	coredns.SyncWorkerCoreStacks(db.DB)
+	monitor.SyncWorkerSreStacks(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Heartbeat received"})
 }

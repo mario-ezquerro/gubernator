@@ -97,8 +97,73 @@ func RegisterInDB(database *gorm.DB) error {
 		}
 	}
 
+	// Sync worker core stacks (CoreDNS & Caddy)
+	SyncWorkerCoreStacks(database)
+
 	fmt.Println("📋 Core stack registered in dashboard database.")
 	return nil
+}
+
+// SyncWorkerCoreStacks registers CoreDNS & Caddy services for worker nodes.
+func SyncWorkerCoreStacks(database *gorm.DB) {
+	now := time.Now()
+
+	var workerNodes []db.Node
+	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
+		return
+	}
+
+	for _, node := range workerNodes {
+		stackID := "core-stack-" + node.ID
+		stackName := fmt.Sprintf("CORE-GBNT (%s)", node.ID)
+
+		stack := db.Stack{
+			ID:             stackID,
+			Name:           stackName,
+			RawComposeFile: fmt.Sprintf("# Managed by Gubernator Core\n# Worker Core Services: %s", node.ID),
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		database.Save(&stack)
+
+		workerCoreServices := []struct {
+			Name          string
+			ContainerName string
+			Image         string
+			Ports         []string
+		}{
+			{Name: "coredns", ContainerName: ContainerName, Image: ImageName, Ports: []string{DNSPort}},
+			{Name: "caddy", ContainerName: "gbnt-caddy", Image: "caddy:latest", Ports: []string{"80:80", "443:443"}},
+		}
+
+		for _, ms := range workerCoreServices {
+			serviceID := fmt.Sprintf("core-svc-%s-%s", node.ID, ms.Name)
+			service := db.Service{
+				ID:              serviceID,
+				StackID:         stackID,
+				Name:            ms.Name,
+				Image:           ms.Image,
+				DesiredReplicas: 1,
+				Ports:           ms.Ports,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}
+			database.Save(&service)
+
+			taskID := fmt.Sprintf("core-task-%s-%s", node.ID, ms.Name)
+			task := db.Task{
+				ID:            taskID,
+				ServiceID:     serviceID,
+				NodeID:        node.ID,
+				Status:        "running",
+				ContainerIP:   node.IP,
+				ContainerName: ms.ContainerName,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			}
+			database.Save(&task)
+		}
+	}
 }
 
 // UnregisterFromDB removes the Core stack from the database.

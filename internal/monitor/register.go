@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	// SREStackID is the fixed stack ID used for the SRE monitoring stack in the DB.
+	// SREStackID is the fixed stack ID used for the Manager SRE monitoring stack in the DB.
 	SREStackID = "sre-monitor-stack"
-	// SREStackName is the display name for the SRE stack in the dashboard.
-	SREStackName = "[SRE] Monitor"
+	// SREStackName is the display name for the Manager SRE stack in the dashboard.
+	SREStackName = "[SRE] Monitor (Manager)"
 )
 
 // monitorService describes a monitoring container for DB registration.
@@ -25,7 +25,7 @@ type monitorService struct {
 	Ports         []string
 }
 
-var monitorServices = []monitorService{
+var managerMonitorServices = []monitorService{
 	{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}},
 	{Name: "prometheus", ContainerName: PrometheusName, Image: "prom/prometheus:latest", Ports: []string{"9090:9090"}},
 	{Name: "loki", ContainerName: LokiName, Image: "grafana/loki:latest", Ports: []string{"3100:3100"}},
@@ -33,78 +33,160 @@ var monitorServices = []monitorService{
 	{Name: "grafana", ContainerName: GrafanaName, Image: "grafana/grafana:latest", Ports: []string{"3000:3000"}},
 }
 
-// RegisterInDB registers the monitoring containers as a special stack in the
-// Gubernator database so they appear in the Flutter dashboard.
-func RegisterInDB(database *gorm.DB) error {
-	// Remove any previous SRE stack records
-	UnregisterFromDB(database)
+var workerMonitorServices = []monitorService{
+	{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}},
+	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
+}
 
+// RegisterInDB registers the monitoring containers as special stacks in the
+// Gubernator database so they appear in the Flutter dashboard (Manager + Workers).
+func RegisterInDB(database *gorm.DB) error {
 	now := time.Now()
 
-	// Create the SRE Stack
-	stack := db.Stack{
-		ID:             SREStackID,
-		Name:           SREStackName,
-		RawComposeFile: "# Managed by 'gbnt monitor init'\n# Do not edit manually.",
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}
-	if err := database.Create(&stack).Error; err != nil {
-		return fmt.Errorf("failed to create SRE stack: %w", err)
+	// 1) Register Manager SRE Stack
+	var existingMgrStack db.Stack
+	if err := database.First(&existingMgrStack, "id = ?", SREStackID).Error; err != nil {
+		managerStack := db.Stack{
+			ID:             SREStackID,
+			Name:           SREStackName,
+			RawComposeFile: "# Managed by Gubernator SRE Engine\n# Manager Node Monitoring Stack",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		database.Create(&managerStack)
 	}
 
-	for _, ms := range monitorServices {
-		serviceID := "sre-svc-" + ms.Name
-		service := db.Service{
-			ID:              serviceID,
-			StackID:         SREStackID,
-			Name:            ms.Name,
-			Image:           ms.Image,
-			DesiredReplicas: 1,
-			Ports:           ms.Ports,
-			CreatedAt:       now,
-			UpdatedAt:       now,
-		}
-		if err := database.Create(&service).Error; err != nil {
-			return fmt.Errorf("failed to create SRE service %s: %w", ms.Name, err)
+	for _, ms := range managerMonitorServices {
+		serviceID := "sre-svc-mgr-" + ms.Name
+		var existingService db.Service
+		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
+			service := db.Service{
+				ID:              serviceID,
+				StackID:         SREStackID,
+				Name:            ms.Name,
+				Image:           ms.Image,
+				DesiredReplicas: 1,
+				Ports:           ms.Ports,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}
+			database.Create(&service)
 		}
 
-		// Inspect the container to get its IP
 		containerIP := getContainerIP(ms.ContainerName)
 		status := "running"
 		if containerIP == "" {
 			status = "dead"
 		}
 
-		task := db.Task{
-			ID:            "sre-task-" + ms.Name,
-			ServiceID:     serviceID,
-			NodeID:        "node-local-manager",
-			Status:        status,
-			ContainerIP:   containerIP,
-			ContainerName: ms.ContainerName,
-			CreatedAt:     now,
-			UpdatedAt:     now,
-		}
-		if err := database.Create(&task).Error; err != nil {
-			return fmt.Errorf("failed to create SRE task %s: %w", ms.Name, err)
+		taskID := "sre-task-mgr-" + ms.Name
+		var existingTask db.Task
+		if err := database.First(&existingTask, "id = ?", taskID).Error; err != nil {
+			task := db.Task{
+				ID:            taskID,
+				ServiceID:     serviceID,
+				NodeID:        "node-local-manager",
+				Status:        status,
+				ContainerIP:   containerIP,
+				ContainerName: ms.ContainerName,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			}
+			database.Create(&task)
+		} else {
+			database.Model(&existingTask).Updates(map[string]interface{}{
+				"status":       status,
+				"container_ip":  containerIP,
+				"updated_at":   now,
+			})
 		}
 	}
 
-	fmt.Println("📋 SRE stack registered in dashboard database.")
+	// 2) Sync active Worker SRE Stacks
+	SyncWorkerSreStacks(database)
+
+	fmt.Println("📋 Manager and Worker SRE stacks registered in dashboard database.")
 	return nil
 }
 
-// UnregisterFromDB removes the SRE monitoring stack from the database.
+// SyncWorkerSreStacks creates or updates SRE monitoring stacks for all active worker nodes.
+func SyncWorkerSreStacks(database *gorm.DB) {
+	now := time.Now()
+
+	var workerNodes []db.Node
+	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
+		return
+	}
+
+	for _, node := range workerNodes {
+		stackID := "sre-stack-" + node.ID
+		stackName := fmt.Sprintf("[SRE] Monitor (%s)", node.ID)
+
+		var existingStack db.Stack
+		if err := database.First(&existingStack, "id = ?", stackID).Error; err != nil {
+			stack := db.Stack{
+				ID:             stackID,
+				Name:           stackName,
+				RawComposeFile: fmt.Sprintf("# Managed by Gubernator SRE Engine\n# Worker Node Monitoring: %s", node.ID),
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}
+			database.Create(&stack)
+		} else {
+			database.Model(&existingStack).Update("updated_at", now)
+		}
+
+		for _, ms := range workerMonitorServices {
+			serviceID := fmt.Sprintf("sre-svc-%s-%s", node.ID, ms.Name)
+			var existingService db.Service
+			if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
+				service := db.Service{
+					ID:              serviceID,
+					StackID:         stackID,
+					Name:            ms.Name,
+					Image:           ms.Image,
+					DesiredReplicas: 1,
+					Ports:           ms.Ports,
+					CreatedAt:       now,
+					UpdatedAt:       now,
+				}
+				database.Create(&service)
+			}
+
+			taskID := fmt.Sprintf("sre-task-%s-%s", node.ID, ms.Name)
+			var existingTask db.Task
+			if err := database.First(&existingTask, "id = ?", taskID).Error; err != nil {
+				task := db.Task{
+					ID:            taskID,
+					ServiceID:     serviceID,
+					NodeID:        node.ID,
+					Status:        "running",
+					ContainerIP:   node.IP,
+					ContainerName: ms.ContainerName,
+					CreatedAt:     now,
+					UpdatedAt:     now,
+				}
+				database.Create(&task)
+			} else {
+				database.Model(&existingTask).Updates(map[string]interface{}{
+					"status":       "running",
+					"container_ip":  node.IP,
+					"updated_at":   now,
+				})
+			}
+		}
+	}
+}
+
+// UnregisterFromDB removes all SRE monitoring stacks from the database.
 func UnregisterFromDB(database *gorm.DB) {
-	// Delete tasks via service IDs
 	var services []db.Service
-	database.Where("stack_id = ?", SREStackID).Find(&services)
+	database.Where("stack_id LIKE 'sre-%'").Find(&services)
 	for _, s := range services {
 		database.Where("service_id = ?", s.ID).Delete(&db.Task{})
 	}
-	database.Where("stack_id = ?", SREStackID).Delete(&db.Service{})
-	database.Where("id = ?", SREStackID).Delete(&db.Stack{})
+	database.Where("stack_id LIKE 'sre-%'").Delete(&db.Service{})
+	database.Where("id LIKE 'sre-%'").Delete(&db.Stack{})
 }
 
 // getContainerIP inspects a Docker container and returns its IP address.
