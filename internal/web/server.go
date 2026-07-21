@@ -30,8 +30,23 @@ import (
 //go:embed flutter/*
 var flutterFS embed.FS
 
-// Version is the current version of Gubernator, populated by main.
+// Version is the current version of Gubernator, populated by main or VERSION file.
 var Version = "dev"
+
+func GetVersion() string {
+	if Version == "" || Version == "dev" {
+		for _, path := range []string{"VERSION", "/app/VERSION", "../VERSION"} {
+			if data, err := os.ReadFile(path); err == nil {
+				v := strings.TrimSpace(string(data))
+				if v != "" {
+					Version = v
+					return v
+				}
+			}
+		}
+	}
+	return Version
+}
 
 
 // envSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
@@ -315,7 +330,7 @@ func stateHandler(c *gin.Context) {
 		"dns_records":     getDNSRecords(),
 		"caddy_status":    caddy.Status(),
 		"caddyfile":       caddyfileContent,
-		"version":         Version,
+		"version":         GetVersion(),
 	})
 }
 

@@ -31,8 +31,9 @@ ENV GBNT_DATA_DIR="/data"
 # Add certificates, timezone data, sqlite, and Docker CLI (needed for local executor)
 RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli openssh-client
 
-# Copy the pre-built binary
+# Copy the pre-built binary & VERSION file
 COPY --from=builder /app/gbnt .
+COPY --from=builder /app/VERSION .
 
 # Declare /data as a volume so Docker manages persistence automatically
 # This ensures gubernator.db (tokens, nodes, stacks) survives restarts

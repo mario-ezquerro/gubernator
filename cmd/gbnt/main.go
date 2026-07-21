@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"strings"
+
 	"github.com/mario-ezquerro/gubernator/internal/cli"
 	"github.com/mario-ezquerro/gubernator/internal/web"
 )
@@ -14,6 +17,17 @@ import (
 var version = "dev"
 
 func init() {
+	if version == "dev" {
+		for _, path := range []string{"VERSION", "/app/VERSION", "../VERSION"} {
+			if data, err := os.ReadFile(path); err == nil {
+				v := strings.TrimSpace(string(data))
+				if v != "" {
+					version = v
+					break
+				}
+			}
+		}
+	}
 	cli.Version = version
 	web.Version = version
 }

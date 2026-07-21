@@ -48,8 +48,17 @@ var serveCmd = &cobra.Command{
 	},
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the Gubernator version",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Gubernator %s\n", Version)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
