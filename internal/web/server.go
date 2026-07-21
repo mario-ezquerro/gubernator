@@ -1164,14 +1164,25 @@ func nodeRebootHandler(c *gin.Context) {
 	db.DB.Model(&node).Update("status", "maintenance")
 	go webDrainNodeTasks(id)
 
-	// 2. Trigger reboot asynchronously
-	go func() {
-		time.Sleep(1 * time.Second)
-		slog.Info("node reboot initiated via web API", "id", id)
-		exec.Command("sudo", "reboot").Run()
-	}()
+	// 2. Trigger reboot asynchronously via SSH to target node IP
+	targetIP := node.IP
+	if targetIP == "" || targetIP == "127.0.0.1" {
+		targetIP = "192.168.252.11"
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Node reboot initiated"})
+	go func(ip string) {
+		time.Sleep(1 * time.Second)
+		slog.Info("node reboot initiated via SSH", "node_id", id, "ip", ip)
+
+		// Try SSH reboot to worker/manager host
+		cmd := exec.Command("ssh", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5", fmt.Sprintf("ubuntu@%s", ip), "sudo", "reboot")
+		if err := cmd.Run(); err != nil {
+			slog.Warn("ssh reboot returned error, trying fallback local reboot", "ip", ip, "err", err)
+			exec.Command("sudo", "reboot").Run()
+		}
+	}(targetIP)
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Reboot initiated for node %s (%s)", node.ID, targetIP)})
 }
 
 func nodeLeaveHandler(c *gin.Context) {
