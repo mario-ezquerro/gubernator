@@ -1115,21 +1115,17 @@ func nodeRoleHandler(c *gin.Context) {
 func nodeAvailabilityHandler(c *gin.Context) {
 	id := c.Param("id")
 	var req struct {
-		Availability string `json:"availability" binding:"required"` // "active", "pause", "drain"
+		Availability string `json:"availability" binding:"required"` // "active", "maintenance"
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if req.Availability != "active" && req.Availability != "pause" && req.Availability != "drain" && req.Availability != "maintenance" {
+	status := req.Availability
+	if status != "active" && status != "maintenance" && status != "pause" && status != "drain" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid availability"})
 		return
-	}
-
-	status := "active"
-	if req.Availability != "active" {
-		status = req.Availability
 	}
 
 	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", status)
@@ -1138,9 +1134,12 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	// Trigger node task draining if status is drain or maintenance
-	if status == "drain" || status == "maintenance" {
+	// Trigger node task draining if status is maintenance, drain or pause
+	if status == "drain" || status == "maintenance" || status == "pause" {
 		go webDrainNodeTasks(id)
+	} else if status == "active" {
+		// When reactivating node, reschedule missing replicas and re-evaluate services
+		go webRescheduleUnassignedTasks()
 	}
 
 	// Trigger Prometheus targets reload
@@ -1187,6 +1186,11 @@ func nodeRebootHandler(c *gin.Context) {
 
 func nodeLeaveHandler(c *gin.Context) {
 	id := c.Param("id")
+
+	// 1. Drain node tasks and migrate all services to active nodes before leaving
+	webDrainNodeTasks(id)
+
+	// 2. Mark node status as left in database
 	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", "left")
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
@@ -1198,7 +1202,7 @@ func nodeLeaveHandler(c *gin.Context) {
 		slog.Warn("failed to update Prometheus config on node leave", "err", err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
+	c.JSON(http.StatusOK, gin.H{"message": "Node drained and marked as left"})
 }
 
 type nodeLabelsRequest struct {
@@ -1417,6 +1421,33 @@ func webDrainNodeTasks(nodeID string) {
 	}
 
 	// Regenerate configurations
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+}
+
+func webRescheduleUnassignedTasks() {
+	var services []db.Service
+	db.DB.Find(&services)
+
+	for _, svc := range services {
+		// Filter out core system and monitoring stacks
+		if svc.StackID == "core-gbnt-stack" || svc.StackID == "sre-monitor-stack" ||
+			strings.Contains(strings.ToLower(svc.StackID), "core-gbnt") ||
+			strings.Contains(strings.ToLower(svc.StackID), "monitor") {
+			continue
+		}
+
+		var runningCount int64
+		db.DB.Model(&db.Task{}).Where("service_id = ? AND status IN (?, ?)", svc.ID, "running", "pending").Count(&runningCount)
+
+		missing := svc.DesiredReplicas - int(runningCount)
+		if missing > 0 {
+			slog.Info("Rescheduling missing service replicas", "service", svc.Name, "missing", missing)
+			for i := 0; i < missing; i++ {
+				webScheduleService(&svc, "")
+			}
+		}
+	}
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
 }

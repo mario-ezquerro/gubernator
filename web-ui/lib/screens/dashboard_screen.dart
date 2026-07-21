@@ -1509,18 +1509,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _updateNodeRole(n.id, 'worker');
                             } else if (action == 'reboot') {
                               _rebootNode(n.id);
-                            } else if (action == 'active') {
+                            } else if (action == 'activate') {
                               _updateNodeAvailability(n.id, 'active');
                             } else if (action == 'maintenance') {
                               _updateNodeAvailability(n.id, 'maintenance');
-                            } else if (action == 'exit_maintenance') {
-                              _updateNodeAvailability(n.id, 'active');
-                            } else if (action == 'pause') {
-                              _updateNodeAvailability(n.id, 'pause');
                             } else if (action == 'leave') {
                               _leaveNode(n.id);
-                            } else if (action == 'drain') {
-                              _updateNodeAvailability(n.id, 'drain');
                             }
                           },
                           itemBuilder: (context) => [
@@ -1579,37 +1573,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             const PopupMenuDivider(),
-                            if (n.status == 'pause')
+                            if (n.status != 'active')
                               const PopupMenuItem(
-                                value: 'active',
+                                value: 'activate',
                                 child: Row(
                                   children: [
                                     Icon(Icons.play_arrow, size: 18, color: Colors.green),
                                     SizedBox(width: 8),
-                                    Text('Reanudar Nodo (Activar)'),
-                                  ],
-                                ),
-                              )
-                            else
-                              PopupMenuItem(
-                                value: 'pause',
-                                enabled: n.status == 'active',
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.pause, size: 18, color: Colors.amber),
-                                    SizedBox(width: 8),
-                                    Text('Pausar Nodo'),
-                                  ],
-                                ),
-                              ),
-                            if (n.status == 'maintenance' || n.status == 'drain')
-                              const PopupMenuItem(
-                                value: 'exit_maintenance',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
-                                    SizedBox(width: 8),
-                                    Text('Sacar de Mantenimiento'),
+                                    Text('Activate Node'),
                                   ],
                                 ),
                               )
@@ -1620,7 +1591,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   children: [
                                     Icon(Icons.build_circle_outlined, size: 18, color: Colors.orange),
                                     SizedBox(width: 8),
-                                    Text('Poner en Mantenimiento'),
+                                    Text('Set Maintenance'),
                                   ],
                                 ),
                               ),
@@ -1631,22 +1602,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 children: [
                                   Icon(Icons.restart_alt, size: 18, color: Colors.orangeAccent),
                                   SizedBox(width: 8),
-                                  Text('Reiniciar Nodo (Reboot)'),
+                                  Text('Reboot Node'),
                                 ],
                               ),
                             ),
-                            PopupMenuItem(
-                              value: 'drain',
-                              enabled: n.status != 'drain',
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.delete_sweep, size: 18, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Set Drain'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(),
                             PopupMenuItem(
                               value: 'leave',
                               enabled: n.status != 'left',
