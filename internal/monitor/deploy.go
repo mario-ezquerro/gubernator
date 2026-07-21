@@ -321,14 +321,9 @@ scrape_configs:
 
 	// Populate promtail config volume
 	exec.Command("docker", "volume", "create", VolPromtail).Run()
-	helperName := "gbnt-vol-helper-" + VolPromtail
-	exec.Command("docker", "rm", "-f", helperName).Run()
-	if err := exec.Command("docker", "create", "--name", helperName, "-v", VolPromtail+":/data", "alpine:latest").Run(); err == nil {
-		cmd := exec.Command("docker", "exec", "-i", helperName, "sh", "-c", "cat > /data/promtail-config.yml")
-		cmd.Stdin = strings.NewReader(promtailYaml)
-		_ = cmd.Run()
-		exec.Command("docker", "rm", "-f", helperName).Run()
-	}
+	volCmd := exec.Command("docker", "run", "--rm", "-i", "-v", VolPromtail+":/data", "alpine:latest", "sh", "-c", "cat > /data/promtail-config.yml")
+	volCmd.Stdin = strings.NewReader(promtailYaml)
+	_ = volCmd.Run()
 
 	return runContainer(PromtailName, []string{
 		"-v", VolPromtail + ":/etc/promtail:ro",

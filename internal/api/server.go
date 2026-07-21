@@ -61,6 +61,9 @@ func Start(ctx context.Context) error {
 			if err := coredns.RegisterInDB(db.GetDB()); err != nil {
 				slog.Warn("core stack: failed to register in database", "err", err)
 			}
+			if err := monitor.RegisterInDB(db.GetDB()); err != nil {
+				slog.Warn("sre stack: failed to register in database", "err", err)
+			}
 			aqueducts.GenerateHostsFile()
 		}()
 	}

@@ -67,7 +67,7 @@ func NodeJoinHandler(c *gin.Context) {
 
 	// Synchronize Worker Core & SRE Stacks in DB
 	coredns.SyncWorkerCoreStacks(db.DB)
-	monitor.SyncWorkerSreStacks(db.DB)
+	monitor.RegisterInDB(db.DB)
 
 	// Regenerate and reload Prometheus configurations with the new worker target
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
@@ -121,7 +121,7 @@ func NodeHeartbeatHandler(c *gin.Context) {
 
 	// Ensure Worker Core & SRE Stacks are synced in DB
 	coredns.SyncWorkerCoreStacks(db.DB)
-	monitor.SyncWorkerSreStacks(db.DB)
+	monitor.RegisterInDB(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Heartbeat received"})
 }
