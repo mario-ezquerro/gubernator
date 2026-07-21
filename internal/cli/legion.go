@@ -137,14 +137,11 @@ var legionJoinCmd = &cobra.Command{
 			managerIP = cleanAddr
 		}
 
-		// Ensure network and start CoreDNS & Caddy locally on worker node
-		fmt.Println("🌐 Starting local CoreDNS and Caddy Ingress on worker node...")
+		// Ensure network and start Caddy Ingress locally on worker node
+		fmt.Println("🌐 Starting local Caddy Ingress on worker node...")
 		if err := coredns.EnsureNetwork(); err != nil {
 			fmt.Printf("⚠️ Failed to create gbnt-net network: %v\n", err)
 		} else {
-			if err := coredns.EnsureRunningWorker(managerIP); err != nil {
-				fmt.Printf("⚠️ Failed to start worker CoreDNS: %v\n", err)
-			}
 			if err := caddy.EnsureRunning(); err != nil {
 				fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
 			}

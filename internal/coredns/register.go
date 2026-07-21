@@ -126,13 +126,18 @@ func SyncWorkerCoreStacks(database *gorm.DB) {
 		}
 		database.Save(&stack)
 
+		// Clean up obsolete worker coredns service and task from DB
+		obsoleteSvcID := fmt.Sprintf("core-svc-%s-coredns", node.ID)
+		obsoleteTaskID := fmt.Sprintf("core-task-%s-coredns", node.ID)
+		database.Where("id = ?", obsoleteTaskID).Delete(&db.Task{})
+		database.Where("id = ?", obsoleteSvcID).Delete(&db.Service{})
+
 		workerCoreServices := []struct {
 			Name          string
 			ContainerName string
 			Image         string
 			Ports         []string
 		}{
-			{Name: "coredns", ContainerName: ContainerName, Image: ImageName, Ports: []string{DNSPort}},
 			{Name: "caddy", ContainerName: "gbnt-caddy", Image: "caddy:latest", Ports: []string{"80:80", "443:443"}},
 		}
 
