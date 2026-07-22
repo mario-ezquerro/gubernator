@@ -38,6 +38,8 @@ test_output.txt
 
 # Compiled Go binary (90MB+ — too large for Git)
 /gbnt
+/gbnt_linux
+*.tar.gz
 
 # Flutter build cache
 web-ui/build/

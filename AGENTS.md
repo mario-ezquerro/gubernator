@@ -101,3 +101,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 
 ### 7. Clickable Port Links in Dashboard
 * **Port chips:** The Flutter dashboard's tasks table displays each container's mapped ports as clickable `ActionChip` widgets. Clicking a port opens `http://<nodeIP>:<hostPort>` in a new browser tab. Supports multiple ports per container.
+
+### 8. Bulk Actions for Containers
+* **Batch operations:** Tasks table features checkboxes to select multiple containers (working across searches/filters) and perform bulk Start, Stop, Restart, or Remove operations with a confirmation toolbar.
+
+### 9. Legions / Centurions Dashboard Split Ratio
+* **1/3 vs 2/3 ratio:** Stacks (Legions) panel defaults to 1/3 width and Nodes (Centurions) panel defaults to 2/3 width, with dynamic drag handle resizing preserved.
+
+### 10. Force Leave Worker Stack Purging
+* **Smart drainage:** Executing `Force Leave` drains user tasks to remaining active nodes, while worker system stacks (`CORE-GBNT` and `[SRE] Monitor`) are terminated and automatically deleted from DB and Stacks view.

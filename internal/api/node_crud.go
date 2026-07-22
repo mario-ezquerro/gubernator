@@ -151,6 +151,17 @@ func NodeRebootHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Node reboot initiated"})
 }
 
+func isSystemStack(stackID string) bool {
+	s := strings.ToLower(stackID)
+	return strings.HasPrefix(s, "core-stack-") ||
+		strings.HasPrefix(s, "sre-stack-") ||
+		s == "core-gbnt-stack" ||
+		s == "sre-monitor-stack" ||
+		strings.Contains(s, "core-gbnt") ||
+		strings.Contains(s, "sre-monitor") ||
+		strings.Contains(s, "monitor")
+}
+
 // @Summary Leave Legion
 // @Description Mark node as left
 // @Tags nodes
@@ -160,9 +171,38 @@ func NodeRebootHandler(c *gin.Context) {
 // @Router /v1/node/{id}/leave [post]
 func NodeLeaveHandler(c *gin.Context) {
 	id := c.Param("id")
-	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", "left")
-	if res.Error != nil || res.RowsAffected == 0 {
+
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	// Drain all user tasks (reschedules non-system tasks to other nodes)
+	drainNodeTasks(id)
+
+	// Purge ALL tasks associated with this node from the DB,
+	// including core-gbnt and sre-monitor tasks that were skipped by the drain.
+	db.DB.Where("node_id = ?", id).Delete(&db.Task{})
+
+	// Purge node-specific stacks and services (CORE and SRE)
+	coreStackID := "core-stack-" + id
+	sreStackID := "sre-stack-" + id
+
+	var workerStacks []db.Stack
+	db.DB.Where("id = ? OR id = ? OR id LIKE ?", coreStackID, sreStackID, "%"+id).Find(&workerStacks)
+	for _, st := range workerStacks {
+		db.DB.Where("stack_id = ?", st.ID).Delete(&db.Service{})
+		db.DB.Where("id = ?", st.ID).Delete(&db.Stack{})
+	}
+
+	db.DB.Where("stack_id = ? OR stack_id = ?", coreStackID, sreStackID).Delete(&db.Service{})
+	db.DB.Where("id = ? OR id = ?", coreStackID, sreStackID).Delete(&db.Stack{})
+
+	// Delete the node entirely so it disappears from the UI
+	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Delete(nil)
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete node"})
 		return
 	}
 
@@ -171,7 +211,7 @@ func NodeLeaveHandler(c *gin.Context) {
 		slog.Warn("failed to update Prometheus config on node leave", "err", err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Node marked as left"})
+	c.JSON(http.StatusOK, gin.H{"message": "Node drained and removed from cluster"})
 }
 
 type NodeLabelsRequest struct {
@@ -221,9 +261,7 @@ func drainNodeTasks(nodeID string) {
 		}
 
 		// Filter out core system and monitoring stacks
-		if svc.StackID == "core-gbnt-stack" || svc.StackID == "sre-monitor-stack" ||
-			strings.Contains(strings.ToLower(svc.StackID), "core-gbnt") ||
-			strings.Contains(strings.ToLower(svc.StackID), "monitor") {
+		if isSystemStack(svc.StackID) {
 			continue
 		}
 

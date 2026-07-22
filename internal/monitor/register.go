@@ -118,6 +118,22 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 		return
 	}
 
+	activeNodeIDs := make(map[string]bool)
+	for _, n := range workerNodes {
+		activeNodeIDs[n.ID] = true
+	}
+
+	// Purge orphan worker SRE stacks whose node no longer exists or left
+	var allSreWorkerStacks []db.Stack
+	database.Where("id LIKE ?", "sre-stack-%").Find(&allSreWorkerStacks)
+	for _, st := range allSreWorkerStacks {
+		nodeID := strings.TrimPrefix(st.ID, "sre-stack-")
+		if !activeNodeIDs[nodeID] {
+			database.Where("stack_id = ?", st.ID).Delete(&db.Service{})
+			database.Where("id = ?", st.ID).Delete(&db.Stack{})
+		}
+	}
+
 	for _, node := range workerNodes {
 		stackID := "sre-stack-" + node.ID
 		stackName := fmt.Sprintf("[SRE] Monitor (%s)", node.ID)

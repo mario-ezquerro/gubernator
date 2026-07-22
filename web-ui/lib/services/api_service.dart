@@ -63,6 +63,29 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Provision and add a remote worker host via SSH.
+  static Future<String?> addHost(String host, String user, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/node/add'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'host': host,
+          'user': user,
+          'password': password,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return null; // Success
+      } else {
+        final body = jsonDecode(response.body);
+        return body['error'] ?? 'Failed to add host';
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   /// Sends an action (pause, unpause, restart, start, stop) to a task
   static Future<bool> taskAction(String id, String action) async {
     final response = await http.post(

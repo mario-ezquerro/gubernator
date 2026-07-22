@@ -24,6 +24,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 
@@ -221,6 +222,7 @@ func StartDashboard() {
 		api.POST("/node/:id/reboot", nodeRebootHandler)
 		api.POST("/node/:id/leave", nodeLeaveHandler)
 		api.POST("/node/:id/labels", nodeLabelsHandler)
+		api.POST("/node/add", nodeAddHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
 
 		// CoreDNS config
@@ -250,6 +252,9 @@ func StartDashboard() {
 
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		path := c.Request.URL.Path
 		// Try to serve the exact file
 		if f, err := flutterContent.Open(strings.TrimPrefix(path, "/")); err == nil {
@@ -298,6 +303,10 @@ func getDNSRecords() []DNSRecord {
 }
 
 func stateHandler(c *gin.Context) {
+	// Sync worker system stacks (cleans up any orphan stacks from left nodes)
+	coredns.SyncWorkerCoreStacks(db.DB)
+	monitor.SyncWorkerSreStacks(db.DB)
+
 	var nodes []db.Node
 	var stacks []db.Stack
 	var services []db.Service
@@ -1233,8 +1242,25 @@ func nodeRebootHandler(c *gin.Context) {
 		time.Sleep(1 * time.Second)
 		slog.Info("node reboot initiated via SSH", "node_id", id, "ip", ip)
 
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519",
+			"/root/.ssh/id_rsa",
+			"/data/id_ed25519",
+			"/data/id_rsa",
+			"/data/ssh/id_ed25519",
+			"/data/ssh/id_rsa",
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", ip), "sudo", "reboot")
+		
 		// Try SSH reboot to worker/manager host
-		cmd := exec.Command("ssh", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5", fmt.Sprintf("ubuntu@%s", ip), "sudo", "reboot")
+		cmd := exec.Command("ssh", sshArgs...)
 		if err := cmd.Run(); err != nil {
 			slog.Warn("ssh reboot returned error, trying fallback local reboot", "ip", ip, "err", err)
 			exec.Command("sudo", "reboot").Run()
@@ -1250,8 +1276,8 @@ func nodeLeaveHandler(c *gin.Context) {
 	// 1. Drain node tasks and migrate all services to active nodes before leaving
 	webDrainNodeTasks(id)
 
-	// 2. Mark node status as left in database
-	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", "left")
+	// 2. Delete node record from database completely
+	res := db.DB.Where("id = ?", id).Delete(&db.Node{})
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
@@ -1262,7 +1288,134 @@ func nodeLeaveHandler(c *gin.Context) {
 		slog.Warn("failed to update Prometheus config on node leave", "err", err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Node drained and marked as left"})
+	c.JSON(http.StatusOK, gin.H{"message": "Node drained and deleted from cluster"})
+}
+
+type addNodeRequest struct {
+	Host     string `json:"host" binding:"required"`
+	User     string `json:"user" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func runRemoteSSHCommand(host, user, password, command string) (string, error) {
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         12 * time.Second,
+	}
+
+	address := host
+	if !strings.Contains(address, ":") {
+		address = address + ":22"
+	}
+
+	client, err := ssh.Dial("tcp", address, config)
+	if err != nil {
+		return "", fmt.Errorf("SSH connection failed to %s: %v", address, err)
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("failed to open SSH session: %v", err)
+	}
+	defer session.Close()
+
+	output, err := session.CombinedOutput(command)
+	return string(output), err
+}
+
+func nodeAddHandler(c *gin.Context) {
+	var req addNodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Host, User, and Password are required"})
+		return
+	}
+
+	// 1. Fetch system info via SSH from target host
+	infoCmd := "hostname && uname -m && nproc && free -m | awk '/Mem:/ {print $2}'"
+	out, err := runRemoteSSHCommand(req.Host, req.User, req.Password, infoCmd)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to connect via SSH: %v", err)})
+		return
+	}
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	hostname := strings.TrimSpace(req.Host)
+	if len(lines) > 0 && strings.TrimSpace(lines[0]) != "" {
+		hostname = strings.TrimSpace(lines[0])
+	}
+
+	var cpuCount int = 2
+	var ramMB int = 2048
+	if len(lines) >= 3 {
+		fmt.Sscanf(lines[2], "%d", &cpuCount)
+	}
+	if len(lines) >= 4 {
+		fmt.Sscanf(lines[3], "%d", &ramMB)
+	}
+
+	nodeID := fmt.Sprintf("node-%s", strings.ReplaceAll(hostname, ".", "-"))
+
+	// Check if node already exists in DB
+	var existing db.Node
+	if err := db.DB.First(&existing, "id = ? OR ip = ?", nodeID, req.Host).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Node with IP %s or ID %s already exists", req.Host, existing.ID)})
+		return
+	}
+
+	// 2. Deploy Worker Container on remote host via SSH
+	managerIP := os.Getenv("GBNT_MANAGER_IP")
+	if managerIP == "" {
+		managerIP = "192.168.252.11"
+	}
+	joinToken := db.GetJoinToken()
+
+	deployCmd := fmt.Sprintf(
+		"sudo docker run -d --name gbnt-worker --network host --restart always "+
+			"-v /var/run/docker.sock:/var/run/docker.sock "+
+			"marioezquerro/gubernator:latest agent --join %s:4000 --token %s",
+		managerIP, joinToken,
+	)
+
+	// Attempt remote docker deployment asynchronously
+	go func() {
+		_, err := runRemoteSSHCommand(req.Host, req.User, req.Password, deployCmd)
+		if err != nil {
+			slog.Warn("remote docker run error (or container already running)", "host", req.Host, "err", err)
+		}
+	}()
+
+	// 3. Register Node in Database
+	node := db.Node{
+		ID:        nodeID,
+		IP:        req.Host,
+		Role:      "worker",
+		Status:    "active",
+		Labels:    map[string]string{"gbnt.node.role": "worker"},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.DB.Create(&node).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save node: %v", err)})
+		return
+	}
+
+	// Trigger Prometheus & Aqueducts updates
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+	if err := monitor.UpdatePrometheusConfig(); err != nil {
+		slog.Warn("failed to update Prometheus config on node add", "err", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Node successfully added to cluster",
+		"node":    node,
+	})
 }
 
 type nodeLabelsRequest struct {

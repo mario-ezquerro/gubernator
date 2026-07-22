@@ -53,7 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _taskSortAscending = true;
   PlutoGridStateManager? _taskGridStateManager;
   List<String> _layoutOrder = ['stacks', 'nodes'];
-  double _stacksRatio = 0.5;
+  double _stacksRatio = 1.0 / 3.0;
   String _selectedCaddyNode = 'node-local-manager';
 
   final ScrollController _stackScrollController = ScrollController();
@@ -468,6 +468,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _showSnackBar('Failed to migrate stack "${s.name}"', isError: true);
                     }
                   },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAddHostDialog() {
+    final hostController = TextEditingController();
+    final userController = TextEditingController(text: 'ubuntu');
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.dns, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Add Worker Host (Centurion)'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Specify the remote host connection details. Gubernator will connect via SSH, '
+                    'detect system resources, and deploy the worker node agent.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  if (errorText != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorText!,
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(
+                    controller: hostController,
+                    decoration: const InputDecoration(
+                      labelText: 'IP Address / FQDN',
+                      hintText: 'e.g. 192.168.252.14 or worker3.local',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: userController,
+                    decoration: const InputDecoration(
+                      labelText: 'SSH Username',
+                      hintText: 'ubuntu / root',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'SSH Password',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton.icon(
+                  icon: isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.add, size: 18),
+                  label: Text(isLoading ? 'Adding...' : 'Add Host'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final host = hostController.text.trim();
+                          final user = userController.text.trim();
+                          final pass = passwordController.text;
+
+                          if (host.isEmpty || user.isEmpty || pass.isEmpty) {
+                            setDialogState(() => errorText = 'All fields are required');
+                            return;
+                          }
+
+                          setDialogState(() {
+                            isLoading = true;
+                            errorText = null;
+                          });
+
+                          final err = await ApiService.addHost(host, user, pass);
+                          if (err == null) {
+                            Navigator.of(ctx).pop();
+                            _showSnackBar('Host $host successfully added to cluster!');
+                            _fetchData();
+                          } else {
+                            setDialogState(() {
+                              isLoading = false;
+                              errorText = err;
+                            });
+                          }
+                        },
                 ),
               ],
             );
@@ -1275,26 +1411,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'Options',
-                  onSelected: (val) {
-                    if (val == 'deploy') {
-                      _showNewStackDialog();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'deploy',
-                      child: Row(
-                        children: [
-                          Icon(Icons.add, size: 20),
-                          SizedBox(width: 8),
-                          Text('Deploy New Stack'),
-                        ],
-                      ),
-                    ),
-                  ],
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Stack'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _showNewStackDialog(),
                 ),
               ],
             ),
@@ -1448,6 +1572,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Centurions (Nodes)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Host'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _showAddHostDialog,
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -1661,7 +1795,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             const PopupMenuDivider(),
-                            if (n.status != 'active')
+                            if (n.status == 'maintenance')
+                              const PopupMenuItem(
+                                value: 'activate',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text('Exit Maintenance'),
+                                  ],
+                                ),
+                              )
+                            else if (n.status != 'active')
                               const PopupMenuItem(
                                 value: 'activate',
                                 child: Row(
@@ -1799,6 +1944,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       return PlutoRow(
         cells: {
+          'checkbox': PlutoCell(value: ''),
           'task_id': PlutoCell(value: t.id),
           'service': PlutoCell(value: svc?.name ?? 'unknown'),
           'stack': PlutoCell(value: stackName),
@@ -1813,6 +1959,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       );
     }).toList();
+  }
+
+  Future<void> _bulkActionSelectedTasks(String action) async {
+    final checkedRows = _taskGridStateManager?.checkedRows ?? [];
+    if (checkedRows.isEmpty) return;
+
+    final tasks = checkedRows
+        .map((r) => r.cells['task_raw']?.value as Task?)
+        .whereType<Task>()
+        .toList();
+
+    if (tasks.isEmpty) return;
+
+    final actionLabel = action == 'delete' ? 'remove' : action;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Bulk ${actionLabel.toUpperCase()} Containers'),
+        content: Text('Are you sure you want to $actionLabel ${tasks.length} selected container(s)?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: action == 'delete'
+                ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error)
+                : null,
+            child: Text(actionLabel.toUpperCase()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    int successCount = 0;
+    for (final task in tasks) {
+      bool ok = false;
+      if (action == 'delete') {
+        ok = await ApiService.deleteTask(task.id);
+      } else {
+        ok = await ApiService.taskAction(task.id, action);
+      }
+      if (ok) successCount++;
+    }
+
+    _showSnackBar('Bulk $actionLabel completed: $successCount / ${tasks.length} succeeded.');
+    _fetchData();
   }
 
   // ─── Tasks Section ──────────────────────────────────────────────────
@@ -1845,7 +2041,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final gridHeight = (screenHeight - 620).clamp(300.0, double.infinity);
 
+    final checkedCount = _taskGridStateManager?.checkedRows.length ?? 0;
+
     final List<PlutoColumn> columns = [
+      PlutoColumn(
+        title: '',
+        field: 'checkbox',
+        type: PlutoColumnType.text(),
+        width: 50,
+        enableRowChecked: true,
+        enableSorting: false,
+        enableFilterMenuItem: false,
+        enableContextMenu: false,
+        enableDropToResize: false,
+      ),
       PlutoColumn(
         title: 'TASK ID',
         field: 'task_id',
@@ -2042,6 +2251,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Cohorts & Tasks (Containers)',
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
+                const Spacer(),
+                if (checkedCount > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_box, size: 16, color: theme.colorScheme.onPrimaryContainer),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$checkedCount selected',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _bulkActionSelectedTasks('start'),
+                    icon: const Icon(Icons.play_arrow, size: 16, color: Colors.green),
+                    label: const Text('Start'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  OutlinedButton.icon(
+                    onPressed: () => _bulkActionSelectedTasks('stop'),
+                    icon: const Icon(Icons.stop, size: 16, color: Colors.amber),
+                    label: const Text('Stop'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  OutlinedButton.icon(
+                    onPressed: () => _bulkActionSelectedTasks('restart'),
+                    icon: const Icon(Icons.refresh, size: 16, color: Colors.blue),
+                    label: const Text('Restart'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  FilledButton.icon(
+                    onPressed: () => _bulkActionSelectedTasks('delete'),
+                    icon: const Icon(Icons.delete, size: 16),
+                    label: const Text('Remove'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -2073,6 +2348,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: PlutoGrid(
                   columns: columns,
                   rows: _getPlutoRows(theme),
+                  onRowChecked: (PlutoGridOnRowCheckedEvent event) {
+                    setState(() {});
+                  },
                   rowColorCallback: (rowColorContext) {
                     if (rowColorContext.rowIdx % 2 != 0) {
                       return theme.colorScheme.onSurface.withValues(alpha: 0.04);

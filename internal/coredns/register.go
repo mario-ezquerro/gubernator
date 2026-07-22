@@ -113,6 +113,22 @@ func SyncWorkerCoreStacks(database *gorm.DB) {
 		return
 	}
 
+	activeNodeIDs := make(map[string]bool)
+	for _, n := range workerNodes {
+		activeNodeIDs[n.ID] = true
+	}
+
+	// Purge orphan worker core stacks whose node no longer exists or left
+	var allCoreWorkerStacks []db.Stack
+	database.Where("id LIKE ?", "core-stack-%").Find(&allCoreWorkerStacks)
+	for _, st := range allCoreWorkerStacks {
+		nodeID := strings.TrimPrefix(st.ID, "core-stack-")
+		if !activeNodeIDs[nodeID] {
+			database.Where("stack_id = ?", st.ID).Delete(&db.Service{})
+			database.Where("id = ?", st.ID).Delete(&db.Stack{})
+		}
+	}
+
 	for _, node := range workerNodes {
 		stackID := "core-stack-" + node.ID
 		stackName := fmt.Sprintf("CORE-GBNT (%s)", node.ID)
