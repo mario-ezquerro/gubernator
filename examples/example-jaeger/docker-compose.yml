@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: python:3.11-alpine
+    container_name: jaeger-frontend
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - stack.name == jaeger-stack
+          - ingress.host == jaeger.gbnt.test
+    command: |
+      python -c "import http.server, socketserver, urllib.request, json, time, secrets, threading
+      def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs):
+          start_nano = int(time.time() * 1e9)
+          end_nano = start_nano + int(duration_ms * 1e6)
+          payload = {'resourceSpans': [{'resource': {'attributes': [{'key': 'service.name', 'value': {'stringValue': service_name}}]}, 'scopeSpans': [{'scope': {'name': 'gubernator-tracing'}, 'spans': [{'traceId': trace_id, 'spanId': span_id, 'parentSpanId': parent_span_id, 'name': span_name, 'kind': 1, 'startTimeUnixNano': str(start_nano), 'endTimeUnixNano': str(end_nano), 'attributes': [{'key': k, 'value': {'stringValue': str(v)}} for k, v in attrs.items()], 'status': {'code': 1}}]}]}]}
+          body = json.dumps(payload).encode('utf-8')
+          endpoints = ['http://gbnt-monitor-jaeger:4318/v1/traces', 'http://172.17.0.1:4318/v1/traces', 'http://host.docker.internal:4318/v1/traces', 'http://localhost:4318/v1/traces']
+          for ep in endpoints:
+              try:
+                  req = urllib.request.Request(ep, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+                  with urllib.request.urlopen(req, timeout=2) as resp:
+                      if resp.status == 200: break
+              except Exception: pass
+      def auto_trace_loop():
+          while True:
+              try:
+                  time.sleep(10)
+                  trace_id = secrets.token_hex(16)
+                  f_span = secrets.token_hex(8)
+                  a_span = secrets.token_hex(8)
+                  w_span = secrets.token_hex(8)
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /auto-ping', 45, {'http.url': 'http://jaeger.gbnt.test/auto-ping'})
+                  send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /api/process', 30, {'http.target': '/api/process'})
+                  send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /worker/task', 15, {'db.system': 'postgresql', 'task.type': 'batch'})
+              except Exception: pass
+      threading.Thread(target=auto_trace_loop, daemon=True).start()
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              trace_id = secrets.token_hex(16)
+              f_span = secrets.token_hex(8)
+              a_span = secrets.token_hex(8)
+              w_span = secrets.token_hex(8)
+              api_res = 'ok'
+              try:
+                  api_urls = ['http://api-service:8085/process', 'http://localhost:8085/process']
+                  for u in api_urls:
+                      try:
+                          with urllib.request.urlopen(u, timeout=2) as r:
+                              api_res = r.read().decode('utf-8')
+                              break
+                      except Exception: pass
+              except Exception as e: api_res = str(e)
+              send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /', 50, {'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.test/'})
+              send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /process', 35, {'http.method': 'POST', 'http.target': '/process'})
+              send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /work', 20, {'job.status': 'completed'})
+              html_doc = f'''<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:40px;\"><h1>🚀 Jaeger Tracing Example (jaeger.gbnt.test)</h1><p>Distributed tracing active across 3 microservices:</p><ul><li><b>jaeger-frontend</b> (Port 8080, Ingress jaeger.gbnt.test)</li><li><b>jaeger-api</b> (Port 8085, Internal REST API)</li><li><b>jaeger-worker</b> (Port 8086, Background Job Worker)</li></ul><div style=\"background:#1e293b;padding:20px;border-radius:8px;font-family:monospace;\"><p style=\"color:#38bdf8;\">Generated Trace ID: {trace_id}</p><p>Frontend Span ID: {f_span}</p><p>API Span ID: {a_span} (Parent: {f_span})</p><p>Worker Span ID: {w_span} (Parent: {a_span})</p><p style=\"color:#4ade80;\">API Response: {api_res}</p></div><p style=\"margin-top:20px;\">Inspect this trace in the <a href=\"http://localhost:4001/jaeger/\" style=\"color:#60a5fa;\" target=\"_blank\">Gubernator Jaeger UI Dashboard</a>.</p></body></html>'''
+              self.send_response(200)
+              self.send_header('Content-type', 'text/html')
+              self.end_headers()
+              self.wfile.write(html_doc.encode('utf-8'))
+      with socketserver.TCPServer(('', 8080), Handler) as httpd:
+          print('Frontend listening on port 8080...')
+          httpd.serve_forever()"
+
+  api-service:
+    image: python:3.11-alpine
+    container_name: jaeger-api-service
+    ports:
+      - "8085:8085"
+    command: |
+      python -c "import http.server, socketserver, urllib.request, json, time, secrets
+      def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs):
+          start_nano = int(time.time() * 1e9)
+          end_nano = start_nano + int(duration_ms * 1e6)
+          payload = {'resourceSpans': [{'resource': {'attributes': [{'key': 'service.name', 'value': {'stringValue': service_name}}]}, 'scopeSpans': [{'scope': {'name': 'gubernator-tracing'}, 'spans': [{'traceId': trace_id, 'spanId': span_id, 'parentSpanId': parent_span_id, 'name': span_name, 'kind': 1, 'startTimeUnixNano': str(start_nano), 'endTimeUnixNano': str(end_nano), 'attributes': [{'key': k, 'value': {'stringValue': str(v)}} for k, v in attrs.items()], 'status': {'code': 1}}]}]}]}
+          body = json.dumps(payload).encode('utf-8')
+          endpoints = ['http://gbnt-monitor-jaeger:4318/v1/traces', 'http://172.17.0.1:4318/v1/traces', 'http://host.docker.internal:4318/v1/traces', 'http://localhost:4318/v1/traces']
+          for ep in endpoints:
+              try:
+                  req = urllib.request.Request(ep, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+                  with urllib.request.urlopen(req, timeout=2) as resp:
+                      if resp.status == 200: break
+              except Exception: pass
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              worker_res = 'ok'
+              try:
+                  worker_urls = ['http://worker-service:8086/work', 'http://localhost:8086/work']
+                  for u in worker_urls:
+                      try:
+                          with urllib.request.urlopen(u, timeout=2) as r:
+                              worker_res = r.read().decode('utf-8')
+                              break
+                      except Exception: pass
+              except Exception as e: worker_res = str(e)
+              res = json.dumps({'service': 'jaeger-api', 'status': 'processed', 'worker': worker_res})
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(res.encode('utf-8'))
+      with socketserver.TCPServer(('', 8085), Handler) as httpd:
+          print('API Service listening on port 8085...')
+          httpd.serve_forever()"
+
+  worker-service:
+    image: python:3.11-alpine
+    container_name: jaeger-worker-service
+    ports:
+      - "8086:8086"
+    command: |
+      python -c "import http.server, socketserver, json, time
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              time.sleep(0.02)
+              res = json.dumps({'service': 'jaeger-worker', 'status': 'job_completed'})
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(res.encode('utf-8'))
+      with socketserver.TCPServer(('', 8086), Handler) as httpd:
+          print('Worker Service listening on port 8086...')
+          httpd.serve_forever()"

@@ -245,6 +245,17 @@ Panels included:
 
 ---
 
+## Jaeger Distributed Tracing
+
+The SRE stack includes **Jaeger** (`gbnt-monitor-jaeger`) accepting OpenTelemetry traces over:
+- **OTLP gRPC**: `localhost:4317`
+- **OTLP HTTP**: `http://localhost:4318/v1/traces`
+- **Jaeger UI**: Embedded at `/jaeger/` on port `4001` or direct port `:16686`.
+
+> 📘 See [Distributed Tracing Example (`example-jaeger`)](example-jaeger.md) for a full multi-service tutorial with domain `jaeger.gbnt.test`.
+
+---
+
 ## Tear Down
 
 ```bash

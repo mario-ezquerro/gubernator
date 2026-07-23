@@ -58,6 +58,7 @@ nav:
     - Overview: examples.md
     - "WordPress": example-wordpress.md
     - "SRE Observability": example-sre.md
+    - "Distributed Tracing (Jaeger)": example-jaeger.md
     - "AI & Automation (n8n)": example-n8n.md
     - "AI Development (Jupyter)": example-jupyter.md
 
