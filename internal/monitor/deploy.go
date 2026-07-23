@@ -247,11 +247,43 @@ func populateConfigVolumes() error {
 	return nil
 }
 
+// cleanupPortContainers finds any container publishing the given host port and removes it if it's not the target container.
+func cleanupPortContainers(port, targetName string) {
+	out, err := exec.Command("docker", "ps", "-a", "-q", "--filter", fmt.Sprintf("publish=%s", port)).Output()
+	if err == nil {
+		ids := strings.Fields(string(out))
+		for _, id := range ids {
+			nameOut, err := exec.Command("docker", "inspect", "-f", "{{.Name}}", id).Output()
+			if err == nil {
+				cName := strings.TrimPrefix(strings.TrimSpace(string(nameOut)), "/")
+				if cName != targetName {
+					exec.Command("docker", "rm", "-f", id).Run()
+				}
+			}
+		}
+	}
+}
+
 // runContainer runs a container in detached mode with the given name and args.
 // If a container with the same name already exists, it is removed first.
 func runContainer(name string, args []string) error {
 	// Remove if already exists
 	exec.Command("docker", "rm", "-f", name).Run()
+
+	// Clean up any conflicting containers publishing host ports specified in args
+	for i, arg := range args {
+		if (arg == "-p" || arg == "--publish") && i+1 < len(args) {
+			portMapping := args[i+1]
+			parts := strings.Split(portMapping, ":")
+			if len(parts) >= 2 {
+				hostPort := parts[0]
+				if len(parts) == 3 {
+					hostPort = parts[1]
+				}
+				cleanupPortContainers(hostPort, name)
+			}
+		}
+	}
 
 	fullArgs := []string{"run", "-d", "--name", name, "--restart", "unless-stopped"}
 	fullArgs = append(fullArgs, args...)
