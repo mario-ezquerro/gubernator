@@ -115,7 +115,7 @@ func DeployManagerStack(webUser, webPass string) error {
 	fmt.Println("📈 Deploying Grafana (dashboards)...")
 	grafanaArgs := []string{
 		"--net", NetworkName,
-		"-p", "127.0.0.1:3000:3000",
+		"-p", "3000:3000",
 		"-v", VolGrafanaProv + ":/etc/grafana/provisioning:ro",
 		"-v", VolGrafanaData + ":/var/lib/grafana",
 		"-e", "GF_SECURITY_ADMIN_USER=" + webUser,
