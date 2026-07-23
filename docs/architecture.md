@@ -121,12 +121,14 @@ A built-in, one-command SRE monitoring deployment that creates a dedicated Docke
 | `gbnt-monitor-grafana` | `grafana/grafana` | `:3000` | Dashboards (Prometheus + Loki datasources pre-configured) |
 | `gbnt-monitor-loki` | `grafana/loki` | `:3100` | Log aggregation |
 | `gbnt-monitor-promtail` | `grafana/promtail` | — | Log shipping (Docker + system logs → Loki) |
+| `gbnt-monitor-jaeger` | `jaegertracing/all-in-one` | `:4317`, `:4318`, `:16686` | Distributed tracing (OTLP gRPC/HTTP + UI `/jaeger/`) |
 
 ```
 Data Flow:
   cAdvisor ──metrics──→ Prometheus ──→ Grafana
   Gubernator :4002 ──metrics──→ Prometheus ──→ Grafana
   Promtail ──logs──→ Loki ──→ Grafana
+  Apps ──traces (OTLP :4317/:4318)──→ Jaeger (:16686 / /jaeger/)
 ```
 
 Config files are auto-generated in `~/.gbnt/monitor/` and can be customized.

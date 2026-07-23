@@ -340,7 +340,7 @@ Gubernator includes a **built-in SRE observability stack** that can be deployed 
 ./gbnt monitor init
 ```
 
-This command deploys 5 containers on a dedicated Docker network (`gbnt-monitor-net`):
+This command deploys 6 containers on a dedicated Docker network (`gbnt-monitor-net`):
 
 | Container | Port | Role |
 |-----------|------|------|
@@ -349,6 +349,7 @@ This command deploys 5 containers on a dedicated Docker network (`gbnt-monitor-n
 | **Grafana** | `:3000` | Dashboards with pre-configured datasources (admin/admin) |
 | **Loki** | `:3100` | Log aggregation from all nodes |
 | **Promtail** | — | Ships container and system logs to Loki |
+| **Jaeger** | `:4317`, `:4318`, `:16686` | Distributed tracing OTLP (gRPC/HTTP) & UI (`/jaeger/`) |
 
 ### Management Commands
 ```bash

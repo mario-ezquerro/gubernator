@@ -1023,7 +1023,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final running = tasks.where((t) => t.status == 'running').length;
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Row(
@@ -1064,8 +1064,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-            // Observability gear icon
-            if (_state.monitorRunning)
+            // Observability icon buttons (Grafana & Jaeger)
+            if (_state.monitorRunning) ...[
               Builder(
                 builder: (ctx) => IconButton(
                   icon: const Icon(Icons.analytics_outlined),
@@ -1073,6 +1073,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () => html.window.open('/grafana/', '_blank'),
                 ),
               ),
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.timeline),
+                  tooltip: 'Jaeger Traces',
+                  onPressed: () => html.window.open('/jaeger/', '_blank'),
+                ),
+              ),
+            ],
             // Settings gear icon
             IconButton(
               icon: const Icon(Icons.settings),
@@ -1138,6 +1146,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               icon: Icon(Icons.analytics_outlined),
                               text: 'Grafana Metrics',
                             ),
+                            Tab(
+                              icon: Icon(Icons.timeline),
+                              text: 'Jaeger Traces',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -1179,6 +1191,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Card(
                                 clipBehavior: Clip.antiAlias,
                                 child: const HtmlElementView(viewType: 'grafana-iframe'),
+                              ),
+                              // Tab 5: Jaeger Traces (Iframe)
+                              Card(
+                                clipBehavior: Clip.antiAlias,
+                                child: const HtmlElementView(viewType: 'jaeger-iframe'),
                               ),
                             ],
                           ),

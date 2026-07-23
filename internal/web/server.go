@@ -250,6 +250,13 @@ func StartDashboard() {
 		grafanaProxyHandler(c, sessionToken, user, pass)
 	})
 
+	r.GET("/jaeger", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/jaeger/")
+	})
+	r.Any("/jaeger/*proxyPath", func(c *gin.Context) {
+		jaegerProxyHandler(c, sessionToken, user, pass)
+	})
+
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -1494,6 +1501,49 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 		// In our case we want to catch the 401 BEFORE it goes to Grafana if there's no username,
 		// but since httputil.ReverseProxy doesn't easily allow aborting from Director,
 		// we check it before calling ServeHTTP.
+		return nil
+	}
+
+	// Manually check auth before passing to proxy
+	username := c.GetString(gin.AuthUserKey)
+	if username == "" {
+		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
+			username = expectedUser
+		}
+	}
+	if username == "" {
+		u, p, hasAuth := c.Request.BasicAuth()
+		if hasAuth && u == expectedUser && p == expectedPass {
+			username = expectedUser
+		}
+	}
+
+	if username == "" {
+		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func jaegerProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+	targetHost := "gbnt-monitor-jaeger:16686"
+	_, err := net.LookupHost("gbnt-monitor-jaeger")
+	if err != nil {
+		targetHost = "127.0.0.1:16686"
+	}
+
+	targetURL, err := url.Parse("http://" + targetHost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse target URL"})
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("X-Frame-Options")
+		resp.Header.Del("Content-Security-Policy")
 		return nil
 	}
 

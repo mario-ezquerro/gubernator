@@ -94,7 +94,7 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Update Strategy:** When a stack is updated with a new image, the tasks will undergo a **Rolling Update**. Containers will be updated sequentially, waiting for health checks to pass before taking down older instances to ensure zero downtime.
 
 ### 6. SRE Monitor Stack (`gbnt monitor init`)
-* **One-command observability:** `gbnt monitor init` deploys the full SRE stack on the Manager: **cAdvisor** (container metrics on `:8081`), **Prometheus** (metrics collection on `:9090`), **Grafana** (dashboards on `:3000` with pre-configured Prometheus + Loki datasources), **Loki** (log aggregation on `:3100`), and **Promtail** (log shipping).
+* **One-command observability:** `gbnt monitor init` deploys the full SRE stack on the Manager: **cAdvisor** (container metrics on `:8081`), **Prometheus** (metrics collection on `:9090`), **Grafana** (dashboards on `:3000` with pre-configured Prometheus + Loki datasources), **Loki** (log aggregation on `:3100`), **Promtail** (log shipping), and **Jaeger** (distributed tracing via OTLP gRPC `:4317`, OTLP HTTP `:4318`, and UI on `:16686` / `/jaeger/`).
 * **Lifecycle management:** `gbnt monitor status` for container health, `gbnt monitor stop` to tear down all monitoring containers.
 * **Dedicated network:** All containers run on the `gbnt-monitor-net` Docker network.
 * **Config auto-generation:** Config files for all services generated in `~/.gbnt/monitor/`.

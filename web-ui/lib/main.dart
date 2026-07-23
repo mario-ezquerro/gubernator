@@ -14,6 +14,15 @@ void main() {
       ..style.width = '100%'
       ..style.height = '100%',
   );
+  // Register the iframe view factory for Jaeger
+  ui_web.platformViewRegistry.registerViewFactory(
+    'jaeger-iframe',
+    (int viewId) => html.IFrameElement()
+      ..src = '/jaeger/'
+      ..style.border = 'none'
+      ..style.width = '100%'
+      ..style.height = '100%',
+  );
   runApp(const GubernatorApp());
 }
 

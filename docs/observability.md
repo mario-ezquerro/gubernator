@@ -203,6 +203,9 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="gubernator"}' | python3 -
 | Gubernator Web UI | [http://localhost:4001](http://localhost:4001) | admin / admin |
 | Prometheus | [http://localhost:9090](http://localhost:9090) | — |
 | Grafana | [http://localhost:3000](http://localhost:3000) | admin / admin |
+| Jaeger UI | [http://localhost:16686](http://localhost:16686) or `/jaeger/` | admin / admin |
+| Jaeger OTLP gRPC | `localhost:4317` | — |
+| Jaeger OTLP HTTP | `http://localhost:4318` | — |
 | Gubernator Metrics | [http://localhost:4002/metrics](http://localhost:4002/metrics) | — |
 | Health Check | [http://localhost:4002/health](http://localhost:4002/health) | — |
 

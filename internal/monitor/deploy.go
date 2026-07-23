@@ -14,6 +14,7 @@ const (
 	LokiName       = "gbnt-monitor-loki"
 	PromtailName   = "gbnt-monitor-promtail"
 	GrafanaName    = "gbnt-monitor-grafana"
+	JaegerName     = "gbnt-monitor-jaeger"
 	NetworkName    = "gbnt-monitor-net"
 
 	// Docker volume names for config persistence
@@ -27,7 +28,7 @@ const (
 
 // AllContainers returns all monitoring container names.
 func AllContainers() []string {
-	return []string{CadvisorName, PrometheusName, LokiName, PromtailName, GrafanaName}
+	return []string{CadvisorName, PrometheusName, LokiName, PromtailName, GrafanaName, JaegerName}
 }
 
 // AllVolumes returns all monitoring volume names.
@@ -135,6 +136,20 @@ func DeployManagerStack(webUser, webPass string) error {
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
 		return fmt.Errorf("grafana failed: %w", err)
+	}
+
+	// 6) Jaeger (distributed tracing collector & UI)
+	fmt.Println("🔍 Deploying Jaeger (trace collector & UI)...")
+	jaegerArgs := []string{
+		"--net", NetworkName,
+		"-p", "4317:4317",
+		"-p", "4318:4318",
+		"-p", "16686:16686",
+		"-e", "QUERY_BASE_PATH=/jaeger",
+		"jaegertracing/all-in-one:latest",
+	}
+	if err := runContainer(JaegerName, jaegerArgs); err != nil {
+		return fmt.Errorf("jaeger failed: %w", err)
 	}
 
 	return nil
