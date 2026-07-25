@@ -31,7 +31,8 @@ theme:
     - navigation.tracking
     - navigation.tabs
     - navigation.sections
-    - navigation.expand
+    - navigation.indexes
+    - navigation.prune
     - navigation.top
     - toc.integrate
     - content.code.copy
@@ -59,6 +60,7 @@ nav:
     - "WordPress": example-wordpress.md
     - "SRE Observability": example-sre.md
     - "Distributed Tracing (Jaeger)": example-jaeger.md
+    - "Jaeger Integration Guide": how-use-jaeger.md
     - "AI & Automation (n8n)": example-n8n.md
     - "AI Development (Jupyter)": example-jupyter.md
 

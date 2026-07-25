@@ -1,7 +1,44 @@
-/* Cuadrado de líneas blancas alrededor del logo superior */
+/* Logo styling in header */
 .md-header__button.md-logo img {
     border: 2px solid white;
-    border-radius: 4px; /* Opcional: suaviza las esquinas */
-    padding: 2px; /* Opcional: deja algo de aire entre el logo y el borde */
+    border-radius: 4px;
+    padding: 2px;
     background-color: transparent;
+}
+
+/* Sidebar navigation styling & vertical overflow fix */
+.md-sidebar__scrollwrap {
+    max-height: calc(100vh - 4.8rem);
+    overflow-y: auto !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 120, 120, 0.4) transparent;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+    width: 5px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+    background-color: rgba(120, 120, 120, 0.4);
+    border-radius: 4px;
+}
+
+.md-nav__list {
+    margin: 0;
+    padding: 0;
+}
+
+.md-nav__item {
+    padding: 0.05rem 0;
+}
+
+.md-nav__link {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    border-radius: 4px;
+}
+
+.md-nav__link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
