@@ -42,27 +42,29 @@ extra_css:
   - stylesheets/extra.css
 
 nav:
-  - Home: index.md
-  - Roadmap: roadmap.md
-  - Installation: install.md
-  - Multi-Host Clustering: cluster.md
-  - CLI Reference:
-    - Overview: cli.md
-    - Full Command Reference: cli-full.md
-  - Architecture: architecture.md
-  - API & SDK: api.md
-  - Docker Compose Reference: compose.md
-  - Web UI Dashboard: web-ui.md
+  - Getting Started:
+    - Home: index.md
+    - Roadmap: roadmap.md
+    - Installation: install.md
+    - Multi-Host Clustering: cluster.md
+  - Architecture & UI:
+    - Architecture: architecture.md
+    - Web UI Dashboard: web-ui.md
+    - REST API & SDK: api.md
+  - Reference:
+    - CLI Overview: cli.md
+    - Full CLI Reference: cli-full.md
+    - Docker Compose Reference: compose.md
   - Observability:
     - Health & Metrics: observability.md
+    - Distributed Tracing (Jaeger): example-jaeger.md
+    - Jaeger Integration Guide: how-use-jaeger.md
   - Examples:
     - Overview: examples.md
-    - "WordPress": example-wordpress.md
-    - "SRE Observability": example-sre.md
-    - "Distributed Tracing (Jaeger)": example-jaeger.md
-    - "Jaeger Integration Guide": how-use-jaeger.md
-    - "AI & Automation (n8n)": example-n8n.md
-    - "AI Development (Jupyter)": example-jupyter.md
+    - WordPress: example-wordpress.md
+    - SRE Observability: example-sre.md
+    - AI & Automation (n8n): example-n8n.md
+    - AI Development (Jupyter): example-jupyter.md
 
 markdown_extensions:
   - admonition
