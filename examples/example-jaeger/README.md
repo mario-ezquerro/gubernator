@@ -4,6 +4,10 @@ This example demonstrates **Distributed Tracing** in Gubernator using **OpenTele
 
 ---
 
+> 📘 **Guía Completa de Integración**: Consulta [`how-use-jaeger.md`](how-use-jaeger.md) para ver la guía paso a paso de cómo conectar tus propios contenedores y aplicaciones (Python, Node.js, Go) al colector de Jaeger en Gubernator.
+
+---
+
 ## 🏗 Architecture Overview
 
 ```
