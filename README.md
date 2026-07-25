@@ -359,7 +359,7 @@ This command deploys 6 containers on a dedicated Docker network (`gbnt-monitor-n
 
 Configuration files are auto-generated in `~/.gbnt/monitor/` and can be customized.
 
-> 💡 **Try the Jaeger Tracing Example**: See [`examples/example-jaeger`](examples/example-jaeger) (`jaeger.gbnt.test`) for a 3-service distributed tracing demo.
+> 💡 **Try the Jaeger Tracing Example**: See [`examples/example-jaeger`](examples/example-jaeger) (`jaeger.gbnt.test`) for a 3-service distributed tracing demo and traffic generation tools (`python3 generate_traces.py --count 15`).
 
 ---
 

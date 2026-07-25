@@ -252,6 +252,16 @@ The SRE stack includes **Jaeger** (`gbnt-monitor-jaeger`) accepting OpenTelemetr
 - **OTLP HTTP**: `http://localhost:4318/v1/traces`
 - **Jaeger UI**: Embedded at `/jaeger/` on port `4001` or direct port `:16686`.
 
+To generate synthetic OpenTelemetry trace traffic across various scenarios (Checkout, User Auth, Search, Error Handling), run the included traffic generator scripts:
+
+```bash
+# Python OpenTelemetry Traffic Generator:
+python3 examples/example-jaeger/generate_traces.py --count 15 --scenario all --target otlp
+
+# POSIX Shell Trace Generator (curl):
+./examples/example-jaeger/send_traces.sh 10
+```
+
 > 📘 See [Distributed Tracing Example (`example-jaeger`)](example-jaeger.md) for a full multi-service tutorial with domain `jaeger.gbnt.test`.
 
 ---
