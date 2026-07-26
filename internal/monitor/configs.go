@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 

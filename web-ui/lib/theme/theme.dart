@@ -10,6 +10,15 @@ const Color _dangerRed = Color(0xFFEF4444);
 const Color _warningAmber = Color(0xFFF59E0B);
 const Color _accentCyan = Color(0xFFFB923C); // Accent Orange 400 (formerly cyan)
 
+// ─── Sidebar Colors ────────────────────────────────────────────────────
+const Color sidebarDarkBg = Color(0xFF0A0F1A);
+const Color sidebarLightBg = Color(0xFFF1F5F9);
+const Color sidebarDarkSurface = Color(0xFF111827);
+const Color sidebarLightSurface = Color(0xFFFFFFFF);
+const Color sidebarDarkBorder = Color(0xFF1E293B);
+const Color sidebarLightBorder = Color(0xFFE2E8F0);
+const Color sidebarActiveIndicator = Color(0xFFF97316);
+
 class GubernatorTheme {
   // ─── Dark Theme ───────────────────────────────────────────────────────
   static ThemeData dark() {
@@ -108,6 +117,22 @@ class GubernatorTheme {
           borderRadius: BorderRadius.circular(6),
         ),
       ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: sidebarDarkBg,
+        selectedIconTheme: const IconThemeData(color: Colors.white, size: 22),
+        unselectedIconTheme: IconThemeData(color: Colors.white.withValues(alpha: 0.5), size: 22),
+        selectedLabelTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelTextStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+        ),
+        indicatorColor: sidebarActiveIndicator.withValues(alpha: 0.15),
+      ),
     );
   }
 
@@ -202,6 +227,22 @@ class GubernatorTheme {
           borderRadius: BorderRadius.circular(6),
         ),
         textStyle: const TextStyle(color: Colors.white),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: sidebarLightBg,
+        selectedIconTheme: IconThemeData(color: _primaryDark, size: 22),
+        unselectedIconTheme: IconThemeData(color: const Color(0xFF64748B), size: 22),
+        selectedLabelTextStyle: TextStyle(
+          color: _primaryDark,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          color: Color(0xFF64748B),
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+        ),
+        indicatorColor: _primaryDark.withValues(alpha: 0.1),
       ),
     );
   }

@@ -1,0 +1,23 @@
+FROM alpine:edge
+
+WORKDIR /app
+
+ENV PATH="/app:${PATH}"
+ENV GBNT_DATA_DIR="/data"
+
+RUN apk update && apk upgrade --no-cache && apk --no-cache add ca-certificates tzdata sqlite docker-cli openssh-client
+
+COPY gbnt-native ./gbnt
+COPY VERSION .
+
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/app/gbnt", "health"]
+
+EXPOSE 4000
+EXPOSE 4001
+EXPOSE 4002
+
+ENTRYPOINT ["/app/gbnt"]
+CMD ["serve"]

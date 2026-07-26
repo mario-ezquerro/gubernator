@@ -1,7 +1,7 @@
 import 'dart:ui_web' as ui_web;
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/app_shell.dart';
 import 'theme/theme.dart';
 
 void main() {
@@ -46,7 +46,7 @@ class _GubernatorAppState extends State<GubernatorApp> {
       theme: GubernatorTheme.light(),
       darkTheme: GubernatorTheme.dark(),
       themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
-      home: DashboardScreen(
+      home: AppShell(
         isDark: _isDark,
         onThemeChanged: (dark) => setState(() => _isDark = dark),
         displayName: _displayName,
