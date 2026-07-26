@@ -13,6 +13,7 @@ import 'pages/caddy_page.dart';
 import 'pages/coredns_page.dart';
 import 'pages/grafana_page.dart';
 import 'pages/jaeger_page.dart';
+import 'pages/network_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -141,11 +142,16 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.manage_search,
         label: 'CoreDNS',
       ),
-      // Grafana & Jaeger (conditional in sidebar, always defined)
+      // Grafana, Network & Jaeger (conditional in sidebar, always defined)
       const SidebarItem(
         icon: Icons.analytics_outlined,
         activeIcon: Icons.analytics,
         label: 'Grafana',
+      ),
+      const SidebarItem(
+        icon: Icons.network_check_outlined,
+        activeIcon: Icons.network_check,
+        label: 'Network Monitor',
       ),
       const SidebarItem(
         icon: Icons.timeline_outlined,
@@ -164,6 +170,7 @@ class _AppShellState extends State<AppShell> {
     'Caddy Ingress',
     'CoreDNS',
     'Grafana',
+    'Network Monitor',
     'Jaeger',
   ];
 
@@ -190,6 +197,8 @@ class _AppShellState extends State<AppShell> {
       case 6:
         return const GrafanaPage();
       case 7:
+        return const NetworkPage();
+      case 8:
         return const JaegerPage();
       default:
         return OverviewPage(

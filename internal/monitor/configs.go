@@ -16,6 +16,9 @@ import (
 //go:embed gubernator_dashboard.json
 var gubernatorDashboardJSON string
 
+//go:embed network_dashboard.json
+var networkDashboardJSON string
+
 // WriteConfigs generates all monitoring config files to ~/.gbnt/monitor/.
 // workerTargets is a list of worker IPs to add to Prometheus scrape targets.
 func WriteConfigs(workerTargets []string) error {
@@ -44,6 +47,7 @@ func WriteConfigs(workerTargets []string) error {
 		filepath.Join(dir, "grafana", "provisioning", "datasources", "ds.yml"):         grafanaDatasources(),
 		filepath.Join(dir, "grafana", "provisioning", "dashboards", "dash.yml"):        grafanaDashboardProv(),
 		filepath.Join(dir, "grafana", "provisioning", "dashboards", "gubernator.json"): gubernatorDashboardJSON,
+		filepath.Join(dir, "grafana", "provisioning", "dashboards", "network.json"):    networkDashboardJSON,
 	}
 
 	for path, content := range files {
@@ -57,12 +61,18 @@ func WriteConfigs(workerTargets []string) error {
 }
 
 // prometheusConfig generates prometheus.yml with scrape targets for
-// Gubernator, cAdvisor (local + workers), and Prometheus self-monitoring.
+// Gubernator, cAdvisor, Node Exporter, and Prometheus self-monitoring.
 func prometheusConfig(workerTargets []string) string {
 	// Build cAdvisor targets
 	cadvisorTargets := []string{"'gbnt-monitor-cadvisor:8080'"}
 	for _, ip := range workerTargets {
 		cadvisorTargets = append(cadvisorTargets, fmt.Sprintf("'%s:8081'", ip))
+	}
+
+	// Build Node Exporter targets
+	nodeExporterTargets := []string{"'host.docker.internal:9100'"}
+	for _, ip := range workerTargets {
+		nodeExporterTargets = append(nodeExporterTargets, fmt.Sprintf("'%s:9100'", ip))
 	}
 
 	return fmt.Sprintf(`global:
@@ -91,6 +101,15 @@ scrape_configs:
         labels:
           service: 'cadvisor'
 
+  # Node Exporter — host hardware and OS metrics
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: [%s]
+        labels:
+          service: 'node-exporter'
+
   # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
@@ -102,7 +121,7 @@ scrape_configs:
       - targets: ['gbnt-monitor-loki:3100']
         labels:
           service: 'loki'
-`, strings.Join(cadvisorTargets, ", "))
+`, strings.Join(cadvisorTargets, ", "), strings.Join(nodeExporterTargets, ", "))
 }
 
 func lokiConfig() string {

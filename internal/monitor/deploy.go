@@ -9,13 +9,14 @@ import (
 
 // Container names for the monitoring stack.
 const (
-	CadvisorName   = "gbnt-monitor-cadvisor"
-	PrometheusName = "gbnt-monitor-prometheus"
-	LokiName       = "gbnt-monitor-loki"
-	PromtailName   = "gbnt-monitor-promtail"
-	GrafanaName    = "gbnt-monitor-grafana"
-	JaegerName     = "gbnt-monitor-jaeger"
-	NetworkName    = "gbnt-monitor-net"
+	CadvisorName     = "gbnt-monitor-cadvisor"
+	NodeExporterName = "gbnt-monitor-node-exporter"
+	PrometheusName   = "gbnt-monitor-prometheus"
+	LokiName         = "gbnt-monitor-loki"
+	PromtailName     = "gbnt-monitor-promtail"
+	GrafanaName      = "gbnt-monitor-grafana"
+	JaegerName       = "gbnt-monitor-jaeger"
+	NetworkName      = "gbnt-monitor-net"
 
 	// Docker volume names for config persistence
 	VolPrometheus     = "gbnt-monitor-prom-conf"
@@ -28,7 +29,7 @@ const (
 
 // AllContainers returns all monitoring container names.
 func AllContainers() []string {
-	return []string{CadvisorName, PrometheusName, LokiName, PromtailName, GrafanaName, JaegerName}
+	return []string{CadvisorName, NodeExporterName, PrometheusName, LokiName, PromtailName, GrafanaName, JaegerName}
 }
 
 // AllVolumes returns all monitoring volume names.
@@ -67,6 +68,12 @@ func DeployManagerStack(webUser, webPass string) error {
 		"gcr.io/cadvisor/cadvisor:latest",
 	}); err != nil {
 		return fmt.Errorf("cAdvisor failed: %w", err)
+	}
+
+	// 1b) Node Exporter
+	fmt.Println("\n🖥 Deploying Node Exporter (host metrics)...")
+	if err := EnsureNodeExporterRunning(); err != nil {
+		return fmt.Errorf("Node Exporter failed: %w", err)
 	}
 
 	// 2) Loki (must start before Promtail)
@@ -187,7 +194,7 @@ func Status() {
 
 	for _, name := range AllContainers() {
 		out, err := exec.Command("docker", "inspect", "--format",
-			"{{.State.Status}} | {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} | {{range $p, $conf := .NetworkSettings.Ports}}{{$p}}→{{(index $conf 0).HostPort}} {{end}}",
+			"{{.State.Status}} | {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} | {{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{$p}}→{{(index $conf 0).HostPort}} {{end}}{{end}}",
 			name).Output()
 		if err != nil {
 			fmt.Printf("  %-30s  ❌ not running\n", name)
@@ -329,12 +336,33 @@ func EnsureCadvisorRunning() error {
 	})
 }
 
-// EnsureWorkerMonitoring starts cAdvisor and Promtail locally on a worker node.
+// EnsureNodeExporterRunning starts Node Exporter locally on the node (used on workers/manager).
+func EnsureNodeExporterRunning() error {
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", NodeExporterName).Output()
+	if err == nil && strings.TrimSpace(string(out)) == "running" {
+		return nil
+	}
+
+	return runContainer(NodeExporterName, []string{
+		"--net", "host",
+		"--pid", "host",
+		"-v", "/:/host:ro,rslave",
+		"prom/node-exporter:latest",
+		"--path.rootfs=/host",
+	})
+}
+
+// EnsureWorkerMonitoring starts cAdvisor, Node Exporter and Promtail locally on a worker node.
 // managerIP is the IP of the Manager node hosting the Loki log aggregator on port :3100.
 func EnsureWorkerMonitoring(managerIP string) error {
 	// 1) Ensure cAdvisor is running on port 8081
 	if err := EnsureCadvisorRunning(); err != nil {
 		fmt.Printf("⚠️ Failed to start cAdvisor: %v\n", err)
+	}
+
+	// 1b) Ensure Node Exporter is running on port 9100
+	if err := EnsureNodeExporterRunning(); err != nil {
+		fmt.Printf("⚠️ Failed to start Node Exporter: %v\n", err)
 	}
 
 	// 2) Ensure Promtail is running pointing to Manager Loki
