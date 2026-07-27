@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: python:3.11-alpine
+    container_name: jaeger-frontend
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - stack.name == jaeger-stack
+          - ingress.host == jaeger.gbnt.test
+    command: |
+      python -c "import http.server, socketserver, urllib.request, json, time, secrets, threading
+      def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs, is_error=False, err_msg=''):
+          start_nano = int(time.time() * 1e9)
+          end_nano = start_nano + int(duration_ms * 1e6)
+          attr_list = [{'key': k, 'value': {'stringValue': str(v)}} for k, v in attrs.items()]
+          if is_error:
+              attr_list.append({'key': 'error', 'value': {'stringValue': 'true'}})
+              attr_list.append({'key': 'exception.message', 'value': {'stringValue': err_msg}})
+          status_code = 2 if is_error else 1
+          payload = {'resourceSpans': [{'resource': {'attributes': [{'key': 'service.name', 'value': {'stringValue': service_name}}]}, 'scopeSpans': [{'scope': {'name': 'gubernator-tracing'}, 'spans': [{'traceId': trace_id, 'spanId': span_id, 'parentSpanId': parent_span_id, 'name': span_name, 'kind': 1, 'startTimeUnixNano': str(start_nano), 'endTimeUnixNano': str(end_nano), 'attributes': attr_list, 'status': {'code': status_code, 'message': err_msg}}]}]}]}
+          body = json.dumps(payload).encode('utf-8')
+          endpoints = ['http://gbnt-monitor-jaeger:4318/v1/traces', 'http://172.17.0.1:4318/v1/traces', 'http://host.docker.internal:4318/v1/traces', 'http://localhost:4318/v1/traces']
+          for ep in endpoints:
+              try:
+                  req = urllib.request.Request(ep, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+                  with urllib.request.urlopen(req, timeout=2) as resp:
+                      if resp.status == 200: break
+              except Exception: pass
+      def auto_trace_loop():
+          while True:
+              try:
+                  time.sleep(10)
+                  trace_id = secrets.token_hex(16)
+                  f_span = secrets.token_hex(8)
+                  a_span = secrets.token_hex(8)
+                  w_span = secrets.token_hex(8)
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /auto-ping', 45, {'http.url': 'http://jaeger.gbnt.test/auto-ping'})
+                  send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /api/process', 30, {'http.target': '/api/process'})
+                  send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /worker/task', 15, {'db.system': 'postgresql', 'task.type': 'batch'})
+              except Exception: pass
+      threading.Thread(target=auto_trace_loop, daemon=True).start()
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              path = self.path
+              trace_id = secrets.token_hex(16)
+              f_span = secrets.token_hex(8)
+              a_span = secrets.token_hex(8)
+              w_span = secrets.token_hex(8)
+              
+              if path == '/checkout':
+                  send_otlp_trace('checkout-frontend', trace_id, f_span, '', 'POST /api/checkout', 120, {'http.method': 'POST', 'order.amount': '149.99'})
+                  send_otlp_trace('payment-gateway', trace_id, a_span, f_span, 'CHARGE /v2/stripe', 65, {'payment.provider': 'stripe', 'status': 'success'})
+                  send_otlp_trace('inventory-service', trace_id, w_span, a_span, 'UPDATE stock', 25, {'db.system': 'postgresql'})
+                  res_html = f'<h1>Order Processed</h1><p>Trace ID: {trace_id}</p>'
+                  self.send_response(200)
+              elif path == '/auth/login':
+                  send_otlp_trace('auth-frontend', trace_id, f_span, '', 'POST /auth/login', 80, {'user.name': 'mario'})
+                  send_otlp_trace('identity-provider', trace_id, a_span, f_span, 'VERIFY_TOKEN', 40, {'auth.realm': 'sso'})
+                  res_html = f'<h1>Login Successful</h1><p>Trace ID: {trace_id}</p>'
+                  self.send_response(200)
+              elif path.startswith('/search'):
+                  send_otlp_trace('search-frontend', trace_id, f_span, '', 'GET /search', 40, {'http.query': path})
+                  send_otlp_trace('redis-cache', trace_id, a_span, f_span, 'GET cache_key', 10, {'db.system': 'redis'})
+                  res_html = f'<h1>Search Results</h1><p>Trace ID: {trace_id}</p>'
+                  self.send_response(200)
+              elif path == '/error-demo':
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /error-demo', 90, {'http.status_code': '500'}, is_error=True, err_msg='Database connection timeout')
+                  send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /process', 60, {'rpc.service': 'JobProcessor'}, is_error=True, err_msg='Connection timeout after 5000ms')
+                  res_html = f'<h1>Internal Server Error (Simulated)</h1><p>Trace ID: {trace_id}</p>'
+                  self.send_response(500)
+              else:
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /', 50, {'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.test/'})
+                  send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /process', 35, {'http.method': 'POST', 'http.target': '/process'})
+                  send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /work', 20, {'job.status': 'completed'})
+                  res_html = f'''<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:40px;\"><h1>🚀 Jaeger Tracing Example (jaeger.gbnt.test)</h1><p>Distributed tracing active across 3 microservices:</p><ul><li><b>jaeger-frontend</b> (Port 8080, Ingress jaeger.gbnt.test)</li><li><b>jaeger-api</b> (Port 8085, Internal REST API)</li><li><b>jaeger-worker</b> (Port 8086, Background Job Worker)</li></ul><div style=\"background:#1e293b;padding:20px;border-radius:8px;font-family:monospace;\"><p style=\"color:#38bdf8;\">Generated Trace ID: {trace_id}</p><p>Frontend Span ID: {f_span}</p><p>API Span ID: {a_span} (Parent: {f_span})</p><p>Worker Span ID: {w_span} (Parent: {a_span})</p></div><p style=\"margin-top:20px;\">Inspect this trace in the <a href=\"http://localhost:4001/jaeger/\" style=\"color:#60a5fa;\" target=\"_blank\">Gubernator Jaeger UI Dashboard</a>.</p></body></html>'''
+                  self.send_response(200)
+              
+              self.send_header('Content-type', 'text/html')
+              self.end_headers()
+              self.wfile.write(res_html.encode('utf-8'))
+      with socketserver.TCPServer(('', 8080), Handler) as httpd:
+          print('Frontend listening on port 8080...')
+          httpd.serve_forever()"
+
+  api-service:
+    image: python:3.11-alpine
+    container_name: jaeger-api-service
+    ports:
+      - "8085:8085"
+    command: |
+      python -c "import http.server, socketserver, urllib.request, json, time, secrets
+      def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs):
+          start_nano = int(time.time() * 1e9)
+          end_nano = start_nano + int(duration_ms * 1e6)
+          payload = {'resourceSpans': [{'resource': {'attributes': [{'key': 'service.name', 'value': {'stringValue': service_name}}]}, 'scopeSpans': [{'scope': {'name': 'gubernator-tracing'}, 'spans': [{'traceId': trace_id, 'spanId': span_id, 'parentSpanId': parent_span_id, 'name': span_name, 'kind': 1, 'startTimeUnixNano': str(start_nano), 'endTimeUnixNano': str(end_nano), 'attributes': [{'key': k, 'value': {'stringValue': str(v)}} for k, v in attrs.items()], 'status': {'code': 1}}]}]}]}
+          body = json.dumps(payload).encode('utf-8')
+          endpoints = ['http://gbnt-monitor-jaeger:4318/v1/traces', 'http://172.17.0.1:4318/v1/traces', 'http://host.docker.internal:4318/v1/traces', 'http://localhost:4318/v1/traces']
+          for ep in endpoints:
+              try:
+                  req = urllib.request.Request(ep, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+                  with urllib.request.urlopen(req, timeout=2) as resp:
+                      if resp.status == 200: break
+              except Exception: pass
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              worker_res = 'ok'
+              try:
+                  worker_urls = ['http://worker-service:8086/work', 'http://localhost:8086/work']
+                  for u in worker_urls:
+                      try:
+                          with urllib.request.urlopen(u, timeout=2) as r:
+                              worker_res = r.read().decode('utf-8')
+                              break
+                      except Exception: pass
+              except Exception as e: worker_res = str(e)
+              res = json.dumps({'service': 'jaeger-api', 'status': 'processed', 'worker': worker_res})
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(res.encode('utf-8'))
+      with socketserver.TCPServer(('', 8085), Handler) as httpd:
+          print('API Service listening on port 8085...')
+          httpd.serve_forever()"
+
+  worker-service:
+    image: python:3.11-alpine
+    container_name: jaeger-worker-service
+    ports:
+      - "8086:8086"
+    command: |
+      python -c "import http.server, socketserver, json, time
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              time.sleep(0.02)
+              res = json.dumps({'service': 'jaeger-worker', 'status': 'job_completed'})
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(res.encode('utf-8'))
+      with socketserver.TCPServer(('', 8086), Handler) as httpd:
+          print('Worker Service listening on port 8086...')
+          httpd.serve_forever()"

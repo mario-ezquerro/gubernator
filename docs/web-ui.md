@@ -88,7 +88,13 @@ Displays real-time cluster summary (auto-refreshes every 5 seconds):
 
 ---
 
+### Legions (Stacks) & Centurions (Nodes) Split Layout
+
+By default, the upper dashboard area allocates **1/3 width to Legions (Stacks)** and **2/3 width to Centurions (Nodes)**, offering optimal visibility for node clusters. A drag handle between the panels allows custom width adjustments.
+
 ### Legions (Stacks)
+
+Header includes the **`+ Add Stack`** button for immediate Compose deployment.
 
 Lists all deployed stacks with actions per row:
 
@@ -115,6 +121,7 @@ Clicking the `⋮` (Node Actions) button on a node opens a context menu with str
 - **Poner en Mantenimiento / Enter Maintenance**: Evacuates/drains all running containers off the host and sets its status to `maintenance`.
 - **Sacar de Mantenimiento / Exit Maintenance**: Displayed when a node is in `maintenance` or `drain` mode; restores status to `active`.
 - **Reiniciar Nodo / Reboot Node**: Prompts confirmation to evacuate all containers, set status to `maintenance`, and trigger a host system reboot (`sudo reboot`).
+- **Forzar Salida / Force Leave**: Drains user containers to active nodes, terminates system worker stacks (`CORE-GBNT` and `[SRE] Monitor`), and removes node & its system stacks from the cluster.
 - **Shell**: Opens an embedded web shell to the host node.
 - **Edit Labels / Inspect / Promote / Demote**: Modify node labels, view JSON inspect data, or switch node roles.
 
@@ -122,10 +129,17 @@ Clicking the `⋮` (Node Actions) button on a node opens a context menu with str
 
 ### Cohorts & Tasks (Containers)
 
+Features a checkbox selection column with header select-all support (persists across search criteria) and a **Bulk Actions Toolbar**:
+- **Start**: Batch-starts all checked containers.
+- **Stop**: Batch-stops all checked containers.
+- **Restart**: Batch-restarts all checked containers.
+- **Remove**: Batch-deletes all checked containers after confirmation.
+
 Lists all container instances with:
 
 | Column | Description |
 |--------|-------------|
+| Checkbox | Row selection for batch operations |
 | Task ID | First 8 chars of UUID |
 | Service | Service name + Docker image |
 | Container | Docker container name (`gbnt-<uuid>`) |
@@ -143,6 +157,14 @@ Displays the active internal DNS records and allows you to configure external fo
 
 - **Records Tab:** View all dynamically generated internal DNS records (e.g. `web.mystack.gbnt -> 10.0.0.5`).
 - **Configuration Tab:** Add one or more External DNS Forwarders (e.g. `8.8.8.8 1.1.1.1`) separated by spaces. The raw JSON-like `Corefile` configuration is updated automatically.
+
+---
+
+### Observability: Grafana Metrics & Jaeger Traces
+
+The dashboard integrates full SRE Observability via tabs and top app bar quick action buttons:
+- **Grafana Metrics Tab & Quick Link**: Direct access to Grafana dashboards (`/grafana/` or port `:3000`) for metrics.
+- **Jaeger Traces Tab & Quick Link**: Embedded view to Jaeger UI (`/jaeger/` or port `:16686`) for distributed trace visualization. Receives application traces over OTLP gRPC (`:4317`) and OTLP HTTP (`:4318`). Access is authenticated using your Gubernator credentials.
 
 ---
 

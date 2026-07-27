@@ -100,7 +100,7 @@ Commands for managing individual services (which are usually created via Stacks)
 Commands for deploying and managing a production-grade SRE monitoring stack.
 
 - **`gbnt monitor init`**
-  Deploys the full observability stack on the Manager: cAdvisor (`:8081`), Prometheus (`:9090`), Grafana (`:3000`), Loki (`:3100`), and Promtail. Config files are generated in `~/.gbnt/monitor/`.
+  Deploys the full observability stack on the Manager: cAdvisor (`:8081`), Prometheus (`:9090`), Grafana (`:3000`), Loki (`:3100`), Promtail, and Jaeger (OTLP `:4317`/`:4318`, UI `:16686`). Config files are generated in `~/.gbnt/monitor/`.
 
 - **`gbnt monitor status`**
   Shows the running status, IP address, and exposed ports of each monitoring container.

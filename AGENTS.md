@@ -94,10 +94,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Update Strategy:** When a stack is updated with a new image, the tasks will undergo a **Rolling Update**. Containers will be updated sequentially, waiting for health checks to pass before taking down older instances to ensure zero downtime.
 
 ### 6. SRE Monitor Stack (`gbnt monitor init`)
-* **One-command observability:** `gbnt monitor init` deploys the full SRE stack on the Manager: **cAdvisor** (container metrics on `:8081`), **Prometheus** (metrics collection on `:9090`), **Grafana** (dashboards on `:3000` with pre-configured Prometheus + Loki datasources), **Loki** (log aggregation on `:3100`), and **Promtail** (log shipping).
+* **One-command observability:** `gbnt monitor init` deploys the full SRE stack on the Manager: **cAdvisor** (container metrics on `:8081`), **Prometheus** (metrics collection on `:9090`), **Grafana** (dashboards on `:3000` with pre-configured Prometheus + Loki datasources), **Loki** (log aggregation on `:3100`), **Promtail** (log shipping), and **Jaeger** (distributed tracing via OTLP gRPC `:4317`, OTLP HTTP `:4318`, and UI on `:16686` / `/jaeger/`). Includes `examples/example-jaeger` (`jaeger.gbnt.test`) for 3-service tracing and OpenTelemetry traffic generator scripts (`generate_traces.py` & `send_traces.sh`).
 * **Lifecycle management:** `gbnt monitor status` for container health, `gbnt monitor stop` to tear down all monitoring containers.
 * **Dedicated network:** All containers run on the `gbnt-monitor-net` Docker network.
 * **Config auto-generation:** Config files for all services generated in `~/.gbnt/monitor/`.
 
 ### 7. Clickable Port Links in Dashboard
 * **Port chips:** The Flutter dashboard's tasks table displays each container's mapped ports as clickable `ActionChip` widgets. Clicking a port opens `http://<nodeIP>:<hostPort>` in a new browser tab. Supports multiple ports per container.
+
+### 8. Bulk Actions for Containers
+* **Batch operations:** Tasks table features checkboxes to select multiple containers (working across searches/filters) and perform bulk Start, Stop, Restart, or Remove operations with a confirmation toolbar.
+
+### 9. Legions / Centurions Dashboard Split Ratio
+* **1/3 vs 2/3 ratio:** Stacks (Legions) panel defaults to 1/3 width and Nodes (Centurions) panel defaults to 2/3 width, with dynamic drag handle resizing preserved.
+
+### 10. Force Leave Worker Stack Purging
+* **Smart drainage:** Executing `Force Leave` drains user tasks to remaining active nodes, while worker system stacks (`CORE-GBNT` and `[SRE] Monitor`) are terminated and automatically deleted from DB and Stacks view.

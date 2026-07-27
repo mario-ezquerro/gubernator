@@ -31,6 +31,7 @@ var managerMonitorServices = []monitorService{
 	{Name: "loki", ContainerName: LokiName, Image: "grafana/loki:latest", Ports: []string{"3100:3100"}},
 	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
 	{Name: "grafana", ContainerName: GrafanaName, Image: "grafana/grafana:latest", Ports: []string{"3000:3000"}},
+	{Name: "jaeger", ContainerName: JaegerName, Image: "jaegertracing/all-in-one:latest", Ports: []string{"4317:4317", "4318:4318", "16686:16686"}},
 }
 
 var workerMonitorServices = []monitorService{
@@ -116,6 +117,22 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 	var workerNodes []db.Node
 	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
 		return
+	}
+
+	activeNodeIDs := make(map[string]bool)
+	for _, n := range workerNodes {
+		activeNodeIDs[n.ID] = true
+	}
+
+	// Purge orphan worker SRE stacks whose node no longer exists or left
+	var allSreWorkerStacks []db.Stack
+	database.Where("id LIKE ?", "sre-stack-%").Find(&allSreWorkerStacks)
+	for _, st := range allSreWorkerStacks {
+		nodeID := strings.TrimPrefix(st.ID, "sre-stack-")
+		if !activeNodeIDs[nodeID] {
+			database.Where("stack_id = ?", st.ID).Delete(&db.Service{})
+			database.Where("id = ?", st.ID).Delete(&db.Stack{})
+		}
 	}
 
 	for _, node := range workerNodes {

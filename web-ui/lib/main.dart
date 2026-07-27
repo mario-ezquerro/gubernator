@@ -1,7 +1,7 @@
 import 'dart:ui_web' as ui_web;
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/app_shell.dart';
 import 'theme/theme.dart';
 
 void main() {
@@ -10,6 +10,24 @@ void main() {
     'grafana-iframe',
     (int viewId) => html.IFrameElement()
       ..src = '/grafana/'
+      ..style.border = 'none'
+      ..style.width = '100%'
+      ..style.height = '100%',
+  );
+  // Register the iframe view factory for Grafana Network Monitor
+  ui_web.platformViewRegistry.registerViewFactory(
+    'grafana-network-iframe',
+    (int viewId) => html.IFrameElement()
+      ..src = '/grafana/d/gubernator-network/gubernator-network-monitor?orgId=1&kiosk'
+      ..style.border = 'none'
+      ..style.width = '100%'
+      ..style.height = '100%',
+  );
+  // Register the iframe view factory for Jaeger
+  ui_web.platformViewRegistry.registerViewFactory(
+    'jaeger-iframe',
+    (int viewId) => html.IFrameElement()
+      ..src = '/jaeger/'
       ..style.border = 'none'
       ..style.width = '100%'
       ..style.height = '100%',
@@ -37,7 +55,7 @@ class _GubernatorAppState extends State<GubernatorApp> {
       theme: GubernatorTheme.light(),
       darkTheme: GubernatorTheme.dark(),
       themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
-      home: DashboardScreen(
+      home: AppShell(
         isDark: _isDark,
         onThemeChanged: (dark) => setState(() => _isDark = dark),
         displayName: _displayName,

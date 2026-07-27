@@ -45,6 +45,35 @@ This page is your index to the progressive tutorials included with Gubernator. E
 
 ---
 
+## Example Jaeger — Distributed Tracing Stack
+
+**Target**: Advanced / SRE  
+**Goal**: Deploy a 3-tier microservice architecture sending OTLP traces to Jaeger with Caddy Ingress domain `jaeger.gbnt.test`
+
+[Start Example Jaeger →](example-jaeger.md)
+
+- Multi-microservice trace propagation (Frontend -> API -> Worker)
+- Caddy Ingress reverse proxy domain binding (`jaeger.gbnt.test`)
+- Automatic OTLP HTTP trace submission to `gbnt-monitor-jaeger`
+- Real-time trace visualization in Gubernator Web UI Jaeger tab
+
+---
+
+## Jaeger Integration Guide — Container Tracing Setup
+
+**Target**: All Developers / SREs  
+**Goal**: Step-by-step guide on configuring any container application (Python, Node.js, Go) to send OpenTelemetry traces to Jaeger in Gubernator
+
+[Read Jaeger Integration Guide →](how-use-jaeger.md)
+
+- Comprehensive setup for OTLP HTTP (`:4318`) and OTLP gRPC (`:4317`)
+- Docker network configuration (`gbnt-net`)
+- Standard OpenTelemetry environment variables (`OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`)
+- Code snippets for Python, Node.js, Go, and cURL
+- Automated traffic generation with `generate_traces.py` and `send_traces.sh`
+
+---
+
 ## Example n8n — AI & Automation Stack
 
 **Target**: Advanced / AI  

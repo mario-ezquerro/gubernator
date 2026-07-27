@@ -127,7 +127,7 @@ The Web UI at `:4001` provides full lifecycle management:
 Deploy a full observability stack with one command:
 
 ```bash
-./gbnt monitor init      # Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail
+./gbnt monitor init      # Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail, Jaeger
 ./gbnt monitor status    # Check health of monitoring containers
 ./gbnt monitor stop      # Tear down the stack
 ```
@@ -139,6 +139,7 @@ Deploy a full observability stack with one command:
 | Grafana | `:3000` | Dashboards (admin/admin) |
 | Loki | `:3100` | Log aggregation |
 | Promtail | — | Log shipping |
+| Jaeger | `:4317`, `:4318`, `:16686` | Distributed tracing OTLP (gRPC/HTTP) & UI `/jaeger/` |
 
 ---
 

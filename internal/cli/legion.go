@@ -280,7 +280,7 @@ var legionJoinCmd = &cobra.Command{
 							continue
 						}
 						// Skip system core/monitoring containers
-						if containerName == "gbnt-manager" || containerName == "gbnt-coredns" || containerName == "gbnt-caddy" || strings.HasPrefix(containerName, "gbnt-monitor-") {
+						if containerName == "gbnt-manager" || containerName == "gbnt-worker" || containerName == "gbnt-coredns" || containerName == "gbnt-caddy" || strings.HasPrefix(containerName, "gbnt-monitor-") {
 							continue
 						}
 						// Extract task ID from name "gbnt-<taskID>"

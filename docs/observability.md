@@ -203,6 +203,9 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="gubernator"}' | python3 -
 | Gubernator Web UI | [http://localhost:4001](http://localhost:4001) | admin / admin |
 | Prometheus | [http://localhost:9090](http://localhost:9090) | — |
 | Grafana | [http://localhost:3000](http://localhost:3000) | admin / admin |
+| Jaeger UI | [http://localhost:16686](http://localhost:16686) or `/jaeger/` | admin / admin |
+| Jaeger OTLP gRPC | `localhost:4317` | — |
+| Jaeger OTLP HTTP | `http://localhost:4318` | — |
 | Gubernator Metrics | [http://localhost:4002/metrics](http://localhost:4002/metrics) | — |
 | Health Check | [http://localhost:4002/health](http://localhost:4002/health) | — |
 
@@ -239,6 +242,27 @@ Panels included:
 | Goroutines | `go_goroutines` | Time series |
 | GC Rate | `rate(go_gc_duration_seconds_count[5m])` | Time series |
 | GC Pause Duration | `go_gc_duration_seconds` p50/p99 | Time series |
+
+---
+
+## Jaeger Distributed Tracing
+
+The SRE stack includes **Jaeger** (`gbnt-monitor-jaeger`) accepting OpenTelemetry traces over:
+- **OTLP gRPC**: `localhost:4317`
+- **OTLP HTTP**: `http://localhost:4318/v1/traces`
+- **Jaeger UI**: Embedded at `/jaeger/` on port `4001` or direct port `:16686`.
+
+To generate synthetic OpenTelemetry trace traffic across various scenarios (Checkout, User Auth, Search, Error Handling), run the included traffic generator scripts:
+
+```bash
+# Python OpenTelemetry Traffic Generator:
+python3 examples/example-jaeger/generate_traces.py --count 15 --scenario all --target otlp
+
+# POSIX Shell Trace Generator (curl):
+./examples/example-jaeger/send_traces.sh 10
+```
+
+> 📘 See [Distributed Tracing Example (`example-jaeger`)](example-jaeger.md) for a full multi-service tutorial with domain `jaeger.gbnt.test`.
 
 ---
 

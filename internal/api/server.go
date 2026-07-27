@@ -132,6 +132,7 @@ func Start(ctx context.Context) error {
 		{
 			node.GET("/ls", NodeListHandler)
 			node.POST("/join", NodeJoinHandler)
+			node.POST("/add", NodeAddHandler)
 			node.POST("/heartbeat", NodeHeartbeatHandler)
 			node.GET("/tasks/:node_id", NodeTasksHandler)
 			node.POST("/tasks/:task_id/status", UpdateTaskStatusHandler)
@@ -273,11 +274,15 @@ func startWatchtowers(ctx context.Context) {
 			Where("status = ?", "active").
 			Updates(map[string]interface{}{"status": "down"})
 
-		// Also mark tasks of down nodes as dead
+		// Also mark tasks of down nodes as dead (all tasks, not just core services)
 		var downNodes []db.Node
 		db.DB.Where("role = ? AND status = ?", "worker", "down").Find(&downNodes)
 		for _, dn := range downNodes {
-			db.DB.Model(&db.Task{}).Where("node_id = ? AND service_id LIKE ?", dn.ID, "core-svc-%").Updates(map[string]interface{}{"status": "dead"})
+			db.DB.Model(&db.Task{}).Where("node_id = ?", dn.ID).Updates(map[string]interface{}{"status": "dead"})
 		}
+
+		// Garbage collect tasks that have been 'dead' for more than 2 minutes
+		taskGCThreshold := time.Now().Add(-2 * time.Minute)
+		db.DB.Where("status = ? AND updated_at < ?", "dead", taskGCThreshold).Delete(&db.Task{})
 	}
 }

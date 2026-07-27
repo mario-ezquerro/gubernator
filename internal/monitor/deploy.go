@@ -9,12 +9,14 @@ import (
 
 // Container names for the monitoring stack.
 const (
-	CadvisorName   = "gbnt-monitor-cadvisor"
-	PrometheusName = "gbnt-monitor-prometheus"
-	LokiName       = "gbnt-monitor-loki"
-	PromtailName   = "gbnt-monitor-promtail"
-	GrafanaName    = "gbnt-monitor-grafana"
-	NetworkName    = "gbnt-monitor-net"
+	CadvisorName     = "gbnt-monitor-cadvisor"
+	NodeExporterName = "gbnt-monitor-node-exporter"
+	PrometheusName   = "gbnt-monitor-prometheus"
+	LokiName         = "gbnt-monitor-loki"
+	PromtailName     = "gbnt-monitor-promtail"
+	GrafanaName      = "gbnt-monitor-grafana"
+	JaegerName       = "gbnt-monitor-jaeger"
+	NetworkName      = "gbnt-monitor-net"
 
 	// Docker volume names for config persistence
 	VolPrometheus     = "gbnt-monitor-prom-conf"
@@ -27,7 +29,7 @@ const (
 
 // AllContainers returns all monitoring container names.
 func AllContainers() []string {
-	return []string{CadvisorName, PrometheusName, LokiName, PromtailName, GrafanaName}
+	return []string{CadvisorName, NodeExporterName, PrometheusName, LokiName, PromtailName, GrafanaName, JaegerName}
 }
 
 // AllVolumes returns all monitoring volume names.
@@ -66,6 +68,12 @@ func DeployManagerStack(webUser, webPass string) error {
 		"gcr.io/cadvisor/cadvisor:latest",
 	}); err != nil {
 		return fmt.Errorf("cAdvisor failed: %w", err)
+	}
+
+	// 1b) Node Exporter
+	fmt.Println("\n🖥 Deploying Node Exporter (host metrics)...")
+	if err := EnsureNodeExporterRunning(); err != nil {
+		return fmt.Errorf("Node Exporter failed: %w", err)
 	}
 
 	// 2) Loki (must start before Promtail)
@@ -115,7 +123,7 @@ func DeployManagerStack(webUser, webPass string) error {
 	fmt.Println("📈 Deploying Grafana (dashboards)...")
 	grafanaArgs := []string{
 		"--net", NetworkName,
-		"-p", "127.0.0.1:3000:3000",
+		"-p", "3000:3000",
 		"-v", VolGrafanaProv + ":/etc/grafana/provisioning:ro",
 		"-v", VolGrafanaData + ":/var/lib/grafana",
 		"-e", "GF_SECURITY_ADMIN_USER=" + webUser,
@@ -135,6 +143,20 @@ func DeployManagerStack(webUser, webPass string) error {
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
 		return fmt.Errorf("grafana failed: %w", err)
+	}
+
+	// 6) Jaeger (distributed tracing collector & UI)
+	fmt.Println("🔍 Deploying Jaeger (trace collector & UI)...")
+	jaegerArgs := []string{
+		"--net", NetworkName,
+		"-p", "4317:4317",
+		"-p", "4318:4318",
+		"-p", "16686:16686",
+		"-e", "QUERY_BASE_PATH=/jaeger",
+		"jaegertracing/all-in-one:latest",
+	}
+	if err := runContainer(JaegerName, jaegerArgs); err != nil {
+		return fmt.Errorf("jaeger failed: %w", err)
 	}
 
 	return nil
@@ -172,7 +194,7 @@ func Status() {
 
 	for _, name := range AllContainers() {
 		out, err := exec.Command("docker", "inspect", "--format",
-			"{{.State.Status}} | {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} | {{range $p, $conf := .NetworkSettings.Ports}}{{$p}}→{{(index $conf 0).HostPort}} {{end}}",
+			"{{.State.Status}} | {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} | {{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{$p}}→{{(index $conf 0).HostPort}} {{end}}{{end}}",
 			name).Output()
 		if err != nil {
 			fmt.Printf("  %-30s  ❌ not running\n", name)
@@ -247,11 +269,43 @@ func populateConfigVolumes() error {
 	return nil
 }
 
+// cleanupPortContainers finds any container publishing the given host port and removes it if it's not the target container.
+func cleanupPortContainers(port, targetName string) {
+	out, err := exec.Command("docker", "ps", "-a", "-q", "--filter", fmt.Sprintf("publish=%s", port)).Output()
+	if err == nil {
+		ids := strings.Fields(string(out))
+		for _, id := range ids {
+			nameOut, err := exec.Command("docker", "inspect", "-f", "{{.Name}}", id).Output()
+			if err == nil {
+				cName := strings.TrimPrefix(strings.TrimSpace(string(nameOut)), "/")
+				if cName != targetName {
+					exec.Command("docker", "rm", "-f", id).Run()
+				}
+			}
+		}
+	}
+}
+
 // runContainer runs a container in detached mode with the given name and args.
 // If a container with the same name already exists, it is removed first.
 func runContainer(name string, args []string) error {
 	// Remove if already exists
 	exec.Command("docker", "rm", "-f", name).Run()
+
+	// Clean up any conflicting containers publishing host ports specified in args
+	for i, arg := range args {
+		if (arg == "-p" || arg == "--publish") && i+1 < len(args) {
+			portMapping := args[i+1]
+			parts := strings.Split(portMapping, ":")
+			if len(parts) >= 2 {
+				hostPort := parts[0]
+				if len(parts) == 3 {
+					hostPort = parts[1]
+				}
+				cleanupPortContainers(hostPort, name)
+			}
+		}
+	}
 
 	fullArgs := []string{"run", "-d", "--name", name, "--restart", "unless-stopped"}
 	fullArgs = append(fullArgs, args...)
@@ -282,12 +336,33 @@ func EnsureCadvisorRunning() error {
 	})
 }
 
-// EnsureWorkerMonitoring starts cAdvisor and Promtail locally on a worker node.
+// EnsureNodeExporterRunning starts Node Exporter locally on the node (used on workers/manager).
+func EnsureNodeExporterRunning() error {
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", NodeExporterName).Output()
+	if err == nil && strings.TrimSpace(string(out)) == "running" {
+		return nil
+	}
+
+	return runContainer(NodeExporterName, []string{
+		"--net", "host",
+		"--pid", "host",
+		"-v", "/:/host:ro,rslave",
+		"prom/node-exporter:latest",
+		"--path.rootfs=/host",
+	})
+}
+
+// EnsureWorkerMonitoring starts cAdvisor, Node Exporter and Promtail locally on a worker node.
 // managerIP is the IP of the Manager node hosting the Loki log aggregator on port :3100.
 func EnsureWorkerMonitoring(managerIP string) error {
 	// 1) Ensure cAdvisor is running on port 8081
 	if err := EnsureCadvisorRunning(); err != nil {
 		fmt.Printf("⚠️ Failed to start cAdvisor: %v\n", err)
+	}
+
+	// 1b) Ensure Node Exporter is running on port 9100
+	if err := EnsureNodeExporterRunning(); err != nil {
+		fmt.Printf("⚠️ Failed to start Node Exporter: %v\n", err)
 	}
 
 	// 2) Ensure Promtail is running pointing to Manager Loki

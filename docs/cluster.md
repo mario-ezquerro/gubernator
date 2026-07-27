@@ -32,7 +32,7 @@ Before setting up the cluster, ensure your hosts meet the following minimum spec
   * **Port 4002**: Telemetry, Swagger, and Health metrics.
   * **Port 53 / 5354**: CoreDNS internally.
   * **Port 80 / 443**: Caddy Ingress.
-  * **Ports 3000 / 9090 / 3100 / 8081**: SRE monitoring stack (Grafana, Prometheus, Loki, cAdvisor).
+  * **Ports 3000 / 9090 / 3100 / 8081 / 4317 / 4318 / 16686**: SRE monitoring stack (Grafana, Prometheus, Loki, cAdvisor, Jaeger OTLP & UI).
 
 ---
 
