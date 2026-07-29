@@ -198,6 +198,76 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 	}
 }
 
+// RegisterScopeStackInDB registers [SUPER] Net-Topology stack in the DB when enabled.
+func RegisterScopeStackInDB(database *gorm.DB) {
+	now := time.Now()
+	stackID := "super-net-topology-stack"
+	stackName := "[SUPER] Net-Topology (Weave Scope)"
+	serviceID := "super-svc-scope"
+	taskID := "super-task-scope"
+
+	var existingStack db.Stack
+	if err := database.First(&existingStack, "id = ?", stackID).Error; err != nil {
+		stack := db.Stack{
+			ID:             stackID,
+			Name:           stackName,
+			RawComposeFile: "# Managed by Gubernator Superpower Engine\n# Weave Scope Container Network Topology",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		database.Create(&stack)
+	}
+
+	var existingService db.Service
+	if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
+		service := db.Service{
+			ID:              serviceID,
+			StackID:         stackID,
+			Name:            "weave-scope",
+			Image:           "weaveworks/scope:latest",
+			DesiredReplicas: 1,
+			Ports:           []string{"4040:4040"},
+			CreatedAt:       now,
+			UpdatedAt:       now,
+		}
+		database.Create(&service)
+	}
+
+	status := "dead"
+	if IsScopeRunning() {
+		status = "running"
+	}
+
+	var existingTask db.Task
+	if err := database.First(&existingTask, "id = ?", taskID).Error; err != nil {
+		task := db.Task{
+			ID:            taskID,
+			ServiceID:     serviceID,
+			NodeID:        "node-local-manager",
+			Status:        status,
+			ContainerIP:   getContainerIP(ScopeContainerName),
+			ContainerName: ScopeContainerName,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		database.Create(&task)
+	} else {
+		database.Model(&existingTask).Updates(map[string]interface{}{
+			"status":       status,
+			"container_ip":  getContainerIP(ScopeContainerName),
+			"updated_at":   now,
+		})
+	}
+}
+
+// UnregisterScopeStackFromDB removes [SUPER] Net-Topology stack from the DB when disabled.
+func UnregisterScopeStackFromDB(database *gorm.DB) {
+	stackID := "super-net-topology-stack"
+	database.Where("stack_id = ?", stackID).Delete(&db.Task{})
+	database.Where("stack_id = ?", stackID).Delete(&db.Service{})
+	database.Where("id = ?", stackID).Delete(&db.Stack{})
+}
+
 // UnregisterFromDB removes all SRE monitoring stacks from the database.
 func UnregisterFromDB(database *gorm.DB) {
 	var services []db.Service

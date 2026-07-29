@@ -265,6 +265,13 @@ func StartDashboard() {
 		jaegerProxyHandler(c, sessionToken, user, pass)
 	})
 
+	r.GET("/scope", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/scope/")
+	})
+	r.Any("/scope/*proxyPath", func(c *gin.Context) {
+		scopeProxyHandler(c, sessionToken, user, pass)
+	})
+
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -1748,4 +1755,46 @@ func scopeDisableHandler(c *gin.Context) {
 		return
 	}
 	scopeStatusHandler(c)
+}
+
+func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+	// Manually check auth before passing to proxy
+	username := c.GetString(gin.AuthUserKey)
+	if username == "" {
+		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
+			username = expectedUser
+		}
+	}
+	if username == "" {
+		u, p, hasAuth := c.Request.BasicAuth()
+		if hasAuth && u == expectedUser && p == expectedPass {
+			username = expectedUser
+		}
+	}
+
+	if username == "" {
+		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	targetURL, err := url.Parse("http://127.0.0.1:4040")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Invalid target URL")
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("X-Frame-Options")
+		resp.Header.Del("Content-Security-Policy")
+		return nil
+	}
+
+	c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/scope")
+	if c.Request.URL.Path == "" {
+		c.Request.URL.Path = "/"
+	}
+
+	proxy.ServeHTTP(c.Writer, c.Request)
 }

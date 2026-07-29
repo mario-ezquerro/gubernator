@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 const (
@@ -76,6 +78,10 @@ func EnableScope() error {
 		return fmt.Errorf("failed to start Weave Scope container: %w", err)
 	}
 
+	if db.DB != nil {
+		RegisterScopeStackInDB(db.DB)
+	}
+
 	fmt.Println("✅ Network Topology (Weave Scope) is now active on port 4040.")
 	return nil
 }
@@ -85,6 +91,11 @@ func DisableScope() error {
 	fmt.Println("\n⏹  Stopping Network Topology (Weave Scope)...")
 	exec.Command("docker", "stop", ScopeContainerName).Run()
 	exec.Command("docker", "rm", "-f", ScopeContainerName).Run()
+
+	if db.DB != nil {
+		UnregisterScopeStackFromDB(db.DB)
+	}
+
 	fmt.Println("✅ Network Topology (Weave Scope) stopped.")
 	return nil
 }
