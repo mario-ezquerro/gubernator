@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -114,9 +115,21 @@ func parseTime(tStr string) time.Time {
 	return t
 }
 
-// ApplyClusterUpdate triggers image pulling and node updates across the cluster.
+// ApplyClusterUpdate triggers image pulling, version updating, cache invalidation and node updates across the cluster.
 func ApplyClusterUpdate(targetVersion string) error {
 	slog.Info("🚀 Initiating cluster-wide update", "target_version", targetVersion)
+
+	cacheMutex.Lock()
+	cachedInfo = nil
+	cacheMutex.Unlock()
+
+	if targetVersion != "" {
+		for _, path := range []string{"VERSION", "/app/VERSION", "../VERSION"} {
+			if _, err := os.Stat(path); err == nil {
+				os.WriteFile(path, []byte(targetVersion), 0644)
+			}
+		}
+	}
 
 	if db.DB != nil {
 		var config db.ClusterConfig
@@ -133,6 +146,13 @@ func ApplyClusterUpdate(targetVersion string) error {
 
 	slog.Info("pulling Docker image for update", "image", img)
 	exec.Command("docker", "pull", img).Run()
+
+	// Trigger asynchronous container restart so HTTP response completes cleanly before restart
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		slog.Info("restarting gbnt-manager container to complete auto-update...")
+		exec.Command("docker", "restart", "gbnt-manager").Run()
+	}()
 
 	return nil
 }

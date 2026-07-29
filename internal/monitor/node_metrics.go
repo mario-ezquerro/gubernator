@@ -80,12 +80,17 @@ func PopulateNodeMetrics(nodes []db.Node) {
 		n := &nodes[i]
 		findVal := func(m map[string]float64) float64 {
 			for k, v := range m {
-				if strings.Contains(k, n.IP) || (n.Role == "manager" && strings.Contains(k, "host.docker.internal")) {
+				if strings.Contains(k, n.IP) || (n.Role == "manager" && (strings.Contains(k, "host.docker.internal") || strings.Contains(k, "127.0.0.1") || strings.Contains(k, "localhost"))) {
 					return v
 				}
 			}
 			if len(m) == 1 {
 				for _, v := range m {
+					return v
+				}
+			}
+			for k, v := range m {
+				if v > 0 && (strings.HasPrefix(k, n.IP) || n.Role == "manager") {
 					return v
 				}
 			}
