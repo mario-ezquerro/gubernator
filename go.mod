@@ -1,6 +1,6 @@
 module github.com/mario-ezquerro/gubernator
 
-go 1.26.3
+go 1.25.0
 
 require (
 	github.com/creack/pty v1.1.24
