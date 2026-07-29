@@ -43,6 +43,7 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 	if !forceRefresh && cachedInfo != nil && time.Since(parseTime(cachedInfo.CheckedAt)) < cacheTTL {
 		info := *cachedInfo
 		info.CurrentVersion = currentVersion
+		info.UpdateAvailable = isNewerVersion(currentVersion, info.LatestVersion)
 		cacheMutex.Unlock()
 		return &info, nil
 	}
