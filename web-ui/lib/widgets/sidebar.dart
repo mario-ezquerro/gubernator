@@ -189,8 +189,8 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
         children: [
           // Logo icon with orange glow
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
@@ -209,12 +209,13 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
             child: Center(
               child: Image.network(
                 '/gubernator-icon.png',
-                width: 22,
-                height: 22,
+                width: 32,
+                height: 32,
+                fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.hub,
                   color: Colors.white,
-                  size: 20,
+                  size: 24,
                 ),
               ),
             ),
