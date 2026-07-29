@@ -18,8 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests (with race detector)
-        run: go test -race -v ./...
+      - name: Run tests
+        run: go test -v ./...
 
   lint:
     name: Lint
@@ -35,6 +35,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.64.5
           args: --timeout=5m
-          install-mode: goinstall

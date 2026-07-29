@@ -40,20 +40,13 @@ jobs:
           go-version: '1.24'
           cache: true
 
-      - name: Set up GCC for Windows (if needed)
-        if: matrix.os == 'windows-latest'
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: gcc
-          
       - name: Build Binary
         env:
-          CGO_ENABLED: 1
+          CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -v -o gbnt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/gbnt
+          go build -v -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o gbnt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/gbnt
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
