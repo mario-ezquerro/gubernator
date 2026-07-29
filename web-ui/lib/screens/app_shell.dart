@@ -14,6 +14,7 @@ import 'pages/coredns_page.dart';
 import 'pages/grafana_page.dart';
 import 'pages/jaeger_page.dart';
 import 'pages/network_page.dart';
+import 'pages/scope_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -98,9 +99,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}:'
-        '${dt.second.toString().padLeft(2, '0')}';
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    final sec = dt.second.toString().padLeft(2, '0');
+    return '$hour:$min:$sec';
   }
 
   List<SidebarItem> _buildSidebarItems() {
@@ -158,6 +160,11 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.timeline,
         label: 'Jaeger',
       ),
+      const SidebarItem(
+        icon: Icons.hub_outlined,
+        activeIcon: Icons.hub,
+        label: 'Network Topology',
+      ),
     ];
   }
 
@@ -172,6 +179,7 @@ class _AppShellState extends State<AppShell> {
     'Grafana',
     'Network Monitor',
     'Jaeger',
+    'Network Topology',
   ];
 
   Widget _buildCurrentPage() {
@@ -200,6 +208,8 @@ class _AppShellState extends State<AppShell> {
         return const NetworkPage();
       case 8:
         return const JaegerPage();
+      case 9:
+        return const ScopePage();
       default:
         return OverviewPage(
           state: _state,

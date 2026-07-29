@@ -32,6 +32,18 @@ void main() {
       ..style.width = '100%'
       ..style.height = '100%',
   );
+  // Register the iframe view factory for Weave Scope Network Topology
+  ui_web.platformViewRegistry.registerViewFactory(
+    'scope-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname;
+      return html.IFrameElement()
+        ..src = 'http://$host:4040/'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%';
+    },
+  );
   runApp(const GubernatorApp());
 }
 

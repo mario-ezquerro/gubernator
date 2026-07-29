@@ -142,8 +142,8 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                             color: borderColor,
                           ),
                         ),
-                      // Skip Grafana/Jaeger items if monitor not running
-                      if (i >= 6 && !widget.monitorRunning)
+                      // Skip Grafana/Network/Jaeger items (indices 6..8) if SRE monitor not running
+                      if (i >= 6 && i <= 8 && !widget.monitorRunning)
                         const SizedBox.shrink()
                       else
                         _buildNavItem(

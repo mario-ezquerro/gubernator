@@ -230,5 +230,26 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  /// Fetches status of Weave Scope Network Topology superpower.
+  static Future<Map<String, dynamic>> fetchScopeStatus() async {
+    final response = await http.get(Uri.parse('/v1/monitor/scope/status'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {'enabled': false, 'status': 'stopped'};
+  }
+
+  /// Enables Weave Scope container.
+  static Future<bool> enableScope() async {
+    final response = await http.post(Uri.parse('/v1/monitor/scope/enable'));
+    return response.statusCode == 200;
+  }
+
+  /// Disables Weave Scope container.
+  static Future<bool> disableScope() async {
+    final response = await http.post(Uri.parse('/v1/monitor/scope/disable'));
+    return response.statusCode == 200;
+  }
 }
 

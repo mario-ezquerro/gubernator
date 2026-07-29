@@ -105,9 +105,60 @@ var monitorStopCmd = &cobra.Command{
 	},
 }
 
+var monitorScopeCmd = &cobra.Command{
+	Use:   "scope",
+	Short: "Manage Network Topology & Container Graphics (Weave Scope)",
+	Long: `Weave Scope provides an interactive, real-time visualization of container networks,
+processes, Docker sockets, and open ports.
+
+Disabled by default for performance. Use 'gbnt monitor scope start' to enable.`,
+}
+
+var monitorScopeStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show status of Weave Scope Network Topology",
+	Run: func(cmd *cobra.Command, args []string) {
+		status := monitor.GetScopeStatus("")
+		fmt.Printf("🕸️  Network Topology (Weave Scope): %s (Container: %s, Port: %s)\n",
+			status.Status, status.Container, status.Port)
+		if status.Enabled {
+			fmt.Printf("   URL: %s\n", status.URL)
+		}
+	},
+}
+
+var monitorScopeStartCmd = &cobra.Command{
+	Use:     "start",
+	Aliases: []string{"enable", "deploy"},
+	Short:   "Start Weave Scope container for Network Topology visualization",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := monitor.EnableScope(); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Failed to start Weave Scope: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var monitorScopeStopCmd = &cobra.Command{
+	Use:     "stop",
+	Aliases: []string{"disable"},
+	Short:   "Stop and remove Weave Scope Network Topology container",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := monitor.DisableScope(); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Failed to stop Weave Scope: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(monitorCmd)
 	monitorCmd.AddCommand(monitorInitCmd)
 	monitorCmd.AddCommand(monitorStatusCmd)
 	monitorCmd.AddCommand(monitorStopCmd)
+
+	monitorCmd.AddCommand(monitorScopeCmd)
+	monitorScopeCmd.AddCommand(monitorScopeStatusCmd)
+	monitorScopeCmd.AddCommand(monitorScopeStartCmd)
+	monitorScopeCmd.AddCommand(monitorScopeStopCmd)
 }

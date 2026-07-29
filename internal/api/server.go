@@ -177,6 +177,13 @@ func Start(ctx context.Context) error {
 			corednsRoute.GET("/config", GetCoreDNSConfig)
 			corednsRoute.PUT("/config", UpdateCoreDNSConfig)
 		}
+
+		scopeRoute := v1.Group("/monitor/scope")
+		{
+			scopeRoute.GET("/status", ScopeStatusHandler)
+			scopeRoute.POST("/enable", ScopeEnableHandler)
+			scopeRoute.POST("/disable", ScopeDisableHandler)
+		}
 	}
 
 	srv := &http.Server{Addr: ":4000", Handler: r}
