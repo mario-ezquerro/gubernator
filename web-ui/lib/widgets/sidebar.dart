@@ -248,32 +248,70 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                       borderRadius: BorderRadius.circular(4),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 1.5),
+                            horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF97316).withValues(alpha: 0.25),
+                          color: const Color(0xFF0F172A),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: const Color(0xFFF97316),
-                            width: 1.2,
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.6),
+                            width: 1.0,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'MANAGER ${widget.latestVersion}',
-                              style: const TextStyle(
-                                color: Color(0xFFF97316),
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
+                            // First portion in Orange
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF97316).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                'MANAGER ${widget.version}',
+                                style: const TextStyle(
+                                  color: Color(0xFFF97316),
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 3),
+                              child: Text(
+                                '→',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            // Second portion in Red
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                'MANAGER ${widget.latestVersion}',
+                                style: const TextStyle(
+                                  color: Color(0xFFEF4444),
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 3),
                             const Icon(
                               Icons.rocket_launch,
-                              size: 10,
-                              color: Color(0xFFF97316),
+                              size: 11,
+                              color: Color(0xFFEF4444),
                             ),
                           ],
                         ),
