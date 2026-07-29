@@ -206,14 +206,15 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                 ),
               ],
             ),
-            child: const Center(
-              child: Text(
-                'G',
-                style: TextStyle(
+            child: Center(
+              child: Image.network(
+                '/gubernator-icon.png',
+                width: 22,
+                height: 22,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.hub,
                   color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'Inter',
+                  size: 20,
                 ),
               ),
             ),
@@ -452,22 +453,24 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
 
           const SizedBox(height: 8),
 
-          // Version badge
+          // Version badge styled like MANAGER (orange badge)
           if (isExpanded)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.black.withValues(alpha: 0.04),
+                color: sidebarActiveIndicator.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: sidebarActiveIndicator.withValues(alpha: 0.3),
+                ),
               ),
               child: Text(
                 widget.version,
-                style: TextStyle(
-                  color: mutedColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                style: const TextStyle(
+                  color: sidebarActiveIndicator,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
                   fontFamily: 'Courier New',
                 ),
               ),
@@ -475,7 +478,21 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
           else
             Tooltip(
               message: widget.version,
-              child: Icon(Icons.info_outline, size: 14, color: mutedColor),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  widget.version,
+                  style: const TextStyle(
+                    color: sidebarActiveIndicator,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
