@@ -69,8 +69,12 @@ func EnableScope() error {
 		"--pid", "host",
 		"--privileged",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
+		"-v", "/proc:/host/proc:ro",
+		"-v", "/sys:/sys:ro",
 		"weaveworks/scope:latest",
 		"--weave=false",
+		"--probe.proc.spy=true",
+		"--probe.docker=true",
 		"--app.http.address=:" + ScopePort,
 	}
 
