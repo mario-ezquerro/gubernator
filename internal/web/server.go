@@ -24,6 +24,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/updater"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
@@ -236,6 +237,10 @@ func StartDashboard() {
 		api.GET("/scope/status", scopeStatusHandler)
 		api.POST("/scope/enable", scopeEnableHandler)
 		api.POST("/scope/disable", scopeDisableHandler)
+
+		// Cluster Auto-Update
+		api.GET("/update/check", updateCheckHandler)
+		api.POST("/update/apply", updateApplyHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -355,16 +360,62 @@ func stateHandler(c *gin.Context) {
 		}
 	}
 
+	upInfo, _ := updater.CheckLatestRelease(GetVersion(), false)
+
 	c.JSON(http.StatusOK, gin.H{
-		"nodes":           nodes,
-		"stacks":          stacks,
-		"services":        services,
-		"tasks":           tasks,
-		"monitor_running": monitor.IsRunning(),
-		"dns_records":     getDNSRecords(),
-		"caddy_status":    caddy.Status(),
-		"caddyfile":       caddyfileContent,
-		"version":         GetVersion(),
+		"nodes":            nodes,
+		"stacks":           stacks,
+		"services":         services,
+		"tasks":            tasks,
+		"monitor_running":  monitor.IsRunning(),
+		"dns_records":      getDNSRecords(),
+		"caddy_status":     caddy.Status(),
+		"caddyfile":        caddyfileContent,
+		"version":          GetVersion(),
+		"update_available": upInfo.UpdateAvailable,
+		"latest_version":   upInfo.LatestVersion,
+		"release_notes":    upInfo.ReleaseNotes,
+		"release_url":      upInfo.ReleaseURL,
+	})
+}
+
+// --- Auto-Update Endpoints ---
+
+func updateCheckHandler(c *gin.Context) {
+	info, err := updater.CheckLatestRelease(GetVersion(), true)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, info)
+}
+
+type updateApplyPayload struct {
+	TargetVersion string `json:"target_version"`
+}
+
+func updateApplyHandler(c *gin.Context) {
+	var payload updateApplyPayload
+	c.ShouldBindJSON(&payload)
+
+	target := payload.TargetVersion
+	if target == "" {
+		info, _ := updater.CheckLatestRelease(GetVersion(), false)
+		target = info.LatestVersion
+	}
+
+	if target == "" {
+		target = "latest"
+	}
+
+	if err := updater.ApplyClusterUpdate(target); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "applying",
+		"message": fmt.Sprintf("Cluster update to %s initiated successfully", target),
 	})
 }
 

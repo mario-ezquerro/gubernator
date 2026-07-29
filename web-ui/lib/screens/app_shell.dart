@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/settings_dialog.dart';
+import '../widgets/update_dialog.dart';
 import 'pages/overview_page.dart';
 import 'pages/legions_page.dart';
 import 'pages/centurions_page.dart';
@@ -94,6 +95,19 @@ class _AppShellState extends State<AppShell> {
         onNameChanged: widget.onNameChanged,
         version: _state.version,
         nodes: _state.nodes,
+      ),
+    );
+  }
+
+  void _showUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => UpdateDialog(
+        currentVersion: _state.version,
+        latestVersion: _state.latestVersion,
+        releaseNotes: _state.releaseNotes,
+        releaseUrl: _state.releaseUrl,
+        onUpdateTriggered: _fetchData,
       ),
     );
   }
@@ -240,6 +254,9 @@ class _AppShellState extends State<AppShell> {
             isDark: widget.isDark,
             onThemeChanged: widget.onThemeChanged,
             version: _state.version,
+            updateAvailable: _state.updateAvailable,
+            latestVersion: _state.latestVersion,
+            onUpdatePressed: _showUpdateDialog,
             onSettingsPressed: _openSettings,
             items: _buildSidebarItems(),
             isCollapsed: _sidebarCollapsed,

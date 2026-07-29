@@ -251,5 +251,15 @@ class ApiService {
     final response = await http.post(Uri.parse('/api/scope/disable'));
     return response.statusCode == 200;
   }
+
+  /// Triggers cluster auto-update.
+  static Future<bool> applyUpdate(String targetVersion) async {
+    final response = await http.post(
+      Uri.parse('/api/update/apply'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'target_version': targetVersion}),
+    );
+    return response.statusCode == 200;
+  }
 }
 

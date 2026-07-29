@@ -165,6 +165,10 @@ class DashboardState {
   final String caddyStatus;
   final String caddyfile;
   final String version;
+  final bool updateAvailable;
+  final String latestVersion;
+  final String releaseNotes;
+  final String releaseUrl;
 
   DashboardState({
     this.nodes = const [],
@@ -176,6 +180,10 @@ class DashboardState {
     this.caddyStatus = 'not running',
     this.caddyfile = '',
     this.version = 'dev',
+    this.updateAvailable = false,
+    this.latestVersion = '',
+    this.releaseNotes = '',
+    this.releaseUrl = '',
   });
 
   factory DashboardState.fromJson(Map<String, dynamic> json) {
@@ -199,6 +207,10 @@ class DashboardState {
       caddyStatus: json['caddy_status'] ?? 'not running',
       caddyfile: json['caddyfile'] ?? '',
       version: json['version'] ?? 'dev',
+      updateAvailable: json['update_available'] ?? false,
+      latestVersion: json['latest_version'] ?? '',
+      releaseNotes: json['release_notes'] ?? '',
+      releaseUrl: json['release_url'] ?? '',
     );
   }
 }

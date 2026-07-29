@@ -26,6 +26,9 @@ class GubernatorSidebar extends StatefulWidget {
   final bool isDark;
   final ValueChanged<bool> onThemeChanged;
   final String version;
+  final bool updateAvailable;
+  final String latestVersion;
+  final VoidCallback? onUpdatePressed;
   final VoidCallback onSettingsPressed;
   final List<SidebarItem> items;
   final bool isCollapsed;
@@ -39,6 +42,9 @@ class GubernatorSidebar extends StatefulWidget {
     required this.isDark,
     required this.onThemeChanged,
     required this.version,
+    this.updateAvailable = false,
+    this.latestVersion = '',
+    this.onUpdatePressed,
     required this.onSettingsPressed,
     required this.items,
     required this.isCollapsed,
@@ -236,29 +242,68 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  if (widget.updateAvailable && widget.onUpdatePressed != null)
+                    InkWell(
+                      onTap: widget.onUpdatePressed,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                          color: const Color(0xFFF97316).withValues(alpha: 0.25),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: sidebarActiveIndicator.withValues(alpha: 0.3),
+                            color: const Color(0xFFF97316),
+                            width: 1.2,
                           ),
                         ),
-                        child: Text(
-                          'MANAGER ${widget.version}',
-                          style: const TextStyle(
-                            color: sidebarActiveIndicator,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'MANAGER ${widget.latestVersion}',
+                              style: const TextStyle(
+                                color: Color(0xFFF97316),
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.rocket_launch,
+                              size: 10,
+                              color: Color(0xFFF97316),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: sidebarActiveIndicator.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            'MANAGER ${widget.version}',
+                            style: const TextStyle(
+                              color: sidebarActiveIndicator,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

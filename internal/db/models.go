@@ -62,9 +62,10 @@ func (n *Node) AfterFind(tx *gorm.DB) (err error) {
 
 // ClusterConfig holds global cluster configurations like the join token and API token.
 type ClusterConfig struct {
-	ID        string `gorm:"primaryKey;type:varchar(50)"`
-	JoinToken string `gorm:"type:varchar(255);not null"`
-	APIToken  string `gorm:"type:varchar(255)"` // Bearer token for the REST API (port 4000)
+	ID            string `gorm:"primaryKey;type:varchar(50)"`
+	JoinToken     string `gorm:"type:varchar(255);not null"`
+	APIToken      string `gorm:"type:varchar(255)"` // Bearer token for the REST API (port 4000)
+	TargetVersion string `gorm:"type:varchar(50)"`  // Target version for cluster auto-update
 }
 
 // Stack represents a deployed docker-compose environment.
