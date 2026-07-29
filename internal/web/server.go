@@ -231,6 +231,11 @@ func StartDashboard() {
 		// CoreDNS config
 		api.GET("/coredns/config", getCoreDNSConfigHandler)
 		api.PUT("/coredns/config", updateCoreDNSConfigHandler)
+
+		// Weave Scope Network Topology
+		api.GET("/scope/status", scopeStatusHandler)
+		api.POST("/scope/enable", scopeEnableHandler)
+		api.POST("/scope/disable", scopeDisableHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -1718,4 +1723,29 @@ func webRescheduleUnassignedTasks() {
 	}
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
+}
+
+func scopeStatusHandler(c *gin.Context) {
+	hostIP := c.Request.Host
+	if idx := strings.Index(hostIP, ":"); idx != -1 {
+		hostIP = hostIP[:idx]
+	}
+	status := monitor.GetScopeStatus(hostIP)
+	c.JSON(http.StatusOK, status)
+}
+
+func scopeEnableHandler(c *gin.Context) {
+	if err := monitor.EnableScope(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	scopeStatusHandler(c)
+}
+
+func scopeDisableHandler(c *gin.Context) {
+	if err := monitor.DisableScope(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	scopeStatusHandler(c)
 }

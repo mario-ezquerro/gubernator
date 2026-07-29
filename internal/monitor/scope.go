@@ -68,6 +68,7 @@ func EnableScope() error {
 		"--privileged",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 		"weaveworks/scope:latest",
+		"--weave=false",
 		"--app.http.address=:" + ScopePort,
 	}
 
