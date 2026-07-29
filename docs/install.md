@@ -201,4 +201,4 @@ After installing `gbnt`, you can optionally deploy a full SRE observability stac
 gbnt monitor init
 ```
 
-This deploys cAdvisor, Prometheus, Grafana, Loki, and Promtail on a dedicated Docker network. See the [CLI Reference](cli.md) for details.
+This deploys cAdvisor, Node Exporter, Prometheus, Grafana, Loki, Promtail, and Jaeger on a dedicated Docker network. See the [CLI Reference](cli.md) for details.

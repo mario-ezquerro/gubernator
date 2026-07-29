@@ -160,10 +160,11 @@ Displays the active internal DNS records and allows you to configure external fo
 
 ---
 
-### Observability: Grafana Metrics & Jaeger Traces
+### Observability: Grafana Metrics, Network Monitor & Jaeger Traces
 
 The dashboard integrates full SRE Observability via tabs and top app bar quick action buttons:
-- **Grafana Metrics Tab & Quick Link**: Direct access to Grafana dashboards (`/grafana/` or port `:3000`) for metrics.
+- **Grafana Metrics Tab & Quick Link**: Direct access to Grafana dashboards (`/grafana/` or port `:3000`) for system and cluster metrics.
+- **Network Monitor Tab**: A dedicated view showing unified network traffic (In/Out) across all hosts and pods in the cluster, leveraging `node-exporter` data.
 - **Jaeger Traces Tab & Quick Link**: Embedded view to Jaeger UI (`/jaeger/` or port `:16686`) for distributed trace visualization. Receives application traces over OTLP gRPC (`:4317`) and OTLP HTTP (`:4318`). Access is authenticated using your Gubernator credentials.
 
 ---

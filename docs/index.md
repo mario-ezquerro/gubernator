@@ -18,7 +18,7 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
 | **Secure API** | Bearer token auth on port 4000, Basic Auth on Web UI |
 | **Observability** | Prometheus metrics, Swagger, and health on port 4002 |
-| **SRE Monitor** | One-command deploy: cAdvisor + Prometheus + Grafana + Loki + Promtail |
+| **SRE Monitor** | One-command deploy: cAdvisor + Node Exporter + Prometheus + Grafana + Loki + Promtail + Jaeger |
 
 ---
 
@@ -127,7 +127,7 @@ The Web UI at `:4001` provides full lifecycle management:
 Deploy a full observability stack with one command:
 
 ```bash
-./gbnt monitor init      # Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail, Jaeger
+./gbnt monitor init      # Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail, Node Exporter, Jaeger
 ./gbnt monitor status    # Check health of monitoring containers
 ./gbnt monitor stop      # Tear down the stack
 ```
@@ -135,6 +135,7 @@ Deploy a full observability stack with one command:
 | Service | Port | Purpose |
 |---------|------|---------|
 | cAdvisor | `:8081` | Container resource metrics |
+| Node Exporter | `:9100` | Host hardware and OS metrics |
 | Prometheus | `:9090` | Metrics collection |
 | Grafana | `:3000` | Dashboards (admin/admin) |
 | Loki | `:3100` | Log aggregation |

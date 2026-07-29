@@ -172,7 +172,8 @@ monitoring/
     │   ├── datasources/prometheus.yml          # Auto-connects Prometheus
     │   └── dashboards/dashboards.yml           # Auto-loads dashboards
     └── dashboards/
-        └── gubernator.json                     # Pre-built Gubernator dashboard
+        ├── gubernator.json                     # Pre-built Gubernator dashboard
+        └── network_dashboard.json              # Pre-built Network Monitor dashboard
 ```
 
 ### Start the Full Stack
@@ -211,9 +212,13 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="gubernator"}' | python3 -
 
 ---
 
-## Grafana Dashboard
+## Grafana Dashboards
 
-The **Gubernator — Cluster Overview** dashboard is provisioned automatically. It shows:
+Two dashboards are provisioned automatically: **Gubernator — Cluster Overview** and **Gubernator — Network Monitor**.
+
+### 1. Cluster Overview
+
+The **Gubernator — Cluster Overview** dashboard shows:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -242,6 +247,16 @@ Panels included:
 | Goroutines | `go_goroutines` | Time series |
 | GC Rate | `rate(go_gc_duration_seconds_count[5m])` | Time series |
 | GC Pause Duration | `go_gc_duration_seconds` p50/p99 | Time series |
+
+### 2. Network Monitor
+
+The **Gubernator — Network Monitor** dashboard combines metrics from `node-exporter` (host systems) and `cAdvisor` (containers) to provide a unified view of all network traffic. It shows:
+
+- Global Network Traffic (In/Out) across the entire cluster
+- Traffic sorted by Node/Host
+- Network bandwidth per Container (Pod)
+
+This allows visualizing both underlying node infrastructure and overlay container traffic simultaneously.
 
 ---
 

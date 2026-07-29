@@ -340,12 +340,13 @@ Gubernator includes a **built-in SRE observability stack** that can be deployed 
 ./gbnt monitor init
 ```
 
-This command deploys 6 containers on a dedicated Docker network (`gbnt-monitor-net`):
+This command deploys 7 containers on a dedicated Docker network (`gbnt-monitor-net`):
 
 | Container | Port | Role |
 |-----------|------|------|
 | **cAdvisor** | `:8081` | Container CPU, memory, disk, network metrics |
-| **Prometheus** | `:9090` | Metrics scraping (Gubernator + cAdvisor + workers) |
+| **Node Exporter** | `:9100` | Host hardware, CPU, memory, disk, and OS network metrics |
+| **Prometheus** | `:9090` | Metrics scraping (Gubernator + cAdvisor + Node Exporter + workers) |
 | **Grafana** | `:3000` | Dashboards with pre-configured datasources (admin/admin) |
 | **Loki** | `:3100` | Log aggregation from all nodes |
 | **Promtail** | — | Ships container and system logs to Loki |
@@ -444,7 +445,7 @@ docker run -d \
 * `gbnt service rm [service_id]` - Delete a service.
 
 **SRE Monitor (Observability)**
-* `gbnt monitor init` - Deploy the full SRE stack (Prometheus, Grafana, Loki, cAdvisor, Promtail).
+* `gbnt monitor init` - Deploy the full SRE stack (Prometheus, Grafana, Loki, cAdvisor, Promtail, Node Exporter, Jaeger).
 * `gbnt monitor status` - Show status of monitoring containers.
 * `gbnt monitor stop` - Stop and remove all monitoring containers.
 

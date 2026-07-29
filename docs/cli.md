@@ -110,7 +110,7 @@ Commands for managing individual services (which are usually created via Stacks)
 ## SRE Monitor (Observability Stack)
 
 - **`gbnt monitor init`**
-  Deploys the full SRE monitoring stack on the Manager node: cAdvisor (`:8081`), Prometheus (`:9090`), Grafana (`:3000`), Loki (`:3100`), Promtail, and Jaeger (OTLP `:4317`/`:4318`, UI `:16686`). All containers run on a dedicated `gbnt-monitor-net` Docker network. Config files are written to `~/.gbnt/monitor/`.
+  Deploys the full SRE monitoring stack on the Manager node: cAdvisor (`:8081`), Node Exporter (`:9100`), Prometheus (`:9090`), Grafana (`:3000`), Loki (`:3100`), Promtail, and Jaeger (OTLP `:4317`/`:4318`, UI `:16686`). All containers run on a dedicated `gbnt-monitor-net` Docker network. Config files are written to `~/.gbnt/monitor/`.
 
 - **`gbnt monitor status`**
   Displays the status of all monitoring containers (running, stopped, IP, ports).

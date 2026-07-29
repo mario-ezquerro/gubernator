@@ -117,6 +117,7 @@ A built-in, one-command SRE monitoring deployment that creates a dedicated Docke
 | Container | Image | Port | Purpose |
 |-----------|-------|------|---------|
 | `gbnt-monitor-cadvisor` | `gcr.io/cadvisor/cadvisor` | `:8081` | Container resource metrics |
+| `gbnt-monitor-node-exporter` | `prom/node-exporter` | `:9100` | Host system metrics (CPU, RAM, Disk, Network) |
 | `gbnt-monitor-prometheus` | `prom/prometheus` | `:9090` | Metrics collection & scraping |
 | `gbnt-monitor-grafana` | `grafana/grafana` | `:3000` | Dashboards (Prometheus + Loki datasources pre-configured) |
 | `gbnt-monitor-loki` | `grafana/loki` | `:3100` | Log aggregation |
@@ -126,6 +127,7 @@ A built-in, one-command SRE monitoring deployment that creates a dedicated Docke
 ```
 Data Flow:
   cAdvisor ──metrics──→ Prometheus ──→ Grafana
+  Node Exporter ──metrics──→ Prometheus ──→ Grafana
   Gubernator :4002 ──metrics──→ Prometheus ──→ Grafana
   Promtail ──logs──→ Loki ──→ Grafana
   Apps ──traces (OTLP :4317/:4318)──→ Jaeger (:16686 / /jaeger/)

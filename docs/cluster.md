@@ -32,7 +32,7 @@ Before setting up the cluster, ensure your hosts meet the following minimum spec
   * **Port 4002**: Telemetry, Swagger, and Health metrics.
   * **Port 53 / 5354**: CoreDNS internally.
   * **Port 80 / 443**: Caddy Ingress.
-  * **Ports 3000 / 9090 / 3100 / 8081 / 4317 / 4318 / 16686**: SRE monitoring stack (Grafana, Prometheus, Loki, cAdvisor, Jaeger OTLP & UI).
+  * **Ports 3000 / 9090 / 9100 / 3100 / 8081 / 4317 / 4318 / 16686**: SRE monitoring stack (Grafana, Prometheus, Node Exporter, Loki, cAdvisor, Jaeger OTLP & UI).
 
 ---
 
@@ -100,7 +100,7 @@ nohup /home/ubuntu/gbnt serve > /home/ubuntu/manager.log 2>&1 &
 * `GBNT_HOST_IP`: The IP address of the manager node that workers will connect to.
 * `GBNT_WEB`: Enables the Web UI Dashboard on port `4001`.
 * `GBNT_WEB_USER` & `GBNT_WEB_PASSWORD`: Credentials to access the Web UI and the Grafana SSO proxy.
-* `GBNT_MONITOR=true`: Auto-deploys the SRE Observability stack (Prometheus, Grafana, Loki, cAdvisor, Promtail).
+* `GBNT_MONITOR=true`: Auto-deploys the SRE Observability stack (Prometheus, Grafana, Loki, cAdvisor, Node Exporter, Promtail, Jaeger).
 
 ---
 
@@ -184,3 +184,4 @@ node-gbnt-worker2    192.168.252.7   worker    active
 * **Grafana (Observability & Logs)**: `http://<MANAGER-IP>:4001/grafana/` (Auto-login with Dashboard credentials)
 * **Prometheus Dashboard**: `http://<MANAGER-IP>:9090`
 * **cAdvisor Dashboard**: `http://<MANAGER-IP>:8081`
+* **Node Exporter**: `http://<MANAGER-IP>:9100/metrics`
