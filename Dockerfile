@@ -1,9 +1,8 @@
 FROM golang:alpine AS builder
 
-WORKDIR /app
+ARG VERSION=dev
 
-# Install build dependencies for go-sqlite3 (CGO)
-RUN apk update && apk upgrade --no-cache && apk add --no-cache gcc musl-dev
+WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -13,7 +12,7 @@ RUN go mod download
 COPY . .
 
 ENV GOMAXPROCS=1
-RUN CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux go build -p 1 -ldflags "-X main.version=${VERSION}" -o gbnt ./cmd/gbnt
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w -X main.version=${VERSION}" -o gbnt ./cmd/gbnt
 
 FROM alpine:edge
 
