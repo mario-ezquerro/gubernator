@@ -198,20 +198,20 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 	}
 }
 
-// RegisterScopeStackInDB registers [SUPER] Net-Topology stack in the DB when enabled.
+// RegisterScopeStackInDB registers [SUPER] Net-Topology stack in the DB when enabled for Manager and active Workers.
 func RegisterScopeStackInDB(database *gorm.DB) {
 	now := time.Now()
-	stackID := "super-net-topology-stack"
-	stackName := "[SUPER] Net-Topology (Weave Scope)"
-	serviceID := "super-svc-scope"
-	taskID := "super-task-scope"
+	mgrStackID := "super-net-topology-mgr"
+	mgrStackName := "[SUPER] Net-Topology (Manager)"
+	serviceID := "super-svc-scope-mgr"
+	taskID := "super-task-scope-mgr"
 
 	var existingStack db.Stack
-	if err := database.First(&existingStack, "id = ?", stackID).Error; err != nil {
+	if err := database.First(&existingStack, "id = ?", mgrStackID).Error; err != nil {
 		stack := db.Stack{
-			ID:             stackID,
-			Name:           stackName,
-			RawComposeFile: "# Managed by Gubernator Superpower Engine\n# Weave Scope Container Network Topology",
+			ID:             mgrStackID,
+			Name:           mgrStackName,
+			RawComposeFile: "# Managed by Gubernator Superpower Engine\n# Weave Scope App & Probe (Manager)",
 			CreatedAt:      now,
 			UpdatedAt:      now,
 		}
@@ -222,7 +222,7 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 	if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
 		service := db.Service{
 			ID:              serviceID,
-			StackID:         stackID,
+			StackID:         mgrStackID,
 			Name:            "weave-scope",
 			Image:           "weaveworks/scope:latest",
 			DesiredReplicas: 1,
@@ -258,15 +258,98 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 			"updated_at":   now,
 		})
 	}
+
+	// Sync active Worker nodes
+	SyncWorkerScopeStacks(database)
 }
 
-// UnregisterScopeStackFromDB removes [SUPER] Net-Topology stack from the DB when disabled.
+// SyncWorkerScopeStacks registers [SUPER] Net-Topology stacks for all active worker nodes.
+func SyncWorkerScopeStacks(database *gorm.DB) {
+	now := time.Now()
+
+	var workerNodes []db.Node
+	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
+		return
+	}
+
+	activeNodeIDs := make(map[string]bool)
+	for _, n := range workerNodes {
+		activeNodeIDs[n.ID] = true
+	}
+
+	// Purge orphan worker scope stacks
+	var allScopeWorkerStacks []db.Stack
+	database.Where("id LIKE ?", "super-scope-stack-%").Find(&allScopeWorkerStacks)
+	for _, st := range allScopeWorkerStacks {
+		nodeID := strings.TrimPrefix(st.ID, "super-scope-stack-")
+		if !activeNodeIDs[nodeID] {
+			database.Where("stack_id = ?", st.ID).Delete(&db.Service{})
+			database.Where("id = ?", st.ID).Delete(&db.Stack{})
+		}
+	}
+
+	for _, node := range workerNodes {
+		stackID := "super-scope-stack-" + node.ID
+		stackName := fmt.Sprintf("[SUPER] Net-Topology (%s)", node.ID)
+
+		var existingStack db.Stack
+		if err := database.First(&existingStack, "id = ?", stackID).Error; err != nil {
+			stack := db.Stack{
+				ID:             stackID,
+				Name:           stackName,
+				RawComposeFile: fmt.Sprintf("# Managed by Gubernator Superpower Engine\n# Weave Scope Probe (%s)", node.ID),
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}
+			database.Create(&stack)
+		}
+
+		serviceID := fmt.Sprintf("super-svc-%s-scope", node.ID)
+		var existingService db.Service
+		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
+			service := db.Service{
+				ID:              serviceID,
+				StackID:         stackID,
+				Name:            "weave-scope-probe",
+				Image:           "weaveworks/scope:latest",
+				DesiredReplicas: 1,
+				Ports:           []string{},
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}
+			database.Create(&service)
+		}
+
+		taskID := fmt.Sprintf("super-task-%s-scope", node.ID)
+		var existingTask db.Task
+		if err := database.First(&existingTask, "id = ?", taskID).Error; err != nil {
+			task := db.Task{
+				ID:            taskID,
+				ServiceID:     serviceID,
+				NodeID:        node.ID,
+				Status:        "running",
+				ContainerIP:   node.IP,
+				ContainerName: ScopeContainerName,
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			}
+			database.Create(&task)
+		} else {
+			database.Model(&existingTask).Updates(map[string]interface{}{
+				"status":       "running",
+				"container_ip":  node.IP,
+				"updated_at":   now,
+			})
+		}
+	}
+}
+
+// UnregisterScopeStackFromDB removes all [SUPER] Net-Topology stacks from the DB when disabled.
 func UnregisterScopeStackFromDB(database *gorm.DB) {
-	stackID := "super-net-topology-stack"
 	database.Where("service_id LIKE 'super-%'").Delete(&db.Task{})
-	database.Where("stack_id = ?", stackID).Delete(&db.Task{})
-	database.Where("stack_id = ?", stackID).Delete(&db.Service{})
-	database.Where("id = ?", stackID).Delete(&db.Stack{})
+	database.Where("stack_id LIKE 'super-%'").Delete(&db.Task{})
+	database.Where("stack_id LIKE 'super-%'").Delete(&db.Service{})
+	database.Where("id LIKE 'super-%'").Delete(&db.Stack{})
 }
 
 // UnregisterFromDB removes all SRE monitoring stacks from the database.
