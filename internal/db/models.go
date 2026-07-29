@@ -15,10 +15,15 @@ type Node struct {
 	Status    string            `gorm:"type:varchar(50);not null" json:"status"` // e.g., "active", "down", "drain"
 	LabelsRaw   []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
 	Labels      map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
-	CaddyStatus string            `gorm:"type:text" json:"caddy_status"`
-	Caddyfile   string            `gorm:"type:text" json:"caddyfile"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	CpuPercent    float64            `gorm:"-" json:"cpu_percent"`
+	MemUsedBytes  uint64             `gorm:"-" json:"mem_used_bytes"`
+	MemTotalBytes uint64             `gorm:"-" json:"mem_total_bytes"`
+	MemPercent    float64            `gorm:"-" json:"mem_percent"`
+	NetBps        float64            `gorm:"-" json:"net_bps"`
+	CaddyStatus   string             `gorm:"type:text" json:"caddy_status"`
+	Caddyfile     string             `gorm:"type:text" json:"caddyfile"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
 }
 
 // BeforeSave hook to marshal Labels into LabelsRaw before saving to DB

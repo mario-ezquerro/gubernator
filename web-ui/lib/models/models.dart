@@ -11,6 +11,12 @@ class Node {
   final String createdAt;
   final String updatedAt;
 
+  final double cpuPercent;
+  final int memUsedBytes;
+  final int memTotalBytes;
+  final double memPercent;
+  final double netBps;
+
   Node({
     required this.id,
     required this.ip,
@@ -21,6 +27,11 @@ class Node {
     this.caddyfile = '',
     this.createdAt = '',
     this.updatedAt = '',
+    this.cpuPercent = 0.0,
+    this.memUsedBytes = 0,
+    this.memTotalBytes = 0,
+    this.memPercent = 0.0,
+    this.netBps = 0.0,
   });
 
   factory Node.fromJson(Map<String, dynamic> json) {
@@ -34,6 +45,11 @@ class Node {
       caddyfile: json['caddyfile'] ?? '',
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
+      cpuPercent: (json['cpu_percent'] as num?)?.toDouble() ?? 0.0,
+      memUsedBytes: (json['mem_used_bytes'] as num?)?.toInt() ?? 0,
+      memTotalBytes: (json['mem_total_bytes'] as num?)?.toInt() ?? 0,
+      memPercent: (json['mem_percent'] as num?)?.toDouble() ?? 0.0,
+      netBps: (json['net_bps'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

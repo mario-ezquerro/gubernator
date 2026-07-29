@@ -324,6 +324,8 @@ func stateHandler(c *gin.Context) {
 	db.DB.Find(&services)
 	db.DB.Find(&tasks)
 
+	monitor.PopulateNodeMetrics(nodes)
+
 	caddyfilePath := caddy.CaddyfilePath()
 	caddyfileContent := ""
 	if content, err := os.ReadFile(caddyfilePath); err == nil {

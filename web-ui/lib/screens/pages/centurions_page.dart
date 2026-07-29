@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
@@ -433,6 +434,9 @@ class _CenturionsPageState extends State<CenturionsPage> {
                               DataColumn(label: const Text('IP'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
                               DataColumn(label: const Text('ROLE'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
                               DataColumn(label: const Text('STATUS'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
+                              const DataColumn(label: Text('CPU')),
+                              const DataColumn(label: Text('MEMORY (USED / TOTAL)')),
+                              const DataColumn(label: Text('NETWORK')),
                               const DataColumn(label: Text('LABELS')),
                               const DataColumn(label: Text('ACTIONS')),
                             ],
@@ -451,6 +455,9 @@ class _CenturionsPageState extends State<CenturionsPage> {
                               DataCell(Text(n.ip)),
                               DataCell(StatusBadge(label: n.role)),
                               DataCell(StatusBadge(label: n.status)),
+                              DataCell(SizedBox(width: 90, child: _buildMiniThermometer(theme, '${n.cpuPercent.toStringAsFixed(1)}%', n.cpuPercent, const Color(0xFF3B82F6)))),
+                              DataCell(SizedBox(width: 170, child: _buildMiniThermometer(theme, '${_formatBytes(n.memUsedBytes)} / ${_formatBytes(n.memTotalBytes)}', n.memPercent, const Color(0xFF10B981)))),
+                              DataCell(Text(_formatNetSpeed(n.netBps), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF8B5CF6)))),
                               DataCell(
                                 n.labels.isEmpty
                                     ? const Text('-')
@@ -526,11 +533,51 @@ class _CenturionsPageState extends State<CenturionsPage> {
                           ),
                         ),
                       ),
-              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (log(bytes) / log(1024)).floor();
+    if (i >= suffixes.length) i = suffixes.length - 1;
+    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  String _formatNetSpeed(double bytesPerSec) {
+    if (bytesPerSec <= 0) return '0 B/s';
+    const suffixes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+    int i = 0;
+    double speed = bytesPerSec;
+    while (speed >= 1024 && i < suffixes.length - 1) {
+      speed /= 1024;
+      i++;
+    }
+    return '${speed.toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  Widget _buildMiniThermometer(ThemeData theme, String text, double percent, Color defaultColor) {
+    final color = percent > 90 ? Colors.red : (percent > 75 ? Colors.orange : defaultColor);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (percent / 100).clamp(0.0, 1.0),
+            minHeight: 5,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
     );
   }
 }
