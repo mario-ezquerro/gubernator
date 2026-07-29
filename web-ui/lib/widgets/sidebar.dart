@@ -187,21 +187,21 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
       ),
       child: Row(
         children: [
-          // Logo icon with orange glow
+          // Logo icon with dark slate background and orange glow/border
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF97316), Color(0xFFEA580C)],
-              ),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFFF97316).withValues(alpha: 0.4),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF97316).withValues(alpha: 0.3),
-                  blurRadius: 12,
+                  color: const Color(0xFFF97316).withValues(alpha: 0.2),
+                  blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -209,12 +209,12 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
             child: Center(
               child: Image.network(
                 '/gubernator-icon.png',
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.hub,
-                  color: Colors.white,
+                  color: Color(0xFFF97316),
                   size: 24,
                 ),
               ),
