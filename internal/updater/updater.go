@@ -124,10 +124,14 @@ func ApplyClusterUpdate(targetVersion string) error {
 	cacheMutex.Unlock()
 
 	if targetVersion != "" {
-		for _, path := range []string{"VERSION", "/app/VERSION", "../VERSION"} {
-			if _, err := os.Stat(path); err == nil {
-				os.WriteFile(path, []byte(targetVersion), 0644)
+		written := false
+		for _, path := range []string{"/app/VERSION", "VERSION", "../VERSION"} {
+			if err := os.WriteFile(path, []byte(targetVersion), 0644); err == nil {
+				written = true
 			}
+		}
+		if !written {
+			_ = os.WriteFile("/app/VERSION", []byte(targetVersion), 0644)
 		}
 	}
 
