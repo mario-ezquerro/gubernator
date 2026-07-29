@@ -533,6 +533,7 @@ class _CenturionsPageState extends State<CenturionsPage> {
                           ),
                         ),
                       ),
+                    ),
             ],
           ),
         ),
