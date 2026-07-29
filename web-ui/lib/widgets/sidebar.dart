@@ -235,21 +235,28 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: sidebarActiveIndicator.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'MANAGER',
-                      style: TextStyle(
-                        color: sidebarActiveIndicator,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: sidebarActiveIndicator.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'MANAGER ${widget.version}',
+                          style: const TextStyle(
+                            color: sidebarActiveIndicator,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -450,50 +457,6 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
             textColor: mutedColor,
             onTap: widget.onSettingsPressed,
           ),
-
-          const SizedBox(height: 8),
-
-          // Version badge styled like MANAGER (orange badge)
-          if (isExpanded)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: sidebarActiveIndicator.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: sidebarActiveIndicator.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Text(
-                widget.version,
-                style: const TextStyle(
-                  color: sidebarActiveIndicator,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  fontFamily: 'Courier New',
-                ),
-              ),
-            )
-          else
-            Tooltip(
-              message: widget.version,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: sidebarActiveIndicator.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  widget.version,
-                  style: const TextStyle(
-                    color: sidebarActiveIndicator,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
