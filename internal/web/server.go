@@ -187,8 +187,11 @@ func StartDashboard() {
 		user: pass,
 	}))
 
-	// Middleware to set SSO cookie on successful Basic Auth
+	// Middleware to set SSO cookie on successful Basic Auth & disable static caching
 	authorized.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		authUser := c.GetString(gin.AuthUserKey)
 		if authUser != "" {
 			c.SetCookie("gbnt_session", sessionToken, 3600*24, "/", "", false, true)
