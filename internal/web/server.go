@@ -382,7 +382,8 @@ func stateHandler(c *gin.Context) {
 // --- Auto-Update Endpoints ---
 
 func updateCheckHandler(c *gin.Context) {
-	info, err := updater.CheckLatestRelease(GetVersion(), true)
+	force := c.Query("force") == "true"
+	info, err := updater.CheckLatestRelease(GetVersion(), force)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
