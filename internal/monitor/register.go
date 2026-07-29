@@ -27,6 +27,7 @@ type monitorService struct {
 
 var managerMonitorServices = []monitorService{
 	{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}},
+	{Name: "node-exporter", ContainerName: NodeExporterName, Image: "prom/node-exporter:latest", Ports: []string{"9100:9100"}},
 	{Name: "prometheus", ContainerName: PrometheusName, Image: "prom/prometheus:latest", Ports: []string{"9090:9090"}},
 	{Name: "loki", ContainerName: LokiName, Image: "grafana/loki:latest", Ports: []string{"3100:3100"}},
 	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
@@ -36,6 +37,7 @@ var managerMonitorServices = []monitorService{
 
 var workerMonitorServices = []monitorService{
 	{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}},
+	{Name: "node-exporter", ContainerName: NodeExporterName, Image: "prom/node-exporter:latest", Ports: []string{"9100:9100"}},
 	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
 }
 
@@ -75,9 +77,10 @@ func RegisterInDB(database *gorm.DB) error {
 		}
 
 		containerIP := getContainerIP(ms.ContainerName)
-		status := "running"
-		if containerIP == "" {
-			status = "dead"
+		status := "dead"
+		inspectOut, inspectErr := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", ms.ContainerName).Output()
+		if inspectErr == nil && strings.TrimSpace(string(inspectOut)) == "running" {
+			status = "running"
 		}
 
 		taskID := "sre-task-mgr-" + ms.Name

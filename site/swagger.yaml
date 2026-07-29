@@ -1,0 +1,776 @@
+definitions:
+  api.HeartbeatRequest:
+    properties:
+      caddy_status:
+        type: string
+      caddyfile:
+        type: string
+      id:
+        type: string
+    required:
+    - id
+    type: object
+  api.JoinRequest:
+    properties:
+      caddy_status:
+        type: string
+      caddyfile:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      token:
+        type: string
+    required:
+    - id
+    - ip
+    - token
+    type: object
+  api.NodeAvailabilityRequest:
+    properties:
+      availability:
+        description: '"active", "pause", "drain"'
+        type: string
+    required:
+    - availability
+    type: object
+  api.NodeLabelsRequest:
+    properties:
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+    required:
+    - labels
+    type: object
+  api.NodeListResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/db.Node'
+        type: array
+    type: object
+  api.NodeRoleRequest:
+    properties:
+      role:
+        description: '"worker" or "manager"'
+        type: string
+    required:
+    - role
+    type: object
+  api.ScaleRequest:
+    properties:
+      replicas:
+        type: integer
+    required:
+    - replicas
+    type: object
+  api.StackDeployRequest:
+    properties:
+      compose_raw:
+        type: string
+      name:
+        description: Optional if provided in compose file
+        type: string
+      target_node:
+        type: string
+    required:
+    - compose_raw
+    type: object
+  api.TaskResponse:
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/api.TaskWithImage'
+        type: array
+    type: object
+  api.TaskStatusRequest:
+    properties:
+      container_ip:
+        type: string
+      error:
+        type: string
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  api.TaskWithImage:
+    properties:
+      command:
+        type: string
+      constraints:
+        items:
+          type: string
+        type: array
+      env:
+        items:
+          type: string
+        type: array
+      image:
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      task:
+        $ref: '#/definitions/db.Task'
+      volumes:
+        items:
+          type: string
+        type: array
+    type: object
+  api.UpdateConfigRequest:
+    properties:
+      config:
+        type: string
+    type: object
+  db.Node:
+    properties:
+      caddy_status:
+        type: string
+      caddyfile:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      ip:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        description: Parsed labels for the application
+        type: object
+      role:
+        description: e.g., "manager", "worker"
+        type: string
+      status:
+        description: e.g., "active", "down", "drain"
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.Service:
+    properties:
+      command:
+        type: string
+      constraints:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      desired_replicas:
+        type: integer
+      env:
+        description: e.g. ["FOO=bar"]
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      ports:
+        description: e.g. ["8080:80", "443:443"]
+        items:
+          type: string
+        type: array
+      stack_id:
+        type: string
+      updated_at:
+        type: string
+      volumes:
+        description: e.g. ["/host:/container"]
+        items:
+          type: string
+        type: array
+    type: object
+  db.Stack:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      raw_compose_file:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  db.Task:
+    properties:
+      container_ip:
+        type: string
+      container_name:
+        type: string
+      created_at:
+        type: string
+      error:
+        type: string
+      id:
+        type: string
+      node_id:
+        type: string
+      service_id:
+        type: string
+      status:
+        description: '"pending", "running", "dead"'
+        type: string
+      updated_at:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /v1/cluster/info:
+    get:
+      description: Returns join token, API token, and ready-to-use CLI commands. Localhost
+        only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Cluster Bootstrap Info
+      tags:
+      - legion
+  /v1/cluster/token:
+    get:
+      description: Retrieve the current global join token (requires local access)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Cluster Join Token
+      tags:
+      - legion
+  /v1/coredns/config:
+    get:
+      description: Returns the raw text of the Corefile
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: CoreDNS configuration content
+          schema:
+            type: string
+      summary: Get CoreDNS Configuration
+      tags:
+      - CoreDNS
+    put:
+      consumes:
+      - application/json
+      description: Overwrites the Corefile and restarts the CoreDNS container
+      parameters:
+      - description: New configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update CoreDNS Configuration
+      tags:
+      - CoreDNS
+  /v1/node/{id}:
+    get:
+      description: Fetch full details of a specific node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/db.Node'
+      summary: Inspect Node
+      tags:
+      - nodes
+  /v1/node/{id}/availability:
+    post:
+      consumes:
+      - application/json
+      description: Pause or drain a node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Availability Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.NodeAvailabilityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update Node Availability
+      tags:
+      - nodes
+  /v1/node/{id}/labels:
+    post:
+      consumes:
+      - application/json
+      description: Add, update, or remove node labels
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Labels Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.NodeLabelsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update Node Labels
+      tags:
+      - nodes
+  /v1/node/{id}/leave:
+    post:
+      description: Mark node as left
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Leave Legion
+      tags:
+      - nodes
+  /v1/node/{id}/reboot:
+    post:
+      description: Drain tasks and initiate host reboot
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reboot Node
+      tags:
+      - nodes
+  /v1/node/{id}/role:
+    post:
+      consumes:
+      - application/json
+      description: Change the role of a node
+      parameters:
+      - description: Node ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.NodeRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Promote/Demote Node
+      tags:
+      - nodes
+  /v1/node/heartbeat:
+    post:
+      consumes:
+      - application/json
+      description: Nodes call this to let the manager know they are alive
+      parameters:
+      - description: Heartbeat Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.HeartbeatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Node Heartbeat
+      tags:
+      - legion
+  /v1/node/join:
+    post:
+      consumes:
+      - application/json
+      description: Register a new worker node in the Gubernator cluster using a Join
+        Token
+      parameters:
+      - description: Join Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.JoinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Join the cluster
+      tags:
+      - legion
+  /v1/node/ls:
+    get:
+      description: Get a list of all nodes currently registered in the Gubernator
+        cluster from SQLite
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.NodeListResponse'
+      summary: List all nodes
+      tags:
+      - nodes
+  /v1/node/tasks/{node_id}:
+    get:
+      description: Fetches active tasks for the worker to execute and proxy
+      parameters:
+      - description: Node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.TaskResponse'
+      summary: Get assigned tasks for a node
+      tags:
+      - tasks
+  /v1/node/tasks/{task_id}/status:
+    post:
+      consumes:
+      - application/json
+      description: Worker reports back whether the task is running or failed
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Status Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.TaskStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update task status
+      tags:
+      - tasks
+  /v1/service/{id}:
+    delete:
+      description: Delete a service and its tasks
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove Service
+      tags:
+      - services
+  /v1/service/{id}/scale:
+    post:
+      consumes:
+      - application/json
+      description: Update the replicas of a service
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Replicas Update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ScaleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Scale Service
+      tags:
+      - services
+  /v1/service/{id}/tasks:
+    get:
+      description: List tasks belonging to a service
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.Task'
+            type: array
+      summary: List Service Tasks
+      tags:
+      - services
+  /v1/service/ls:
+    get:
+      description: List all services
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.Service'
+            type: array
+      summary: List Services
+      tags:
+      - services
+  /v1/stack/{id}:
+    delete:
+      description: Delete a stack, stop its containers, and remove all related records
+      parameters:
+      - description: Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove Stack
+      tags:
+      - stacks
+  /v1/stack/{id}/services:
+    get:
+      description: List services belonging to a stack
+      parameters:
+      - description: Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.Service'
+            type: array
+      summary: List Stack Services
+      tags:
+      - stacks
+  /v1/stack/deploy:
+    post:
+      consumes:
+      - application/json
+      description: Parse a docker-compose yaml and schedule tasks to nodes
+      parameters:
+      - description: Stack Deploy Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.StackDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deploy a Stack
+      tags:
+      - stack
+  /v1/stack/ls:
+    get:
+      description: List all deployed stacks
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.Stack'
+            type: array
+      summary: List Stacks
+      tags:
+      - stacks
+  /v1/task/{id}:
+    delete:
+      description: Delete a task by ID
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove a task
+      tags:
+      - tasks
+  /v1/task/ls:
+    get:
+      description: Get a list of all tasks
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/db.Task'
+            type: array
+      summary: List all tasks
+      tags:
+      - tasks
+swagger: "2.0"
