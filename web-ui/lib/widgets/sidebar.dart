@@ -61,8 +61,12 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
   late AnimationController _animController;
   late Animation<double> _widthAnimation;
 
-  static const double _expandedWidth = 240.0;
+  static const double _defaultExpandedWidth = 280.0;
+  static const double _updateExpandedWidth = 315.0;
   static const double _collapsedWidth = 72.0;
+
+  double get _currentExpandedWidth =>
+      widget.updateAvailable ? _updateExpandedWidth : _defaultExpandedWidth;
 
   @override
   void initState() {
@@ -72,8 +76,8 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
       vsync: this,
     );
     _widthAnimation = Tween<double>(
-      begin: widget.isCollapsed ? _collapsedWidth : _expandedWidth,
-      end: widget.isCollapsed ? _collapsedWidth : _expandedWidth,
+      begin: widget.isCollapsed ? _collapsedWidth : _currentExpandedWidth,
+      end: widget.isCollapsed ? _collapsedWidth : _currentExpandedWidth,
     ).animate(CurvedAnimation(
       parent: _animController,
       curve: Curves.easeInOut,
@@ -83,10 +87,11 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
   @override
   void didUpdateWidget(GubernatorSidebar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isCollapsed != widget.isCollapsed) {
+    if (oldWidget.isCollapsed != widget.isCollapsed ||
+        oldWidget.updateAvailable != widget.updateAvailable) {
       _widthAnimation = Tween<double>(
-        begin: oldWidget.isCollapsed ? _collapsedWidth : _expandedWidth,
-        end: widget.isCollapsed ? _collapsedWidth : _expandedWidth,
+        begin: _widthAnimation.value,
+        end: widget.isCollapsed ? _collapsedWidth : _currentExpandedWidth,
       ).animate(CurvedAnimation(
         parent: _animController,
         curve: Curves.easeInOut,
