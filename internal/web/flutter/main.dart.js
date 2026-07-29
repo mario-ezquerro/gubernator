@@ -35547,7 +35547,7 @@ return A.O($async$afO,r)},
 afG(){var s=0,r=A.P(t.d),q,p
 var $async$afG=A.Q(function(a,b){if(a===1)return A.M(b,r)
 for(;;)switch(s){case 0:s=3
-return A.L(A.SA(A.dh("/v1/monitor/scope/status",0,null)),$async$afG)
+return A.L(A.SA(A.dh("/api/scope/status",0,null)),$async$afG)
 case 3:p=b
 if(p.b===200){q=B.b0.p5(0,A.yR(A.yL(p.e)).dP(0,p.w),null)
 s=1
@@ -35559,7 +35559,7 @@ return A.O($async$afG,r)},
 afF(){var s=0,r=A.P(t.y),q
 var $async$afF=A.Q(function(a,b){if(a===1)return A.M(b,r)
 for(;;)switch(s){case 0:s=3
-return A.L(A.mr(A.dh("/v1/monitor/scope/enable",0,null),null,null),$async$afF)
+return A.L(A.mr(A.dh("/api/scope/enable",0,null),null,null),$async$afF)
 case 3:q=b.b===200
 s=1
 break
@@ -35568,7 +35568,7 @@ return A.O($async$afF,r)},
 afE(){var s=0,r=A.P(t.y),q
 var $async$afE=A.Q(function(a,b){if(a===1)return A.M(b,r)
 for(;;)switch(s){case 0:s=3
-return A.L(A.mr(A.dh("/v1/monitor/scope/disable",0,null),null,null),$async$afE)
+return A.L(A.mr(A.dh("/api/scope/disable",0,null),null,null),$async$afE)
 case 3:q=b.b===200
 s=1
 break
@@ -104792,15 +104792,15 @@ s.height="100%"
 return r},
 $S:105}
 A.aZ5.prototype={
-$1(a){var s,r=window.location.hostname,q=document.createElement("iframe")
-q.src="http://"+A.n(r)+":4040/"
-s=q.style
+$1(a){var s,r=document.createElement("iframe")
+r.src="/scope/"
+s=r.style
 s.border="none"
-s=q.style
+s=r.style
 s.width="100%"
-s=q.style
+s=r.style
 s.height="100%"
-return q},
+return r},
 $S:105}
 A.Hj.prototype={
 aa(){return new A.a69()}}
