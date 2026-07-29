@@ -263,6 +263,7 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 // UnregisterScopeStackFromDB removes [SUPER] Net-Topology stack from the DB when disabled.
 func UnregisterScopeStackFromDB(database *gorm.DB) {
 	stackID := "super-net-topology-stack"
+	database.Where("service_id LIKE 'super-%'").Delete(&db.Task{})
 	database.Where("stack_id = ?", stackID).Delete(&db.Task{})
 	database.Where("stack_id = ?", stackID).Delete(&db.Service{})
 	database.Where("id = ?", stackID).Delete(&db.Stack{})

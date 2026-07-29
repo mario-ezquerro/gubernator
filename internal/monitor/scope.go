@@ -89,7 +89,6 @@ func EnableScope() error {
 // DisableScope stops and removes the Weave Scope container.
 func DisableScope() error {
 	fmt.Println("\n⏹  Stopping Network Topology (Weave Scope)...")
-	exec.Command("docker", "stop", ScopeContainerName).Run()
 	exec.Command("docker", "rm", "-f", ScopeContainerName).Run()
 
 	if db.DB != nil {
