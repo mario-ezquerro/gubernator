@@ -57,6 +57,23 @@ func GetScopeStatus(hostIP string) ScopeStatusResponse {
 	}
 }
 
+// getDynamicCoreDNSIP inspects the gbnt-coredns container to dynamically find its IP.
+func getDynamicCoreDNSIP() string {
+	out, err := exec.Command("docker", "inspect", "-f",
+		"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", "gbnt-coredns").Output()
+	if err == nil {
+		ip := strings.TrimSpace(string(out))
+		if ip != "" {
+			return ip
+		}
+	}
+	var managerNode db.Node
+	if db.DB != nil && db.DB.Where("role = ?", "manager").First(&managerNode).Error == nil && managerNode.IP != "" {
+		return managerNode.IP
+	}
+	return "127.0.0.1"
+}
+
 // EnableScope deploys and starts the Weave Scope container.
 func EnableScope() error {
 	if IsScopeRunning() {
@@ -64,6 +81,8 @@ func EnableScope() error {
 	}
 
 	fmt.Println("\n🕸️  Deploying Network Topology (Weave Scope)...")
+	coreDNSIP := getDynamicCoreDNSIP()
+
 	args := []string{
 		"--net", "host",
 		"--pid", "host",
@@ -75,7 +94,12 @@ func EnableScope() error {
 		"--weave=false",
 		"--probe.proc.spy=true",
 		"--probe.docker=true",
+		"--probe.dns=true",
 		"--app.http.address=:" + ScopePort,
+	}
+
+	if coreDNSIP != "" {
+		fmt.Printf("🔍 Dynamic CoreDNS IP detected for Scope DNS resolution: %s\n", coreDNSIP)
 	}
 
 	if err := runContainer(ScopeContainerName, args); err != nil {
