@@ -192,8 +192,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (container) (rate(container_network_receive_bytes_total{container!=\"\",container!=\"POD\"}[1m]))",
-          "legendFormat": "{{container}} - RX (In)",
+          "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\"..*\"}[1m])) or sum by (container) (rate(container_network_receive_bytes_total{container=~\"..*\"}[1m]))",
+          "legendFormat": "{{name}}{{container}} - RX (In)",
           "refId": "A"
         },
         {
@@ -201,8 +201,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (container) (rate(container_network_transmit_bytes_total{container!=\"\",container!=\"POD\"}[1m])) * -1",
-          "legendFormat": "{{container}} - TX (Out)",
+          "expr": "(sum by (name) (rate(container_network_transmit_bytes_total{name=~\"..*\"}[1m])) or sum by (container) (rate(container_network_transmit_bytes_total{container=~\"..*\"}[1m]))) * -1",
+          "legendFormat": "{{name}}{{container}} - TX (Out)",
           "refId": "B"
         }
       ],
