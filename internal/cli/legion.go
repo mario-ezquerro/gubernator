@@ -171,6 +171,8 @@ var legionJoinCmd = &cobra.Command{
 				req.Header.Set("Content-Type", "application/json")
 				if apiToken != "" {
 					req.Header.Set("Authorization", "Bearer "+apiToken)
+				} else if joinToken != "" {
+					req.Header.Set("Authorization", "Bearer "+joinToken)
 				}
 				http.DefaultClient.Do(req)
 			}
