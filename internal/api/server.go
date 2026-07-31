@@ -119,7 +119,10 @@ func Start(ctx context.Context) error {
 		if expectedToken == "" {
 			expectedToken = db.GetAPIToken()
 		}
-		if c.GetHeader("Authorization") != "Bearer "+expectedToken {
+		joinToken := db.GetJoinToken()
+		auth := c.GetHeader("Authorization")
+
+		if auth != "Bearer "+expectedToken && (joinToken == "" || auth != "Bearer "+joinToken) {
 			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized API access. Invalid or missing Bearer token."})
 			return
 		}
@@ -128,10 +131,12 @@ func Start(ctx context.Context) error {
 
 	v1 := r.Group("/v1")
 	{
+		// Unauthenticated endpoint validated internally via Join Token
+		v1.POST("/node/join", NodeJoinHandler)
+
 		node := v1.Group("/node", authMiddleware)
 		{
 			node.GET("/ls", NodeListHandler)
-			node.POST("/join", NodeJoinHandler)
 			node.POST("/add", NodeAddHandler)
 			node.POST("/heartbeat", NodeHeartbeatHandler)
 			node.GET("/tasks/:node_id", NodeTasksHandler)
