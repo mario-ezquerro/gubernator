@@ -98,12 +98,10 @@ func GenerateHostsFile() {
 								content += fmt.Sprintf("%s\t%s\n", ip, val)
 							}
 							seenHosts[val] = true
-						} else {
+						} else if !seenHosts[val] {
 							// Fallback if no tasks are running yet, point to Manager IP
-							if !seenHosts[val] {
-								seenHosts[val] = true
-								content += fmt.Sprintf("%s\t%s\n", hostIP, val)
-							}
+							seenHosts[val] = true
+							content += fmt.Sprintf("%s\t%s\n", hostIP, val)
 						}
 					}
 				}

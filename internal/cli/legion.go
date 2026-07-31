@@ -126,7 +126,7 @@ var legionJoinCmd = &cobra.Command{
 		fmt.Printf("   Manager  : %s\n", addr)
 
 		// Parse manager IP from managerAddr
-		managerIP := "127.0.0.1"
+		var managerIP string
 		cleanAddr := managerAddr
 		if strings.Contains(cleanAddr, "://") {
 			cleanAddr = strings.Split(cleanAddr, "://")[1]
@@ -135,6 +135,9 @@ var legionJoinCmd = &cobra.Command{
 			managerIP = strings.Split(cleanAddr, ":")[0]
 		} else {
 			managerIP = cleanAddr
+		}
+		if managerIP == "" {
+			managerIP = "127.0.0.1"
 		}
 
 		// Ensure network and start Caddy Ingress locally on worker node

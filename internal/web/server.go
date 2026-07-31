@@ -1383,7 +1383,7 @@ func runRemoteSSHCommand(host, user, password, command string) (string, error) {
 
 	address := host
 	if !strings.Contains(address, ":") {
-		address = address + ":22"
+		address += ":22"
 	}
 
 	client, err := ssh.Dial("tcp", address, config)
@@ -1669,7 +1669,7 @@ func nodeShellHandler(c *gin.Context) {
 			"/data/ssh/id_rsa",
 		}
 		for _, k := range keyCandidates {
-			if _, err := os.Stat(k); err == nil {
+			if _, statErr := os.Stat(k); statErr == nil {
 				sshArgs = append(sshArgs, "-i", k)
 				break
 			}

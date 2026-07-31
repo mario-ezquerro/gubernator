@@ -59,7 +59,7 @@ func NodeAddHandler(c *gin.Context) {
 
 	addr := req.Host
 	if !strings.Contains(addr, ":") {
-		addr = addr + ":22"
+		addr += ":22"
 	}
 
 	client, err := ssh.Dial("tcp", addr, config)
