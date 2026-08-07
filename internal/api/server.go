@@ -20,6 +20,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
 	"github.com/mario-ezquerro/gubernator/internal/web"
 )
@@ -65,6 +66,9 @@ func Start(ctx context.Context) error {
 				slog.Warn("sre stack: failed to register in database", "err", err)
 			}
 			aqueducts.GenerateHostsFile()
+			if err := slo.SyncSLORulesToPrometheus(db.GetDB()); err != nil {
+				slog.Warn("slo engine: failed to sync rules on startup", "err", err)
+			}
 		}()
 	}
 
@@ -175,6 +179,12 @@ func Start(ctx context.Context) error {
 		{
 			task.GET("/ls", TaskListHandler)
 			task.DELETE("/:id", TaskRmHandler)
+		}
+
+		sloRoute := v1.Group("/slo", authMiddleware)
+		{
+			sloRoute.GET("/ls", SLOListHandler)
+			sloRoute.POST("/sync", SLOSyncHandler)
 		}
 
 		corednsRoute := v1.Group("/coredns", authMiddleware)
