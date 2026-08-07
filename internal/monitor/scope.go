@@ -84,6 +84,7 @@ func EnableScope() error {
 	coreDNSIP := getDynamicCoreDNSIP()
 
 	args := []string{
+		"--platform", "linux/amd64",
 		"--net", "host",
 		"--pid", "host",
 		"--privileged",
@@ -91,11 +92,8 @@ func EnableScope() error {
 		"-v", "/proc:/host/proc:ro",
 		"-v", "/sys:/sys:ro",
 		"weaveworks/scope:latest",
-		"--weave=false",
-		"--probe.proc.spy=true",
-		"--probe.docker=true",
-		"--probe.dns=true",
 		"--app.http.address=:" + ScopePort,
+		"--weave=false",
 	}
 
 	if coreDNSIP != "" {
