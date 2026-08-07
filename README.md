@@ -263,6 +263,33 @@ Deploy the stack:
 ./gbnt stack deploy -c docker-compose.yml mystack
 ```
 
+### Service Level Objectives (SLOs) & Error Budget Tracking
+
+Gubernator features native SLO calculation and Error Budget tracking powered by **Sloth** ([github.com/slok/sloth](https://github.com/slok/sloth)).
+
+Simply add `gbnt.slo.*` labels to your service in `docker-compose.yml`:
+
+```yaml
+services:
+  payment-api:
+    image: payment-api:latest
+    labels:
+      gbnt.slo.enable: "true"
+      gbnt.slo.target: "99.9"
+      gbnt.slo.window: "30d"
+      gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
+      gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
+```
+
+*Commands:*
+```bash
+# List active SLOs and real-time Error Budget % remaining
+gbnt slo ls
+
+# Manually trigger SLO rules generation for Prometheus
+gbnt slo sync
+```
+
 *Output:*
 ```text
  Stack 'mystack' deployed successfully!

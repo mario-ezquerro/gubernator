@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../examples/">
+        <link rel="prev" href="../observability/">
       
       
-        <link rel="next" href="../example-sre/">
+        <link rel="next" href="../example-jaeger/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>WordPress - Gubernator Orchestrator</title>
+        <title>SLO & Error Budgets (Sloth) - Gubernator Orchestrator</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#example-wordpress-getting-started-with-wordpress-on-gubernator" class="md-skip">
+        <a href="#service-level-objectives-slos-error-budget-engine" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              WordPress
+              SLO & Error Budgets (Sloth)
             
           </span>
         </div>
@@ -288,10 +288,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../observability/" class="md-tabs__link">
           
   
@@ -310,12 +312,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../examples/" class="md-tabs__link">
           
   
@@ -567,77 +567,12 @@
       
   
   
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
-  
-  
-  
-    <a href="../observability/" class="md-nav__link">
-      
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Observability
-  
-
-    
-  </span>
-  
-  
-
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
-  
-
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
   
     
     
-      
-        
       
         
       
@@ -665,17 +600,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Examples
+    Observability
   
 
     
@@ -686,12 +621,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Examples
+    Observability
   
 
           </label>
@@ -704,14 +639,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/" class="md-nav__link">
+      <a href="../observability/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Overview
+    Health & Metrics
   
 
     
@@ -748,7 +683,7 @@
   <span class="md-ellipsis">
     
   
-    WordPress
+    SLO & Error Budgets (Sloth)
   
 
     
@@ -766,7 +701,7 @@
   <span class="md-ellipsis">
     
   
-    WordPress
+    SLO & Error Budgets (Sloth)
   
 
     
@@ -792,10 +727,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-you-will-deploy" class="md-nav__link">
+  <a href="#key-capabilities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What You Will Deploy
+        🎯 Key Capabilities
       
     </span>
   </a>
@@ -803,10 +738,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#configuration-in-docker-composeyml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        📋 Configuration in docker-compose.yml
       
     </span>
   </a>
@@ -814,10 +749,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-start-gubernator" class="md-nav__link">
+  <a href="#cli-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Start Gubernator
+        💻 CLI Commands
       
     </span>
   </a>
@@ -825,104 +760,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-register-the-local-node" class="md-nav__link">
+  <a href="#rest-api-endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Register the Local Node
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-deploy-the-wordpress-stack" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Deploy the WordPress Stack
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-verify-the-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Verify the Deployment
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 4: Verify the Deployment">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-check-tasks-via-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Check Tasks via CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-verify-with-docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Verify with Docker
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-access-wordpress" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Access WordPress
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-edit-scale-from-the-web-ui" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Edit &amp; Scale from the Web UI
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-6-clean-up" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 6: Clean Up
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-learned" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What You Learned
+        🌐 REST API Endpoints
       
     </span>
   </a>
@@ -945,14 +786,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../example-sre/" class="md-nav__link">
+      <a href="../example-jaeger/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    SRE Observability
+    Distributed Tracing (Jaeger)
   
 
     
@@ -973,42 +814,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../example-n8n/" class="md-nav__link">
+      <a href="../how-use-jaeger/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    AI & Automation (n8n)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../example-jupyter/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    AI Development (Jupyter)
+    Jaeger Integration Guide
   
 
     
@@ -1024,6 +837,71 @@
             
           </ul>
         </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
       
     </li>
   
@@ -1049,113 +927,43 @@
   
 
 
-<h1 id="example-wordpress-getting-started-with-wordpress-on-gubernator">Example WordPress — Getting Started with WordPress on Gubernator</h1>
-<p>This is the <strong>first example</strong> to run. It demonstrates the complete basic workflow of Gubernator on a <strong>single node</strong> (your local machine), showcasing a multi-service deployment (<strong>WordPress + MySQL</strong>) utilizing persistent volumes, internal DNS service discovery, and automatic Caddy Ingress routing.</p>
+<h1 id="service-level-objectives-slos-error-budget-engine">Service Level Objectives (SLOs) &amp; Error Budget Engine</h1>
+<p>Gubernator features native <strong>Service Level Objective (SLO)</strong> calculation and <strong>Error Budget tracking</strong> powered by <strong>Sloth</strong> (<a href="https://github.com/slok/sloth">github.com/slok/sloth</a>).</p>
 <hr />
-<h2 id="what-you-will-deploy">What You Will Deploy</h2>
-<p>The stack file <code>docker-compose.yml</code> located in <code>examples/example-wordpress/</code> defines:
-- <strong><code>db</code></strong>: A MySQL database container storing data in a persistent Docker volume (<code>db_data</code>).
-- <strong><code>wordpress</code></strong>: A WordPress container connected to the database via internal DNS and exposed to external traffic using Caddy Ingress.</p>
-<hr />
-<h2 id="prerequisites">Prerequisites</h2>
+<h2 id="key-capabilities">🎯 Key Capabilities</h2>
 <ul>
-<li><strong>Docker</strong> running on your local machine.</li>
-<li><strong>Go 1.24+</strong> installed (or download the pre-built <code>gbnt</code> binary from <a href="https://github.com/mario-ezquerro/gubernator/releases">Releases</a>).</li>
+<li><strong>Google SRE Multi-Burn-Rate Alerts</strong>: Automatically generates multi-window multi-burn-rate Prometheus alerting rules (1h 14.4x, 6h 6x, 1d 3x, 3d 1x).</li>
+<li><strong>Error Budget Calculation</strong>: Calculates real-time remaining Error Budget % and current burn rates per service.</li>
+<li><strong>Docker Compose Native</strong>: Enable SLO tracking by adding standard <code>gbnt.slo.*</code> labels to services in your <code>docker-compose.yml</code>.</li>
+<li><strong>Prometheus Auto-Sync</strong>: Auto-writes Prometheus rules to <code>/data/monitor/prometheus/rules/slo_rules.yml</code>.</li>
 </ul>
 <hr />
-<h2 id="step-1-start-gubernator">Step 1: Start Gubernator</h2>
-<p>Open a terminal at the <strong>repository root</strong> and compile the Gubernator binary:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>gbnt<span class="w"> </span>./cmd/gbnt
-</span></code></pre></div>
-<p>Start the Manager with the Web UI and SRE Monitor enabled:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">GBNT_API_TOKEN</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">GBNT_WEB</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nv">GBNT_WEB_USER</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nv">GBNT_WEB_PASSWORD</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nv">GBNT_MONITOR</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>./gbnt<span class="w"> </span>serve
-</span></code></pre></div>
-<p>Leave this terminal running. It will output orchestrator logs as containers start up.</p>
-<div class="admonition tip">
-<p class="admonition-title">Open the Dashboard</p>
-<p>Navigate to <a href="http://localhost:4001">http://localhost:4001</a> (admin/admin) to view the live dashboard, watch logs, and manage stacks.</p>
-</div>
-<hr />
-<h2 id="step-2-register-the-local-node">Step 2: Register the Local Node</h2>
-<p>Before deploying stacks, Gubernator needs at least one active node. Open a <strong>second terminal</strong> and register your machine as a worker node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Terminal 2</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GBNT_API_TOKEN</span><span class="o">=</span>admin
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Initialize the cluster control plane</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>./gbnt<span class="w"> </span>legion<span class="w"> </span>init
-</span></code></pre></div>
-<p>Copy the <code>gbnt legion join</code> command output by the initialization and run it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./gbnt<span class="w"> </span>legion<span class="w"> </span>join<span class="w"> </span>--token<span class="w"> </span>&lt;YOUR_TOKEN&gt;<span class="w"> </span>--manager<span class="w"> </span><span class="m">127</span>.0.0.1:4000
+<h2 id="configuration-in-docker-composeyml">📋 Configuration in <code>docker-compose.yml</code></h2>
+<p>Simply add <code>gbnt.slo.*</code> labels to any service:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payment-api:latest</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">gbnt.slo.enable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">gbnt.slo.target</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;99.9&quot;</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nt">gbnt.slo.window</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nt">gbnt.slo.sli.error_query</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;sum(rate(http_requests_total{service=&quot;payment-api&quot;,status=~&quot;5..&quot;}[5m]))&#39;</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">gbnt.slo.sli.total_query</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;sum(rate(http_requests_total{service=&quot;payment-api&quot;}[5m]))&#39;</span>
 </span></code></pre></div>
 <hr />
-<h2 id="step-3-deploy-the-wordpress-stack">Step 3: Deploy the WordPress Stack</h2>
-<p>In a <strong>third terminal</strong>, deploy the WordPress stack using the CLI:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Terminal 3</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GBNT_API_TOKEN</span><span class="o">=</span>admin
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>./gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-c<span class="w"> </span>examples/example-wordpress/docker-compose.yml
+<h2 id="cli-commands">💻 CLI Commands</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># List active SLOs and real-time Error Budget % remaining</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>ls
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Manually trigger SLO rules generation and sync to Prometheus</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>sync
 </span></code></pre></div>
-<blockquote>
-<p>[!NOTE]
-The stack name is automatically defined as <strong><code>wp</code></strong> inside the <code>docker-compose.yml</code> file using the <code>stack.name</code> placement constraint. This ensures that the generated CoreDNS service domain resolves correctly to <code>db.wp.gbnt</code> as defined in WordPress's database connection settings.</p>
-</blockquote>
 <hr />
-<h2 id="step-4-verify-the-deployment">Step 4: Verify the Deployment</h2>
-<p>Wait a few seconds for the Docker daemon to pull the images and start the containers.</p>
-<h3 id="1-check-tasks-via-cli">1. Check Tasks via CLI</h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>./gbnt<span class="w"> </span>task<span class="w"> </span>ls
-</span></code></pre></div>
-You should see both the <code>db</code> and <code>wordpress</code> tasks listed as <code>running</code>.</p>
-<h3 id="2-verify-with-docker">2. Verify with Docker</h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>docker<span class="w"> </span>ps<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>gbnt
-</span></code></pre></div>
-You will see the active container instances running, linked to the <code>gbnt-net</code> bridge network.</p>
-<h3 id="3-access-wordpress">3. Access WordPress</h3>
+<h2 id="rest-api-endpoints">🌐 REST API Endpoints</h2>
 <ul>
-<li><strong>Direct Access:</strong> Open <a href="http://localhost:8080">http://localhost:8080</a> in your browser. You should see the WordPress setup screen.</li>
-<li><strong>Caddy Ingress:</strong> Caddy routes traffic from the local host name <code>http://hello-101.gbnt.test</code> directly to the WordPress task container.</li>
-</ul>
-<p><em>Note: If you configured your host OS resolver as described in the Installation guide, <code>hello-101.gbnt.test</code> will automatically resolve to <code>127.0.0.1</code> natively without editing <code>/etc/hosts</code>.</em></p>
-<blockquote>
-<p>[!TIP]
-<strong>Trusting Local HTTPS with Caddy:</strong>
-If you are using local HTTPS and want your host machine to trust the temporary self-signed certificate generated by Caddy, copy the root certificate from the container and add it to your trust store:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># 1. Copy the root certificate from the container</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>docker<span class="w"> </span>cp<span class="w"> </span>gbnt-caddy:/data/caddy/pki/authorities/local/root.crt<span class="w"> </span>./caddy-root.crt
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># 2. Install and trust it on macOS (Keychain)</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>sudo<span class="w"> </span>security<span class="w"> </span>add-trusted-cert<span class="w"> </span>-d<span class="w"> </span>-r<span class="w"> </span>trustRoot<span class="w"> </span>-k<span class="w"> </span>/Library/Keychains/System.keychain<span class="w"> </span>./caddy-root.crt
-</span></code></pre></div></p>
-</blockquote>
-<hr />
-<h2 id="step-5-edit-scale-from-the-web-ui">Step 5: Edit &amp; Scale from the Web UI</h2>
-<ol>
-<li>Open <a href="http://localhost:4001">http://localhost:4001</a>.</li>
-<li>Browse to the <strong>Legion Stacks</strong> tab.</li>
-<li>Select the <code>wp</code> stack and click the <strong>Edit YAML</strong> button.</li>
-<li>You can edit configurations on the fly or adjust scale replicas, then click <strong>Save &amp; Redeploy</strong>.</li>
-</ol>
-<hr />
-<h2 id="step-6-clean-up">Step 6: Clean Up</h2>
-<p>When you are done testing, tear down the stack:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Get the stack ID</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>./gbnt<span class="w"> </span>stack<span class="w"> </span>ls
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Remove the stack (stops and cleans up all associated containers and volumes)</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>./gbnt<span class="w"> </span>stack<span class="w"> </span>rm<span class="w"> </span>&lt;stack_id&gt;
-</span></code></pre></div>
-<hr />
-<h2 id="what-you-learned">What You Learned</h2>
-<ul>
-<li><strong>Multi-service Stacks</strong>: How to deploy complex applications with backend dependencies.</li>
-<li><strong>Service Discovery</strong>: Using Gubernator's built-in CoreDNS to resolve container IPs via <code>&lt;service&gt;.&lt;stack&gt;.gbnt</code>.</li>
-<li><strong>Caddy Ingress</strong>: Exposing services under custom domain names using the <code>ingress.host</code> placement constraint.</li>
-<li><strong>YAML Mapping Compatibility</strong>: Gubernator automatically supports both list (<code>- KEY=VALUE</code>) and map (<code>KEY: VALUE</code>) formats for environment variables.</li>
+<li><code>GET /v1/slo/ls</code>: Returns active SLO items with calculated error budget remaining and burn rate.</li>
+<li><code>POST /v1/slo/sync</code>: Triggers re-generation and synchronization of Prometheus SLO rules.</li>
 </ul>
 
 

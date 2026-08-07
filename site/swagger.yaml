@@ -1,4 +1,17 @@
 definitions:
+  api.AddNodeRequest:
+    properties:
+      host:
+        type: string
+      password:
+        type: string
+      user:
+        type: string
+    required:
+    - host
+    - password
+    - user
+    type: object
   api.HeartbeatRequest:
     properties:
       caddy_status:
@@ -62,6 +75,30 @@ definitions:
         type: string
     required:
     - role
+    type: object
+  api.SLOItem:
+    properties:
+      burn_rate:
+        type: number
+      error_budget_remaining:
+        type: number
+      error_query:
+        type: string
+      service_id:
+        type: string
+      service_name:
+        type: string
+      stack_id:
+        type: string
+      status:
+        description: '"healthy", "warning", "exhausted"'
+        type: string
+      target:
+        type: number
+      total_query:
+        type: string
+      window:
+        type: string
     type: object
   api.ScaleRequest:
     properties:
@@ -136,6 +173,8 @@ definitions:
         type: string
       caddyfile:
         type: string
+      cpu_percent:
+        type: number
       created_at:
         type: string
       id:
@@ -147,6 +186,14 @@ definitions:
           type: string
         description: Parsed labels for the application
         type: object
+      mem_percent:
+        type: number
+      mem_total_bytes:
+        type: integer
+      mem_used_bytes:
+        type: integer
+      net_bps:
+        type: number
       role:
         description: e.g., "manager", "worker"
         type: string
@@ -229,6 +276,19 @@ definitions:
       updated_at:
         type: string
     type: object
+  monitor.ScopeStatusResponse:
+    properties:
+      container:
+        type: string
+      enabled:
+        type: boolean
+      port:
+        type: string
+      status:
+        type: string
+      url:
+        type: string
+    type: object
 info:
   contact: {}
 paths:
@@ -299,6 +359,59 @@ paths:
       summary: Update CoreDNS Configuration
       tags:
       - CoreDNS
+  /v1/monitor/scope/disable:
+    post:
+      description: Stop and remove the Weave Scope container
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitor.ScopeStatusResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Disable Weave Scope Network Topology
+      tags:
+      - monitor
+  /v1/monitor/scope/enable:
+    post:
+      description: Deploy and start the Weave Scope container for interactive container
+        network topology
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitor.ScopeStatusResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Enable Weave Scope Network Topology
+      tags:
+      - monitor
+  /v1/monitor/scope/status:
+    get:
+      description: Get current running status and URL of Weave Scope network topology
+        superpower
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitor.ScopeStatusResponse'
+      summary: Get Weave Scope Network Topology Status
+      tags:
+      - monitor
   /v1/node/{id}:
     get:
       description: Fetch full details of a specific node
@@ -445,6 +558,30 @@ paths:
               type: string
             type: object
       summary: Promote/Demote Node
+      tags:
+      - nodes
+  /v1/node/add:
+    post:
+      consumes:
+      - application/json
+      description: Provision a new worker node via SSH
+      parameters:
+      - description: Node Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.AddNodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add Node via SSH
       tags:
       - nodes
   /v1/node/heartbeat:
@@ -650,6 +787,37 @@ paths:
       summary: List Services
       tags:
       - services
+  /v1/slo/ls:
+    get:
+      description: Fetch all active SLOs across services and query Prometheus for
+        error budget metrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.SLOItem'
+            type: array
+      summary: List Service Level Objectives (SLOs)
+      tags:
+      - slo
+  /v1/slo/sync:
+    post:
+      description: Force generation and synchronization of Prometheus SLO rules
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Sync SLO Rules to Prometheus
+      tags:
+      - slo
   /v1/stack/{id}:
     delete:
       description: Delete a stack, stop its containers, and remove all related records

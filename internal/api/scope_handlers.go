@@ -37,7 +37,7 @@ func ScopeStatusHandler(c *gin.Context) {
 // @Tags monitor
 // @Produce json
 // @Success 200 {object} monitor.ScopeStatusResponse
-// @Failure 500 {object} Response
+// @Failure 500 {object} map[string]string
 // @Router /v1/monitor/scope/enable [post]
 func ScopeEnableHandler(c *gin.Context) {
 	if err := monitor.EnableScope(); err != nil {
@@ -52,7 +52,7 @@ func ScopeEnableHandler(c *gin.Context) {
 // @Tags monitor
 // @Produce json
 // @Success 200 {object} monitor.ScopeStatusResponse
-// @Failure 500 {object} gin.H
+// @Failure 500 {object} map[string]string
 // @Router /v1/monitor/scope/disable [post]
 func ScopeDisableHandler(c *gin.Context) {
 	if err := monitor.DisableScope(); err != nil {

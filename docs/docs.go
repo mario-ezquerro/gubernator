@@ -116,6 +116,121 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/monitor/scope/disable": {
+            "post": {
+                "description": "Stop and remove the Weave Scope container",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Disable Weave Scope Network Topology",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/monitor/scope/enable": {
+            "post": {
+                "description": "Deploy and start the Weave Scope container for interactive container network topology",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Enable Weave Scope Network Topology",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/monitor/scope/status": {
+            "get": {
+                "description": "Get current running status and URL of Weave Scope network topology superpower",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Get Weave Scope Network Topology Status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/add": {
+            "post": {
+                "description": "Provision a new worker node via SSH",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Add Node via SSH",
+                "parameters": [
+                    {
+                        "description": "Node Credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AddNodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/node/heartbeat": {
             "post": {
                 "description": "Nodes call this to let the manager know they are alive",
@@ -648,6 +763,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/slo/ls": {
+            "get": {
+                "description": "Fetch all active SLOs across services and query Prometheus for error budget metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "List Service Level Objectives (SLOs)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/sync": {
+            "post": {
+                "description": "Force generation and synchronization of Prometheus SLO rules",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Sync SLO Rules to Prometheus",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/stack/deploy": {
             "post": {
                 "description": "Parse a docker-compose yaml and schedule tasks to nodes",
@@ -838,6 +999,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.AddNodeRequest": {
+            "type": "object",
+            "required": [
+                "host",
+                "password",
+                "user"
+            ],
+            "properties": {
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
         "api.HeartbeatRequest": {
             "type": "object",
             "required": [
@@ -931,6 +1111,42 @@ const docTemplate = `{
             "properties": {
                 "role": {
                     "description": "\"worker\" or \"manager\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOItem": {
+            "type": "object",
+            "properties": {
+                "burn_rate": {
+                    "type": "number"
+                },
+                "error_budget_remaining": {
+                    "type": "number"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "stack_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"healthy\", \"warning\", \"exhausted\"",
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "window": {
                     "type": "string"
                 }
             }
@@ -1047,6 +1263,9 @@ const docTemplate = `{
                 "caddyfile": {
                     "type": "string"
                 },
+                "cpu_percent": {
+                    "type": "number"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1062,6 +1281,18 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "mem_percent": {
+                    "type": "number"
+                },
+                "mem_total_bytes": {
+                    "type": "integer"
+                },
+                "mem_used_bytes": {
+                    "type": "integer"
+                },
+                "net_bps": {
+                    "type": "number"
                 },
                 "role": {
                     "description": "e.g., \"manager\", \"worker\"",
@@ -1181,6 +1412,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "monitor.ScopeStatusResponse": {
+            "type": "object",
+            "properties": {
+                "container": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 }
             }

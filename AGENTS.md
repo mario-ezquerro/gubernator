@@ -110,3 +110,7 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 
 ### 10. Force Leave Worker Stack Purging
 * **Smart drainage:** Executing `Force Leave` drains user tasks to remaining active nodes, while worker system stacks (`CORE-GBNT` and `[SRE] Monitor`) are terminated and automatically deleted from DB and Stacks view.
+
+### 11. Sloth SLO Engine & Error Budget Tracking (`gbnt slo`)
+* **Google SRE Multi-Burn-Rate Alerts:** Native integration of Sloth (`slok/sloth`) into Gubernator's core engine. Translates `gbnt.slo.*` Compose service labels into production-grade Prometheus recording and alerting rules, calculating real-time Error Budget % and multi-window burn rates via REST API (`/v1/slo`) and CLI (`gbnt slo ls`, `gbnt slo sync`).
+
