@@ -27,11 +27,13 @@ class _CenturionsPageState extends State<CenturionsPage> {
   String _searchQuery = '';
   int? _sortColumnIndex;
   bool _sortAscending = true;
-  final ScrollController _scrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
+  final ScrollController _verticalScrollController = ScrollController();
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _horizontalScrollController.dispose();
+    _verticalScrollController.dispose();
     super.dispose();
   }
 
@@ -421,12 +423,18 @@ class _CenturionsPageState extends State<CenturionsPage> {
                         ),
                       )
                     : Scrollbar(
-                        controller: _scrollController,
+                        controller: _verticalScrollController,
                         thumbVisibility: true,
                         child: SingleChildScrollView(
-                          controller: _scrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
+                          controller: _verticalScrollController,
+                          scrollDirection: Axis.vertical,
+                          child: Scrollbar(
+                            controller: _horizontalScrollController,
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              controller: _horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
                             sortColumnIndex: _sortColumnIndex,
                             sortAscending: _sortAscending,
                             columns: [
@@ -534,6 +542,8 @@ class _CenturionsPageState extends State<CenturionsPage> {
                         ),
                       ),
                     ),
+                  ),
+              ),
             ],
           ),
         ),
