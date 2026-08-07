@@ -212,6 +212,10 @@ func DoAPIRequest(method, path string, body io.Reader) (*http.Response, error) {
 		return nil, err
 	}
 
+	if envToken := os.Getenv("GBNT_API_TOKEN"); envToken != "" {
+		token = envToken
+	}
+
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
