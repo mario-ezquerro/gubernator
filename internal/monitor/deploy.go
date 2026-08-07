@@ -21,6 +21,7 @@ const (
 	// Docker volume names for config persistence
 	VolPrometheus     = "gbnt-monitor-prom-conf"
 	VolLoki           = "gbnt-monitor-loki-conf"
+	VolLokiData       = "gbnt-monitor-loki-data"
 	VolPromtail       = "gbnt-monitor-promtail-conf"
 	VolGrafanaProv    = "gbnt-monitor-grafana-prov"
 	VolPrometheusData = "gbnt-monitor-prom-data"
@@ -34,7 +35,7 @@ func AllContainers() []string {
 
 // AllVolumes returns all monitoring volume names.
 func AllVolumes() []string {
-	return []string{VolPrometheus, VolLoki, VolPromtail, VolGrafanaProv, VolPrometheusData, VolGrafanaData}
+	return []string{VolPrometheus, VolLoki, VolLokiData, VolPromtail, VolGrafanaProv, VolPrometheusData, VolGrafanaData}
 }
 
 // DeployManagerStack deploys the full SRE monitoring stack on the Manager node.
@@ -82,6 +83,7 @@ func DeployManagerStack(webUser, webPass string) error {
 		"--net", NetworkName,
 		"-p", "3100:3100",
 		"-v", VolLoki + ":/etc/loki:ro",
+		"-v", VolLokiData + ":/loki",
 		"grafana/loki:latest",
 		"-config.file=/etc/loki/loki-config.yml",
 	}); err != nil {

@@ -129,13 +129,10 @@ func lokiConfig() string {
 
 server:
   http_listen_port: 3100
-
-ingester:
-  lifecycler:
-    join_after: 0s
-    min_ready_duration: 0s
+  grpc_listen_port: 9096
 
 common:
+  instance_addr: 127.0.0.1
   path_prefix: /loki
   storage:
     filesystem:
