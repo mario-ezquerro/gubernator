@@ -85,6 +85,10 @@ func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 		task := v1.Group("/task", authMiddleware)
 		task.GET("/ls", TaskListHandler)
 		task.DELETE("/:id", TaskRmHandler)
+
+		sloRoute := v1.Group("/slo", authMiddleware)
+		sloRoute.GET("/ls", SLOListHandler)
+		sloRoute.POST("/sync", SLOSyncHandler)
 	}
 
 	return r, token
@@ -608,3 +612,55 @@ func TestNodeLabelsUpdate(t *testing.T) {
 		t.Errorf("expected custom-key to be 'custom-val', got: %s", node.Labels["custom-key"])
 	}
 }
+
+func TestComposeLabelsParsing(t *testing.T) {
+	r, tok := setupRouter(t)
+
+	composeRaw := `version: "3.8"
+services:
+  payment-api:
+    image: nginx:alpine
+    labels:
+      gbnt.slo.enable: "true"
+      gbnt.slo.target: "99.9"
+      gbnt.slo.window: "30d"
+      gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
+      gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
+`
+	body, _ := json.Marshal(StackDeployRequest{
+		Name:       "slo-stack",
+		ComposeRaw: composeRaw,
+	})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/stack/deploy", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", authHeader(tok))
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("deploy failed (%d): %s", w.Code, w.Body.String())
+	}
+
+	w2 := httptest.NewRecorder()
+	req2, _ := http.NewRequest("GET", "/v1/slo/ls", http.NoBody)
+	req2.Header.Set("Authorization", authHeader(tok))
+	r.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusOK {
+		t.Fatalf("slo ls failed (%d): %s", w2.Code, w2.Body.String())
+	}
+
+	var items []SLOItem
+	if err := json.Unmarshal(w2.Body.Bytes(), &items); err != nil {
+		t.Fatalf("failed to unmarshal SLO items: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 SLO item, got %d", len(items))
+	}
+
+	if items[0].ServiceName != "payment-api" || items[0].Target != 99.9 {
+		t.Errorf("unexpected SLO item: %+v", items[0])
+	}
+}
+
