@@ -647,6 +647,8 @@
       
         
       
+        
+      
     
     
     
@@ -797,6 +799,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#example-slo-service-level-objectives-error-budget-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example SLO — Service Level Objectives &amp; Error Budget Tracking
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-jaeger-distributed-tracing-stack" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -892,6 +905,34 @@
     
   
     SRE Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-slo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Level Objectives (SLO)
   
 
     
@@ -1019,6 +1060,16 @@
 <li>Complete SRE tooling orchestrated by Gubernator itself</li>
 <li>Prometheus scrapes Gubernator metrics</li>
 <li>Grafana dashboards + Loki log aggregation</li>
+</ul>
+<hr />
+<h2 id="example-slo-service-level-objectives-error-budget-tracking">Example SLO — Service Level Objectives &amp; Error Budget Tracking</h2>
+<p><strong>Target</strong>: Advanced / SRE<br />
+<strong>Goal</strong>: Deploy a microservice with native Sloth SLO labels and track real-time Error Budget consumption</p>
+<p><a href="../example-slo/">Start Example SLO →</a></p>
+<ul>
+<li>Define <code>gbnt.slo.target</code>, <code>gbnt.slo.window</code>, and <code>gbnt.slo.sli.*</code> labels in <code>docker-compose.yml</code></li>
+<li>Auto-generate multi-window multi-burn-rate Prometheus recording and alerting rules with <code>gbnt slo sync</code></li>
+<li>Monitor real-time Error Budget remaining % and burn rates with <code>gbnt slo ls</code></li>
 </ul>
 <hr />
 <h2 id="example-jaeger-distributed-tracing-stack">Example Jaeger — Distributed Tracing Stack</h2>

@@ -45,6 +45,19 @@ This page is your index to the progressive tutorials included with Gubernator. E
 
 ---
 
+## Example SLO — Service Level Objectives & Error Budget Tracking
+
+**Target**: Advanced / SRE  
+**Goal**: Deploy a microservice with native Sloth SLO labels and track real-time Error Budget consumption
+
+[Start Example SLO →](example-slo.md)
+
+- Define `gbnt.slo.target`, `gbnt.slo.window`, and `gbnt.slo.sli.*` labels in `docker-compose.yml`
+- Auto-generate multi-window multi-burn-rate Prometheus recording and alerting rules with `gbnt slo sync`
+- Monitor real-time Error Budget remaining % and burn rates with `gbnt slo ls`
+
+---
+
 ## Example Jaeger — Distributed Tracing Stack
 
 **Target**: Advanced / SRE  
