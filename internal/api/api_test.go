@@ -621,9 +621,9 @@ services:
   payment-api:
     image: nginx:alpine
     labels:
-      gbnt.slo.enable: "true"
-      gbnt.slo.target: "99.9"
-      gbnt.slo.window: "30d"
+      gbnt.slo.enable: true
+      gbnt.slo.target: 99.9
+      gbnt.slo.window: 30d
       gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
       gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
 `

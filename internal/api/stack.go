@@ -63,12 +63,13 @@ func (l *LabelsMap) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	if value.Kind == yaml.MappingNode {
-		type plain map[string]string
-		var m plain
-		if err := value.Decode(&m); err != nil {
-			return err
+		var mAny map[string]interface{}
+		if err := value.Decode(&mAny); err == nil {
+			for k, val := range mAny {
+				(*l)[strings.TrimSpace(k)] = fmt.Sprintf("%v", val)
+			}
+			return nil
 		}
-		*l = LabelsMap(m)
 		return nil
 	}
 
