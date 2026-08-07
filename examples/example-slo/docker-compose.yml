@@ -2,10 +2,9 @@ version: "3.8"
 
 services:
   payment-api:
-    image: hashicorp/http-echo:latest
-    command: ["-text=Payment API OK", "-listen=:8080"]
+    image: nginx:alpine
     ports:
-      - "8080:8080"
+      - "8080:80"
     labels:
       gbnt.slo.enable: "true"
       gbnt.slo.target: "99.9"

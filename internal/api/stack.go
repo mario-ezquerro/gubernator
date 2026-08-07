@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,6 +41,39 @@ func (e *EnvSlice) UnmarshalYAML(value *yaml.Node) error {
 	return fmt.Errorf("invalid environment format: must be a list or map")
 }
 
+// LabelsMap handles both sequence/list (e.g. ["gbnt.slo.enable=true"]) and map (e.g. gbnt.slo.enable: "true") formats for labels in YAML.
+type LabelsMap map[string]string
+
+func (l *LabelsMap) UnmarshalYAML(value *yaml.Node) error {
+	*l = make(map[string]string)
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		for _, item := range list {
+			parts := strings.SplitN(item, "=", 2)
+			if len(parts) == 2 {
+				(*l)[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			} else if len(parts) == 1 {
+				(*l)[strings.TrimSpace(parts[0])] = "true"
+			}
+		}
+		return nil
+	}
+
+	if value.Kind == yaml.MappingNode {
+		var m map[string]string
+		if err := value.Decode(&m); err != nil {
+			return err
+		}
+		*l = m
+		return nil
+	}
+
+	return fmt.Errorf("invalid labels format: must be a list or map")
+}
+
 type ComposeFile struct {
 	Name     string                    `yaml:"name"` // Top-level name in compose file
 	Services map[string]ComposeService `yaml:"services"`
@@ -54,6 +88,7 @@ type ComposeService struct {
 	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
 	Volumes     []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
 	Command     string            `yaml:"command"` // optional command override
+	Labels      LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
 	Deploy      struct {
 		Replicas  int `yaml:"replicas"`
 		Placement struct {
@@ -142,13 +177,18 @@ func StackDeployHandler(c *gin.Context) {
 			replicas = 1 // default
 		}
 
+		constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
+		for k, v := range srvDef.Labels {
+			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+		}
+
 		service := db.Service{
 			ID:              uuid.New().String(),
 			StackID:         stackID,
 			Name:            srvName,
 			Image:           srvDef.Image,
 			DesiredReplicas: replicas,
-			Constraints:     srvDef.Deploy.Placement.Constraints,
+			Constraints:     constraints,
 			Ports:           srvDef.Ports,
 			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
@@ -159,6 +199,9 @@ func StackDeployHandler(c *gin.Context) {
 		// Scheduler: assign Tasks to Nodes based on Constraints
 		scheduleService(&service, req.TargetNode)
 	}
+
+	// Trigger generation of Prometheus SLO rules
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Stack deployed successfully",
