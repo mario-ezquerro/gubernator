@@ -214,3 +214,44 @@ class DashboardState {
     );
   }
 }
+
+class SLOItem {
+  final String serviceId;
+  final String serviceName;
+  final String stackId;
+  final double target;
+  final String window;
+  final String errorQuery;
+  final String totalQuery;
+  final double errorBudgetRemaining;
+  final double burnRate;
+  final String status;
+
+  SLOItem({
+    required this.serviceId,
+    required this.serviceName,
+    required this.stackId,
+    required this.target,
+    required this.window,
+    required this.errorQuery,
+    required this.totalQuery,
+    required this.errorBudgetRemaining,
+    required this.burnRate,
+    required this.status,
+  });
+
+  factory SLOItem.fromJson(Map<String, dynamic> json) {
+    return SLOItem(
+      serviceId: json['service_id'] ?? '',
+      serviceName: json['service_name'] ?? '',
+      stackId: json['stack_id'] ?? '',
+      target: (json['target'] as num?)?.toDouble() ?? 99.9,
+      window: json['window'] ?? '30d',
+      errorQuery: json['error_query'] ?? '',
+      totalQuery: json['total_query'] ?? '',
+      errorBudgetRemaining: (json['error_budget_remaining'] as num?)?.toDouble() ?? 100.0,
+      burnRate: (json['burn_rate'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] ?? 'healthy',
+    );
+  }
+}

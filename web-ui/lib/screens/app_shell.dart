@@ -16,6 +16,7 @@ import 'pages/grafana_page.dart';
 import 'pages/jaeger_page.dart';
 import 'pages/network_page.dart';
 import 'pages/scope_page.dart';
+import 'pages/slo_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -149,6 +150,11 @@ class _AppShellState extends State<AppShell> {
         showBadge: true,
       ),
       const SidebarItem(
+        icon: Icons.speed_outlined,
+        activeIcon: Icons.speed,
+        label: 'SLO & Error Budgets',
+      ),
+      const SidebarItem(
         icon: Icons.alt_route_outlined,
         activeIcon: Icons.alt_route,
         label: 'Caddy Ingress',
@@ -188,6 +194,7 @@ class _AppShellState extends State<AppShell> {
     'Centurions [Host]',
     'Legions [Stacks]',
     'Tasks',
+    'SLO & Error Budgets',
     'Caddy Ingress',
     'CoreDNS',
     'Grafana',
@@ -213,16 +220,18 @@ class _AppShellState extends State<AppShell> {
       case 3:
         return TasksPage(state: _state, onRefresh: _fetchData);
       case 4:
-        return CaddyPage(state: _state, onRefresh: _fetchData);
+        return SloPage(state: _state, onRefresh: _fetchData);
       case 5:
-        return CoreDnsPage(state: _state, onRefresh: _fetchData);
+        return CaddyPage(state: _state, onRefresh: _fetchData);
       case 6:
-        return const GrafanaPage();
+        return CoreDnsPage(state: _state, onRefresh: _fetchData);
       case 7:
-        return const NetworkPage();
+        return const GrafanaPage();
       case 8:
-        return const JaegerPage();
+        return const NetworkPage();
       case 9:
+        return const JaegerPage();
+      case 10:
         return const ScopePage();
       default:
         return OverviewPage(
@@ -248,7 +257,7 @@ class _AppShellState extends State<AppShell> {
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
               // Guard Grafana/Jaeger if monitor not running
-              if (index >= 6 && !_state.monitorRunning) return;
+              if (index >= 7 && !_state.monitorRunning) return;
               setState(() => _selectedIndex = index);
             },
             isDark: widget.isDark,

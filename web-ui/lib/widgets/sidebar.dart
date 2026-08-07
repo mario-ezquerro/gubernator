@@ -144,8 +144,8 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   children: [
                     for (int i = 0; i < widget.items.length; i++) ...[
-                      // Divider before Grafana section (index 6)
-                      if (i == 6 && widget.monitorRunning)
+                      // Divider before Grafana section (index 7)
+                      if (i == 7 && widget.monitorRunning)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                           child: Divider(
@@ -153,8 +153,8 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                             color: borderColor,
                           ),
                         ),
-                      // Skip Grafana/Network/Jaeger items (indices 6..8) if SRE monitor not running
-                      if (i >= 6 && i <= 8 && !widget.monitorRunning)
+                      // Skip Grafana/Network/Jaeger items (indices 7..9) if SRE monitor not running
+                      if (i >= 7 && i <= 9 && !widget.monitorRunning)
                         const SizedBox.shrink()
                       else
                         _buildNavItem(

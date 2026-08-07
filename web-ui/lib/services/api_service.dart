@@ -261,5 +261,21 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  /// Fetches active SLO definitions and error budgets.
+  static Future<List<SLOItem>> fetchSLOs() async {
+    final response = await http.get(Uri.parse('/api/slo'));
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => SLOItem.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// Force syncs SLO rules with Prometheus.
+  static Future<bool> syncSLOs() async {
+    final response = await http.post(Uri.parse('/api/slo/sync'));
+    return response.statusCode == 200;
+  }
 }
 

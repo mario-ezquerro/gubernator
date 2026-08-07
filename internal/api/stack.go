@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -187,6 +188,8 @@ func StackDeployHandler(c *gin.Context) {
 		for k, v := range srvDef.Deploy.Labels {
 			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
 		}
+
+		slog.Info("parsed compose service labels", "name", srvName, "labels", srvDef.Labels, "deploy_labels", srvDef.Deploy.Labels, "constraints", constraints)
 
 		service := db.Service{
 			ID:              uuid.New().String(),

@@ -574,6 +574,10 @@ class _TasksPageState extends State<TasksPage> {
                     child: PlutoGrid(
                       columns: columns,
                       rows: _getPlutoRows(theme),
+                      createFooter: (stateManager) {
+                        stateManager.setPageSize(25, notify: false);
+                        return PlutoPagination(stateManager);
+                      },
                       onRowChecked: (PlutoGridOnRowCheckedEvent event) => setState(() {}),
                       rowColorCallback: (rowColorContext) {
                         if (rowColorContext.rowIdx % 2 != 0) {
