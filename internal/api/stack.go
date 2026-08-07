@@ -91,7 +91,8 @@ type ComposeService struct {
 	Command     string            `yaml:"command"` // optional command override
 	Labels      LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
 	Deploy      struct {
-		Replicas  int `yaml:"replicas"`
+		Replicas  int       `yaml:"replicas"`
+		Labels    LabelsMap `yaml:"labels"`
 		Placement struct {
 			Constraints []string `yaml:"constraints"`
 		} `yaml:"placement"`
@@ -180,6 +181,9 @@ func StackDeployHandler(c *gin.Context) {
 
 		constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
 		for k, v := range srvDef.Labels {
+			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+		}
+		for k, v := range srvDef.Deploy.Labels {
 			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
 		}
 
