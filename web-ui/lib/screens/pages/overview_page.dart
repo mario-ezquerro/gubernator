@@ -34,6 +34,7 @@ class OverviewPage extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             // ─── Stats Cards ───────────────────────────────
             _buildStatsRow(theme, running, activeNodes),
@@ -49,6 +50,7 @@ class OverviewPage extends StatelessWidget {
                 if (constraints.maxWidth < 700) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       _buildStacksSummaryCard(theme),
                       const SizedBox(height: 16),
@@ -58,6 +60,7 @@ class OverviewPage extends StatelessWidget {
                 }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Expanded(child: _buildStacksSummaryCard(theme)),
                     const SizedBox(width: 16),
