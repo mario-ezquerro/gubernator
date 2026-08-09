@@ -174,6 +174,8 @@ class OverviewPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -191,10 +193,12 @@ class OverviewPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             if (recentStacks.isEmpty)
-              Center(
+              Align(
+                alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.layers_clear, size: 36,
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
@@ -272,6 +276,8 @@ class OverviewPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -289,10 +295,12 @@ class OverviewPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             if (state.nodes.isEmpty)
-              Center(
+              Align(
+                alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.dns, size: 36,
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
