@@ -170,101 +170,105 @@ class OverviewPage extends StatelessWidget {
     final recentStacks = state.stacks.take(5).toList();
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.layers, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('Recent Legions',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                TextButton(
-                  onPressed: onViewLegions,
-                  child: const Text('View All →'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (recentStacks.isEmpty)
-              Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.layers_clear, size: 36,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-                      const SizedBox(height: 8),
-                      Text('No stacks deployed',
-                          style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4))),
-                    ],
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.layers, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('Recent Legions',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: onViewLegions,
+                    child: const Text('View All →'),
                   ),
-                ),
-              )
-            else
-              ...recentStacks.map((s) {
-                final taskCount = state.tasks.where((t) {
-                  final svc = state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
-                  return svc?.stackId == s.id;
-                }).length;
-                final runningCount = state.tasks.where((t) {
-                  final svc = state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
-                  return svc?.stackId == s.id && t.status == 'running';
-                }).length;
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    child: Row(
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (recentStacks.isEmpty)
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.layers_outlined, size: 16,
-                            color: theme.colorScheme.primary.withValues(alpha: 0.7)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(s.name,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: runningCount == taskCount
-                                ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                : const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$runningCount/$taskCount',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: runningCount == taskCount
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFF59E0B),
-                            ),
-                          ),
-                        ),
+                        Icon(Icons.layers_clear, size: 36,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                        const SizedBox(height: 8),
+                        Text('No stacks deployed',
+                            style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4))),
                       ],
                     ),
                   ),
-                );
-              }),
-          ],
+                )
+              else
+                ...recentStacks.map((s) {
+                  final taskCount = state.tasks.where((t) {
+                    final svc = state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+                    return svc?.stackId == s.id;
+                  }).length;
+                  final runningCount = state.tasks.where((t) {
+                    final svc = state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+                    return svc?.stackId == s.id && t.status == 'running';
+                  }).length;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.layers_outlined, size: 16,
+                              color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(s.name,
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: runningCount == taskCount
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$runningCount/$taskCount',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: runningCount == taskCount
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
         ),
       ),
     );
@@ -272,45 +276,48 @@ class OverviewPage extends StatelessWidget {
 
   Widget _buildNodesSummaryCard(ThemeData theme) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.dns, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('Centurions',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                TextButton(
-                  onPressed: onViewCenturions,
-                  child: const Text('View All →'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (state.nodes.isEmpty)
-              Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.dns, size: 36,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-                      const SizedBox(height: 8),
-                      Text('No nodes registered',
-                          style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4))),
-                    ],
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.dns, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('Centurions',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: onViewCenturions,
+                    child: const Text('View All →'),
                   ),
-                ),
-              )
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (state.nodes.isEmpty)
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.dns, size: 36,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                        const SizedBox(height: 8),
+                        Text('No nodes registered',
+                            style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4))),
+                      ],
+                    ),
+                  ),
+                )
             else
               ...state.nodes.map((n) {
                 final nodeTaskCount = state.tasks.where((t) => t.nodeId == n.id).length;
@@ -432,8 +439,9 @@ class OverviewPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildInlineThermometer(String label, String valueText, double percent, Color defaultColor, ThemeData theme) {
     final color = percent > 90 ? Colors.red : (percent > 75 ? Colors.orange : defaultColor);
