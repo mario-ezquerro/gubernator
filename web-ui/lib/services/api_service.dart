@@ -277,5 +277,74 @@ class ApiService {
     final response = await http.post(Uri.parse('/api/slo/sync'));
     return response.statusCode == 200;
   }
+
+  /// Caddy: Fetches Caddy status and stats for a given node.
+  static Future<Map<String, dynamic>> fetchCaddyStatus({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/status${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
+  /// Caddy: Fetches dynamic routes matrix.
+  static Future<List<dynamic>> fetchCaddyRoutes({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/routes${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['routes'] ?? [];
+    }
+    return [];
+  }
+
+  /// Caddy: Fetches TLS certs list.
+  static Future<List<dynamic>> fetchCaddyCerts({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/certs${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['certificates'] ?? [];
+    }
+    return [];
+  }
+
+  /// Caddy: Fetches tail logs.
+  static Future<List<String>> fetchCaddyLogs({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/logs${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List raw = data['logs'] ?? [];
+      return raw.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  /// Caddy: Fetches Prometheus metrics.
+  static Future<Map<String, dynamic>> fetchCaddyMetrics({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/metrics${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
+  /// Caddy: Formats Caddyfile content via caddy fmt.
+  static Future<String> formatCaddyfile(String caddyfile) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/fmt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'caddyfile': caddyfile}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['formatted'] ?? caddyfile;
+    }
+    return caddyfile;
+  }
 }
+
 

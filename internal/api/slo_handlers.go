@@ -77,7 +77,7 @@ func SLOListHandler(c *gin.Context) {
 			TotalQuery:           cmap["gbnt.slo.sli.total_query"],
 			ErrorBudgetRemaining: 100.0,
 			BurnRate:             0.0,
-			Status:               "healthy",
+			Status:               "no_data",
 		}
 
 		// Attempt to query Prometheus for real-time error budget ratio
@@ -88,11 +88,13 @@ func SLOListHandler(c *gin.Context) {
 				item.Status = "exhausted"
 			} else if item.ErrorBudgetRemaining < 20 {
 				item.Status = "warning"
+			} else {
+				item.Status = "healthy"
 			}
 		}
 
 		burnRate, err := queryPrometheusMetric(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
-		if err == nil {
+		if err == nil && burnRate >= 0 {
 			item.BurnRate = burnRate
 		}
 

@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/slok/sloth/pkg/common/model"
@@ -192,5 +194,17 @@ func SyncSLORulesToPrometheus(gormDB *gorm.DB) error {
 	}
 
 	slog.Info("SLO Engine: updated slo_rules.yml", "path", rulesPath)
+
+	// Automatically notify Prometheus to reload rules if active
+	go func() {
+		client := &http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Post("http://localhost:9090/-/reload", "text/plain", nil)
+		if err == nil && resp != nil {
+			_ = resp.Body.Close()
+			slog.Info("SLO Engine: reloaded Prometheus rules via /-/reload")
+		}
+	}()
+
 	return nil
 }
+

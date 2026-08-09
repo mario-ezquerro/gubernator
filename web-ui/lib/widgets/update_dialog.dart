@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 
 class UpdateDialog extends StatefulWidget {
@@ -21,12 +22,36 @@ class UpdateDialog extends StatefulWidget {
   State<UpdateDialog> createState() => _UpdateDialogState();
 }
 
+class _ParsedCategory {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<String> items;
+
+  _ParsedCategory({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+}
+
 class _UpdateDialogState extends State<UpdateDialog> {
   bool _applying = false;
   String? _error;
 
   void _closeDialog() {
     Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  Future<void> _openReleaseUrl() async {
+    if (widget.releaseUrl.isEmpty) return;
+    final uri = Uri.parse(widget.releaseUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
   }
 
   Future<void> _handleApply() async {
@@ -66,18 +91,119 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
   }
 
+  List<_ParsedCategory> _parseNotes(String notes) {
+    final Map<String, List<String>> categories = {
+      'features': [],
+      'fixes': [],
+      'slo': [],
+      'security': [],
+      'other': [],
+    };
+
+    final lines = notes.split('\n');
+    for (var line in lines) {
+      var trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('---') || trimmed.startsWith('===') || trimmed.startsWith('|')) continue;
+
+      // Remove markdown list indicators (#, ##, *, -, •, numbers)
+      trimmed = trimmed.replaceAll(RegExp(r'^(#{1,6}\s*|\*\s*|-\s*|•\s*|\d+\.\s*)'), '').trim();
+      if (trimmed.isEmpty) continue;
+
+      // Clean markdown formatting (**bold**, `code`)
+      trimmed = trimmed.replaceAll('**', '').replaceAll('`', '');
+
+      final lower = trimmed.toLowerCase();
+      if (lower.startsWith('what') || lower.startsWith('release notes') || lower.startsWith('changelog')) {
+        continue;
+      }
+
+      if (lower.contains('feat') || lower.contains('add') || lower.contains('new') || lower.contains('novedad') || lower.contains('mejora')) {
+        categories['features']!.add(trimmed);
+      } else if (lower.contains('fix') || lower.contains('bug') || lower.contains('patch') || lower.contains('solucion') || lower.contains('correcci')) {
+        categories['fixes']!.add(trimmed);
+      } else if (lower.contains('slo') || lower.contains('perf') || lower.contains('speed') || lower.contains('optimi') || lower.contains('rendimiento')) {
+        categories['slo']!.add(trimmed);
+      } else if (lower.contains('sec') || lower.contains('auth') || lower.contains('token') || lower.contains('tls') || lower.contains('seguridad')) {
+        categories['security']!.add(trimmed);
+      } else {
+        categories['other']!.add(trimmed);
+      }
+    }
+
+    final List<_ParsedCategory> result = [];
+
+    if (categories['features']!.isNotEmpty) {
+      result.add(_ParsedCategory(
+        title: 'Features & Enhancements',
+        icon: Icons.auto_awesome,
+        color: const Color(0xFF10B981),
+        items: categories['features']!,
+      ));
+    }
+    if (categories['fixes']!.isNotEmpty) {
+      result.add(_ParsedCategory(
+        title: 'Bug Fixes & Stability',
+        icon: Icons.bug_report,
+        color: const Color(0xFF3B82F6),
+        items: categories['fixes']!,
+      ));
+    }
+    if (categories['slo']!.isNotEmpty) {
+      result.add(_ParsedCategory(
+        title: 'Performance & SLO Engine',
+        icon: Icons.speed,
+        color: const Color(0xFFF59E0B),
+        items: categories['slo']!,
+      ));
+    }
+    if (categories['security']!.isNotEmpty) {
+      result.add(_ParsedCategory(
+        title: 'Security & Infrastructure',
+        icon: Icons.shield,
+        color: const Color(0xFF8B5CF6),
+        items: categories['security']!,
+      ));
+    }
+    if (categories['other']!.isNotEmpty) {
+      result.add(_ParsedCategory(
+        title: 'General Improvements',
+        icon: Icons.checklist,
+        color: const Color(0xFF6B7280),
+        items: categories['other']!,
+      ));
+    }
+
+    if (result.isEmpty) {
+      result.add(_ParsedCategory(
+        title: 'Cluster Core Update',
+        icon: Icons.system_update,
+        color: const Color(0xFFF97316),
+        items: [
+          'Automated rolling upgrade to version ${widget.latestVersion}',
+          'Updated Docker container base images and dependencies',
+          'Cluster state synchronization and stability enhancements',
+        ],
+      ));
+    }
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    final maxHeight = MediaQuery.of(context).size.height * 0.88;
+    final categories = _parseNotes(widget.releaseNotes);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: 540,
+          maxWidth: 580,
           maxHeight: maxHeight,
         ),
         child: Padding(
@@ -212,40 +338,159 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
 
-                      // Release Notes Section
-                      if (widget.releaseNotes.isNotEmpty) ...[
-                        Text(
-                          'Release Notes:',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                      // Release Notes Header & Summary Badges Bar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Update Improvements:',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Wrap(
+                                spacing: 4,
+                                children: categories.map((cat) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: cat.color.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(cat.icon, size: 12, color: cat.color),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          '${cat.items.length}',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: cat.color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 140),
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF0F172A)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: SingleChildScrollView(
-                            child: Text(
-                              widget.releaseNotes,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontFamily: 'Courier New',
-                                color: isDark ? Colors.grey[300] : Colors.grey[800],
+                          if (widget.releaseUrl.isNotEmpty)
+                            InkWell(
+                              onTap: _openReleaseUrl,
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'GitHub Release',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      Icons.open_in_new,
+                                      size: 12,
+                                      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Structured Release Notes List Box
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF0F172A)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: categories.map((cat) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Category Header
+                                    Row(
+                                      children: [
+                                        Icon(cat.icon, size: 15, color: cat.color),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          cat.title,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: cat.color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    // Items List
+                                    ...cat.items.map((item) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '• ',
+                                              style: TextStyle(
+                                                color: cat.color,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                item,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark ? Colors.grey[300] : Colors.grey[800],
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
 
                       // Cluster Notice Box
                       Container(
@@ -288,7 +533,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Buttons
               Row(

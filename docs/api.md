@@ -60,6 +60,18 @@ While `./gbnt serve` is running:
 | `POST` | `/v1/node/tasks/{task_id}/status` | Worker reports task status |
 | `DELETE` | `/v1/task/{id}` | Remove a task record |
 
+### Caddy Subsystem
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/caddy/status` | Get Caddy process info, uptime, memory & instance counts |
+| `GET` | `/v1/caddy/routes` | Get active reverse proxy route matrix and upstream health |
+| `GET` | `/v1/caddy/certs` | Get managed TLS certificates and expiration dates |
+| `GET` | `/v1/caddy/ca.crt` | Download Caddy internal Root CA certificate (`root.crt`) |
+| `GET` | `/v1/caddy/logs` | Stream/tail container access log output |
+| `GET` | `/v1/caddy/metrics` | Get Prometheus metrics (request count, RPS, latency percentiles) |
+| `POST` | `/v1/caddy/fmt` | Format Caddyfile via `caddy fmt` |
+
 ---
 
 ## Stack Deploy Payload

@@ -2,17 +2,19 @@ version: "3.8"
 
 services:
   payment-api:
-    image: nginx:alpine
+    image: hashicorp/http-echo:latest
+    command: ["-text=Payment API OK", "-listen=:8080"]
     ports:
-      - "8080:80"
+      - "8080:8080"
     labels:
       gbnt.slo.enable: "true"
       gbnt.slo.target: "99.9"
       gbnt.slo.window: "30d"
-      gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
-      gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
+      gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
+      gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
     deploy:
       replicas: 2
       placement:
         constraints:
           - node.labels.gbnt.node.role == worker
+          - ingress.host == payment.gbnt.local

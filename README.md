@@ -33,7 +33,7 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 * **State:** Powered by SQLite and GORM.
 * **Container Engine:** Direct communication with the Docker Engine.
 * **Web Dashboard:** Flutter Web with Material Design 3 (embedded into the Go binary).
-* **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and Caddy (external ingress).
+* **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and multi-node Caddy Ingress with full 7-tab UI management (see [SPEC-caddy.md](SPEC-caddy.md) and [caddy.md](docs/caddy.md)).
 
 *(See [architecture.md](architecture.md) for a deeper dive).*
 

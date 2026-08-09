@@ -50,6 +50,7 @@ nav:
   - Architecture & UI:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md
+    - Caddy Ingress Suite: caddy.md
     - REST API & SDK: api.md
   - Reference:
     - CLI Overview: cli.md

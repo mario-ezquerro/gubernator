@@ -1,6 +1,16 @@
-# Service Level Objectives (SLO) Example
+# Service Level Objectives (SLO) & Error Budget Example
 
 This guide demonstrates how to deploy a sample application with **Service Level Objectives (SLO)** and **Error Budget tracking** using Gubernator's native **Sloth** engine.
+
+---
+
+## ⚙️ Prerequisites
+
+Before deploying an SLO stack, ensure Gubernator's **SRE Observability Stack** (Prometheus & cAdvisor) is initialized on the Manager node:
+
+```bash
+gbnt monitor init
+```
 
 ---
 
@@ -21,13 +31,14 @@ services:
       gbnt.slo.enable: "true"
       gbnt.slo.target: "99.9"
       gbnt.slo.window: "30d"
-      gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
-      gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
+      gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
+      gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
     deploy:
       replicas: 2
       placement:
         constraints:
           - node.labels.gbnt.node.role == worker
+          - ingress.host == payment.gbnt.local
 ```
 
 ---
@@ -39,14 +50,15 @@ services:
    gbnt stack deploy -c examples/example-slo/docker-compose.yml slo-demo
    ```
 
-2. **Check Active SLOs:**
+2. **Check Active SLOs & Error Budgets:**
    ```bash
    gbnt slo ls
    ```
 
-3. **Synchronize Prometheus Rules:**
+3. **Simulate Errors & Burn Error Budget:**
+   Run the traffic generator to send HTTP errors and watch your Error Budget burn down live:
    ```bash
-   gbnt slo sync
+   ./examples/example-slo/generate_errors.sh <MANAGER-IP>
    ```
 
 ---

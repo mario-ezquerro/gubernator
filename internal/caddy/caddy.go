@@ -192,3 +192,49 @@ func updateCaddyfileInVolume() error {
 	}
 	return nil
 }
+
+// GetRootCACert attempts to fetch the Root CA certificate from the Caddy container or volume.
+func GetRootCACert() ([]byte, error) {
+	out, err := exec.Command("docker", "exec", ContainerName, "cat", "/data/caddy/pki/authorities/local/root.crt").Output()
+	if err == nil && len(out) > 0 {
+		return out, nil
+	}
+	// Fallback to checking local dir
+	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
+	if b, err := os.ReadFile(certPath); err == nil && len(b) > 0 {
+		return b, nil
+	}
+	return nil, fmt.Errorf("root CA certificate not found; ensure Caddy has initialized TLS")
+}
+
+// FormatCaddyfile formats Caddyfile content using 'caddy fmt'.
+func FormatCaddyfile(raw string) (string, error) {
+	cmd := exec.Command("docker", "exec", "-i", ContainerName, "caddy", "fmt", "-")
+	cmd.Stdin = strings.NewReader(raw)
+	out, err := cmd.Output()
+	if err == nil && len(out) > 0 {
+		return string(out), nil
+	}
+	// Fallback if container is not running: return raw cleaned
+	return raw, nil
+}
+
+// GetLogs fetches the last N lines of logs from the gbnt-caddy container.
+func GetLogs(lines int) ([]string, error) {
+	if lines <= 0 {
+		lines = 100
+	}
+	out, err := exec.Command("docker", "logs", "--tail", fmt.Sprintf("%d", lines), ContainerName).CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read caddy logs: %w", err)
+	}
+	rawLines := strings.Split(string(out), "\n")
+	var res []string
+	for _, l := range rawLines {
+		if strings.TrimSpace(l) != "" {
+			res = append(res, l)
+		}
+	}
+	return res, nil
+}
+
