@@ -107,13 +107,37 @@ func fallbackInfo(current string) *UpdateInfo {
 	}
 }
 
+func parseSemver(v string) (int, int, int) {
+	v = strings.TrimPrefix(v, "v")
+	parts := strings.Split(v, ".")
+	var major, minor, patch int
+	if len(parts) > 0 {
+		fmt.Sscanf(parts[0], "%d", &major)
+	}
+	if len(parts) > 1 {
+		fmt.Sscanf(parts[1], "%d", &minor)
+	}
+	if len(parts) > 2 {
+		fmt.Sscanf(parts[2], "%d", &patch)
+	}
+	return major, minor, patch
+}
+
 func isNewerVersion(current, latest string) bool {
 	c := strings.TrimPrefix(current, "v")
-	l := strings.TrimPrefix(latest, "v")
 	if c == "dev" || c == "" {
 		return false
 	}
-	return l != c && l > c
+	cMaj, cMin, cPat := parseSemver(current)
+	lMaj, lMin, lPat := parseSemver(latest)
+
+	if lMaj != cMaj {
+		return lMaj > cMaj
+	}
+	if lMin != cMin {
+		return lMin > cMin
+	}
+	return lPat > cPat
 }
 
 func parseTime(tStr string) time.Time {
