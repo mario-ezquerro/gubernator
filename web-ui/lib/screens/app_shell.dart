@@ -388,7 +388,19 @@ class _AppShellState extends State<AppShell> {
                             )
                           : AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
-                              child: _buildCurrentPage(),
+                              layoutBuilder: (currentChild, previousChildren) {
+                                return Stack(
+                                  alignment: Alignment.topLeft,
+                                  children: [
+                                    ...previousChildren,
+                                    if (currentChild != null) currentChild,
+                                  ],
+                                );
+                              },
+                              child: KeyedSubtree(
+                                key: ValueKey<int>(_selectedIndex),
+                                child: _buildCurrentPage(),
+                              ),
                             ),
                 ),
               ],

@@ -27,12 +27,14 @@ class OverviewPage extends StatelessWidget {
     final running = state.tasks.where((t) => t.status == 'running').length;
     final activeNodes = state.nodes.where((n) => n.status == 'active' || n.status == 'ready').length;
 
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return Align(
+      alignment: Alignment.topLeft,
+      child: RefreshIndicator(
+        onRefresh: () async => onRefresh(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -72,8 +74,9 @@ class OverviewPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatsRow(ThemeData theme, int running, int activeNodes) {
     return LayoutBuilder(
