@@ -11,3 +11,5 @@ Whenever an AI agent completes a task, implements a new feature, or makes a comm
 2. If the change is a minor bug fix or small documentation update, increment the PATCH version (`v1.1.2`).
 3. If the change is a new feature (like completing a Sprint Phase), increment the MINOR version (`v1.1.3`).
 4. Update the `VERSION` file accordingly before notifying the user.
+5. **Git Tag & Release Sync**: Whenever a version bump is committed, ALWAYS create and push a corresponding Git tag (`git tag vX.Y.Z && git push origin vX.Y.Z`) to GitHub so that the GitHub Releases API (`api.github.com/repos/mario-ezquerro/gubernator/releases/latest`) detects the update and the Web Dashboard's auto-updater badge remains fully operational.
+
