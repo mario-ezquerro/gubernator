@@ -1,6 +1,7 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../models/models.dart' as models;
+import 'yaml_code_editor.dart';
 
 /// A dialog to define and deploy a new Docker Compose stack.
 class NewStackDialog extends StatefulWidget {
@@ -26,6 +27,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _yamlController;
   bool _deploying = false;
+  bool _showLineNumbers = true;
   String _selectedNode = 'auto';
 
   @override
@@ -191,7 +193,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Compose YAML Input
+                      // Compose YAML Input Header with Load file button
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -215,26 +217,11 @@ class _NewStackDialogState extends State<NewStackDialog> {
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 320,
-                        child: TextFormField(
+                        child: YamlCodeEditor(
                           controller: _yamlController,
-                          maxLines: null,
-                          expands: true,
-                          style: TextStyle(
-                            fontFamily: 'Courier New',
-                            fontSize: 13,
-                            color: isDark ? const Color(0xFFE6EDF3) : const Color(0xFF1E293B),
-                            height: 1.5,
-                          ),
-                          decoration: InputDecoration(
-                            fillColor: isDark
-                                ? const Color(0xFF0D1117)
-                                : const Color(0xFFF1F5F9),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            contentPadding: const EdgeInsets.all(16),
-                          ),
+                          showLineNumbers: _showLineNumbers,
+                          onToggleLineNumbers: (val) => setState(() => _showLineNumbers = val),
+                          isDark: isDark,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter a Docker Compose YAML definition';

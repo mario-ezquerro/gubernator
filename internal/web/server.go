@@ -81,6 +81,24 @@ func (e *envSlice) UnmarshalYAML(value *yaml.Node) error {
 	return fmt.Errorf("invalid environment format: must be a list or map")
 }
 
+type commandVal string
+
+func (c *commandVal) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*c = commandVal(value.Value)
+		return nil
+	}
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		*c = commandVal(strings.Join(list, " "))
+		return nil
+	}
+	return nil
+}
+
 // composeFile and composeService are local copies of the API types to avoid
 // circular imports (api → web → api). They must stay in sync with api.ComposeFile.
 type composeFile struct {
@@ -89,11 +107,11 @@ type composeFile struct {
 }
 
 type composeService struct {
-	Image       string   `yaml:"image"`
-	Ports       []string `yaml:"ports"`
-	Environment envSlice `yaml:"environment"` // handles both list and map formats
-	Volumes     []string `yaml:"volumes"`
-	Command     string   `yaml:"command"`
+	Image       string     `yaml:"image"`
+	Ports       []string   `yaml:"ports"`
+	Environment envSlice   `yaml:"environment"` // handles both list and map formats
+	Volumes     []string   `yaml:"volumes"`
+	Command     commandVal `yaml:"command"`
 	Deploy      struct {
 		Replicas  int `yaml:"replicas"`
 		Placement struct {
@@ -863,7 +881,7 @@ func deployStackHandler(c *gin.Context) {
 			Ports:           srvDef.Ports,
 			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
-			Command:         srvDef.Command,
+			Command:         string(srvDef.Command),
 		}
 		db.DB.Create(&service)
 		webScheduleService(&service, req.TargetNode)
@@ -958,7 +976,7 @@ func redeployStackHandler(c *gin.Context) {
 				Ports:           srvDef.Ports,
 				Env:             []string(srvDef.Environment),
 				Volumes:         srvDef.Volumes,
-				Command:         srvDef.Command,
+				Command:         string(srvDef.Command),
 			}
 			db.DB.Create(&service)
 			webScheduleService(&service, "")
@@ -1052,7 +1070,7 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 	if existing.Image != newDef.Image {
 		return true
 	}
-	if existing.Command != newDef.Command {
+	if existing.Command != string(newDef.Command) {
 		return true
 	}
 	if !stringSlicesEqual(existing.Ports, newDef.Ports) {
@@ -1160,7 +1178,7 @@ func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
 	svc.Ports = newDef.Ports
 	svc.Env = []string(newDef.Environment)
 	svc.Volumes = newDef.Volumes
-	svc.Command = newDef.Command
+	svc.Command = string(newDef.Command)
 	svc.Constraints = newDef.Deploy.Placement.Constraints
 	svc.DesiredReplicas = replicas
 	db.DB.Save(svc)

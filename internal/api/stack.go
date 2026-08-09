@@ -77,6 +77,25 @@ func (l *LabelsMap) UnmarshalYAML(value *yaml.Node) error {
 	return fmt.Errorf("invalid labels format: must be a list or map")
 }
 
+// CommandVal handles both scalar string (e.g. "caddy run") and sequence list (e.g. ["caddy", "run"]) formats for command in YAML.
+type CommandVal string
+
+func (c *CommandVal) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*c = CommandVal(value.Value)
+		return nil
+	}
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		*c = CommandVal(strings.Join(list, " "))
+		return nil
+	}
+	return nil
+}
+
 type ComposeFile struct {
 	Name     string                    `yaml:"name"` // Top-level name in compose file
 	Services map[string]ComposeService `yaml:"services"`
@@ -90,7 +109,7 @@ type ComposeService struct {
 	Environment EnvSlice          `yaml:"environment"` // handles both list and map formats
 	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
 	Volumes     []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
-	Command     string            `yaml:"command"` // optional command override
+	Command     CommandVal        `yaml:"command"` // handles both string and list formats
 	Labels      LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
 	Deploy      struct {
 		Replicas  int       `yaml:"replicas"`
@@ -201,7 +220,7 @@ func StackDeployHandler(c *gin.Context) {
 			Ports:           srvDef.Ports,
 			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
-			Command:         srvDef.Command,
+			Command:         string(srvDef.Command),
 		}
 		db.DB.Create(&service)
 

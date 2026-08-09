@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'yaml_code_editor.dart';
 
 /// A full-screen dialog for viewing and editing a stack's compose YAML.
 class ComposeEditorDialog extends StatefulWidget {
@@ -24,6 +25,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   late String _originalYaml;
   bool _saving = false;
   bool _redeploying = false;
+  bool _showLineNumbers = true;
 
   @override
   void initState() {
@@ -45,12 +47,12 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
     return Dialog(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 860, maxHeight: 640),
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 680),
         child: Column(
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.fromLTRB(24, 20, 8, 16),
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
               child: Row(
                 children: [
                   Icon(Icons.code, color: theme.colorScheme.primary),
@@ -76,25 +78,11 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: TextField(
+                child: YamlCodeEditor(
                   controller: _controller,
-                  maxLines: null,
-                  expands: true,
-                  style: TextStyle(
-                    fontFamily: 'Courier New',
-                    fontSize: 13,
-                    color: isDark ? const Color(0xFFE6EDF3) : const Color(0xFF1E293B),
-                    height: 1.5,
-                  ),
-                  decoration: InputDecoration(
-                    fillColor: isDark
-                        ? const Color(0xFF0D1117)
-                        : const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
+                  showLineNumbers: _showLineNumbers,
+                  onToggleLineNumbers: (val) => setState(() => _showLineNumbers = val),
+                  isDark: isDark,
                 ),
               ),
             ),
