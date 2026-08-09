@@ -99,6 +99,40 @@ func (c *commandVal) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+type labelsMap map[string]string
+
+func (l *labelsMap) UnmarshalYAML(value *yaml.Node) error {
+	*l = make(map[string]string)
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		for _, item := range list {
+			parts := strings.SplitN(item, "=", 2)
+			if len(parts) == 2 {
+				(*l)[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			} else if len(parts) == 1 {
+				(*l)[strings.TrimSpace(parts[0])] = "true"
+			}
+		}
+		return nil
+	}
+
+	if value.Kind == yaml.MappingNode {
+		var mAny map[string]interface{}
+		if err := value.Decode(&mAny); err == nil {
+			for k, val := range mAny {
+				(*l)[strings.TrimSpace(k)] = fmt.Sprintf("%v", val)
+			}
+			return nil
+		}
+		return nil
+	}
+
+	return fmt.Errorf("invalid labels format: must be a list or map")
+}
+
 // composeFile and composeService are local copies of the API types to avoid
 // circular imports (api → web → api). They must stay in sync with api.ComposeFile.
 type composeFile struct {
@@ -112,8 +146,10 @@ type composeService struct {
 	Environment envSlice   `yaml:"environment"` // handles both list and map formats
 	Volumes     []string   `yaml:"volumes"`
 	Command     commandVal `yaml:"command"`
+	Labels      labelsMap  `yaml:"labels"`
 	Deploy      struct {
-		Replicas  int `yaml:"replicas"`
+		Replicas int       `yaml:"replicas"`
+		Labels   labelsMap `yaml:"labels"`
 		Placement struct {
 			Constraints []string `yaml:"constraints"`
 		} `yaml:"placement"`
@@ -874,13 +910,21 @@ func deployStackHandler(c *gin.Context) {
 			replicas = 1
 		}
 
+		constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
+		for k, v := range srvDef.Labels {
+			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+		}
+		for k, v := range srvDef.Deploy.Labels {
+			constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+		}
+
 		service := db.Service{
 			ID:              uuid.New().String(),
 			StackID:         stackID,
 			Name:            srvName,
 			Image:           srvDef.Image,
 			DesiredReplicas: replicas,
-			Constraints:     srvDef.Deploy.Placement.Constraints,
+			Constraints:     constraints,
 			Ports:           srvDef.Ports,
 			Env:             []string(srvDef.Environment),
 			Volumes:         srvDef.Volumes,
@@ -889,6 +933,8 @@ func deployStackHandler(c *gin.Context) {
 		db.DB.Create(&service)
 		webScheduleService(&service, req.TargetNode)
 	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
 }
@@ -969,13 +1015,21 @@ func redeployStackHandler(c *gin.Context) {
 		} else {
 			// Brand new service — create and schedule
 			slog.Info("redeploy: new service, creating replicas", "service", srvName, "replicas", newReplicas)
+			constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
+			for k, v := range srvDef.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+			for k, v := range srvDef.Deploy.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+
 			service := db.Service{
 				ID:              uuid.New().String(),
 				StackID:         id,
 				Name:            srvName,
 				Image:           srvDef.Image,
 				DesiredReplicas: newReplicas,
-				Constraints:     srvDef.Deploy.Placement.Constraints,
+				Constraints:     constraints,
 				Ports:           srvDef.Ports,
 				Env:             []string(srvDef.Environment),
 				Volumes:         srvDef.Volumes,
@@ -994,6 +1048,8 @@ func redeployStackHandler(c *gin.Context) {
 		db.DB.Where("id = ?", orphan.ID).Delete(&db.Service{})
 		summary = append(summary, fmt.Sprintf("%s: removed", srvName))
 	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "stack_id": id, "changes": summary})
 }
@@ -1177,12 +1233,20 @@ func stopAllTasksForService(serviceID string) {
 // updateServiceRecord updates an existing service's definition in the DB
 // to match the new compose values, then persists the change.
 func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
+	constraints := append([]string{}, newDef.Deploy.Placement.Constraints...)
+	for k, v := range newDef.Labels {
+		constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+	}
+	for k, v := range newDef.Deploy.Labels {
+		constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	svc.Image = newDef.Image
 	svc.Ports = newDef.Ports
 	svc.Env = []string(newDef.Environment)
 	svc.Volumes = newDef.Volumes
 	svc.Command = string(newDef.Command)
-	svc.Constraints = newDef.Deploy.Placement.Constraints
+	svc.Constraints = constraints
 	svc.DesiredReplicas = replicas
 	db.DB.Save(svc)
 }

@@ -1,0 +1,21 @@
+version: "3.8"
+name: slo-auth-service
+
+services:
+  auth-api:
+    image: hashicorp/http-echo:latest
+    command: ["-text=Auth Service OK", "-listen=:8081"]
+    ports:
+      - "8081:8081"
+    labels:
+      gbnt.slo.enable: "true"
+      gbnt.slo.target: "99.5"
+      gbnt.slo.window: "30d"
+      gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
+      gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.gbnt.node.role == worker
+          - ingress.host == auth.gbnt.local
