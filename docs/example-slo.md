@@ -1,6 +1,6 @@
 # Service Level Objectives (SLO) & Error Budget Example
 
-This guide demonstrates how to deploy a sample application with **Service Level Objectives (SLO)** and **Error Budget tracking** using Gubernator's native **Sloth** engine.
+This guide demonstrates how to deploy a sample application with **Service Level Objectives (SLO)** and **Error Budget tracking** using Gubernator's native Slok & Pyrra engine.
 
 ---
 
@@ -31,8 +31,8 @@ services:
       gbnt.slo.enable: "true"
       gbnt.slo.target: "99.9"
       gbnt.slo.window: "30d"
-      gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
-      gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
+      gbnt.slo.template: "caddy-http"
+      gbnt.slo.journey: "Checkout Flow"
     deploy:
       replicas: 2
       placement:
@@ -55,7 +55,14 @@ services:
    gbnt slo ls
    ```
 
-3. **Simulate Errors & Burn Error Budget:**
+3. **Explore Web Dashboard Suite (`http://localhost:4001`):**
+   - **Overview & Budgets**: Search, sort, and toggle between Cards and Data Table views.
+   - **User Journeys**: Inspect composite journey health and bottleneck identification.
+   - **Deployment Correlation**: View stack update events correlated with burn rate spikes.
+   - **SLI Templates**: Browse built-in PromQL templates (`caddy-http`, `http-status`, `latency-p99`, `grpc`).
+   - **Backtest & Validator**: Paste Compose YAML to run instant dry-run backtests.
+
+4. **Simulate Errors & Burn Error Budget:**
    Run the traffic generator to send HTTP errors and watch your Error Budget burn down live:
    ```bash
    ./examples/example-slo/generate_errors.sh <MANAGER-IP>
@@ -63,12 +70,6 @@ services:
 
 ---
 
-## 📊 Error Budget Metrics in Prometheus
+## 📊 Automated Grafana Dashboard
 
-Gubernator automatically generates standard Sloth recording metrics in Prometheus:
-
-- `slo:objective:ratio`: Target objective (e.g. `0.999`).
-- `slo:error_budget:ratio`: Target error budget (e.g. `0.001`).
-- `slo:period_error_budget_remaining:ratio`: Remaining error budget percentage.
-- `slo:current_burn_rate:ratio`: Short-term error budget burn rate multiplier.
-- `slo:period_burn_rate:ratio`: Long-term error budget burn rate multiplier.
+Gubernator automatically generates a complete Grafana Dashboard for all active SLOs at `/data/monitor/grafana/dashboards/slo_dashboard.json`, accessible directly via **[http://localhost:3000](http://localhost:3000)** or via the embedded Grafana tab in the Web Dashboard.

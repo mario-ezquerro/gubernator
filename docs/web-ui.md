@@ -231,6 +231,18 @@ The dashboard includes a full-featured **Caddy Ingress Visualization Suite** ins
 
 ---
 
+## SLO & Error Budgets Suite
+
+The dashboard includes a dedicated **5-tab SLO Management Suite** inspired by Slok and Pyrra:
+
+1. **Overview & Error Budgets** — Live status cards, real-time text search, multi-field sorting (Lowest Budget, Highest Burn, Name), Cards vs Data Table view toggle, clickable label chips, and detail modals with RED metrics & historical trend charts.
+2. **User Journeys** — Composite journey topology, aggregated availability targets, average error budget, and bottleneck service identification.
+3. **Deployment Correlation** — Timeline graph cross-referencing stack updates and container restarts with service burn rate spikes.
+4. **SLI Templates & PromQL Generator** — Interactive catalog of built-in SLI query templates (`caddy-http`, `http-status`, `latency-p99`, `grpc`).
+5. **Backtest & Validator** — Form for pasting Compose YAML to run instant dry-run PromQL backtests against historical Prometheus metrics.
+
+---
+
 ## API Endpoints Used by the Dashboard
 
 The Web UI communicates with the internal `/api` routes (on port 4001, protected by Basic Auth):

@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../web-ui/">
+        <link rel="prev" href="../caddy/">
       
       
         <link rel="next" href="../cli/">
@@ -458,6 +458,8 @@
       
         
       
+        
+      
     
     
     
@@ -551,6 +553,34 @@
     
   
     Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../caddy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
   
 
     
@@ -702,6 +732,17 @@
     <span class="md-ellipsis">
       
         Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caddy-subsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caddy Subsystem
       
     </span>
   </a>
@@ -1129,6 +1170,53 @@
 <td><code>DELETE</code></td>
 <td><code>/v1/task/{id}</code></td>
 <td>Remove a task record</td>
+</tr>
+</tbody>
+</table>
+<h3 id="caddy-subsystem">Caddy Subsystem</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/status</code></td>
+<td>Get Caddy process info, uptime, memory &amp; instance counts</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/routes</code></td>
+<td>Get active reverse proxy route matrix and upstream health</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/certs</code></td>
+<td>Get managed TLS certificates and expiration dates</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/ca.crt</code></td>
+<td>Download Caddy internal Root CA certificate (<code>root.crt</code>)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/logs</code></td>
+<td>Stream/tail container access log output</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/metrics</code></td>
+<td>Get Prometheus metrics (request count, RPS, latency percentiles)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/fmt</code></td>
+<td>Format Caddyfile via <code>caddy fmt</code></td>
 </tr>
 </tbody>
 </table>

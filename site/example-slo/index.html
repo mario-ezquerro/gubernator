@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#service-level-objectives-slo-example" class="md-skip">
+        <a href="#service-level-objectives-slo-error-budget-example" class="md-skip">
           Skip to content
         </a>
       
@@ -449,6 +449,8 @@
   
     
     
+      
+        
       
         
       
@@ -850,6 +852,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker-compose-definition" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -872,10 +885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#error-budget-metrics-in-prometheus" class="md-nav__link">
+  <a href="#automated-grafana-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📊 Error Budget Metrics in Prometheus
+        📊 Automated Grafana Dashboard
       
     </span>
   </a>
@@ -974,60 +987,70 @@
   
 
 
-<h1 id="service-level-objectives-slo-example">Service Level Objectives (SLO) Example</h1>
-<p>This guide demonstrates how to deploy a sample application with <strong>Service Level Objectives (SLO)</strong> and <strong>Error Budget tracking</strong> using Gubernator's native <strong>Sloth</strong> engine.</p>
+<h1 id="service-level-objectives-slo-error-budget-example">Service Level Objectives (SLO) &amp; Error Budget Example</h1>
+<p>This guide demonstrates how to deploy a sample application with <strong>Service Level Objectives (SLO)</strong> and <strong>Error Budget tracking</strong> using Gubernator's native Slok &amp; Pyrra engine.</p>
+<hr />
+<h2 id="prerequisites">⚙️ Prerequisites</h2>
+<p>Before deploying an SLO stack, ensure Gubernator's <strong>SRE Observability Stack</strong> (Prometheus &amp; cAdvisor) is initialized on the Manager node:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>gbnt<span class="w"> </span>monitor<span class="w"> </span>init
+</span></code></pre></div>
 <hr />
 <h2 id="docker-compose-definition">📋 Docker Compose Definition</h2>
 <p>To enable SLO tracking for a service, specify <code>gbnt.slo.*</code> labels in <code>docker-compose.yml</code>:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.8&quot;</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hashicorp/http-echo:latest</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;-text=Payment</span><span class="nv"> </span><span class="s">API</span><span class="nv"> </span><span class="s">OK&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-listen=:8080&quot;</span><span class="p p-Indicator">]</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8080:8080&quot;</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">gbnt.slo.enable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="nt">gbnt.slo.target</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;99.9&quot;</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">      </span><span class="nt">gbnt.slo.window</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">      </span><span class="nt">gbnt.slo.sli.error_query</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;sum(rate(http_requests_total{service=&quot;payment-api&quot;,status=~&quot;5..&quot;}[5m]))&#39;</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">      </span><span class="nt">gbnt.slo.sli.total_query</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;sum(rate(http_requests_total{service=&quot;payment-api&quot;}[5m]))&#39;</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node.labels.gbnt.node.role == worker</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.8&quot;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hashicorp/http-echo:latest</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;-text=Payment</span><span class="nv"> </span><span class="s">API</span><span class="nv"> </span><span class="s">OK&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-listen=:8080&quot;</span><span class="p p-Indicator">]</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8080:8080&quot;</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nt">gbnt.slo.enable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="nt">gbnt.slo.target</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;99.9&quot;</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="nt">gbnt.slo.window</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">      </span><span class="nt">gbnt.slo.template</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;caddy-http&quot;</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="nt">gbnt.slo.journey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Checkout</span><span class="nv"> </span><span class="s">Flow&quot;</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node.labels.gbnt.node.role == worker</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == payment.gbnt.local</span>
 </span></code></pre></div>
 <hr />
 <h2 id="deployment-steps">🚀 Deployment Steps</h2>
 <ol>
 <li>
 <p><strong>Deploy Stack:</strong>
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-c<span class="w"> </span>examples/example-slo/docker-compose.yml<span class="w"> </span>slo-demo
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-c<span class="w"> </span>examples/example-slo/docker-compose.yml<span class="w"> </span>slo-demo
 </span></code></pre></div></p>
 </li>
 <li>
-<p><strong>Check Active SLOs:</strong>
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>ls
+<p><strong>Check Active SLOs &amp; Error Budgets:</strong>
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>ls
 </span></code></pre></div></p>
 </li>
 <li>
-<p><strong>Synchronize Prometheus Rules:</strong>
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>sync
+<p><strong>Explore Web Dashboard Suite (<code>http://localhost:4001</code>):</strong></p>
+</li>
+<li><strong>Overview &amp; Budgets</strong>: Search, sort, and toggle between Cards and Data Table views.</li>
+<li><strong>User Journeys</strong>: Inspect composite journey health and bottleneck identification.</li>
+<li><strong>Deployment Correlation</strong>: View stack update events correlated with burn rate spikes.</li>
+<li><strong>SLI Templates</strong>: Browse built-in PromQL templates (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>).</li>
+<li>
+<p><strong>Backtest &amp; Validator</strong>: Paste Compose YAML to run instant dry-run backtests.</p>
+</li>
+<li>
+<p><strong>Simulate Errors &amp; Burn Error Budget:</strong>
+   Run the traffic generator to send HTTP errors and watch your Error Budget burn down live:
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./examples/example-slo/generate_errors.sh<span class="w"> </span>&lt;MANAGER-IP&gt;
 </span></code></pre></div></p>
 </li>
 </ol>
 <hr />
-<h2 id="error-budget-metrics-in-prometheus">📊 Error Budget Metrics in Prometheus</h2>
-<p>Gubernator automatically generates standard Sloth recording metrics in Prometheus:</p>
-<ul>
-<li><code>slo:objective:ratio</code>: Target objective (e.g. <code>0.999</code>).</li>
-<li><code>slo:error_budget:ratio</code>: Target error budget (e.g. <code>0.001</code>).</li>
-<li><code>slo:period_error_budget_remaining:ratio</code>: Remaining error budget percentage.</li>
-<li><code>slo:current_burn_rate:ratio</code>: Short-term error budget burn rate multiplier.</li>
-<li><code>slo:period_burn_rate:ratio</code>: Long-term error budget burn rate multiplier.</li>
-</ul>
+<h2 id="automated-grafana-dashboard">📊 Automated Grafana Dashboard</h2>
+<p>Gubernator automatically generates a complete Grafana Dashboard for all active SLOs at <code>/data/monitor/grafana/dashboards/slo_dashboard.json</code>, accessible directly via <strong><a href="http://localhost:3000">http://localhost:3000</a></strong> or via the embedded Grafana tab in the Web Dashboard.</p>
 
 
 

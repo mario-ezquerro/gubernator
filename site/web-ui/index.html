@@ -16,7 +16,7 @@
         <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../api/">
+        <link rel="next" href="../caddy/">
       
       
         
@@ -458,6 +458,8 @@
       
         
       
+        
+      
     
     
     
@@ -825,6 +827,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#caddy-ingress-visualization-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caddy Ingress Visualization Suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slo-error-budgets-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SLO &amp; Error Budgets Suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-endpoints-used-by-the-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -850,6 +874,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../caddy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1389,6 +1441,28 @@
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>6. Scheduler assigns new Tasks to active nodes
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>7. Local Executor picks up pending Tasks and starts new containers
 </span></code></pre></div>
+<hr />
+<h2 id="caddy-ingress-visualization-suite">Caddy Ingress Visualization Suite</h2>
+<p>The dashboard includes a full-featured <strong>Caddy Ingress Visualization Suite</strong> inspired by <code>caddy-ui</code> featuring 7 sub-tabs:</p>
+<ol>
+<li><strong>Dashboard</strong> — Live server status, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
+<li><strong>Route Manager</strong> — Reverse proxy routes matrix, live upstream health checks, uptime %, search/filter by domain.</li>
+<li><strong>Caddyfile Editor</strong> — Syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
+<li><strong>TLS Certificates</strong> — Certificate status, expiration countdowns, orphan detection, and <strong>Root CA Download</strong> (<code>root.crt</code>).</li>
+<li><strong>Access Logs</strong> — Streaming log tailing with keyword search and level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>).</li>
+<li><strong>Log Configuration</strong> — Toggle access logging per site block directly from the UI.</li>
+<li><strong>Metrics</strong> — RPS gauge, average response latency, status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and p50/p95/p99 percentiles.</li>
+</ol>
+<hr />
+<h2 id="slo-error-budgets-suite">SLO &amp; Error Budgets Suite</h2>
+<p>The dashboard includes a dedicated <strong>5-tab SLO Management Suite</strong> inspired by Slok and Pyrra:</p>
+<ol>
+<li><strong>Overview &amp; Error Budgets</strong> — Live status cards, real-time text search, multi-field sorting (Lowest Budget, Highest Burn, Name), Cards vs Data Table view toggle, clickable label chips, and detail modals with RED metrics &amp; historical trend charts.</li>
+<li><strong>User Journeys</strong> — Composite journey topology, aggregated availability targets, average error budget, and bottleneck service identification.</li>
+<li><strong>Deployment Correlation</strong> — Timeline graph cross-referencing stack updates and container restarts with service burn rate spikes.</li>
+<li><strong>SLI Templates &amp; PromQL Generator</strong> — Interactive catalog of built-in SLI query templates (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>).</li>
+<li><strong>Backtest &amp; Validator</strong> — Form for pasting Compose YAML to run instant dry-run PromQL backtests against historical Prometheus metrics.</li>
+</ol>
 <hr />
 <h2 id="api-endpoints-used-by-the-dashboard">API Endpoints Used by the Dashboard</h2>
 <p>The Web UI communicates with the internal <code>/api</code> routes (on port 4001, protected by Basic Auth):</p>

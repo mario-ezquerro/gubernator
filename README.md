@@ -265,7 +265,9 @@ Deploy the stack:
 
 ### Service Level Objectives (SLOs) & Error Budget Tracking
 
-Gubernator features native SLO calculation and Error Budget tracking powered by **Sloth** ([github.com/slok/sloth](https://github.com/slok/sloth)).
+Gubernator features native SLO calculation, Error Budget tracking, and interactive visualizations powered by **Sloth** ([github.com/slok/sloth](https://github.com/slok/sloth)) and inspired by **Pyrra** ([github.com/pyrra-dev/pyrra](https://github.com/pyrra-dev/pyrra)).
+
+Features built-in SLI templates (`caddy-http`, `http-status`, `latency-p99`, `grpc`), `latency` indicator thresholds, composite **User Journeys**, deployment event correlation, PromQL backtesting/validation, auto-generated Grafana dashboards, and a 5-tab Web Dashboard Suite with search, sorting, and historical trend charts.
 
 Simply add `gbnt.slo.*` labels to your service in `docker-compose.yml`:
 
@@ -277,8 +279,8 @@ services:
       gbnt.slo.enable: "true"
       gbnt.slo.target: "99.9"
       gbnt.slo.window: "30d"
-      gbnt.slo.sli.error_query: 'sum(rate(http_requests_total{service="payment-api",status=~"5.."}[5m]))'
-      gbnt.slo.sli.total_query: 'sum(rate(http_requests_total{service="payment-api"}[5m]))'
+      gbnt.slo.template: "caddy-http"
+      gbnt.slo.journey: "Checkout Flow"
 ```
 
 *Commands:*
@@ -286,7 +288,7 @@ services:
 # List active SLOs and real-time Error Budget % remaining
 gbnt slo ls
 
-# Manually trigger SLO rules generation for Prometheus
+# Manually trigger SLO rules generation for Prometheus & Grafana
 gbnt slo sync
 ```
 

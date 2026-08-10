@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../observability/">
+        <link rel="prev" href="../web-ui/">
       
       
-        <link rel="next" href="../example-jaeger/">
+        <link rel="next" href="../api/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>SLO & Error Budgets (Sloth) - Gubernator Orchestrator</title>
+        <title>Caddy Ingress Suite - Gubernator Orchestrator</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#service-level-objectives-slos-error-budget-engine" class="md-skip">
+        <a href="#caddy-ingress-gateway-multi-node-reverse-proxy" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SLO & Error Budgets (Sloth)
+              Caddy Ingress Suite
             
           </span>
         </div>
@@ -244,10 +244,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../architecture/" class="md-tabs__link">
           
   
@@ -288,12 +290,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../observability/" class="md-tabs__link">
           
   
@@ -445,41 +445,44 @@
       
   
   
-  
-  
     
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
   
   
   
-    <a href="../architecture/" class="md-nav__link">
+    
+    
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -493,12 +496,264 @@
   
   
 
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture & UI
   
 
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-multi-node-proxying" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛 Architecture &amp; Multi-Node Proxying
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-ui-visualization-suite-caddy-ui-inspired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎨 Web UI Visualization Suite (caddy-ui Inspired)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-ca-trust-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔐 Root CA Trust Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Root CA Trust Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linux-ubuntudebian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux (Ubuntu/Debian)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (PowerShell Admin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📡 REST API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API & SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -569,44 +824,41 @@
       
   
   
+  
+  
     
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
   
   
   
-    
-    
+    <a href="../observability/" class="md-nav__link">
       
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-        
-        
-      
-      
-        
-      
-    
-    
-      
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
-            
   
   
   <span class="md-ellipsis">
@@ -620,225 +872,12 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Observability
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
   
 
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../observability/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Health & Metrics
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SLO & Error Budgets (Sloth)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    SLO & Error Budgets (Sloth)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#key-capabilities" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🎯 Key Capabilities
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-compose-label-schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📋 Docker Compose Label Schema
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        💻 CLI Commands
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rest-api-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🌐 REST API Endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../example-jaeger/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Distributed Tracing (Jaeger)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../how-use-jaeger/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Jaeger Integration Guide
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
       
     </li>
   
@@ -931,112 +970,106 @@
   
 
 
-<h1 id="service-level-objectives-slos-error-budget-engine">Service Level Objectives (SLOs) &amp; Error Budget Engine</h1>
-<p>Gubernator features a native <strong>Service Level Objective (SLO)</strong> calculation and <strong>Error Budget tracking</strong> engine powered by <strong>Sloth</strong> (<a href="https://github.com/slok/sloth">github.com/slok/sloth</a>) and inspired by <strong>Pyrra</strong> (<a href="https://github.com/pyrra-dev/pyrra">github.com/pyrra-dev/pyrra</a>).</p>
-<p>It adapts Kubernetes Custom Resources (<code>PrometheusSLO</code>, <code>OpenSLO</code>) into a lightweight, Docker Compose-native label specification, relational database tracking, Prometheus rule generator, and an integrated 5-tab Web Dashboard Suite.</p>
+<h1 id="caddy-ingress-gateway-multi-node-reverse-proxy">Caddy Ingress Gateway &amp; Multi-Node Reverse Proxy</h1>
+<p>Gubernator features an integrated <strong>Caddy Ingress Subsystem</strong> designed to provide multi-host reverse proxying, TLS termination, dynamic site block routing, and real-time observability across all nodes (Managers and Workers) in a Gubernator cluster.</p>
 <hr />
-<h2 id="key-capabilities">🎯 Key Capabilities</h2>
-<ul>
-<li><strong>Google SRE Multi-Burn-Rate Alerts</strong>: Automatically generates multi-window multi-burn-rate Prometheus alerting rules (<code>page</code> and <code>ticket</code> across 5m, 30m, 1h, 6h, 1d, 30d).</li>
-<li><strong>Built-in SLI Templates</strong>: Pre-configured query generators (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>) eliminate the need to write raw PromQL manually.</li>
-<li><strong>Latency &amp; Ratio Indicators</strong>: Supports both event ratio SLOs and latency quantile thresholds (<code>gbnt.slo.indicator: "latency"</code>, <code>gbnt.slo.latency.threshold: "200ms"</code>).</li>
-<li><strong>Composite User Journeys</strong>: Groups multi-service SLOs into end-to-end user journeys (<code>gbnt.slo.journey: "Checkout Flow"</code>), identifying the weakest-link bottleneck service.</li>
-<li><strong>Deployment Event Correlation</strong>: Cross-references real-time SLO burn rate spikes with stack updates and task restarts.</li>
-<li><strong>SLO Backtesting &amp; Dry-Run Validation</strong>: Validates Compose YAML syntax and tests PromQL queries against historical Prometheus metrics prior to deployment.</li>
-<li><strong>RED Metrics Breakdown</strong>: Real-time Request Rate (RPS), Error Rate (5xx/s), and P99 Latency (ms) alongside error budget gauges.</li>
-<li><strong>15s TTL In-Memory Query Caching</strong>: High-performance backend caching keeps response times under 10ms.</li>
-<li><strong>Automated Grafana Dashboard Provisioning</strong>: Automatically generates <code>/data/monitor/grafana/dashboards/slo_dashboard.json</code> on rule sync.</li>
-<li><strong>5-Tab Flutter Web Suite</strong>: Rich interactive dashboard with real-time text search, multi-field sorting, clickable label chips, cards/table view toggles, and detail modals with historical trend charts.</li>
-</ul>
+<h2 id="architecture-multi-node-proxying">🏛 Architecture &amp; Multi-Node Proxying</h2>
+<p>In a multi-host Gubernator cluster (e.g. 3 nodes), each node runs an instance of the <code>gbnt-caddy</code> container on ports <code>80</code> and <code>443</code>, attached to the <code>gbnt-net</code> Docker network and internal <strong>CoreDNS</strong> resolver (<code>127.0.0.1:53</code>).</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                     +---------------------------------+
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                     |    Gubernator Web Dashboard     |
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                     | (Flutter Web UI - Caddy Suite)  |
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                     +---------------------------------+
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                      |
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                      v REST API (Port 4000)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                     +---------------------------------+
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                     |   Gubernator Manager (Go API)   |
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                     +---------------------------------+
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                        /             |             \
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                       /              |              \
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                      v               v               v
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>             +------------------+ +------------------+ +------------------+
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>             | Node 1 (Manager) | |  Node 2 (Worker) | |  Node 3 (Worker) |
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>             |  `gbnt-caddy`    | |   `gbnt-caddy`   | |   `gbnt-caddy`   |
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>             |  (Ports 80/443)  | |   (Ports 80/443)  | |   (Ports 80/443)  |
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>             +------------------+ +------------------+ +------------------+
+</span></code></pre></div>
+<p>When you deploy a stack with an <code>ingress.host</code> constraint (or Compose service mapping), Gubernator dynamically generates and broadcasts Caddyfile blocks to all node proxies.</p>
 <hr />
-<h2 id="docker-compose-label-schema">📋 Docker Compose Label Schema</h2>
-<p>Add <code>gbnt.slo.*</code> labels to any service in <code>docker-compose.yml</code>:</p>
+<h2 id="web-ui-visualization-suite-caddy-ui-inspired">🎨 Web UI Visualization Suite (<code>caddy-ui</code> Inspired)</h2>
+<p>Access <strong>Caddy Ingress</strong> in the Web Dashboard (Port 4001) to interact with 7 specialized sub-tabs:</p>
+<ol>
+<li><strong>Dashboard</strong>: Live server status across all cluster Caddies, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
+<li><strong>Route Manager</strong>: Reverse proxy routes table, live upstream health checks, uptime %, domain search/filter, clickable links, and per-route notes.</li>
+<li><strong>Caddyfile Editor</strong>: Real-time Caddyfile viewer &amp; editor, syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
+<li><strong>TLS Certificates</strong>: Certificate status, expiration countdowns, orphan detection, and <strong>Root CA Download</strong> (<code>root.crt</code>) with installation guides for macOS, Linux, and Windows.</li>
+<li><strong>Access Logs</strong>: Streaming log tailing with SSE, keyword search, log level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>), and JSON/TXT log export.</li>
+<li><strong>Log Configuration</strong>: Toggle JSON access logging per site block directly from the UI.</li>
+<li><strong>Metrics</strong>: Real-time request count, RPS gauge, avg latency, HTTP status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and latency percentiles (<code>p50</code>, <code>p95</code>, <code>p99</code>) powered by Caddy's <code>:2019/metrics</code> Prometheus endpoint.</li>
+</ol>
+<hr />
+<h2 id="root-ca-trust-guide">🔐 Root CA Trust Guide</h2>
+<p>To trust self-signed HTTPS certificates generated by Caddy for local domains (<code>.gbnt.local</code>):</p>
+<h3 id="macos">macOS</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>root.crt<span class="w"> </span>http://localhost:4000/v1/caddy/ca.crt
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>security<span class="w"> </span>add-trusted-cert<span class="w"> </span>-d<span class="w"> </span>-r<span class="w"> </span>trustRoot<span class="w"> </span>-k<span class="w"> </span>/Library/Keychains/System.keychain<span class="w"> </span>./root.crt
+</span></code></pre></div>
+<h3 id="linux-ubuntudebian">Linux (Ubuntu/Debian)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>/usr/local/share/ca-certificates/caddy-root.crt<span class="w"> </span>http://localhost:4000/v1/caddy/ca.crt
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sudo<span class="w"> </span>update-ca-certificates
+</span></code></pre></div>
+<h3 id="windows-powershell-admin">Windows (PowerShell Admin)</h3>
+<div class="language-powershell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">&quot;http://localhost:4000/v1/caddy/ca.crt&quot;</span> <span class="n">-OutFile</span> <span class="s2">&quot;root.crt&quot;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">Import-Certificate</span> <span class="n">-FilePath</span> <span class="s2">&quot;.\root.crt&quot;</span> <span class="n">-CertStoreLocation</span> <span class="n">Cert</span><span class="p">:\</span><span class="n">LocalMachine</span><span class="p">\</span><span class="n">Root</span>
+</span></code></pre></div>
+<hr />
+<h2 id="rest-api-reference">📡 REST API Reference</h2>
 <table>
 <thead>
 <tr>
-<th>Label</th>
+<th>Endpoint</th>
+<th>Method</th>
 <th>Description</th>
-<th>Example / Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>gbnt.slo.enable</code></td>
-<td>Enables SLO tracking for the service</td>
-<td><code>"true"</code> / <code>"false"</code></td>
+<td><code>/v1/caddy/status</code></td>
+<td><code>GET</code></td>
+<td>Get process info, uptime, memory, and active instance count</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.target</code></td>
-<td>Target availability objective percentage</td>
-<td><code>"99.9"</code> (99.9%)</td>
+<td><code>/v1/caddy/routes</code></td>
+<td><code>GET</code></td>
+<td>Get active reverse proxy route matrix and upstream health</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.window</code></td>
-<td>Time window for error budget calculation</td>
-<td><code>"30d"</code>, <code>"7d"</code>, <code>"28d"</code></td>
+<td><code>/v1/caddy/certs</code></td>
+<td><code>GET</code></td>
+<td>Get managed TLS certificates and expiration dates</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.indicator</code></td>
-<td>Type of indicator</td>
-<td><code>"ratio"</code> (default) or <code>"latency"</code></td>
+<td><code>/v1/caddy/ca.crt</code></td>
+<td><code>GET</code></td>
+<td>Download Root CA certificate (<code>root.crt</code>)</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.latency.threshold</code></td>
-<td>Target latency threshold when indicator is <code>latency</code></td>
-<td><code>"200ms"</code>, <code>"0.5s"</code></td>
+<td><code>/v1/caddy/logs</code></td>
+<td><code>GET</code></td>
+<td>Get container access log stream lines</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.template</code></td>
-<td>Built-in SLI query template</td>
-<td><code>"caddy-http"</code>, <code>"http-status"</code>, <code>"latency-p99"</code>, <code>"grpc"</code></td>
+<td><code>/v1/caddy/metrics</code></td>
+<td><code>GET</code></td>
+<td>Get Prometheus request counts, RPS, and percentiles</td>
 </tr>
 <tr>
-<td><code>gbnt.slo.sli.error_query</code></td>
-<td>Custom PromQL error events rate query</td>
-<td><code>'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'</code></td>
-</tr>
-<tr>
-<td><code>gbnt.slo.sli.total_query</code></td>
-<td>Custom PromQL total events rate query</td>
-<td><code>'sum(rate(caddy_http_response_status_code_total[5m]))'</code></td>
-</tr>
-<tr>
-<td><code>gbnt.slo.journey</code></td>
-<td>Name of composite User Journey</td>
-<td><code>"Checkout Flow"</code>, <code>"User Authentication"</code></td>
+<td><code>/v1/caddy/fmt</code></td>
+<td><code>POST</code></td>
+<td>Format Caddyfile via <code>caddy fmt</code></td>
 </tr>
 </tbody>
 </table>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.8&quot;</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hashicorp/http-echo:latest</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">gbnt.slo.enable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">gbnt.slo.target</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;99.9&quot;</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nt">gbnt.slo.window</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="nt">gbnt.slo.template</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;caddy-http&quot;</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">gbnt.slo.journey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Checkout</span><span class="nv"> </span><span class="s">Flow&quot;</span>
-</span></code></pre></div>
-<hr />
-<h2 id="cli-commands">💻 CLI Commands</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># List active SLOs and real-time Error Budget % remaining</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>ls
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Manually trigger SLO rules generation and sync to Prometheus &amp; Grafana</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gbnt<span class="w"> </span>slo<span class="w"> </span>sync
-</span></code></pre></div>
-<hr />
-<h2 id="rest-api-endpoints">🌐 REST API Endpoints</h2>
-<ul>
-<li><code>GET /v1/slo/ls</code>: Returns active SLO items with calculated error budget remaining and burn rate.</li>
-<li><code>POST /v1/slo/sync</code>: Triggers re-generation and synchronization of Prometheus &amp; Grafana SLO rules.</li>
-<li><code>GET /v1/slo/journeys</code>: Aggregates SLOs by composite User Journey and identifies bottleneck services.</li>
-<li><code>GET /v1/slo/correlation</code>: Cross-references burn rate spikes with stack deployment events.</li>
-<li><code>POST /v1/slo/validate</code>: Dry-run validation &amp; PromQL metric backtesting for Compose YAML.</li>
-<li><code>GET /v1/slo/history?service_id=...&amp;range=24h</code>: Historical time-series trend points (<code>1h</code>, <code>6h</code>, <code>24h</code>, <code>7d</code>, <code>30d</code>).</li>
-<li><code>GET /v1/slo/red?service_id=...</code>: Per-service RED metrics (Request Rate, Error RPS, P99 Latency).</li>
-</ul>
+<p>For full specification, refer to <a href="SPEC-caddy.md"><code>SPEC-caddy.md</code></a>.</p>
 
 
 
