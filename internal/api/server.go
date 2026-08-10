@@ -198,6 +198,11 @@ func Start(ctx context.Context) error {
 		{
 			corednsRoute.GET("/config", GetCoreDNSConfig)
 			corednsRoute.PUT("/config", UpdateCoreDNSConfig)
+			corednsRoute.GET("/status", GetCoreDNSStatusHandler)
+			corednsRoute.GET("/custom-records", GetCustomDNSRecordsHandler)
+			corednsRoute.POST("/custom-records", CreateCustomDNSRecordHandler)
+			corednsRoute.DELETE("/custom-records/:id", DeleteCustomDNSRecordHandler)
+			corednsRoute.POST("/dig", CoreDNSDigHandler)
 		}
 
 		scopeRoute := v1.Group("/monitor/scope")

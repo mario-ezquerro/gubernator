@@ -231,6 +231,70 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Fetches CoreDNS status and memory usage.
+  static Future<CoreDNSStatusInfo> fetchCoreDNSStatusInfo() async {
+    final response = await http.get(Uri.parse('/api/coredns/status'));
+    if (response.statusCode == 200) {
+      return CoreDNSStatusInfo.fromJson(jsonDecode(response.body));
+    }
+    return CoreDNSStatusInfo(status: 'stopped', uptimeSeconds: 0, memBytes: 0, listeningPort: 5354, forwarders: [], totalRecords: 0);
+  }
+
+  /// Fetches custom static DNS records.
+  static Future<List<CustomDNSRecord>> fetchCustomDNSRecords() async {
+    final response = await http.get(Uri.parse('/api/coredns/custom-records'));
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => CustomDNSRecord.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// Creates a custom static DNS record.
+  static Future<bool> createCustomDNSRecord({
+    required String domain,
+    required String ip,
+    String recordType = 'A',
+    int ttl = 60,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/coredns/custom-records'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'domain': domain,
+        'ip': ip,
+        'record_type': recordType,
+        'ttl': ttl,
+      }),
+    );
+    return response.statusCode == 201;
+  }
+
+  /// Deletes a custom static DNS record.
+  static Future<bool> deleteCustomDNSRecord(String id) async {
+    final response = await http.delete(Uri.parse('/api/coredns/custom-records/$id'));
+    return response.statusCode == 200;
+  }
+
+  /// Performs an interactive DNS query test (Dig / Nslookup).
+  static Future<DNSDigResult> performDNSDig({
+    required String domain,
+    String recordType = 'A',
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/coredns/dig'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'domain': domain,
+        'record_type': recordType,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return DNSDigResult.fromJson(jsonDecode(response.body));
+    }
+    return DNSDigResult(domain: domain, recordType: recordType, status: 'ERROR', queryTimeMs: 0.0, server: '127.0.0.1:5354', answers: [], rawOutput: 'Error connecting to server');
+  }
+
   /// Fetches status of Weave Scope Network Topology superpower.
   static Future<Map<String, dynamic>> fetchScopeStatus() async {
     final response = await http.get(Uri.parse('/api/scope/status'));

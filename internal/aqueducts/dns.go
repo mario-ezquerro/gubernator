@@ -109,6 +109,15 @@ func GenerateHostsFile() {
 		}
 	}
 
+	// Add Custom User-Defined Static DNS Records
+	var customRecords []db.CustomDNSRecord
+	if err := db.DB.Find(&customRecords).Error; err == nil && len(customRecords) > 0 {
+		content += "\n# Custom User-Defined Static DNS Records\n"
+		for _, rec := range customRecords {
+			content += fmt.Sprintf("%s\t%s\n", rec.IP, rec.Domain)
+		}
+	}
+
 	// Write to the CoreDNS config directory (~/.gbnt/coredns/gubernator.hosts)
 	hostsPath := coredns.HostsFilePath()
 	err := os.WriteFile(hostsPath, []byte(content), 0644)

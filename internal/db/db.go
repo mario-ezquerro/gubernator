@@ -35,7 +35,7 @@ func Init(dbPath string) error {
 
 	slog.Info("database connection established")
 
-	err = DB.AutoMigrate(&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{})
+	err = DB.AutoMigrate(&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{}, &CustomDNSRecord{})
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}

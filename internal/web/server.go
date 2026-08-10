@@ -286,9 +286,14 @@ func StartDashboard() {
 		api.POST("/node/add", nodeAddHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
 
-		// CoreDNS config
+		// CoreDNS config & management
 		api.GET("/coredns/config", getCoreDNSConfigHandler)
 		api.PUT("/coredns/config", updateCoreDNSConfigHandler)
+		api.GET("/coredns/status", coreDNSStatusHandler)
+		api.GET("/coredns/custom-records", getCustomDNSRecordsHandler)
+		api.POST("/coredns/custom-records", createCustomDNSRecordHandler)
+		api.DELETE("/coredns/custom-records/:id", deleteCustomDNSRecordHandler)
+		api.POST("/coredns/dig", coreDNSDigHandler)
 
 		// Weave Scope Network Topology
 		api.GET("/scope/status", scopeStatusHandler)
@@ -2588,6 +2593,96 @@ func sloDeleteHandler(c *gin.Context) {
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"message": "SLO disabled and rules synced successfully"})
+}
+
+func coreDNSStatusHandler(c *gin.Context) {
+	status := coredns.GetCoreDNSStatusInfo(db.DB)
+	c.JSON(http.StatusOK, status)
+}
+
+func getCustomDNSRecordsHandler(c *gin.Context) {
+	var records []db.CustomDNSRecord
+	if err := db.DB.Order("created_at desc").Find(&records).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch custom DNS records"})
+		return
+	}
+	c.JSON(http.StatusOK, records)
+}
+
+type webCreateCustomDNSRecordRequest struct {
+	Domain     string `json:"domain" binding:"required"`
+	IP         string `json:"ip" binding:"required"`
+	RecordType string `json:"record_type"`
+	TTL        int    `json:"ttl"`
+}
+
+func createCustomDNSRecordHandler(c *gin.Context) {
+	var req webCreateCustomDNSRecordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	recType := strings.ToUpper(strings.TrimSpace(req.RecordType))
+	if recType == "" {
+		recType = "A"
+	}
+	ttlVal := req.TTL
+	if ttlVal <= 0 {
+		ttlVal = 60
+	}
+
+	record := db.CustomDNSRecord{
+		ID:         uuid.New().String(),
+		Domain:     strings.TrimSpace(req.Domain),
+		IP:         strings.TrimSpace(req.IP),
+		RecordType: recType,
+		TTL:        ttlVal,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := db.DB.Create(&record).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create custom DNS record"})
+		return
+	}
+
+	aqueducts.GenerateHostsFile()
+
+	c.JSON(http.StatusCreated, record)
+}
+
+func deleteCustomDNSRecordHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Where("id = ?", id).Delete(&db.CustomDNSRecord{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete custom DNS record"})
+		return
+	}
+
+	aqueducts.GenerateHostsFile()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Custom DNS record deleted successfully"})
+}
+
+type webDigRequest struct {
+	Domain     string `json:"domain" binding:"required"`
+	RecordType string `json:"record_type"`
+}
+
+func coreDNSDigHandler(c *gin.Context) {
+	var req webDigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformDig(req.Domain, req.RecordType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 

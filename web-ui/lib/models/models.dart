@@ -409,3 +409,116 @@ class SLOREDMetrics {
     );
   }
 }
+
+class CustomDNSRecord {
+  final String id;
+  final String domain;
+  final String ip;
+  final String recordType;
+  final int ttl;
+  final String createdAt;
+
+  CustomDNSRecord({
+    required this.id,
+    required this.domain,
+    required this.ip,
+    required this.recordType,
+    required this.ttl,
+    required this.createdAt,
+  });
+
+  factory CustomDNSRecord.fromJson(Map<String, dynamic> json) {
+    return CustomDNSRecord(
+      id: json['id'] ?? '',
+      domain: json['domain'] ?? '',
+      ip: json['ip'] ?? '',
+      recordType: json['record_type'] ?? 'A',
+      ttl: (json['ttl'] as num?)?.toInt() ?? 60,
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
+class DNSDigAnswer {
+  final String name;
+  final String type;
+  final int ttl;
+  final String data;
+
+  DNSDigAnswer({
+    required this.name,
+    required this.type,
+    required this.ttl,
+    required this.data,
+  });
+
+  factory DNSDigAnswer.fromJson(Map<String, dynamic> json) {
+    return DNSDigAnswer(
+      name: json['name'] ?? '',
+      type: json['type'] ?? '',
+      ttl: (json['ttl'] as num?)?.toInt() ?? 60,
+      data: json['data'] ?? '',
+    );
+  }
+}
+
+class DNSDigResult {
+  final String domain;
+  final String recordType;
+  final String status;
+  final double queryTimeMs;
+  final String server;
+  final List<DNSDigAnswer> answers;
+  final String rawOutput;
+
+  DNSDigResult({
+    required this.domain,
+    required this.recordType,
+    required this.status,
+    required this.queryTimeMs,
+    required this.server,
+    required this.answers,
+    required this.rawOutput,
+  });
+
+  factory DNSDigResult.fromJson(Map<String, dynamic> json) {
+    return DNSDigResult(
+      domain: json['domain'] ?? '',
+      recordType: json['record_type'] ?? 'A',
+      status: json['status'] ?? '',
+      queryTimeMs: (json['query_time_ms'] as num?)?.toDouble() ?? 0.0,
+      server: json['server'] ?? '',
+      answers: (json['answers'] as List? ?? []).map((e) => DNSDigAnswer.fromJson(e)).toList(),
+      rawOutput: json['raw_output'] ?? '',
+    );
+  }
+}
+
+class CoreDNSStatusInfo {
+  final String status;
+  final int uptimeSeconds;
+  final int memBytes;
+  final int listeningPort;
+  final List<String> forwarders;
+  final int totalRecords;
+
+  CoreDNSStatusInfo({
+    required this.status,
+    required this.uptimeSeconds,
+    required this.memBytes,
+    required this.listeningPort,
+    required this.forwarders,
+    required this.totalRecords,
+  });
+
+  factory CoreDNSStatusInfo.fromJson(Map<String, dynamic> json) {
+    return CoreDNSStatusInfo(
+      status: json['status'] ?? 'stopped',
+      uptimeSeconds: (json['uptime_seconds'] as num?)?.toInt() ?? 0,
+      memBytes: (json['mem_bytes'] as num?)?.toInt() ?? 0,
+      listeningPort: (json['listening_port'] as num?)?.toInt() ?? 5354,
+      forwarders: (json['forwarders'] as List? ?? []).map((e) => e.toString()).toList(),
+      totalRecords: (json['total_records'] as num?)?.toInt() ?? 0,
+    );
+  }
+}

@@ -3,9 +3,14 @@ package api
 import (
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // @Summary Get CoreDNS Configuration
@@ -60,4 +65,94 @@ func UpdateCoreDNSConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "CoreDNS configuration updated successfully"})
+}
+
+type CreateCustomDNSRecordRequest struct {
+	Domain     string `json:"domain" binding:"required"`
+	IP         string `json:"ip" binding:"required"`
+	RecordType string `json:"record_type"` // A, AAAA, CNAME, TXT, PTR
+	TTL        int    `json:"ttl"`
+}
+
+type DigRequest struct {
+	Domain     string `json:"domain" binding:"required"`
+	RecordType string `json:"record_type"`
+}
+
+func GetCoreDNSStatusHandler(c *gin.Context) {
+	status := coredns.GetCoreDNSStatusInfo(db.DB)
+	c.JSON(http.StatusOK, status)
+}
+
+func GetCustomDNSRecordsHandler(c *gin.Context) {
+	var records []db.CustomDNSRecord
+	if err := db.DB.Order("created_at desc").Find(&records).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch custom DNS records"})
+		return
+	}
+	c.JSON(http.StatusOK, records)
+}
+
+func CreateCustomDNSRecordHandler(c *gin.Context) {
+	var req CreateCustomDNSRecordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	recType := strings.ToUpper(strings.TrimSpace(req.RecordType))
+	if recType == "" {
+		recType = "A"
+	}
+	ttlVal := req.TTL
+	if ttlVal <= 0 {
+		ttlVal = 60
+	}
+
+	record := db.CustomDNSRecord{
+		ID:         uuid.New().String(),
+		Domain:     strings.TrimSpace(req.Domain),
+		IP:         strings.TrimSpace(req.IP),
+		RecordType: recType,
+		TTL:        ttlVal,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := db.DB.Create(&record).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create custom DNS record"})
+		return
+	}
+
+	aqueducts.GenerateHostsFile()
+
+	c.JSON(http.StatusCreated, record)
+}
+
+func DeleteCustomDNSRecordHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Where("id = ?", id).Delete(&db.CustomDNSRecord{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete custom DNS record"})
+		return
+	}
+
+	aqueducts.GenerateHostsFile()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Custom DNS record deleted successfully"})
+}
+
+func CoreDNSDigHandler(c *gin.Context) {
+	var req DigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformDig(req.Domain, req.RecordType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }

@@ -140,3 +140,14 @@ func (s *Service) AfterFind(tx *gorm.DB) (err error) {
 	}
 	return nil
 }
+
+// CustomDNSRecord represents a static user-configured DNS entry in CoreDNS.
+type CustomDNSRecord struct {
+	ID         string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	Domain     string    `gorm:"type:varchar(255);not null;index" json:"domain"`
+	IP         string    `gorm:"type:varchar(255);not null" json:"ip"`
+	RecordType string    `gorm:"type:varchar(10);not null;default:'A'" json:"record_type"` // A, AAAA, CNAME, TXT, PTR
+	TTL        int       `gorm:"default:60" json:"ttl"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}

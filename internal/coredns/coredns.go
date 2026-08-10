@@ -1,12 +1,17 @@
 package coredns
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
+	"gorm.io/gorm"
 )
 
 const (
@@ -341,4 +346,164 @@ func updateHostsInVolume() error {
 		return fmt.Errorf("failed to update hosts in volume: %w", err)
 	}
 	return nil
+}
+
+type DNSRecordAnswer struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	TTL  int    `json:"ttl"`
+	Data string `json:"data"`
+}
+
+type DigResult struct {
+	Domain      string            `json:"domain"`
+	RecordType  string            `json:"record_type"`
+	Status      string            `json:"status"`
+	QueryTimeMs float64           `json:"query_time_ms"`
+	Server      string            `json:"server"`
+	Answers     []DNSRecordAnswer `json:"answers"`
+	RawOutput   string            `json:"raw_output"`
+}
+
+type CoreDNSStatusInfo struct {
+	Status        string   `json:"status"`
+	UptimeSeconds int64    `json:"uptime_seconds"`
+	MemBytes      uint64   `json:"mem_bytes"`
+	ListeningPort int      `json:"listening_port"`
+	Forwarders    []string `json:"forwarders"`
+	TotalRecords  int      `json:"total_records"`
+}
+
+// PerformDig executes a DNS query against the local CoreDNS instance.
+func PerformDig(domain string, recordType string) (*DigResult, error) {
+	start := time.Now()
+	recType := strings.ToUpper(strings.TrimSpace(recordType))
+	if recType == "" {
+		recType = "A"
+	}
+	dom := strings.TrimSpace(domain)
+	if dom == "" {
+		return nil, fmt.Errorf("domain cannot be empty")
+	}
+
+	cmd := exec.Command("docker", "exec", ContainerName, "nslookup", dom)
+	outBytes, err := cmd.CombinedOutput()
+	queryTime := float64(time.Since(start).Microseconds()) / 1000.0
+
+	raw := string(outBytes)
+	statusStr := "NOERROR"
+	if err != nil {
+		statusStr = "NXDOMAIN"
+	}
+
+	var answers []DNSRecordAnswer
+	r := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{Timeout: 2 * time.Second}
+			conn, err := d.DialContext(ctx, "udp", "127.0.0.1:5354")
+			if err != nil {
+				return d.DialContext(ctx, "udp", "127.0.0.1:53")
+			}
+			return conn, nil
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if recType == "A" || recType == "AAAA" {
+		ips, err := r.LookupHost(ctx, dom)
+		if err == nil {
+			statusStr = "NOERROR"
+			for _, ip := range ips {
+				answers = append(answers, DNSRecordAnswer{
+					Name: dom,
+					Type: recType,
+					TTL:  60,
+					Data: ip,
+				})
+			}
+		}
+	} else if recType == "TXT" {
+		txts, err := r.LookupTXT(ctx, dom)
+		if err == nil {
+			statusStr = "NOERROR"
+			for _, txt := range txts {
+				answers = append(answers, DNSRecordAnswer{
+					Name: dom,
+					Type: "TXT",
+					TTL:  60,
+					Data: txt,
+				})
+			}
+		}
+	} else if recType == "CNAME" {
+		cname, err := r.LookupCNAME(ctx, dom)
+		if err == nil {
+			statusStr = "NOERROR"
+			answers = append(answers, DNSRecordAnswer{
+				Name: dom,
+				Type: "CNAME",
+				TTL:  60,
+				Data: cname,
+			})
+		}
+	}
+
+	return &DigResult{
+		Domain:      dom,
+		RecordType:  recType,
+		Status:      statusStr,
+		QueryTimeMs: queryTime,
+		Server:      "127.0.0.1:5354",
+		Answers:     answers,
+		RawOutput:   raw,
+	}, nil
+}
+
+// GetCoreDNSStatusInfo inspects CoreDNS container and returns diagnostic details.
+func GetCoreDNSStatusInfo(database *gorm.DB) *CoreDNSStatusInfo {
+	info := &CoreDNSStatusInfo{
+		Status:        "stopped",
+		ListeningPort: 5354,
+		Forwarders:    []string{"8.8.8.8", "1.1.1.1"},
+	}
+
+	out, err := exec.Command("docker", "inspect", "-f",
+		"{{.State.Status}}|{{.State.StartedAt}}", ContainerName).Output()
+	if err == nil {
+		parts := strings.Split(strings.TrimSpace(string(out)), "|")
+		if len(parts) >= 1 {
+			info.Status = parts[0]
+		}
+		if len(parts) >= 2 {
+			if t, err := time.Parse(time.RFC3339Nano, parts[1]); err == nil {
+				info.UptimeSeconds = int64(time.Since(t).Seconds())
+			}
+		}
+	}
+
+	if content, err := os.ReadFile(CorefilePath()); err == nil {
+		lines := strings.Split(string(content), "\n")
+		for _, l := range lines {
+			l = strings.TrimSpace(l)
+			if strings.HasPrefix(l, "forward . ") {
+				fields := strings.Fields(l)
+				if len(fields) > 2 {
+					info.Forwarders = fields[2:]
+				}
+			}
+		}
+	}
+
+	var customCount int64
+	var taskCount int64
+	if db.DB != nil {
+		db.DB.Model(&db.CustomDNSRecord{}).Count(&customCount)
+		db.DB.Model(&db.Task{}).Where("status = ? AND container_ip != ?", "running", "").Count(&taskCount)
+	}
+	info.TotalRecords = int(customCount + taskCount*2)
+
+	return info
 }
