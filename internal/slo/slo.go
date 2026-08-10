@@ -58,6 +58,25 @@ func ensureWindowVariable(query string) string {
 	return query
 }
 
+func ExpandSLITemplate(tmpl, serviceName string) (errQuery, totalQuery string) {
+	switch strings.ToLower(strings.TrimSpace(tmpl)) {
+	case "caddy-http":
+		return `sum(rate(caddy_http_response_status_code_total{status=~"5.."}[{{.window}}]))`,
+			`sum(rate(caddy_http_response_status_code_total[{{.window}}]))`
+	case "http-status":
+		return `sum(rate(http_requests_total{status=~"5.."}[{{.window}}]))`,
+			`sum(rate(http_requests_total[{{.window}}]))`
+	case "latency-p99":
+		return `sum(rate(http_request_duration_seconds_bucket{le="0.5"}[{{.window}}]))`,
+			`sum(rate(http_request_duration_seconds_count[{{.window}}]))`
+	case "grpc":
+		return `sum(rate(grpc_server_handled_total{grpc_code=~"Unknown|Internal|Unavailable|DataLoss"}[{{.window}}]))`,
+			`sum(rate(grpc_server_handled_total[{{.window}}]))`
+	default:
+		return "", ""
+	}
+}
+
 // GenerateRulesFromServices scans all DB services for SLO labels and produces a single Prometheus rules YAML file.
 func GenerateRulesFromServices(gormDB *gorm.DB) (string, error) {
 	var services []db.Service
@@ -81,6 +100,16 @@ func GenerateRulesFromServices(gormDB *gorm.DB) (string, error) {
 
 		errQuery := ensureWindowVariable(constraintsMap["gbnt.slo.sli.error_query"])
 		totalQuery := ensureWindowVariable(constraintsMap["gbnt.slo.sli.total_query"])
+
+		if (errQuery == "" || totalQuery == "") && constraintsMap["gbnt.slo.template"] != "" {
+			tErr, tTot := ExpandSLITemplate(constraintsMap["gbnt.slo.template"], svc.Name)
+			if errQuery == "" {
+				errQuery = tErr
+			}
+			if totalQuery == "" {
+				totalQuery = tTot
+			}
+		}
 
 		if errQuery == "" || totalQuery == "" {
 			continue

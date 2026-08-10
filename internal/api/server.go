@@ -185,6 +185,9 @@ func Start(ctx context.Context) error {
 		{
 			sloRoute.GET("/ls", SLOListHandler)
 			sloRoute.POST("/sync", SLOSyncHandler)
+			sloRoute.GET("/journeys", SLOJourneysHandler)
+			sloRoute.GET("/correlation", SLOCorrelationHandler)
+			sloRoute.POST("/validate", SLOValidateHandler)
 		}
 
 		corednsRoute := v1.Group("/coredns", authMiddleware)

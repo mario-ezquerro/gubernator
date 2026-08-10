@@ -278,6 +278,40 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Fetches aggregated User Journeys.
+  static Future<List<UserJourney>> fetchUserJourneys() async {
+    final response = await http.get(Uri.parse('/api/slo/journeys'));
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => UserJourney.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// Fetches deployment events correlation.
+  static Future<List<SLOCorrelationEvent>> fetchSLOCorrelations() async {
+    final response = await http.get(Uri.parse('/api/slo/correlation'));
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => SLOCorrelationEvent.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// Validates Compose YAML and runs PromQL backtest.
+  static Future<List<SLOValidationItem>> validateSLO(String composeRaw) async {
+    final response = await http.post(
+      Uri.parse('/api/slo/validate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'compose_raw': composeRaw}),
+    );
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => SLOValidationItem.fromJson(e)).toList();
+    }
+    return [];
+  }
+
   /// Caddy: Fetches Caddy status and stats for a given node.
   static Future<Map<String, dynamic>> fetchCaddyStatus({String? nodeId}) async {
     final uri = Uri.parse('/api/caddy/status${nodeId != null ? '?node_id=$nodeId' : ''}');

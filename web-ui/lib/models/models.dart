@@ -221,6 +221,8 @@ class SLOItem {
   final String stackId;
   final double target;
   final String window;
+  final String template;
+  final String journey;
   final String errorQuery;
   final String totalQuery;
   final double errorBudgetRemaining;
@@ -233,6 +235,8 @@ class SLOItem {
     required this.stackId,
     required this.target,
     required this.window,
+    this.template = '',
+    this.journey = '',
     required this.errorQuery,
     required this.totalQuery,
     required this.errorBudgetRemaining,
@@ -247,11 +251,115 @@ class SLOItem {
       stackId: json['stack_id'] ?? '',
       target: (json['target'] as num?)?.toDouble() ?? 99.9,
       window: json['window'] ?? '30d',
+      template: json['template'] ?? '',
+      journey: json['journey'] ?? '',
       errorQuery: json['error_query'] ?? '',
       totalQuery: json['total_query'] ?? '',
       errorBudgetRemaining: (json['error_budget_remaining'] as num?)?.toDouble() ?? 100.0,
       burnRate: (json['burn_rate'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'healthy',
+    );
+  }
+}
+
+class UserJourney {
+  final String name;
+  final List<SLOItem> services;
+  final double compositeTarget;
+  final double avgErrorBudget;
+  final String bottleneckService;
+  final double bottleneckBudget;
+  final String status;
+
+  UserJourney({
+    required this.name,
+    required this.services,
+    required this.compositeTarget,
+    required this.avgErrorBudget,
+    required this.bottleneckService,
+    required this.bottleneckBudget,
+    required this.status,
+  });
+
+  factory UserJourney.fromJson(Map<String, dynamic> json) {
+    return UserJourney(
+      name: json['name'] ?? '',
+      services: (json['services'] as List? ?? []).map((e) => SLOItem.fromJson(e)).toList(),
+      compositeTarget: (json['composite_target'] as num?)?.toDouble() ?? 99.9,
+      avgErrorBudget: (json['avg_error_budget'] as num?)?.toDouble() ?? 100.0,
+      bottleneckService: json['bottleneck_service'] ?? '',
+      bottleneckBudget: (json['bottleneck_budget'] as num?)?.toDouble() ?? 100.0,
+      status: json['status'] ?? 'healthy',
+    );
+  }
+}
+
+class SLOCorrelationEvent {
+  final String timestamp;
+  final String type;
+  final String stackName;
+  final String serviceName;
+  final String description;
+  final double burnRate;
+
+  SLOCorrelationEvent({
+    required this.timestamp,
+    required this.type,
+    required this.stackName,
+    required this.serviceName,
+    required this.description,
+    required this.burnRate,
+  });
+
+  factory SLOCorrelationEvent.fromJson(Map<String, dynamic> json) {
+    return SLOCorrelationEvent(
+      timestamp: json['timestamp'] ?? '',
+      type: json['type'] ?? 'deployment',
+      stackName: json['stack_name'] ?? '',
+      serviceName: json['service_name'] ?? '',
+      description: json['description'] ?? '',
+      burnRate: (json['burn_rate'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class SLOValidationItem {
+  final String serviceName;
+  final bool valid;
+  final double target;
+  final String window;
+  final String template;
+  final String errorQuery;
+  final String totalQuery;
+  final String error;
+  final String backtestStatus;
+  final String backtestDetails;
+
+  SLOValidationItem({
+    required this.serviceName,
+    required this.valid,
+    required this.target,
+    required this.window,
+    required this.template,
+    required this.errorQuery,
+    required this.totalQuery,
+    this.error = '',
+    required this.backtestStatus,
+    required this.backtestDetails,
+  });
+
+  factory SLOValidationItem.fromJson(Map<String, dynamic> json) {
+    return SLOValidationItem(
+      serviceName: json['service_name'] ?? '',
+      valid: json['valid'] ?? false,
+      target: (json['target'] as num?)?.toDouble() ?? 99.9,
+      window: json['window'] ?? '30d',
+      template: json['template'] ?? '',
+      errorQuery: json['error_query'] ?? '',
+      totalQuery: json['total_query'] ?? '',
+      error: json['error'] ?? '',
+      backtestStatus: json['backtest_status'] ?? 'passed',
+      backtestDetails: json['backtest_details'] ?? '',
     );
   }
 }
