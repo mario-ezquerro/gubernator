@@ -6,9 +6,14 @@ It adapts Kubernetes Custom Resources (`PrometheusSLO`, `OpenSLO`) into a lightw
 
 ---
 
-## 🎯 Key Capabilities
+## 🎯 Key Capabilities & Google SRE Standard
 
-- **Google SRE Multi-Burn-Rate Alerts**: Automatically generates multi-window multi-burn-rate Prometheus alerting rules (`page` and `ticket` across 5m, 30m, 1h, 6h, 1d, 30d).
+- **Google SRE Workbook Chapter 5 Multi-Burn-Rate Alerts**: Automatically generates standard multi-window multi-burn-rate Prometheus alerting rules:
+  - 🚨 **Critical Page (1h)**: 2% budget consumed in 1 hour (14.4x burn rate over 5m & 1h windows).
+  - 🚨 **Critical Page (6h)**: 5% budget consumed in 6 hours (6x burn rate over 30m & 6h windows).
+  - ⚠️ **Warning Ticket (3d)**: 10% budget consumed in 3 days (3x burn rate over 2h & 3d windows).
+  - ⚠️ **Warning Ticket (14d)**: 20% budget consumed in 14 days (1x burn rate over 6h & 14d windows).
+- **Dynamic SLO Management**: Create, edit, or disable SLOs dynamically via Web UI modals or `POST /v1/slo/edit` / `DELETE /v1/slo/:service_id` REST API without editing Compose files.
 - **Built-in SLI Templates**: Pre-configured query generators (`caddy-http`, `http-status`, `latency-p99`, `grpc`) eliminate the need to write raw PromQL manually.
 - **Latency & Ratio Indicators**: Supports both event ratio SLOs and latency quantile thresholds (`gbnt.slo.indicator: "latency"`, `gbnt.slo.latency.threshold: "200ms"`).
 - **Composite User Journeys**: Groups multi-service SLOs into end-to-end user journeys (`gbnt.slo.journey: "Checkout Flow"`), identifying the weakest-link bottleneck service.
@@ -17,7 +22,7 @@ It adapts Kubernetes Custom Resources (`PrometheusSLO`, `OpenSLO`) into a lightw
 - **RED Metrics Breakdown**: Real-time Request Rate (RPS), Error Rate (5xx/s), and P99 Latency (ms) alongside error budget gauges.
 - **15s TTL In-Memory Query Caching**: High-performance backend caching keeps response times under 10ms.
 - **Automated Grafana Dashboard Provisioning**: Automatically generates `/data/monitor/grafana/dashboards/slo_dashboard.json` on rule sync.
-- **5-Tab Flutter Web Suite**: Rich interactive dashboard with real-time text search, multi-field sorting, clickable label chips, cards/table view toggles, and detail modals with historical trend charts.
+- **5-Tab Flutter Web Suite**: Rich interactive dashboard with real-time text search, multi-field sorting, clickable label chips, cards/table view toggles, `+ Configure / Add SLO` modal, and detail modals with historical trend charts.
 
 ---
 
@@ -67,6 +72,8 @@ gbnt slo sync
 ## 🌐 REST API Endpoints
 
 - `GET /v1/slo/ls`: Returns active SLO items with calculated error budget remaining and burn rate.
+- `POST /v1/slo/edit`: Creates or updates an SLO configuration for any service dynamically.
+- `DELETE /v1/slo/:service_id`: Removes/disables SLO configuration for a service.
 - `POST /v1/slo/sync`: Triggers re-generation and synchronization of Prometheus & Grafana SLO rules.
 - `GET /v1/slo/journeys`: Aggregates SLOs by composite User Journey and identifies bottleneck services.
 - `GET /v1/slo/correlation`: Cross-references burn rate spikes with stack deployment events.

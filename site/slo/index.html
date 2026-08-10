@@ -729,10 +729,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#key-capabilities" class="md-nav__link">
+  <a href="#key-capabilities-google-sre-standard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🎯 Key Capabilities
+        🎯 Key Capabilities &amp; Google SRE Standard
       
     </span>
   </a>
@@ -935,9 +935,14 @@
 <p>Gubernator features a native <strong>Service Level Objective (SLO)</strong> calculation and <strong>Error Budget tracking</strong> engine powered by <strong>Sloth</strong> (<a href="https://github.com/slok/sloth">github.com/slok/sloth</a>) and inspired by <strong>Pyrra</strong> (<a href="https://github.com/pyrra-dev/pyrra">github.com/pyrra-dev/pyrra</a>).</p>
 <p>It adapts Kubernetes Custom Resources (<code>PrometheusSLO</code>, <code>OpenSLO</code>) into a lightweight, Docker Compose-native label specification, relational database tracking, Prometheus rule generator, and an integrated 5-tab Web Dashboard Suite.</p>
 <hr />
-<h2 id="key-capabilities">🎯 Key Capabilities</h2>
+<h2 id="key-capabilities-google-sre-standard">🎯 Key Capabilities &amp; Google SRE Standard</h2>
 <ul>
-<li><strong>Google SRE Multi-Burn-Rate Alerts</strong>: Automatically generates multi-window multi-burn-rate Prometheus alerting rules (<code>page</code> and <code>ticket</code> across 5m, 30m, 1h, 6h, 1d, 30d).</li>
+<li><strong>Google SRE Workbook Chapter 5 Multi-Burn-Rate Alerts</strong>: Automatically generates standard multi-window multi-burn-rate Prometheus alerting rules:</li>
+<li>🚨 <strong>Critical Page (1h)</strong>: 2% budget consumed in 1 hour (14.4x burn rate over 5m &amp; 1h windows).</li>
+<li>🚨 <strong>Critical Page (6h)</strong>: 5% budget consumed in 6 hours (6x burn rate over 30m &amp; 6h windows).</li>
+<li>⚠️ <strong>Warning Ticket (3d)</strong>: 10% budget consumed in 3 days (3x burn rate over 2h &amp; 3d windows).</li>
+<li>⚠️ <strong>Warning Ticket (14d)</strong>: 20% budget consumed in 14 days (1x burn rate over 6h &amp; 14d windows).</li>
+<li><strong>Dynamic SLO Management</strong>: Create, edit, or disable SLOs dynamically via Web UI modals or <code>POST /v1/slo/edit</code> / <code>DELETE /v1/slo/:service_id</code> REST API without editing Compose files.</li>
 <li><strong>Built-in SLI Templates</strong>: Pre-configured query generators (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>) eliminate the need to write raw PromQL manually.</li>
 <li><strong>Latency &amp; Ratio Indicators</strong>: Supports both event ratio SLOs and latency quantile thresholds (<code>gbnt.slo.indicator: "latency"</code>, <code>gbnt.slo.latency.threshold: "200ms"</code>).</li>
 <li><strong>Composite User Journeys</strong>: Groups multi-service SLOs into end-to-end user journeys (<code>gbnt.slo.journey: "Checkout Flow"</code>), identifying the weakest-link bottleneck service.</li>
@@ -946,7 +951,7 @@
 <li><strong>RED Metrics Breakdown</strong>: Real-time Request Rate (RPS), Error Rate (5xx/s), and P99 Latency (ms) alongside error budget gauges.</li>
 <li><strong>15s TTL In-Memory Query Caching</strong>: High-performance backend caching keeps response times under 10ms.</li>
 <li><strong>Automated Grafana Dashboard Provisioning</strong>: Automatically generates <code>/data/monitor/grafana/dashboards/slo_dashboard.json</code> on rule sync.</li>
-<li><strong>5-Tab Flutter Web Suite</strong>: Rich interactive dashboard with real-time text search, multi-field sorting, clickable label chips, cards/table view toggles, and detail modals with historical trend charts.</li>
+<li><strong>5-Tab Flutter Web Suite</strong>: Rich interactive dashboard with real-time text search, multi-field sorting, clickable label chips, cards/table view toggles, <code>+ Configure / Add SLO</code> modal, and detail modals with historical trend charts.</li>
 </ul>
 <hr />
 <h2 id="docker-compose-label-schema">📋 Docker Compose Label Schema</h2>
@@ -1030,6 +1035,8 @@
 <h2 id="rest-api-endpoints">🌐 REST API Endpoints</h2>
 <ul>
 <li><code>GET /v1/slo/ls</code>: Returns active SLO items with calculated error budget remaining and burn rate.</li>
+<li><code>POST /v1/slo/edit</code>: Creates or updates an SLO configuration for any service dynamically.</li>
+<li><code>DELETE /v1/slo/:service_id</code>: Removes/disables SLO configuration for a service.</li>
 <li><code>POST /v1/slo/sync</code>: Triggers re-generation and synchronization of Prometheus &amp; Grafana SLO rules.</li>
 <li><code>GET /v1/slo/journeys</code>: Aggregates SLOs by composite User Journey and identifies bottleneck services.</li>
 <li><code>GET /v1/slo/correlation</code>: Cross-references burn rate spikes with stack deployment events.</li>
