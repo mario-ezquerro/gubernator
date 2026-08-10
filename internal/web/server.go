@@ -362,10 +362,12 @@ func StartDashboard() {
 		// Try to serve the exact file
 		if f, err := flutterContent.Open(strings.TrimPrefix(path, "/")); err == nil {
 			f.Close()
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 			fileServer.ServeHTTP(c.Writer, c.Request)
 			return
 		}
 		// For SPA routing, serve index.html
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Request.URL.Path = "/"
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
