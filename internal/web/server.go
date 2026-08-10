@@ -307,6 +307,8 @@ func StartDashboard() {
 		api.GET("/slo/correlation", sloCorrelationHandler)
 		api.GET("/slo/history", sloHistoryHandler)
 		api.GET("/slo/red", sloREDMetricsHandler)
+		api.POST("/slo/edit", sloEditHandler)
+		api.DELETE("/slo/:service_id", sloDeleteHandler)
 
 		// Caddy Subsystem
 		api.GET("/caddy/status", caddyStatusHandler)
@@ -2476,6 +2478,116 @@ func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]
 	}
 
 	return res
+}
+
+type sloWebEditRequest struct {
+	ServiceID        string  `json:"service_id" binding:"required"`
+	Enable           bool    `json:"enable"`
+	Target           float64 `json:"target"`
+	Window           string  `json:"window"`
+	Indicator        string  `json:"indicator"`
+	LatencyThreshold string  `json:"latency_threshold"`
+	Template         string  `json:"template"`
+	Journey          string  `json:"journey"`
+	ErrorQuery       string  `json:"error_query"`
+	TotalQuery       string  `json:"total_query"`
+}
+
+func sloEditHandler(c *gin.Context) {
+	var req sloWebEditRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", req.ServiceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	var newConstraints []string
+	for _, cstr := range svc.Constraints {
+		if !strings.HasPrefix(strings.TrimSpace(cstr), "gbnt.slo.") {
+			newConstraints = append(newConstraints, cstr)
+		}
+	}
+
+	if req.Enable {
+		targetVal := req.Target
+		if targetVal <= 0 {
+			targetVal = 99.9
+		}
+		windowVal := req.Window
+		if windowVal == "" {
+			windowVal = "30d"
+		}
+
+		newConstraints = append(newConstraints, "gbnt.slo.enable=true")
+		newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.target=%.2f", targetVal))
+		newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.window=%s", windowVal))
+
+		if req.Indicator != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.indicator=%s", req.Indicator))
+		}
+		if req.LatencyThreshold != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.latency.threshold=%s", req.LatencyThreshold))
+		}
+		if req.Template != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.template=%s", req.Template))
+		}
+		if req.Journey != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.journey=%s", req.Journey))
+		}
+		if req.ErrorQuery != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.sli.error_query=%s", req.ErrorQuery))
+		}
+		if req.TotalQuery != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.sli.total_query=%s", req.TotalQuery))
+		}
+	}
+
+	svc.Constraints = newConstraints
+	rawBytes, _ := json.Marshal(newConstraints)
+	svc.ConstraintsRaw = rawBytes
+
+	if err := db.DB.Save(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save service constraints"})
+		return
+	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	c.JSON(http.StatusOK, gin.H{"message": "SLO configuration saved and rules synced successfully"})
+}
+
+func sloDeleteHandler(c *gin.Context) {
+	serviceID := c.Param("service_id")
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", serviceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	var newConstraints []string
+	for _, cstr := range svc.Constraints {
+		if !strings.HasPrefix(strings.TrimSpace(cstr), "gbnt.slo.") {
+			newConstraints = append(newConstraints, cstr)
+		}
+	}
+
+	svc.Constraints = newConstraints
+	rawBytes, _ := json.Marshal(newConstraints)
+	svc.ConstraintsRaw = rawBytes
+
+	if err := db.DB.Save(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save service constraints"})
+		return
+	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	c.JSON(http.StatusOK, gin.H{"message": "SLO disabled and rules synced successfully"})
 }
 
 

@@ -190,6 +190,8 @@ func Start(ctx context.Context) error {
 			sloRoute.POST("/validate", SLOValidateHandler)
 			sloRoute.GET("/history", SLOHistoryHandler)
 			sloRoute.GET("/red", SLOREDMetricsHandler)
+			sloRoute.POST("/edit", SLOEditHandler)
+			sloRoute.DELETE("/:service_id", SLODeleteHandler)
 		}
 
 		corednsRoute := v1.Group("/coredns", authMiddleware)

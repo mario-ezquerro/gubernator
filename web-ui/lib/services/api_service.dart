@@ -331,6 +331,50 @@ class ApiService {
     return SLOREDMetrics(rps: 0, errorRps: 0, p99LatencyMs: 0);
   }
 
+  /// Creates or updates an SLO configuration for a service.
+  static Future<bool> editSLO({
+    required String serviceId,
+    required bool enable,
+    required double target,
+    required String window,
+    String indicator = 'ratio',
+    String latencyThreshold = '',
+    String template = '',
+    String journey = '',
+    String errorQuery = '',
+    String totalQuery = '',
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/slo/edit'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'service_id': serviceId,
+        'enable': enable,
+        'target': target,
+        'window': window,
+        'indicator': indicator,
+        'latency_threshold': latencyThreshold,
+        'template': template,
+        'journey': journey,
+        'error_query': errorQuery,
+        'total_query': totalQuery,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Disables/deletes an SLO configuration for a service.
+  static Future<bool> deleteSLO(String serviceId) async {
+    final response = await http.delete(Uri.parse('/api/slo/$serviceId'));
+    return response.statusCode == 200;
+  }
+
+  /// Fetches all deployed services from state.
+  static Future<List<Service>> fetchServices() async {
+    final state = await fetchState();
+    return state.services;
+  }
+
   /// Caddy: Fetches Caddy status and stats for a given node.
   static Future<Map<String, dynamic>> fetchCaddyStatus({String? nodeId}) async {
     final uri = Uri.parse('/api/caddy/status${nodeId != null ? '?node_id=$nodeId' : ''}');

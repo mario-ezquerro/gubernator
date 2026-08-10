@@ -651,3 +651,129 @@ func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]
 
 	return res
 }
+
+type SLOEditRequest struct {
+	ServiceID        string  `json:"service_id" binding:"required"`
+	Enable           bool    `json:"enable"`
+	Target           float64 `json:"target"`
+	Window           string  `json:"window"`
+	Indicator        string  `json:"indicator"`
+	LatencyThreshold string  `json:"latency_threshold"`
+	Template         string  `json:"template"`
+	Journey          string  `json:"journey"`
+	ErrorQuery       string  `json:"error_query"`
+	TotalQuery       string  `json:"total_query"`
+}
+
+// @Summary Create or Edit SLO for a Service
+// @Description Updates service constraints in DB and triggers Prometheus / Grafana rule sync
+// @Tags slo
+// @Accept json
+// @Produce json
+// @Param request body SLOEditRequest true "SLO Edit Request"
+// @Success 200 {object} map[string]string
+// @Router /v1/slo/edit [post]
+func SLOEditHandler(c *gin.Context) {
+	var req SLOEditRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", req.ServiceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	// Remove existing gbnt.slo.* constraints
+	var newConstraints []string
+	for _, cstr := range svc.Constraints {
+		if !strings.HasPrefix(strings.TrimSpace(cstr), "gbnt.slo.") {
+			newConstraints = append(newConstraints, cstr)
+		}
+	}
+
+	if req.Enable {
+		targetVal := req.Target
+		if targetVal <= 0 {
+			targetVal = 99.9
+		}
+		windowVal := req.Window
+		if windowVal == "" {
+			windowVal = "30d"
+		}
+
+		newConstraints = append(newConstraints, "gbnt.slo.enable=true")
+		newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.target=%.2f", targetVal))
+		newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.window=%s", windowVal))
+
+		if req.Indicator != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.indicator=%s", req.Indicator))
+		}
+		if req.LatencyThreshold != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.latency.threshold=%s", req.LatencyThreshold))
+		}
+		if req.Template != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.template=%s", req.Template))
+		}
+		if req.Journey != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.journey=%s", req.Journey))
+		}
+		if req.ErrorQuery != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.sli.error_query=%s", req.ErrorQuery))
+		}
+		if req.TotalQuery != "" {
+			newConstraints = append(newConstraints, fmt.Sprintf("gbnt.slo.sli.total_query=%s", req.TotalQuery))
+		}
+	}
+
+	svc.Constraints = newConstraints
+	rawBytes, _ := json.Marshal(newConstraints)
+	svc.ConstraintsRaw = rawBytes
+
+	if err := db.DB.Save(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save service constraints"})
+		return
+	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	c.JSON(http.StatusOK, gin.H{"message": "SLO configuration saved and rules synced successfully"})
+}
+
+// @Summary Delete/Disable SLO for a Service
+// @Description Removes SLO constraints from a service and syncs Prometheus / Grafana rules
+// @Tags slo
+// @Produce json
+// @Param service_id path string true "Service ID"
+// @Success 200 {object} map[string]string
+// @Router /v1/slo/{service_id} [delete]
+func SLODeleteHandler(c *gin.Context) {
+	serviceID := c.Param("service_id")
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", serviceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	var newConstraints []string
+	for _, cstr := range svc.Constraints {
+		if !strings.HasPrefix(strings.TrimSpace(cstr), "gbnt.slo.") {
+			newConstraints = append(newConstraints, cstr)
+		}
+	}
+
+	svc.Constraints = newConstraints
+	rawBytes, _ := json.Marshal(newConstraints)
+	svc.ConstraintsRaw = rawBytes
+
+	if err := db.DB.Save(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save service constraints"})
+		return
+	}
+
+	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	c.JSON(http.StatusOK, gin.H{"message": "SLO disabled and rules synced successfully"})
+}

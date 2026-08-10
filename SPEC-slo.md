@@ -105,10 +105,18 @@ Whenever `slo.SyncSLORulesToPrometheus` runs, Gubernator automatically generates
 
 ---
 
-## 🎨 11. Web Dashboard Suite (`slo_page.dart`)
+## 🛠 11. Dynamic SLO Management (Add, Edit, Disable via REST API & Web UI)
+
+- **`POST /v1/slo/edit`**: Creates or updates an SLO definition for any deployed service in DB, updating service constraints and triggering `SyncSLORulesToPrometheus`.
+- **`DELETE /v1/slo/:service_id`**: Removes SLO labels from a service, disabling tracking and resyncing Prometheus & Grafana rules.
+- **Web UI Modal Form**: "+ Add / Configure SLO" button and "Edit / Configure SLO" action on cards and data table rows.
+
+---
+
+## 🎨 12. Web Dashboard Suite (`slo_page.dart`)
 
 The Flutter Web Dashboard features a 5-tab SLO Management Suite:
-1. **Overview & Error Budgets**: Live status cards, search/filter bar, sorting options, table/card toggle, error budget progress bars, and detail modal with RED metrics & historical charts.
+1. **Overview & Error Budgets**: Live status cards, search/filter bar, sorting options, table/card toggle, "+ Configure SLO" button, error budget progress bars, and detail modal with RED metrics & historical charts.
 2. **User Journeys**: High-level composite journey topology and bottleneck identification.
 3. **Deployment Correlation Timeline**: Timeline graph correlating burn rate spikes with stack deployment events.
 4. **SLI Templates & PromQL Generator**: Interactive PromQL builder with live metric preview.

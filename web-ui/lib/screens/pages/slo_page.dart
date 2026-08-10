@@ -178,6 +178,24 @@ services:
     );
   }
 
+  void _showAddEditSLODialog([SLOItem? existingItem]) async {
+    List<Service> allServices = [];
+    try {
+      allServices = await ApiService.fetchServices();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => _SLOFormDialog(
+        existingItem: existingItem,
+        services: allServices,
+        onSave: () => _loadData(),
+      ),
+    );
+  }
+
   Widget _buildSummaryCards(ThemeData theme) {
     final total = _slos.length;
     final healthy = _slos.where((s) => s.status == 'healthy').length;
@@ -246,9 +264,15 @@ services:
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Add "gbnt.slo.target=99.9" and "gbnt.slo.window=30d" labels to your Compose services to track error budgets.',
+                  'Click "+ Configure / Add SLO" below or add gbnt.slo.* labels to your Compose services.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => _showAddEditSLODialog(),
+                  icon: const Icon(Icons.add_chart),
+                  label: const Text('+ Configure / Add SLO'),
                 ),
               ],
             ),
@@ -260,7 +284,7 @@ services:
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Controls Bar: Search, Sort, View Toggle
+        // Controls Bar: Search, Sort, View Toggle, Add SLO Button
         Card(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -297,6 +321,12 @@ services:
                   tooltip: _isTableView ? 'Switch to Cards View' : 'Switch to Data Table View',
                   icon: Icon(_isTableView ? Icons.grid_view : Icons.table_rows),
                   onPressed: () => setState(() => _isTableView = !_isTableView),
+                ),
+                const SizedBox(width: 16),
+                FilledButton.icon(
+                  onPressed: () => _showAddEditSLODialog(),
+                  icon: const Icon(Icons.add_chart, size: 18),
+                  label: const Text('+ Add SLO'),
                 ),
               ],
             ),
@@ -360,9 +390,19 @@ services:
                       ),
                       DataCell(StatusBadge(label: item.status)),
                       DataCell(
-                        IconButton(
-                          icon: const Icon(Icons.analytics, size: 18),
-                          onPressed: () => _showSLODetailModal(item),
+                        Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'View Detail Metrics & Charts',
+                              icon: const Icon(Icons.analytics, size: 18),
+                              onPressed: () => _showSLODetailModal(item),
+                            ),
+                            IconButton(
+                              tooltip: 'Edit SLO Settings',
+                              icon: const Icon(Icons.edit, size: 18),
+                              onPressed: () => _showAddEditSLODialog(item),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -431,6 +471,12 @@ services:
                               ),
                             ],
                             const Spacer(),
+                            IconButton(
+                              tooltip: 'Edit SLO Settings',
+                              icon: const Icon(Icons.edit, size: 20),
+                              onPressed: () => _showAddEditSLODialog(item),
+                            ),
+                            const SizedBox(width: 8),
                             Chip(
                               label: Text('${item.burnRate.toStringAsFixed(2)}x Burn Rate',
                                   style: TextStyle(
@@ -899,6 +945,12 @@ services:
               ),
               const SizedBox(width: 12),
               FilledButton.icon(
+                onPressed: () => _showAddEditSLODialog(),
+                icon: const Icon(Icons.add_chart, size: 18),
+                label: const Text('+ Configure / Add SLO'),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
                 onPressed: _syncing ? null : _syncSLOs,
                 icon: _syncing
                     ? const SizedBox(
@@ -907,7 +959,7 @@ services:
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.sync, size: 18),
-                label: const Text('Sync Prometheus & Grafana'),
+                label: const Text('Sync Rules'),
               ),
             ],
           ),
@@ -1239,4 +1291,305 @@ class _SLOTrendChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SLOTrendChartPainter oldDelegate) => true;
+}
+
+// SLO Form Dialog (Add / Edit / Disable)
+class _SLOFormDialog extends StatefulWidget {
+  final SLOItem? existingItem;
+  final List<Service> services;
+  final VoidCallback onSave;
+
+  const _SLOFormDialog({
+    this.existingItem,
+    required this.services,
+    required this.onSave,
+  });
+
+  @override
+  State<_SLOFormDialog> createState() => _SLOFormDialogState();
+}
+
+class _SLOFormDialogState extends State<_SLOFormDialog> {
+  late String _serviceId;
+  late TextEditingController _targetController;
+  late String _window;
+  late String _indicator;
+  late TextEditingController _latencyThresholdController;
+  late String _template;
+  late TextEditingController _journeyController;
+  late TextEditingController _errorQueryController;
+  late TextEditingController _totalQueryController;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.existingItem;
+    _serviceId = item?.serviceId ?? (widget.services.isNotEmpty ? widget.services.first.id : '');
+    _targetController = TextEditingController(text: item != null ? '${item.target}' : '99.9');
+    _window = item?.window ?? '30d';
+    _indicator = item?.indicator ?? 'ratio';
+    _latencyThresholdController = TextEditingController(text: item?.latencyThreshold ?? '200ms');
+    _template = item?.template ?? 'caddy-http';
+    _journeyController = TextEditingController(text: item?.journey ?? '');
+    _errorQueryController = TextEditingController(text: item?.errorQuery ?? '');
+    _totalQueryController = TextEditingController(text: item?.totalQuery ?? '');
+  }
+
+  @override
+  void dispose() {
+    _targetController.dispose();
+    _latencyThresholdController.dispose();
+    _journeyController.dispose();
+    _errorQueryController.dispose();
+    _totalQueryController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit(bool enable) async {
+    if (!enable && widget.existingItem != null) {
+      setState(() => _saving = true);
+      final ok = await ApiService.deleteSLO(widget.existingItem!.serviceId);
+      if (mounted) {
+        setState(() => _saving = false);
+        if (ok) {
+          widget.onSave();
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('SLO disabled and rules synced.')),
+          );
+        }
+      }
+      return;
+    }
+
+    final target = double.tryParse(_targetController.text.trim()) ?? 99.9;
+    setState(() => _saving = true);
+
+    final ok = await ApiService.editSLO(
+      serviceId: _serviceId,
+      enable: enable,
+      target: target,
+      window: _window,
+      indicator: _indicator,
+      latencyThreshold: _latencyThresholdController.text.trim(),
+      template: _template,
+      journey: _journeyController.text.trim(),
+      errorQuery: _errorQueryController.text.trim(),
+      totalQuery: _totalQueryController.text.trim(),
+    );
+
+    if (mounted) {
+      setState(() => _saving = false);
+      if (ok) {
+        widget.onSave();
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(enable ? 'SLO configuration saved & rules synced.' : 'SLO disabled.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save SLO configuration.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isEditing = widget.existingItem != null;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 600,
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(isEditing ? Icons.edit : Icons.add_chart, color: theme.colorScheme.primary, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    isEditing ? 'Configure SLO — ${widget.existingItem!.serviceName}' : 'Add / Configure New SLO',
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Service Selector (if new)
+              if (!isEditing) ...[
+                const Text('Select Service:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: _serviceId.isNotEmpty ? _serviceId : null,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                  items: widget.services
+                      .map<DropdownMenuItem<String>>((s) => DropdownMenuItem<String>(
+                            value: s.id,
+                            child: Text('${s.name} (Stack: ${s.stackId.length > 8 ? s.stackId.substring(0, 8) : s.stackId})'),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _serviceId = val);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Target Availability %:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _targetController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, suffixText: '%'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Time Window:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          value: _window,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: const [
+                            DropdownMenuItem(value: '30d', child: Text('30 Days (Standard)')),
+                            DropdownMenuItem(value: '7d', child: Text('7 Days')),
+                            DropdownMenuItem(value: '24h', child: Text('24 Hours')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _window = val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('SLI Query Template:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          value: _template,
+                          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                          items: const [
+                            DropdownMenuItem(value: 'caddy-http', child: Text('caddy-http (Reverse Proxy 5xx)')),
+                            DropdownMenuItem(value: 'http-status', child: Text('http-status (HTTP 5xx Rate)')),
+                            DropdownMenuItem(value: 'latency-p99', child: Text('latency-p99 (P99 Duration)')),
+                            DropdownMenuItem(value: 'grpc', child: Text('grpc (gRPC Error Codes)')),
+                            DropdownMenuItem(value: '', child: Text('Custom PromQL Queries')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _template = val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('User Journey Name:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _journeyController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            hintText: 'e.g. Checkout Flow',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              if (_template.isEmpty) ...[
+                const Text('Custom PromQL Error Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _errorQueryController,
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 12),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'sum(rate(my_errors_total[{{.window}}]))',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('Custom PromQL Total Query:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _totalQueryController,
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 12),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'sum(rate(my_requests_total[{{.window}}]))',
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (isEditing) ...[
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : () => _submit(false),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                      icon: const Icon(Icons.delete, size: 18),
+                      label: const Text('Disable SLO'),
+                    ),
+                    const Spacer(),
+                  ],
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : () => _submit(true),
+                    icon: _saving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check),
+                    label: const Text('Save & Sync Rules'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

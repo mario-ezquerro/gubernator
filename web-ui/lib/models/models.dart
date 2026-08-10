@@ -228,6 +228,8 @@ class SLOItem {
   final double errorBudgetRemaining;
   final double burnRate;
   final String status;
+  final String indicator;
+  final String latencyThreshold;
 
   SLOItem({
     required this.serviceId,
@@ -235,6 +237,8 @@ class SLOItem {
     required this.stackId,
     required this.target,
     required this.window,
+    this.indicator = 'ratio',
+    this.latencyThreshold = '',
     this.template = '',
     this.journey = '',
     required this.errorQuery,
@@ -251,6 +255,8 @@ class SLOItem {
       stackId: json['stack_id'] ?? '',
       target: (json['target'] as num?)?.toDouble() ?? 99.9,
       window: json['window'] ?? '30d',
+      indicator: json['indicator'] ?? 'ratio',
+      latencyThreshold: json['latency_threshold'] ?? '',
       template: json['template'] ?? '',
       journey: json['journey'] ?? '',
       errorQuery: json['error_query'] ?? '',
