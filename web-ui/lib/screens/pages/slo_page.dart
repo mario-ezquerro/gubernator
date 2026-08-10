@@ -31,6 +31,10 @@ class _SloPageState extends State<SloPage> with SingleTickerProviderStateMixin {
   bool _syncing = false;
   bool _validating = false;
 
+  String _searchQuery = '';
+  String _sortBy = 'lowest_budget'; // lowest_budget, highest_burn, name, target
+  bool _isTableView = false;
+
   final TextEditingController _composeController = TextEditingController(
     text: '''version: "3.8"
 name: checkout-stack
@@ -139,6 +143,41 @@ services:
     return Colors.green.shade600;
   }
 
+  List<SLOItem> _getFilteredAndSortedSLOs() {
+    List<SLOItem> list = _slos.where((s) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return s.serviceName.toLowerCase().contains(q) ||
+          s.template.toLowerCase().contains(q) ||
+          s.journey.toLowerCase().contains(q) ||
+          s.errorQuery.toLowerCase().contains(q);
+    }).toList();
+
+    list.sort((a, b) {
+      switch (_sortBy) {
+        case 'lowest_budget':
+          return a.errorBudgetRemaining.compareTo(b.errorBudgetRemaining);
+        case 'highest_burn':
+          return b.burnRate.compareTo(a.burnRate);
+        case 'name':
+          return a.serviceName.compareTo(b.serviceName);
+        case 'target':
+          return b.target.compareTo(a.target);
+        default:
+          return a.errorBudgetRemaining.compareTo(b.errorBudgetRemaining);
+      }
+    });
+
+    return list;
+  }
+
+  void _showSLODetailModal(SLOItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _SLODetailDialog(item: item),
+    );
+  }
+
   Widget _buildSummaryCards(ThemeData theme) {
     final total = _slos.length;
     final healthy = _slos.where((s) => s.status == 'healthy').length;
@@ -187,6 +226,8 @@ services:
 
   // TAB 1: Overview & Error Budgets
   Widget _buildTabOverview(ThemeData theme) {
+    final filteredSLOs = _getFilteredAndSortedSLOs();
+
     if (_slos.isEmpty) {
       return Card(
         child: Padding(
@@ -216,136 +257,264 @@ services:
       );
     }
 
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _slos.length,
-      separatorBuilder: (ctx, idx) => const SizedBox(height: 16),
-      itemBuilder: (ctx, idx) {
-        final item = _slos[idx];
-        final budgetColor = _getBudgetColor(item.errorBudgetRemaining);
-
-        return Card(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Controls Bar: Search, Sort, View Toggle
+        Card(
           child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.api, size: 24, color: theme.colorScheme.primary),
-                    const SizedBox(width: 10),
-                    Text(
-                      item.serviceName,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search, size: 20),
+                      hintText: 'Search by service, template, or journey...',
+                      isDense: true,
+                      border: InputBorder.none,
                     ),
-                    const SizedBox(width: 12),
-                    Chip(
-                      label: Text('${item.target}% Target (${item.window})',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                      backgroundColor: theme.colorScheme.secondaryContainer,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    if (item.template.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Chip(
-                        avatar: const Icon(Icons.dashboard_customize, size: 14),
-                        label: Text(item.template, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        backgroundColor: theme.colorScheme.tertiaryContainer,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                    if (item.journey.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Chip(
-                        avatar: const Icon(Icons.route, size: 14),
-                        label: Text(item.journey, style: const TextStyle(fontSize: 11)),
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                    const Spacer(),
-                    Chip(
-                      label: Text('${item.burnRate.toStringAsFixed(2)}x Burn Rate',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: item.burnRate > 1.0 ? Colors.red : Colors.green,
-                          )),
-                      backgroundColor: (item.burnRate > 1.0 ? Colors.red : Colors.green).withValues(alpha: 0.1),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    const SizedBox(width: 8),
-                    StatusBadge(label: item.status),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(
-                      'Error Budget Remaining: ',
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '${item.errorBudgetRemaining.toStringAsFixed(2)}%',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: budgetColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: (item.errorBudgetRemaining / 100.0).clamp(0.0, 1.0),
-                    minHeight: 12,
-                    backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                    color: budgetColor,
+                    onChanged: (val) => setState(() => _searchQuery = val),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  title: Text('SLI Queries', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                  children: [
-                    if (item.errorQuery.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Error Query: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            Expanded(
-                              child: SelectableText(
-                                item.errorQuery,
-                                style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.redAccent),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (item.totalQuery.isNotEmpty)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Query: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          Expanded(
-                            child: SelectableText(
-                              item.totalQuery,
-                              style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.blueAccent),
-                            ),
-                          ),
-                        ],
-                      ),
+                const SizedBox(width: 16),
+                DropdownButton<String>(
+                  value: _sortBy,
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.sort, size: 18),
+                  items: const [
+                    DropdownMenuItem(value: 'lowest_budget', child: Text('Sort: Lowest Budget')),
+                    DropdownMenuItem(value: 'highest_burn', child: Text('Sort: Highest Burn')),
+                    DropdownMenuItem(value: 'name', child: Text('Sort: Name (A-Z)')),
+                    DropdownMenuItem(value: 'target', child: Text('Sort: Target %')),
                   ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _sortBy = val);
+                  },
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  tooltip: _isTableView ? 'Switch to Cards View' : 'Switch to Data Table View',
+                  icon: Icon(_isTableView ? Icons.grid_view : Icons.table_rows),
+                  onPressed: () => setState(() => _isTableView = !_isTableView),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+
+        if (filteredSLOs.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: Text('No SLOs match your search filter.')),
+          )
+        else if (_isTableView)
+          // Data Table View
+          Card(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
+                columns: const [
+                  DataColumn(label: Text('Service')),
+                  DataColumn(label: Text('Target')),
+                  DataColumn(label: Text('Budget Remaining')),
+                  DataColumn(label: Text('Burn Rate')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: filteredSLOs.map((item) {
+                  final budgetColor = _getBudgetColor(item.errorBudgetRemaining);
+                  return DataRow(
+                    onSelectChanged: (_) => _showSLODetailModal(item),
+                    cells: [
+                      DataCell(
+                        Row(
+                          children: [
+                            Text(item.serviceName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (item.template.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => setState(() => _searchQuery = item.template),
+                                child: Chip(
+                                  label: Text(item.template, style: const TextStyle(fontSize: 10)),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      DataCell(Text('${item.target}% (${item.window})')),
+                      DataCell(
+                        Text('${item.errorBudgetRemaining.toStringAsFixed(2)}%',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: budgetColor)),
+                      ),
+                      DataCell(
+                        Text('${item.burnRate.toStringAsFixed(2)}x',
+                            style: TextStyle(
+                              color: item.burnRate > 1.0 ? Colors.red : Colors.green,
+                              fontWeight: FontWeight.bold,
+                            )),
+                      ),
+                      DataCell(StatusBadge(label: item.status)),
+                      DataCell(
+                        IconButton(
+                          icon: const Icon(Icons.analytics, size: 18),
+                          onPressed: () => _showSLODetailModal(item),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          )
+        else
+          // Cards View
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredSLOs.length,
+            separatorBuilder: (ctx, idx) => const SizedBox(height: 16),
+            itemBuilder: (ctx, idx) {
+              final item = filteredSLOs[idx];
+              final budgetColor = _getBudgetColor(item.errorBudgetRemaining);
+
+              return Card(
+                child: InkWell(
+                  onTap: () => _showSLODetailModal(item),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.api, size: 24, color: theme.colorScheme.primary),
+                            const SizedBox(width: 10),
+                            Text(
+                              item.serviceName,
+                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 12),
+                            Chip(
+                              label: Text('${item.target}% Target (${item.window})',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                              backgroundColor: theme.colorScheme.secondaryContainer,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            if (item.template.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => setState(() => _searchQuery = item.template),
+                                child: Chip(
+                                  avatar: const Icon(Icons.dashboard_customize, size: 14),
+                                  label: Text(item.template, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  backgroundColor: theme.colorScheme.tertiaryContainer,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ],
+                            if (item.journey.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => setState(() => _searchQuery = item.journey),
+                                child: Chip(
+                                  avatar: const Icon(Icons.route, size: 14),
+                                  label: Text(item.journey, style: const TextStyle(fontSize: 11)),
+                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Chip(
+                              label: Text('${item.burnRate.toStringAsFixed(2)}x Burn Rate',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: item.burnRate > 1.0 ? Colors.red : Colors.green,
+                                  )),
+                              backgroundColor: (item.burnRate > 1.0 ? Colors.red : Colors.green).withValues(alpha: 0.1),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            const SizedBox(width: 8),
+                            StatusBadge(label: item.status),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Text(
+                              'Error Budget Remaining: ',
+                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              '${item.errorBudgetRemaining.toStringAsFixed(2)}%',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: budgetColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: (item.errorBudgetRemaining / 100.0).clamp(0.0, 1.0),
+                            minHeight: 12,
+                            backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                            color: budgetColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: Text('SLI Queries', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                          children: [
+                            if (item.errorQuery.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Error Query: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    Expanded(
+                                      child: SelectableText(
+                                        item.errorQuery,
+                                        style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.redAccent),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (item.totalQuery.isNotEmpty)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Total Query: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  Expanded(
+                                    child: SelectableText(
+                                      item.totalQuery,
+                                      style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.blueAccent),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -715,7 +884,7 @@ services:
                     style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Google SRE Multi-Burn-Rate Sloth Engine & Prometheus Integration',
+                    'Google SRE Multi-Burn-Rate Sloth Engine & Pyrra Interactive Suite',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -738,7 +907,7 @@ services:
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.sync, size: 18),
-                label: const Text('Sync Prometheus Rules'),
+                label: const Text('Sync Prometheus & Grafana'),
               ),
             ],
           ),
@@ -799,4 +968,275 @@ services:
       ),
     );
   }
+}
+
+// SLO Detail Modal Dialog
+class _SLODetailDialog extends StatefulWidget {
+  final SLOItem item;
+
+  const _SLODetailDialog({required this.item});
+
+  @override
+  State<_SLODetailDialog> createState() => _SLODetailDialogState();
+}
+
+class _SLODetailDialogState extends State<_SLODetailDialog> {
+  String _selectedRange = '24h';
+  List<SLOHistoryPoint> _history = [];
+  SLOREDMetrics? _redMetrics;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetailData();
+  }
+
+  Future<void> _fetchDetailData() async {
+    setState(() => _loading = true);
+    try {
+      final historyFuture = ApiService.fetchSLOHistory(widget.item.serviceId, _selectedRange);
+      final redFuture = ApiService.fetchSLOREDMetrics(widget.item.serviceId);
+
+      final results = await Future.wait([historyFuture, redFuture]);
+
+      if (mounted) {
+        setState(() {
+          _history = results[0] as List<SLOHistoryPoint>;
+          _redMetrics = results[1] as SLOREDMetrics;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.item;
+
+    final double currentAvail = 100.0 - (100.0 - item.target) * (item.burnRate > 0 ? item.burnRate : 1.0);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 800,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.analytics, color: theme.colorScheme.primary, size: 28),
+                const SizedBox(width: 12),
+                Text('${item.serviceName} — SLO Deep Dive',
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Big 3 Highlight Numbers
+            Row(
+              children: [
+                Expanded(
+                  child: Card(
+                    color: theme.colorScheme.primaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text('TARGET OBJECTIVE', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text('${item.target}%', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          Text('Window: ${item.window}', style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Card(
+                    color: theme.colorScheme.secondaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text('EST. AVAILABILITY', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text('${currentAvail.toStringAsFixed(2)}%',
+                              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          Text('Burn Rate: ${item.burnRate.toStringAsFixed(2)}x', style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Card(
+                    color: theme.colorScheme.tertiaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text('BUDGET REMAINING', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text('${item.errorBudgetRemaining.toStringAsFixed(2)}%',
+                              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          Text('Status: ${item.status}', style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Range Selector & Trend Chart
+            Row(
+              children: [
+                Text('Error Budget Trend Chart', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: '1h', label: Text('1h')),
+                    ButtonSegment(value: '6h', label: Text('6h')),
+                    ButtonSegment(value: '24h', label: Text('24h')),
+                    ButtonSegment(value: '7d', label: Text('7d')),
+                    ButtonSegment(value: '30d', label: Text('30d')),
+                  ],
+                  selected: {_selectedRange},
+                  onSelectionChanged: (set) {
+                    setState(() => _selectedRange = set.first);
+                    _fetchDetailData();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 180,
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : CustomPaint(
+                      painter: _SLOTrendChartPainter(history: _history, theme: theme),
+                    ),
+            ),
+            const SizedBox(height: 20),
+
+            // RED Metrics Cards
+            Text('RED Metrics (Request Rate, Error Rate, P99 Duration)',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildREDCard('Requests / sec', '${(_redMetrics?.rps ?? 0).toStringAsFixed(1)} RPS', Icons.speed, Colors.blue),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildREDCard('Error Rate (5xx)', '${(_redMetrics?.errorRps ?? 0).toStringAsFixed(2)} RPS', Icons.error_outline, Colors.red),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildREDCard('P99 Latency', '${(_redMetrics?.p99LatencyMs ?? 0).toStringAsFixed(1)} ms', Icons.timer, Colors.amber),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildREDCard(String label, String value, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Custom Painter for SLO Error Budget Trend Chart
+class _SLOTrendChartPainter extends CustomPainter {
+  final List<SLOHistoryPoint> history;
+  final ThemeData theme;
+
+  _SLOTrendChartPainter({required this.history, required this.theme});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintLine = Paint()
+      ..color = Colors.greenAccent
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    final paintGrid = Paint()
+      ..color = Colors.white10
+      ..strokeWidth = 1.0;
+
+    // Draw grid lines
+    canvas.drawLine(Offset(0, size.height * 0.2), Offset(size.width, size.height * 0.2), paintGrid);
+    canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.5), paintGrid);
+    canvas.drawLine(Offset(0, size.height * 0.8), Offset(size.width, size.height * 0.8), paintGrid);
+
+    if (history.length < 2) {
+      final textPainter = TextPainter(
+        text: const TextSpan(text: 'Simulated Budget Trend: 100% Stable', style: TextStyle(color: Colors.white38, fontSize: 12)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainter.paint(canvas, Offset((size.width - textPainter.width) / 2, (size.height - textPainter.height) / 2));
+      return;
+    }
+
+    final path = Path();
+    final double dx = size.width / (history.length - 1);
+
+    for (int i = 0; i < history.length; i++) {
+      final pt = history[i];
+      final double y = size.height - (pt.budgetRemaining / 100.0) * size.height;
+      final double x = i * dx;
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    canvas.drawPath(path, paintLine);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SLOTrendChartPainter oldDelegate) => true;
 }

@@ -363,3 +363,43 @@ class SLOValidationItem {
     );
   }
 }
+
+class SLOHistoryPoint {
+  final String timestamp;
+  final double budgetRemaining;
+  final double burnRate;
+
+  SLOHistoryPoint({
+    required this.timestamp,
+    required this.budgetRemaining,
+    required this.burnRate,
+  });
+
+  factory SLOHistoryPoint.fromJson(Map<String, dynamic> json) {
+    return SLOHistoryPoint(
+      timestamp: json['timestamp'] ?? '',
+      budgetRemaining: (json['budget_remaining'] as num?)?.toDouble() ?? 100.0,
+      burnRate: (json['burn_rate'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class SLOREDMetrics {
+  final double rps;
+  final double errorRps;
+  final double p99LatencyMs;
+
+  SLOREDMetrics({
+    required this.rps,
+    required this.errorRps,
+    required this.p99LatencyMs,
+  });
+
+  factory SLOREDMetrics.fromJson(Map<String, dynamic> json) {
+    return SLOREDMetrics(
+      rps: (json['rps'] as num?)?.toDouble() ?? 0.0,
+      errorRps: (json['error_rps'] as num?)?.toDouble() ?? 0.0,
+      p99LatencyMs: (json['p99_latency_ms'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}

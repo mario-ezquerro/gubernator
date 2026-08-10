@@ -1,6 +1,6 @@
 # Gubernator SLO Specification (`SPEC-slo.md`)
 
-Gubernator features a native **Service Level Objective (SLO)** engine and **Error Budget tracking** system powered by **Sloth** (`github.com/slok/sloth`). Inspired by Slok for Kubernetes, Gubernator adapts Kubernetes Custom Resources (`PrometheusSLO`, `OpenSLO`) into a lightweight, Docker Compose-native label specification, relational database tracking, and Prometheus rule generator.
+Gubernator features a native **Service Level Objective (SLO)** engine and **Error Budget tracking** system powered by **Sloth** (`github.com/slok/sloth`) and inspired by **Pyrra** (`github.com/pyrra-dev/pyrra`). It adapts Kubernetes Custom Resources (`PrometheusSLO`, `OpenSLO`) into a lightweight, Docker Compose-native label specification, relational database tracking, Prometheus rule generator, and an integrated 5-tab Web Dashboard Suite.
 
 ---
 
@@ -14,6 +14,8 @@ In Gubernator, SLOs are defined either via service labels in `docker-compose.yml
 | `gbnt.slo.enable` | Enables SLO tracking for the service | `"true"` / `"false"` |
 | `gbnt.slo.target` | Target availability objective percentage | `"99.9"` (99.9%) |
 | `gbnt.slo.window` | Time window for error budget calculation | `"30d"`, `"7d"`, `"28d"` |
+| `gbnt.slo.indicator` | Type of indicator | `"ratio"` (default) or `"latency"` |
+| `gbnt.slo.latency.threshold` | Target latency threshold when indicator is `latency` | `"200ms"`, `"0.5s"` |
 | `gbnt.slo.template` | Built-in SLI query template | `"caddy-http"`, `"http-status"`, `"latency-p99"`, `"grpc"` |
 | `gbnt.slo.sli.error_query` | Custom PromQL error events rate query | `'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'` |
 | `gbnt.slo.sli.total_query` | Custom PromQL total events rate query | `'sum(rate(caddy_http_response_status_code_total[5m]))'` |
@@ -74,10 +76,39 @@ Gubernator cross-references real-time SLO error budget burn rate spikes with rec
 
 ---
 
-## 🎨 7. Web Dashboard Suite (`slo_page.dart`)
+## 🔍 7. Advanced Filtering, Search & Sorting
+
+The SLO Dashboard includes rich interaction capabilities:
+- **Real-Time Text Search**: Filter SLOs instantly by service name, stack name, or journey.
+- **Clickable Label Filters**: Click on template or journey chips to isolate matching SLOs.
+- **Multi-Field Sorting**: Sort by lowest error budget remaining, highest burn rate, or name.
+- **Cards vs Data Table Toggle**: Switch between visual cards view and dense data table view.
+
+---
+
+## 📉 8. Time Series History & RED Metrics (Pyrra Integration)
+
+- **Historical Trend Lines (`/v1/slo/history`)**: Fetches Prometheus range queries over configurable ranges (`1h`, `6h`, `24h`, `7d`, `30d`) to draw interactive error budget consumption and burn rate charts.
+- **RED Metrics Breakdown**: Displays Request Rate (RPS), Error Rate (5xx/sec), and P99 Duration (ms) alongside each SLO detail modal.
+
+---
+
+## ⚡ 9. Backend In-Memory Query Caching
+
+To ensure high performance and avoid hammering Prometheus, backend handlers cache Prometheus query results with a 15-second TTL.
+
+---
+
+## 📊 10. Automated Grafana Dashboard Provisioning
+
+Whenever `slo.SyncSLORulesToPrometheus` runs, Gubernator automatically generates a comprehensive Grafana Dashboard JSON file at `/data/monitor/grafana/dashboards/slo_dashboard.json`, providing out-of-the-box Grafana panels for all active SLOs without manual JSON construction.
+
+---
+
+## 🎨 11. Web Dashboard Suite (`slo_page.dart`)
 
 The Flutter Web Dashboard features a 5-tab SLO Management Suite:
-1. **Overview & Error Budgets**: Live status cards, error budget remaining gauges, and burn rate badges.
+1. **Overview & Error Budgets**: Live status cards, search/filter bar, sorting options, table/card toggle, error budget progress bars, and detail modal with RED metrics & historical charts.
 2. **User Journeys**: High-level composite journey topology and bottleneck identification.
 3. **Deployment Correlation Timeline**: Timeline graph correlating burn rate spikes with stack deployment events.
 4. **SLI Templates & PromQL Generator**: Interactive PromQL builder with live metric preview.

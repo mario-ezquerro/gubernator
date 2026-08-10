@@ -201,6 +201,8 @@ func SyncSLORulesToPrometheus(gormDB *gorm.DB) error {
 		return err
 	}
 
+	_ = SyncGrafanaDashboard(gormDB)
+
 	dataDir := os.Getenv("GBNT_DATA_DIR")
 	if dataDir == "" {
 		dataDir = "/data"

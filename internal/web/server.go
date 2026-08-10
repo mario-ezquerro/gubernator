@@ -305,6 +305,8 @@ func StartDashboard() {
 		api.POST("/slo/validate", sloValidateHandler)
 		api.GET("/slo/journeys", sloJourneysHandler)
 		api.GET("/slo/correlation", sloCorrelationHandler)
+		api.GET("/slo/history", sloHistoryHandler)
+		api.GET("/slo/red", sloREDMetricsHandler)
 
 		// Caddy Subsystem
 		api.GET("/caddy/status", caddyStatusHandler)
@@ -2330,6 +2332,153 @@ func sloValidateHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, results)
 }
+
+type sloWebHistoryPoint struct {
+	Timestamp       string  `json:"timestamp"`
+	BudgetRemaining float64 `json:"budget_remaining"`
+	BurnRate        float64 `json:"burn_rate"`
+}
+
+type sloWebREDMetrics struct {
+	RPS          float64 `json:"rps"`
+	ErrorRPS     float64 `json:"error_rps"`
+	P99LatencyMs float64 `json:"p99_latency_ms"`
+}
+
+func sloHistoryHandler(c *gin.Context) {
+	serviceID := c.Query("service_id")
+	rangeParam := c.Query("range")
+	if rangeParam == "" {
+		rangeParam = "24h"
+	}
+
+	var durationSec int64 = 86400
+	var stepSec int64 = 300
+	switch rangeParam {
+	case "1h":
+		durationSec = 3600
+		stepSec = 15
+	case "6h":
+		durationSec = 21600
+		stepSec = 60
+	case "24h":
+		durationSec = 86400
+		stepSec = 300
+	case "7d":
+		durationSec = 604800
+		stepSec = 1800
+	case "30d":
+		durationSec = 2592000
+		stepSec = 7200
+	}
+
+	now := time.Now().Unix()
+	start := now - durationSec
+
+	queryBudget := fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, serviceID)
+	queryBurn := fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, serviceID)
+
+	budgetPoints := queryPrometheusRangeMetric(queryBudget, start, now, stepSec)
+	burnPoints := queryPrometheusRangeMetric(queryBurn, start, now, stepSec)
+
+	pointsMap := make(map[int64]*sloWebHistoryPoint)
+	for t, val := range budgetPoints {
+		pointsMap[t] = &sloWebHistoryPoint{
+			Timestamp:       time.Unix(t, 0).Format("15:04"),
+			BudgetRemaining: val * 100.0,
+			BurnRate:        0.0,
+		}
+	}
+	for t, val := range burnPoints {
+		if pt, exists := pointsMap[t]; exists {
+			pt.BurnRate = val
+		} else {
+			pointsMap[t] = &sloWebHistoryPoint{
+				Timestamp:       time.Unix(t, 0).Format("15:04"),
+				BudgetRemaining: 100.0,
+				BurnRate:        val,
+			}
+		}
+	}
+
+	var result []sloWebHistoryPoint
+	for i := start; i <= now; i += stepSec {
+		closest := i - (i % stepSec)
+		if pt, exists := pointsMap[closest]; exists {
+			result = append(result, *pt)
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func sloREDMetricsHandler(c *gin.Context) {
+	serviceID := c.Query("service_id")
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", serviceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	rps, _ := queryPrometheusMetric(fmt.Sprintf(`sum(rate(caddy_http_response_status_code_total{service="%s"}[5m]))`, svc.Name))
+	errRps, _ := queryPrometheusMetric(fmt.Sprintf(`sum(rate(caddy_http_response_status_code_total{service="%s",status=~"5.."}[5m]))`, svc.Name))
+	p99, _ := queryPrometheusMetric(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(caddy_http_request_duration_seconds_bucket{service="%s"}[5m])) by (le)) * 1000`, svc.Name))
+
+	if rps < 0 {
+		rps = 0
+	}
+	if errRps < 0 {
+		errRps = 0
+	}
+	if p99 < 0 {
+		p99 = 0
+	}
+
+	c.JSON(http.StatusOK, sloWebREDMetrics{
+		RPS:          rps,
+		ErrorRPS:     errRps,
+		P99LatencyMs: p99,
+	})
+}
+
+func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]float64 {
+	res := make(map[int64]float64)
+	urlStr := fmt.Sprintf("http://localhost:9090/api/v1/query_range?query=%s&start=%d&end=%d&step=%d", query, start, end, step)
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		return res
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data struct {
+			Result []struct {
+				Values [][]interface{} `json:"values"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return res
+	}
+
+	if len(result.Data.Result) > 0 {
+		for _, pair := range result.Data.Result[0].Values {
+			if len(pair) >= 2 {
+				tsFloat, ok1 := pair[0].(float64)
+				strVal, ok2 := pair[1].(string)
+				if ok1 && ok2 {
+					if f, err := strconv.ParseFloat(strVal, 64); err == nil {
+						res[int64(tsFloat)] = f
+					}
+				}
+			}
+		}
+	}
+
+	return res
+}
+
+
 
 func queryPrometheusMetric(query string) (float64, error) {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:9090/api/v1/query?query=%s", query))

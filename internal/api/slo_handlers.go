@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -19,6 +21,8 @@ type SLOItem struct {
 	StackID              string  `json:"stack_id"`
 	Target               float64 `json:"target"`
 	Window               string  `json:"window"`
+	Indicator            string  `json:"indicator,omitempty"`
+	LatencyThreshold     string  `json:"latency_threshold,omitempty"`
 	Template             string  `json:"template,omitempty"`
 	Journey              string  `json:"journey,omitempty"`
 	ErrorQuery           string  `json:"error_query"`
@@ -64,6 +68,30 @@ type SLOValidationItem struct {
 	BacktestDetails string  `json:"backtest_details"`
 }
 
+type SLOHistoryPoint struct {
+	Timestamp       string  `json:"timestamp"`
+	BudgetRemaining float64 `json:"budget_remaining"`
+	BurnRate        float64 `json:"burn_rate"`
+}
+
+type SLOREDMetrics struct {
+	RPS          float64 `json:"rps"`
+	ErrorRPS     float64 `json:"error_rps"`
+	P99LatencyMs float64 `json:"p99_latency_ms"`
+}
+
+var (
+	promCache      = make(map[string]cacheEntry)
+	promCacheMutex sync.RWMutex
+	cacheTTL       = 15 * time.Second
+)
+
+type cacheEntry struct {
+	val       float64
+	err       error
+	fetchedAt time.Time
+}
+
 func parseConstraintsMap(constraints []string) map[string]string {
 	res := make(map[string]string)
 	for _, c := range constraints {
@@ -106,6 +134,12 @@ func SLOListHandler(c *gin.Context) {
 			window = "30d"
 		}
 
+		indicator := cmap["gbnt.slo.indicator"]
+		if indicator == "" {
+			indicator = "ratio"
+		}
+		latencyThresh := cmap["gbnt.slo.latency.threshold"]
+
 		template := cmap["gbnt.slo.template"]
 		journey := cmap["gbnt.slo.journey"]
 		errQuery := cmap["gbnt.slo.sli.error_query"]
@@ -127,6 +161,8 @@ func SLOListHandler(c *gin.Context) {
 			StackID:              svc.StackID,
 			Target:               targetVal,
 			Window:               window,
+			Indicator:            indicator,
+			LatencyThreshold:     latencyThresh,
 			Template:             template,
 			Journey:              journey,
 			ErrorQuery:           errQuery,
@@ -136,8 +172,7 @@ func SLOListHandler(c *gin.Context) {
 			Status:               "no_data",
 		}
 
-		// Attempt to query Prometheus for real-time error budget ratio
-		budgetRatio, err := queryPrometheusMetric(fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, svc.ID))
+		budgetRatio, err := queryPrometheusMetricCached(fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, svc.ID))
 		if err == nil && budgetRatio >= 0 {
 			item.ErrorBudgetRemaining = budgetRatio * 100.0
 			if item.ErrorBudgetRemaining <= 0 {
@@ -149,7 +184,7 @@ func SLOListHandler(c *gin.Context) {
 			}
 		}
 
-		burnRate, err := queryPrometheusMetric(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
+		burnRate, err := queryPrometheusMetricCached(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
 		if err == nil && burnRate >= 0 {
 			item.BurnRate = burnRate
 		}
@@ -234,7 +269,7 @@ func SLOJourneysHandler(c *gin.Context) {
 			Status:               "no_data",
 		}
 
-		budgetRatio, err := queryPrometheusMetric(fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, svc.ID))
+		budgetRatio, err := queryPrometheusMetricCached(fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, svc.ID))
 		if err == nil && budgetRatio >= 0 {
 			item.ErrorBudgetRemaining = budgetRatio * 100.0
 			if item.ErrorBudgetRemaining <= 0 {
@@ -245,7 +280,7 @@ func SLOJourneysHandler(c *gin.Context) {
 				item.Status = "healthy"
 			}
 		}
-		burnRate, err := queryPrometheusMetric(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
+		burnRate, err := queryPrometheusMetricCached(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
 		if err == nil && burnRate >= 0 {
 			item.BurnRate = burnRate
 		}
@@ -307,7 +342,7 @@ func SLOCorrelationHandler(c *gin.Context) {
 		db.DB.Where("stack_id = ?", st.ID).Find(&services)
 
 		for _, svc := range services {
-			burnRate, _ := queryPrometheusMetric(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
+			burnRate, _ := queryPrometheusMetricCached(fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, svc.ID))
 			if burnRate < 0 {
 				burnRate = 0
 			}
@@ -324,6 +359,117 @@ func SLOCorrelationHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, events)
+}
+
+// @Summary Get SLO Historical Trend Data Points
+// @Description Fetch Prometheus range time-series points for an SLO
+// @Tags slo
+// @Produce json
+// @Param service_id query string true "Service ID"
+// @Param range query string false "Range duration (1h, 6h, 24h, 7d, 30d)"
+// @Success 200 {array} SLOHistoryPoint
+// @Router /v1/slo/history [get]
+func SLOHistoryHandler(c *gin.Context) {
+	serviceID := c.Query("service_id")
+	rangeParam := c.Query("range")
+	if rangeParam == "" {
+		rangeParam = "24h"
+	}
+
+	var durationSec int64 = 86400
+	var stepSec int64 = 300
+	switch rangeParam {
+	case "1h":
+		durationSec = 3600
+		stepSec = 15
+	case "6h":
+		durationSec = 21600
+		stepSec = 60
+	case "24h":
+		durationSec = 86400
+		stepSec = 300
+	case "7d":
+		durationSec = 604800
+		stepSec = 1800
+	case "30d":
+		durationSec = 2592000
+		stepSec = 7200
+	}
+
+	now := time.Now().Unix()
+	start := now - durationSec
+
+	queryBudget := fmt.Sprintf(`slo:period_error_budget_remaining:ratio{gbnt_service_id="%s"}`, serviceID)
+	queryBurn := fmt.Sprintf(`slo:current_burn_rate:ratio{gbnt_service_id="%s"}`, serviceID)
+
+	budgetPoints := queryPrometheusRangeMetric(queryBudget, start, now, stepSec)
+	burnPoints := queryPrometheusRangeMetric(queryBurn, start, now, stepSec)
+
+	pointsMap := make(map[int64]*SLOHistoryPoint)
+	for t, val := range budgetPoints {
+		pointsMap[t] = &SLOHistoryPoint{
+			Timestamp:       time.Unix(t, 0).Format("15:04"),
+			BudgetRemaining: val * 100.0,
+			BurnRate:        0.0,
+		}
+	}
+	for t, val := range burnPoints {
+		if pt, exists := pointsMap[t]; exists {
+			pt.BurnRate = val
+		} else {
+			pointsMap[t] = &SLOHistoryPoint{
+				Timestamp:       time.Unix(t, 0).Format("15:04"),
+				BudgetRemaining: 100.0,
+				BurnRate:        val,
+			}
+		}
+	}
+
+	var result []SLOHistoryPoint
+	for i := start; i <= now; i += stepSec {
+		closest := i - (i % stepSec)
+		if pt, exists := pointsMap[closest]; exists {
+			result = append(result, *pt)
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// @Summary Get Service RED Metrics (Rate, Errors, Duration)
+// @Description Query Prometheus for RPS, Error RPS, and P99 Duration
+// @Tags slo
+// @Produce json
+// @Param service_id query string true "Service ID"
+// @Success 200 {object} SLOREDMetrics
+// @Router /v1/slo/red [get]
+func SLOREDMetricsHandler(c *gin.Context) {
+	serviceID := c.Query("service_id")
+	var svc db.Service
+	if err := db.DB.First(&svc, "id = ?", serviceID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+
+	rps, _ := queryPrometheusMetricCached(fmt.Sprintf(`sum(rate(caddy_http_response_status_code_total{service="%s"}[5m]))`, svc.Name))
+	errRps, _ := queryPrometheusMetricCached(fmt.Sprintf(`sum(rate(caddy_http_response_status_code_total{service="%s",status=~"5.."}[5m]))`, svc.Name))
+	p99, _ := queryPrometheusMetricCached(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(caddy_http_request_duration_seconds_bucket{service="%s"}[5m])) by (le)) * 1000`, svc.Name))
+
+	if rps < 0 {
+		rps = 0
+	}
+	if errRps < 0 {
+		errRps = 0
+	}
+	if p99 < 0 {
+		p99 = 0
+	}
+
+	c.JSON(http.StatusOK, SLOREDMetrics{
+		RPS:          rps,
+		ErrorRPS:     errRps,
+		P99LatencyMs: p99,
+	})
 }
 
 // @Summary Validate and Backtest SLOs in Compose YAML
@@ -401,11 +547,10 @@ func SLOValidateHandler(c *gin.Context) {
 			item.Error = "Missing error_query or total_query (or valid template)"
 		}
 
-		// Perform backtest against Prometheus
 		if item.Valid {
 			testQuery := strings.ReplaceAll(item.ErrorQuery, "{{.window}}", "5m")
 			testQuery = strings.ReplaceAll(testQuery, "{{ .window }}", "5m")
-			_, err := queryPrometheusMetric(testQuery)
+			_, err := queryPrometheusMetricCached(testQuery)
 			if err != nil {
 				item.BacktestStatus = "no_data"
 				item.BacktestDetails = "Prometheus returned no historical series for error query (dry-run mode)"
@@ -416,6 +561,28 @@ func SLOValidateHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, results)
+}
+
+func queryPrometheusMetricCached(query string) (float64, error) {
+	promCacheMutex.RLock()
+	entry, found := promCache[query]
+	promCacheMutex.RUnlock()
+
+	if found && time.Since(entry.fetchedAt) < cacheTTL {
+		return entry.val, entry.err
+	}
+
+	val, err := queryPrometheusMetric(query)
+
+	promCacheMutex.Lock()
+	promCache[query] = cacheEntry{
+		val:       val,
+		err:       err,
+		fetchedAt: time.Now(),
+	}
+	promCacheMutex.Unlock()
+
+	return val, err
 }
 
 func queryPrometheusMetric(query string) (float64, error) {
@@ -446,4 +613,41 @@ func queryPrometheusMetric(query string) (float64, error) {
 	}
 
 	return strconv.ParseFloat(strVal, 64)
+}
+
+func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]float64 {
+	res := make(map[int64]float64)
+	urlStr := fmt.Sprintf("http://localhost:9090/api/v1/query_range?query=%s&start=%d&end=%d&step=%d", query, start, end, step)
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		return res
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data struct {
+			Result []struct {
+				Values [][]interface{} `json:"values"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return res
+	}
+
+	if len(result.Data.Result) > 0 {
+		for _, pair := range result.Data.Result[0].Values {
+			if len(pair) >= 2 {
+				tsFloat, ok1 := pair[0].(float64)
+				strVal, ok2 := pair[1].(string)
+				if ok1 && ok2 {
+					if f, err := strconv.ParseFloat(strVal, 64); err == nil {
+						res[int64(tsFloat)] = f
+					}
+				}
+			}
+		}
+	}
+
+	return res
 }

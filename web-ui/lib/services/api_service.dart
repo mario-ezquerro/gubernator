@@ -312,6 +312,25 @@ class ApiService {
     return [];
   }
 
+  /// Fetches historical trend points for an SLO.
+  static Future<List<SLOHistoryPoint>> fetchSLOHistory(String serviceId, String timeRange) async {
+    final response = await http.get(Uri.parse('/api/slo/history?service_id=$serviceId&range=$timeRange'));
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(response.body);
+      return list.map((e) => SLOHistoryPoint.fromJson(e)).toList();
+    }
+    return [];
+  }
+
+  /// Fetches RED metrics for a service.
+  static Future<SLOREDMetrics> fetchSLOREDMetrics(String serviceId) async {
+    final response = await http.get(Uri.parse('/api/slo/red?service_id=$serviceId'));
+    if (response.statusCode == 200) {
+      return SLOREDMetrics.fromJson(jsonDecode(response.body));
+    }
+    return SLOREDMetrics(rps: 0, errorRps: 0, p99LatencyMs: 0);
+  }
+
   /// Caddy: Fetches Caddy status and stats for a given node.
   static Future<Map<String, dynamic>> fetchCaddyStatus({String? nodeId}) async {
     final uri = Uri.parse('/api/caddy/status${nodeId != null ? '?node_id=$nodeId' : ''}');
