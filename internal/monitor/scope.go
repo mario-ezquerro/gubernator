@@ -76,6 +76,7 @@ func EnableScope() error {
 	managerIP := getManagerHostIP()
 
 	args := []string{
+		"-e", "CHECKPOINT_DISABLE=1",
 		"--net", "host",
 		"--pid", "host",
 		"--privileged",

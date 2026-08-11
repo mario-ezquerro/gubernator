@@ -256,6 +256,7 @@ var legionJoinCmd = &cobra.Command{
 								"run", "-d",
 								"--name", "gbnt-monitor-scope-probe",
 								"--restart", "unless-stopped",
+								"-e", "CHECKPOINT_DISABLE=1",
 								"--net", "host",
 								"--pid", "host",
 								"--privileged",
