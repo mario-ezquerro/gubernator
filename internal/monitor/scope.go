@@ -98,6 +98,9 @@ func EnableScope() error {
 
 	if coreDNSIP != "" {
 		fmt.Printf("🔍 Dynamic CoreDNS IP detected for Scope DNS resolution: %s\n", coreDNSIP)
+		args = append(args, fmt.Sprintf("--probe.resolver=%s:5354", coreDNSIP))
+	} else {
+		args = append(args, "--probe.resolver=127.0.0.1:5354")
 	}
 
 	if err := runContainer(ScopeContainerName, args); err != nil {

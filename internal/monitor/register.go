@@ -267,6 +267,14 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 func SyncWorkerScopeStacks(database *gorm.DB) {
 	now := time.Now()
 
+	// If Scope is stopped on Manager, purge worker scope stacks
+	if !IsScopeRunning() {
+		UnregisterScopeStackFromDB(database)
+		return
+	}
+
+	managerIP := getDynamicCoreDNSIP()
+
 	var workerNodes []db.Node
 	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
 		return
@@ -305,6 +313,7 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 		}
 
 		serviceID := fmt.Sprintf("super-svc-%s-scope", node.ID)
+		cmdStr := fmt.Sprintf("--probe-only --probe.resolver=%s:5354 %s:4040", managerIP, managerIP)
 		var existingService db.Service
 		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
 			service := db.Service{
@@ -312,12 +321,15 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 				StackID:         stackID,
 				Name:            "weave-scope-probe",
 				Image:           "weaveworks/scope:latest",
+				Command:         cmdStr,
 				DesiredReplicas: 1,
 				Ports:           []string{},
 				CreatedAt:       now,
 				UpdatedAt:       now,
 			}
 			database.Create(&service)
+		} else if existingService.Command != cmdStr {
+			database.Model(&existingService).Update("command", cmdStr)
 		}
 
 		taskID := fmt.Sprintf("super-task-%s-scope", node.ID)
@@ -327,19 +339,13 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 				ID:            taskID,
 				ServiceID:     serviceID,
 				NodeID:        node.ID,
-				Status:        "running",
+				Status:        "pending",
 				ContainerIP:   node.IP,
-				ContainerName: ScopeContainerName,
+				ContainerName: "gbnt-monitor-scope-probe",
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}
 			database.Create(&task)
-		} else {
-			database.Model(&existingTask).Updates(map[string]interface{}{
-				"status":       "running",
-				"container_ip":  node.IP,
-				"updated_at":   now,
-			})
 		}
 	}
 }

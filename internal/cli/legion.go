@@ -248,6 +248,38 @@ var legionJoinCmd = &cobra.Command{
 							continue
 						}
 
+						if strings.Contains(t.Image, "scope") {
+							fmt.Printf("🕸️ Starting Weave Scope probe on worker node...\n")
+							exec.Command("docker", "run", "--privileged", "--rm", "tonistiigi/binfmt", "--install", "all").Run()
+							exec.Command("docker", "rm", "-f", "gbnt-monitor-scope-probe").Run()
+
+							args := []string{
+								"run", "-d",
+								"--name", "gbnt-monitor-scope-probe",
+								"--restart", "unless-stopped",
+								"--net", "host",
+								"--pid", "host",
+								"--privileged",
+								"-v", "/var/run/docker.sock:/var/run/docker.sock",
+								"-v", "/proc:/host/proc:ro",
+								"-v", "/sys:/sys:ro",
+								"weaveworks/scope:latest",
+							}
+							if t.Command != "" {
+								args = append(args, strings.Fields(t.Command)...)
+							}
+
+							if err := exec.Command("docker", args...).Run(); err != nil {
+								fmt.Printf("Failed to start scope probe: %v\n", err)
+								reportStatus("dead", "", "", fmt.Sprintf("scope probe start failed: %v", err))
+								continue
+							}
+
+							reportStatus("running", t.Task.ContainerIP, "gbnt-monitor-scope-probe", "")
+							data.Tasks[i].Task.Status = "running"
+							continue
+						}
+
 						cfg := docker.ContainerConfig{
 							TaskID:  t.Task.ID,
 							Image:   t.Image,
