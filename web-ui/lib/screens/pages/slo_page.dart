@@ -196,6 +196,13 @@ services:
     );
   }
 
+  void _showSLONotificationsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => const _SLONotificationsDialog(),
+    );
+  }
+
   Widget _buildSummaryCards(ThemeData theme) {
     final total = _slos.length;
     final healthy = _slos.where((s) => s.status == 'healthy').length;
@@ -323,6 +330,12 @@ services:
                   onPressed: () => setState(() => _isTableView = !_isTableView),
                 ),
                 const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: () => _showSLONotificationsDialog(),
+                  icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                  label: const Text('Alert Channels'),
+                ),
+                const SizedBox(width: 8),
                 FilledButton.icon(
                   onPressed: () => _showAddEditSLODialog(),
                   icon: const Icon(Icons.add_chart, size: 18),
@@ -1589,6 +1602,351 @@ class _SLOFormDialogState extends State<_SLOFormDialog> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// SLO Alert Notifications Configuration Dialog (Email / Webhook / Triggers)
+class _SLONotificationsDialog extends StatefulWidget {
+  const _SLONotificationsDialog();
+
+  @override
+  State<_SLONotificationsDialog> createState() => _SLONotificationsDialogState();
+}
+
+class _SLONotificationsDialogState extends State<_SLONotificationsDialog> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _loading = true;
+  bool _saving = false;
+  bool _testingEmail = false;
+  bool _testingWebhook = false;
+
+  bool _enableEmail = false;
+  late TextEditingController _smtpHostController;
+  late TextEditingController _smtpPortController;
+  late TextEditingController _smtpUserController;
+  late TextEditingController _smtpPassController;
+  late TextEditingController _fromEmailController;
+  late TextEditingController _toEmailController;
+
+  bool _enableWebhook = false;
+  late TextEditingController _webhookUrlController;
+
+  bool _notifyOnExhaustion = true;
+  bool _notifyOnBurn = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _smtpHostController = TextEditingController();
+    _smtpPortController = TextEditingController(text: '587');
+    _smtpUserController = TextEditingController();
+    _smtpPassController = TextEditingController();
+    _fromEmailController = TextEditingController();
+    _toEmailController = TextEditingController();
+    _webhookUrlController = TextEditingController();
+    _loadConfig();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _smtpHostController.dispose();
+    _smtpPortController.dispose();
+    _smtpUserController.dispose();
+    _smtpPassController.dispose();
+    _fromEmailController.dispose();
+    _toEmailController.dispose();
+    _webhookUrlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadConfig() async {
+    try {
+      final res = await ApiService.fetchSLONotifyConfig();
+      if (mounted) {
+        setState(() {
+          _enableEmail = res['enable_email'] == true;
+          _smtpHostController.text = res['smtp_host'] ?? 'smtp.gmail.com';
+          _smtpPortController.text = '${res['smtp_port'] ?? 587}';
+          _smtpUserController.text = res['smtp_user'] ?? '';
+          _smtpPassController.text = res['smtp_pass'] ?? '';
+          _fromEmailController.text = res['from_email'] ?? 'alerts@gubernator.local';
+          _toEmailController.text = res['to_email'] ?? '';
+
+          _enableWebhook = res['enable_webhook'] == true;
+          _webhookUrlController.text = res['webhook_url'] ?? '';
+
+          _notifyOnExhaustion = res['notify_on_exhaustion'] != false;
+          _notifyOnBurn = res['notify_on_burn'] != false;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveConfig() async {
+    setState(() => _saving = true);
+    final cfg = {
+      'enable_email': _enableEmail,
+      'smtp_host': _smtpHostController.text.trim(),
+      'smtp_port': int.tryParse(_smtpPortController.text.trim()) ?? 587,
+      'smtp_user': _smtpUserController.text.trim(),
+      'smtp_pass': _smtpPassController.text.trim(),
+      'from_email': _fromEmailController.text.trim(),
+      'to_email': _toEmailController.text.trim(),
+      'enable_webhook': _enableWebhook,
+      'webhook_url': _webhookUrlController.text.trim(),
+      'notify_on_exhaustion': _notifyOnExhaustion,
+      'notify_on_burn': _notifyOnBurn,
+    };
+    final ok = await ApiService.saveSLONotifyConfig(cfg);
+    if (mounted) {
+      setState(() => _saving = false);
+      if (ok) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SLO alert notification channels saved.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save notification configuration.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _testChannel(String channel) async {
+    if (channel == 'email') setState(() => _testingEmail = true);
+    if (channel == 'webhook') setState(() => _testingWebhook = true);
+    try {
+      final res = await ApiService.testSLONotify(channel);
+      if (mounted) {
+        final msg = res['message'] ?? res['error'] ?? 'Completed';
+        final isErr = res.containsKey('error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: isErr ? Theme.of(context).colorScheme.error : Colors.green.shade800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _testingEmail = false;
+          _testingWebhook = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 650,
+        height: 520,
+        padding: const EdgeInsets.all(24),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.notifications_active, color: theme.colorScheme.primary, size: 28),
+                      const SizedBox(width: 12),
+                      Text(
+                        'SLO Alert Notification Settings',
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(icon: Icon(Icons.email_outlined, size: 18), text: 'Email (SMTP)'),
+                      Tab(icon: Icon(Icons.webhook_outlined, size: 18), text: 'Webhook'),
+                      Tab(icon: Icon(Icons.tune, size: 18), text: 'Triggers'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // Tab 1: Email (SMTP)
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SwitchListTile(
+                                title: const Text('Enable Email Alert Delivery', style: TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: const Text('Send automatic SMTP emails when SLO target is breached or budget exhausted.'),
+                                value: _enableEmail,
+                                onChanged: (val) => setState(() => _enableEmail = val),
+                              ),
+                              const Divider(),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: _smtpHostController,
+                                      enabled: _enableEmail,
+                                      decoration: const InputDecoration(labelText: 'SMTP Host', hintText: 'smtp.gmail.com', isDense: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 1,
+                                    child: TextField(
+                                      controller: _smtpPortController,
+                                      enabled: _enableEmail,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(labelText: 'Port', hintText: '587', isDense: true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _smtpUserController,
+                                      enabled: _enableEmail,
+                                      decoration: const InputDecoration(labelText: 'SMTP User (Optional)', isDense: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _smtpPassController,
+                                      enabled: _enableEmail,
+                                      obscureText: true,
+                                      decoration: const InputDecoration(labelText: 'SMTP Password (Optional)', isDense: true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _fromEmailController,
+                                      enabled: _enableEmail,
+                                      decoration: const InputDecoration(labelText: 'From Address', hintText: 'alerts@gubernator.local', isDense: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _toEmailController,
+                                      enabled: _enableEmail,
+                                      decoration: const InputDecoration(labelText: 'Recipient Email (To)', hintText: 'devops@company.com', isDense: true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: (_enableEmail && !_testingEmail) ? () => _testChannel('email') : null,
+                                icon: _testingEmail
+                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.send, size: 16),
+                                label: const Text('Send Test Email Alert'),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Tab 2: Webhook
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SwitchListTile(
+                                title: const Text('Enable Webhook Alerts', style: TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: const Text('Post JSON alert payloads to Slack, Discord, Microsoft Teams, or custom endpoints.'),
+                                value: _enableWebhook,
+                                onChanged: (val) => setState(() => _enableWebhook = val),
+                              ),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _webhookUrlController,
+                                enabled: _enableWebhook,
+                                decoration: const InputDecoration(
+                                  labelText: 'Webhook URL',
+                                  hintText: 'https://hooks.slack.com/services/... or https://discord.com/api/webhooks/...',
+                                  isDense: true,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: (_enableWebhook && !_testingWebhook) ? () => _testChannel('webhook') : null,
+                                icon: _testingWebhook
+                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.send, size: 16),
+                                label: const Text('Send Test Webhook Alert'),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Tab 3: Triggers
+                        SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CheckboxListTile(
+                                title: const Text('Alert on Budget Exhaustion (0% Remaining)', style: TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: const Text('Triggers immediate alert when service Error Budget is completely consumed.'),
+                                value: _notifyOnExhaustion,
+                                onChanged: (val) => setState(() => _notifyOnExhaustion = val == true),
+                              ),
+                              const Divider(),
+                              CheckboxListTile(
+                                title: const Text('Alert on High Burn Rate (> 1.0x)', style: TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: const Text('Triggers multi-window burn rate alert when error rate threatens SLO objective.'),
+                                value: _notifyOnBurn,
+                                onChanged: (val) => setState(() => _notifyOnBurn = val == true),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _saving ? null : _saveConfig,
+                        icon: _saving
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.save),
+                        label: const Text('Save Notification Settings'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
       ),
     );
   }

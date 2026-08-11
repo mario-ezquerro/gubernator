@@ -97,6 +97,23 @@ type Service struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// SLONotificationConfig stores alert delivery channels (Email/SMTP, Webhook) for SLO failures.
+type SLONotificationConfig struct {
+	ID                 string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	EnableEmail        bool      `json:"enable_email"`
+	SMTPHost           string    `gorm:"type:varchar(255)" json:"smtp_host"`
+	SMTPPort           int       `json:"smtp_port"`
+	SMTPUser           string    `gorm:"type:varchar(255)" json:"smtp_user"`
+	SMTPPass           string    `gorm:"type:varchar(255)" json:"smtp_pass"`
+	FromEmail          string    `gorm:"type:varchar(255)" json:"from_email"`
+	ToEmail            string    `gorm:"type:varchar(255)" json:"to_email"`
+	EnableWebhook      bool      `json:"enable_webhook"`
+	WebhookURL         string    `gorm:"type:varchar(1024)" json:"webhook_url"`
+	NotifyOnExhaustion bool      `json:"notify_on_exhaustion"`
+	NotifyOnBurn       bool      `json:"notify_on_burn"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
 // Task represents a running container instance of a Service assigned to a Node.
 type Task struct {
 	ID            string    `gorm:"primaryKey;type:varchar(255)" json:"id"`

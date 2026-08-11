@@ -1757,7 +1757,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             }
                           },
                           itemBuilder: (context) => [
-                            if (n.status == 'ready' || n.status == 'active')
+                            if (n.status != 'left' && n.status != 'down')
                               const PopupMenuItem(
                                 value: 'shell',
                                 child: Row(

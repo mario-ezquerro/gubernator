@@ -314,6 +314,9 @@ func StartDashboard() {
 		api.GET("/slo/red", sloREDMetricsHandler)
 		api.POST("/slo/edit", sloEditHandler)
 		api.DELETE("/slo/:service_id", sloDeleteHandler)
+		api.GET("/slo/notify/config", sloGetNotifyConfigHandler)
+		api.POST("/slo/notify/config", sloSaveNotifyConfigHandler)
+		api.POST("/slo/notify/test", sloTestNotifyHandler)
 
 		// Caddy Subsystem
 		api.GET("/caddy/status", caddyStatusHandler)
@@ -380,6 +383,8 @@ func StartDashboard() {
 		c.Request.URL.Path = "/"
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
+
+	slo.StartSLONotifierBackgroundWorker(db.DB)
 
 	slog.Info("starting web dashboard", "addr", ":4001")
 	if err := r.Run(":4001"); err != nil {
@@ -2593,6 +2598,46 @@ func sloDeleteHandler(c *gin.Context) {
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"message": "SLO disabled and rules synced successfully"})
+}
+
+func sloGetNotifyConfigHandler(c *gin.Context) {
+	cfg, err := slo.GetNotificationConfig(db.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, cfg)
+}
+
+func sloSaveNotifyConfigHandler(c *gin.Context) {
+	var cfg db.SLONotificationConfig
+	if err := c.ShouldBindJSON(&cfg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := slo.SaveNotificationConfig(db.DB, &cfg); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Notification configuration saved successfully"})
+}
+
+type sloTestNotifyRequest struct {
+	Channel string `json:"channel"`
+}
+
+func sloTestNotifyHandler(c *gin.Context) {
+	var req sloTestNotifyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	msg, err := slo.DispatchTestNotification(db.DB, req.Channel)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
 func coreDNSStatusHandler(c *gin.Context) {

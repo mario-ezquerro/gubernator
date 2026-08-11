@@ -515,8 +515,8 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                     else if (action == 'leave') _leaveNode(n.id);
                                   },
                                   itemBuilder: (context) => [
-                                    if (n.status == 'ready' || n.status == 'active')
-                                      const PopupMenuItem(value: 'shell', child: Row(children: [Icon(Icons.terminal, size: 18), SizedBox(width: 8), Text('Shell')])),
+                                     if (n.status != 'left' && n.status != 'down')
+                                       const PopupMenuItem(value: 'shell', child: Row(children: [Icon(Icons.terminal, size: 18), SizedBox(width: 8), Text('Shell')])),
                                     const PopupMenuItem(value: 'inspect', child: Row(children: [Icon(Icons.info_outline, size: 18), SizedBox(width: 8), Text('Inspect')])),
                                     const PopupMenuItem(value: 'labels', child: Row(children: [Icon(Icons.label_outline, size: 18), SizedBox(width: 8), Text('Edit Labels')])),
                                     const PopupMenuDivider(),

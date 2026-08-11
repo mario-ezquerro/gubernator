@@ -3,6 +3,7 @@ package slo
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -237,5 +238,43 @@ func SyncSLORulesToPrometheus(gormDB *gorm.DB) error {
 	}()
 
 	return nil
+}
+
+// QueryPrometheusMetric sends a instant PromQL query to local Prometheus instance.
+func QueryPrometheusMetric(query string) (float64, error) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	u := fmt.Sprintf("http://localhost:9090/api/v1/query?query=%s", strings.ReplaceAll(query, "+", "%2B"))
+	resp, err := client.Get(u)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return -1, fmt.Errorf("prometheus query failed: status %d", resp.StatusCode)
+	}
+
+	var data struct {
+		Data struct {
+			Result []struct {
+				Value []interface{} `json:"value"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return -1, err
+	}
+
+	if len(data.Data.Result) > 0 && len(data.Data.Result[0].Value) > 1 {
+		valStr, ok := data.Data.Result[0].Value[1].(string)
+		if ok {
+			val, err := strconv.ParseFloat(valStr, 64)
+			if err == nil {
+				return val, nil
+			}
+		}
+	}
+	return -1, fmt.Errorf("no scalar metric value returned")
 }
 

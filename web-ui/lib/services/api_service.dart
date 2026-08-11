@@ -433,6 +433,35 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Fetches SLO notification configuration (Email, Webhook).
+  static Future<Map<String, dynamic>> fetchSLONotifyConfig() async {
+    final response = await http.get(Uri.parse('/api/slo/notify/config'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    return {};
+  }
+
+  /// Saves SLO notification configuration (Email, Webhook).
+  static Future<bool> saveSLONotifyConfig(Map<String, dynamic> config) async {
+    final response = await http.post(
+      Uri.parse('/api/slo/notify/config'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(config),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Dispatches a test SLO alert notification (email or webhook).
+  static Future<Map<String, dynamic>> testSLONotify(String channel) async {
+    final response = await http.post(
+      Uri.parse('/api/slo/notify/test'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'channel': channel}),
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// Fetches all deployed services from state.
   static Future<List<Service>> fetchServices() async {
     final state = await fetchState();
