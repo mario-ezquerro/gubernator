@@ -30,6 +30,9 @@ type ContainerConfig struct {
 
 // PullImage pulls a Docker image from a registry.
 func PullImage(imageName string) error {
+	if err := exec.Command("docker", "image", "inspect", imageName).Run(); err == nil {
+		return nil
+	}
 	cmd := exec.Command("docker", "pull", imageName)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

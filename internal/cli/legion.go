@@ -250,7 +250,6 @@ var legionJoinCmd = &cobra.Command{
 
 						if strings.Contains(t.Image, "scope") {
 							fmt.Printf("🕸️ Starting Weave Scope probe on worker node...\n")
-							exec.Command("docker", "run", "--privileged", "--rm", "tonistiigi/binfmt", "--install", "all").Run()
 							exec.Command("docker", "rm", "-f", "gbnt-monitor-scope-probe").Run()
 
 							args := []string{
@@ -263,7 +262,7 @@ var legionJoinCmd = &cobra.Command{
 								"-v", "/var/run/docker.sock:/var/run/docker.sock",
 								"-v", "/proc:/host/proc:ro",
 								"-v", "/sys:/sys:ro",
-								"weaveworks/scope:latest",
+								"marioezquerro/scope:latest",
 							}
 							if t.Command != "" {
 								args = append(args, strings.Fields(t.Command)...)

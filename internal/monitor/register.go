@@ -224,13 +224,15 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 			ID:              serviceID,
 			StackID:         mgrStackID,
 			Name:            "weave-scope",
-			Image:           "weaveworks/scope:latest",
+			Image:           "marioezquerro/scope:latest",
 			DesiredReplicas: 1,
 			Ports:           []string{"4040:4040"},
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		}
 		database.Create(&service)
+	} else {
+		database.Model(&existingService).Update("image", "marioezquerro/scope:latest")
 	}
 
 	status := "dead"
@@ -273,7 +275,7 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 		return
 	}
 
-	managerIP := getDynamicCoreDNSIP()
+	managerIP := getManagerHostIP()
 
 	var workerNodes []db.Node
 	if err := database.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes).Error; err != nil {
@@ -313,14 +315,14 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 		}
 
 		serviceID := fmt.Sprintf("super-svc-%s-scope", node.ID)
-		cmdStr := fmt.Sprintf("--probe-only --probe.resolver=%s:5354 %s:4040", managerIP, managerIP)
+		cmdStr := fmt.Sprintf("--probe-only --probe.resolver=%s:5354 --weave=false %s:4040", managerIP, managerIP)
 		var existingService db.Service
 		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
 			service := db.Service{
 				ID:              serviceID,
 				StackID:         stackID,
 				Name:            "weave-scope-probe",
-				Image:           "weaveworks/scope:latest",
+				Image:           "marioezquerro/scope:latest",
 				Command:         cmdStr,
 				DesiredReplicas: 1,
 				Ports:           []string{},
@@ -328,8 +330,11 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 				UpdatedAt:       now,
 			}
 			database.Create(&service)
-		} else if existingService.Command != cmdStr {
-			database.Model(&existingService).Update("command", cmdStr)
+		} else {
+			database.Model(&existingService).Updates(map[string]interface{}{
+				"command": cmdStr,
+				"image":   "marioezquerro/scope:latest",
+			})
 		}
 
 		taskID := fmt.Sprintf("super-task-%s-scope", node.ID)
