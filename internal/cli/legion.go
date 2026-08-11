@@ -140,6 +140,59 @@ var legionJoinCmd = &cobra.Command{
 			managerIP = "127.0.0.1"
 		}
 
+		// ── SSH Key Exchange: Fetch Manager's public key and install on worker host ──
+		fmt.Println("🔑 Fetching Manager SSH public key for remote shell access...")
+		sshReq, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/cluster/ssh-pubkey", addr), nil)
+		if apiToken != "" {
+			sshReq.Header.Set("Authorization", "Bearer "+apiToken)
+		}
+		sshResp, sshErr := http.DefaultClient.Do(sshReq)
+		if sshErr == nil && sshResp.StatusCode == http.StatusOK {
+			var sshData map[string]string
+			if decErr := json.NewDecoder(sshResp.Body).Decode(&sshData); decErr == nil {
+				if pubkey, ok := sshData["ssh_pubkey"]; ok && pubkey != "" {
+					// Install the pubkey into the host's ubuntu user authorized_keys
+					sshDir := "/home/ubuntu/.ssh"
+					authKeysPath := sshDir + "/authorized_keys"
+
+					// Try host path first (when running directly on host)
+					if _, statErr := os.Stat("/home/ubuntu"); statErr == nil {
+						_ = os.MkdirAll(sshDir, 0700)
+						// Read existing keys to avoid duplicates
+						existing, _ := os.ReadFile(authKeysPath)
+						if !strings.Contains(string(existing), strings.TrimSpace(pubkey)) {
+							f, fErr := os.OpenFile(authKeysPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+							if fErr == nil {
+								f.WriteString(pubkey)
+								f.Close()
+								fmt.Println("   ✅ Manager SSH public key installed in /home/ubuntu/.ssh/authorized_keys")
+							}
+						} else {
+							fmt.Println("   ✅ Manager SSH public key already present in authorized_keys")
+						}
+					} else {
+						// Running inside a container — try to install via docker exec on the host
+						installCmd := fmt.Sprintf(
+							"mkdir -p /home/ubuntu/.ssh && chmod 700 /home/ubuntu/.ssh && "+
+								"grep -qF '%s' /home/ubuntu/.ssh/authorized_keys 2>/dev/null || echo '%s' >> /home/ubuntu/.ssh/authorized_keys && "+
+								"chmod 600 /home/ubuntu/.ssh/authorized_keys && chown -R ubuntu:ubuntu /home/ubuntu/.ssh",
+							strings.TrimSpace(pubkey), strings.TrimSpace(pubkey),
+						)
+						dockerCmd := exec.Command("docker", "run", "--rm", "--privileged", "--pid=host",
+							"alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh", "-c", installCmd)
+						if out, runErr := dockerCmd.CombinedOutput(); runErr != nil {
+							fmt.Printf("   ⚠️  Could not auto-install SSH key on host: %v (%s)\n", runErr, string(out))
+						} else {
+							fmt.Println("   ✅ Manager SSH public key installed on host via nsenter")
+						}
+					}
+				}
+			}
+			sshResp.Body.Close()
+		} else {
+			fmt.Println("   ⚠️  Could not fetch Manager SSH public key (Shell access may not work)")
+		}
+
 		// Ensure network and start Caddy Ingress locally on worker node
 		fmt.Println("🌐 Starting local Caddy Ingress on worker node...")
 		if err := coredns.EnsureNetwork(); err != nil {

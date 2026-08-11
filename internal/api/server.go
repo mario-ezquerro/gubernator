@@ -21,6 +21,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
+	"github.com/mario-ezquerro/gubernator/internal/sshkeys"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
 	"github.com/mario-ezquerro/gubernator/internal/web"
 )
@@ -44,6 +45,11 @@ func dbPath() string {
 func Start(ctx context.Context) error {
 	if err := db.Init(dbPath()); err != nil {
 		return fmt.Errorf("database init: %w", err)
+	}
+
+	// ── SSH Keys: Ensure Manager SSH key pair exists for Worker connections ──
+	if err := sshkeys.EnsureSSHKeys(); err != nil {
+		slog.Warn("SSH Keys: failed to generate key pair", "err", err)
 	}
 
 	// ── CoreDNS: Ensure gbnt-net network and CoreDNS container are running ──
@@ -157,6 +163,7 @@ func Start(ctx context.Context) error {
 		{
 			cluster.GET("/token", ClusterTokenHandler)
 			cluster.GET("/info", ClusterInfoHandler)
+			cluster.GET("/ssh-pubkey", clusterSSHPubKeyHandler)
 		}
 
 		stack := v1.Group("/stack", authMiddleware)
@@ -319,4 +326,15 @@ func startWatchtowers(ctx context.Context) {
 		taskGCThreshold := time.Now().Add(-2 * time.Minute)
 		db.DB.Where("status = ? AND updated_at < ?", "dead", taskGCThreshold).Delete(&db.Task{})
 	}
+}
+
+// clusterSSHPubKeyHandler returns the Manager's SSH public key so workers can add it
+// to their authorized_keys during `legion join`.
+func clusterSSHPubKeyHandler(c *gin.Context) {
+	pubKey, err := sshkeys.GetPublicKey()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ssh_pubkey": pubKey})
 }
