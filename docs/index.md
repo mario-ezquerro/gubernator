@@ -157,6 +157,7 @@ While `./gbnt serve` is running, access:
 ## Documentation
 
 - [Installation Guide](install.md) — Download pre-built binaries or compile from source
+- [Screenshots Gallery (v2.13.0)](screens.md) — Visual showcase of Dashboard, Caddy, CoreDNS, SLO & Topology
 - [CLI Reference](cli.md) — All `gbnt` commands explained
 - [Architecture](architecture.md) — Deep dive into how Gubernator works
 - [Web UI](web-ui.md) — Dashboard features and usage
