@@ -1796,7 +1796,7 @@ func nodeShellHandler(c *gin.Context) {
 				break
 			}
 		}
-		sshArgs = append(sshArgs, "ubuntu@"+node.IP, "docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
+		sshArgs = append(sshArgs, "ubuntu@"+node.IP, "sudo docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
 		cmd = exec.Command("ssh", sshArgs...)
 	}
 	ptmx, err := pty.Start(cmd)
