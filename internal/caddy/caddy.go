@@ -199,11 +199,27 @@ func GetRootCACert() ([]byte, error) {
 	if err == nil && len(out) > 0 {
 		return out, nil
 	}
-	// Fallback to checking local dir
+	// Fallback 1: checking local dir in ~/.gbnt/caddy/pki/
 	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
 	if b, err := os.ReadFile(certPath); err == nil && len(b) > 0 {
 		return b, nil
 	}
+	// Fallback 2: checking ~/.gbnt/caddy-root.crt
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		if b, err := os.ReadFile(filepath.Join(home, ".gbnt", "caddy-root.crt")); err == nil && len(b) > 0 {
+			return b, nil
+		}
+	}
+	// Fallback 3: checking current working dir caddy-root.crt
+	if b, err := os.ReadFile("caddy-root.crt"); err == nil && len(b) > 0 {
+		return b, nil
+	}
+	// Fallback 4: checking container fallback path /app/caddy-root.crt
+	if b, err := os.ReadFile("/app/caddy-root.crt"); err == nil && len(b) > 0 {
+		return b, nil
+	}
+
 	return nil, fmt.Errorf("root CA certificate not found; ensure Caddy has initialized TLS")
 }
 

@@ -83,14 +83,10 @@ class _CaddyPageState extends State<CaddyPage> with SingleTickerProviderStateMix
   Future<void> _downloadRootCACert() async {
     final uri = Uri.parse('/api/caddy/ca.crt');
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        _showSnackBar('Downloading Caddy Root CA Certificate (root.crt)...');
-      } else {
-        _showSnackBar('Initiating Root CA download...');
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      _showSnackBar('Downloading Caddy Root CA Certificate (caddy-root.crt)...');
     } catch (e) {
-      _showSnackBar('Download initiated via browser.');
+      _showSnackBar('Could not initiate download: $e');
     }
   }
 
