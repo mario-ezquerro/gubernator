@@ -73,7 +73,6 @@ func EnableScope() error {
 	}
 
 	fmt.Println("\n🕸️  Deploying Network Topology (Weave Scope)...")
-	managerIP := getManagerHostIP()
 
 	args := []string{
 		"-e", "CHECKPOINT_DISABLE=1",
@@ -85,8 +84,8 @@ func EnableScope() error {
 		"-v", "/sys:/sys:ro",
 		"marioezquerro/scope:latest",
 		"--app.http.address=:" + ScopePort,
+		"--probe.docker=true",
 		"--weave=false",
-		fmt.Sprintf("--probe.resolver=%s:5354", managerIP),
 	}
 
 	if err := runContainer(ScopeContainerName, args); err != nil {
