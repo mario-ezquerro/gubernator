@@ -114,3 +114,6 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 ### 11. Sloth SLO Engine & Error Budget Tracking (`gbnt slo`)
 * **Google SRE Multi-Burn-Rate Alerts:** Native integration of Sloth (`slok/sloth`) into Gubernator's core engine. Translates `gbnt.slo.*` Compose service labels into production-grade Prometheus recording and alerting rules, calculating real-time Error Budget % and multi-window burn rates via REST API (`/v1/slo`) and CLI (`gbnt slo ls`, `gbnt slo sync`).
 
+### 12. Git Commits & Release Tag Quality
+* **Descriptive Commit Messages:** Whenever creating commits and tags for version bumps, the commit message MUST be detailed, informative, and explicitly describe what changed (e.g. `feat(scope): ...` or `fix(component): ...`). Avoid generic messages like `bump version` or `fix bug`.
+
