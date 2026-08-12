@@ -415,7 +415,12 @@ scrape_configs:
 			"-v", "/proc:/host/proc:ro",
 			"-v", "/sys:/sys:ro",
 			"marioezquerro/scope:latest",
-			"--no-app",
+			"/home/weave/scope",
+			"--mode=probe",
+			"--probe.docker=true",
+			"--probe.processes=false",
+			"--probe.proc.spy=false",
+			"--weave=false",
 			fmt.Sprintf("%s:4040", managerIP),
 		}
 		if err := runContainer(scopeProbeName, scopeArgs); err != nil {

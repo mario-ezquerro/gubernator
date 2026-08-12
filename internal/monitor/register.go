@@ -315,7 +315,7 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 		}
 
 		serviceID := fmt.Sprintf("super-svc-%s-scope", node.ID)
-		cmdStr := fmt.Sprintf("--probe-only --probe.resolver=%s:5354 --weave=false %s:4040", managerIP, managerIP)
+		cmdStr := fmt.Sprintf("/home/weave/scope --mode=probe --probe.docker=true --probe.processes=false --weave=false %s:4040", managerIP)
 		var existingService db.Service
 		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
 			service := db.Service{

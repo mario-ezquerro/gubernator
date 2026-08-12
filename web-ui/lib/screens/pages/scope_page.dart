@@ -258,8 +258,7 @@ class _ScopePageState extends State<ScopePage> {
   }
 
   Widget _buildScopeActiveView(ThemeData theme) {
-    final host = html.window.location.hostname;
-    final targetUrl = _scopeUrl.isNotEmpty ? _scopeUrl : 'http://$host:4040/';
+    final targetUrl = _scopeUrl.isNotEmpty ? _scopeUrl : '/scope/';
 
     return Card(
       clipBehavior: Clip.antiAlias,
