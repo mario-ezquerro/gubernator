@@ -1,0 +1,85 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "slo:period_error_budget_remaining:ratio{gbnt_service_id=\"44e81375-943f-48bf-b4bc-369144520703\"} * 100",
+          "legendFormat": "Budget Remaining %"
+        }
+      ],
+      "title": "payment-api — Error Budget Remaining",
+      "type": "gauge"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "slo:current_burn_rate:ratio{gbnt_service_id=\"44e81375-943f-48bf-b4bc-369144520703\"}",
+          "legendFormat": "Current Burn Rate (5m)"
+        },
+        {
+          "expr": "slo:period_burn_rate:ratio{gbnt_service_id=\"44e81375-943f-48bf-b4bc-369144520703\"}",
+          "legendFormat": "Period Burn Rate (30d)"
+        }
+      ],
+      "title": "payment-api — Burn Rate Trend",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 38,
+  "tags": [
+    "gubernator",
+    "slo",
+    "sloth",
+    "prometheus"
+  ],
+  "timezone": "browser",
+  "title": "Gubernator — SLO \u0026 Error Budgets",
+  "version": 1
+}
