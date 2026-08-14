@@ -414,13 +414,12 @@ scrape_configs:
 			"-v", "/var/run/docker.sock:/var/run/docker.sock",
 			"-v", "/proc:/host/proc:ro",
 			"-v", "/sys:/sys:ro",
-			"weaveworks/scope:latest",
-			"/home/weave/scope",
+			"marioezquerro/scope:latest",
+			"--weave=false",
 			"--mode=probe",
 			"--probe.docker=true",
 			"--probe.processes=false",
 			"--probe.proc.spy=false",
-			"--weave=false",
 			fmt.Sprintf("%s:4040", managerIP),
 		}
 		if err := runContainer(scopeProbeName, scopeArgs); err != nil {
