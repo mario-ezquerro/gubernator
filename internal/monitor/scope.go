@@ -84,6 +84,9 @@ func EnableScope() error {
 		"-v", "/sys:/sys:ro",
 		"weaveworks/scope:latest",
 		"--weave=false",
+		"--probe.docker=true",
+		"--probe.processes=true",
+		"--probe.proc.spy=true",
 		"--app.http.address=:" + ScopePort,
 	}
 

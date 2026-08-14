@@ -97,6 +97,7 @@ func DeployManagerStack(webUser, webPass string) error {
 		"-v", VolPromtail + ":/etc/promtail:ro",
 		"-v", "/var/log:/var/log:ro",
 		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
+		"-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
 		"grafana/promtail:latest",
 		"-config.file=/etc/promtail/promtail-config.yml",
 	}); err != nil {
@@ -418,8 +419,8 @@ scrape_configs:
 			"--weave=false",
 			"--mode=probe",
 			"--probe.docker=true",
-			"--probe.processes=false",
-			"--probe.proc.spy=false",
+			"--probe.processes=true",
+			"--probe.proc.spy=true",
 			fmt.Sprintf("%s:4040", managerIP),
 		}
 		if err := runContainer(scopeProbeName, scopeArgs); err != nil {

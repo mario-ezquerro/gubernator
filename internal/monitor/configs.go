@@ -130,9 +130,9 @@ func lokiConfig() string {
 server:
   http_listen_port: 3100
   grpc_listen_port: 9096
+  log_level: info
 
 common:
-  instance_addr: 127.0.0.1
   path_prefix: /loki
   storage:
     filesystem:
@@ -140,6 +140,7 @@ common:
       rules_directory: /loki/rules
   replication_factor: 1
   ring:
+    instance_addr: 127.0.0.1
     kvstore:
       store: inmemory
 
@@ -153,7 +154,13 @@ schema_config:
         prefix: index_
         period: 24h
 
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/index_cache
+
 limits_config:
+  allow_structured_metadata: false
   reject_old_samples: true
   reject_old_samples_max_age: 168h
   ingestion_rate_mb: 50
@@ -178,8 +185,27 @@ clients:
   - url: http://gbnt-monitor-loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Docker container logs via json-file driver
+  # Docker container logs via Docker socket discovery
   - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container_name'
+      - source_labels: ['__meta_docker_container_image']
+        target_label: 'image'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+
+  # Direct file scraping fallback
+  - job_name: docker-files
     static_configs:
       - targets:
           - localhost
