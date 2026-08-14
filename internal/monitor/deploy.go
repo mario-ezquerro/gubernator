@@ -414,7 +414,7 @@ scrape_configs:
 			"-v", "/var/run/docker.sock:/var/run/docker.sock",
 			"-v", "/proc:/host/proc:ro",
 			"-v", "/sys:/sys:ro",
-			"marioezquerro/scope:latest",
+			"weaveworks/scope:latest",
 			"--weave=false",
 			"--mode=probe",
 			"--probe.docker=true",
