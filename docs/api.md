@@ -66,7 +66,12 @@ While `./gbnt serve` is running:
 |--------|----------|-------------|
 | `GET` | `/v1/caddy/status` | Get Caddy process info, uptime, memory & instance counts |
 | `GET` | `/v1/caddy/routes` | Get active reverse proxy route matrix and upstream health |
-| `GET` | `/v1/caddy/certs` | Get managed TLS certificates and expiration dates |
+| `GET` | `/v1/caddy/certs` | Get managed TLS certificates with full X.509 metadata |
+| `GET` | `/v1/caddy/certs/download` | Download domain-specific `.crt` / `.pem` certificate |
+| `GET` | `/v1/caddy/certs/inspect` | Inspect complete X.509 properties and SHA-256 fingerprint |
+| `POST` | `/v1/caddy/certs/renew` | Force immediate renewal and rotation of a domain certificate |
+| `POST` | `/v1/caddy/certs/custom` | Upload and install a custom TLS certificate and private key |
+| `DELETE` | `/v1/caddy/certs/orphaned` | Prune orphaned certificates no longer in any Caddyfile |
 | `GET` | `/v1/caddy/ca.crt` | Download Caddy internal Root CA certificate (`root.crt`) |
 | `GET` | `/v1/caddy/logs` | Stream/tail container access log output |
 | `GET` | `/v1/caddy/metrics` | Get Prometheus metrics (request count, RPS, latency percentiles) |

@@ -97,10 +97,14 @@ This specification outlines the architecture, API surface, data structures, and 
 - `GET /v1/caddy/history` — Get Caddyfile backup history.
 - `POST /v1/caddy/rollback` — Revert to selected historical Caddyfile backup.
 
-### 4.4 TLS Certificates & Root CA Download
-- `GET /v1/caddy/certs` — List managed TLS certificates, expiration dates, and orphan flags.
-- `GET /v1/caddy/ca.crt` — Download Caddy's internal Root CA certificate (`root.crt`).
+### 4.4 TLS Certificates Management & Lifecycle
+- `GET /v1/caddy/certs` — List managed TLS certificates with full X.509 metadata (Subject, Issuer, SANs, Dates, DaysLeft, Serial, SHA-256 Fingerprint, Key Algorithm).
+- `GET /v1/caddy/certs/download?domain={domain}` — Download domain-specific `.crt` / `.pem` certificate.
+- `GET /v1/caddy/certs/inspect?domain={domain}` — Inspect X.509 properties and cryptographic fingerprint.
+- `POST /v1/caddy/certs/renew` — Force immediate renewal and rotation of a domain certificate.
+- `POST /v1/caddy/certs/custom` — Upload and install custom certificate (`.crt`) and private key (`.key`).
 - `DELETE /v1/caddy/certs/orphaned` — Prune unused/orphaned certificates.
+- `GET /v1/caddy/ca.crt` — Download Caddy's internal Root CA certificate (`root.crt`).
 
 ### 4.5 Access Logs & Streaming
 - `GET /v1/caddy/logs?stream=true&level=INFO&search=jupyter` — SSE stream of access logs.

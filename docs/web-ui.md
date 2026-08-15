@@ -224,7 +224,7 @@ The dashboard includes a full-featured **Caddy Ingress Visualization Suite** ins
 1. **Dashboard** — Live server status, TLS state, process info (version, uptime, memory, last reload timestamp).
 2. **Route Manager** — Reverse proxy routes matrix, live upstream health checks, uptime %, search/filter by domain.
 3. **Caddyfile Editor** — Syntax validation, `caddy fmt` formatting, backup history, and 1-click rollback.
-4. **TLS Certificates** — Certificate status, expiration countdowns, orphan detection, and **Root CA Download** (`root.crt`).
+4. **TLS Certificates** — Full certificate lifecycle manager: X.509 deep inspection modal (Subject, Issuer, SANs, serial, SHA-256 fingerprint), 1-click forced renewal/rotation, individual domain `.crt` download, custom cert & key upload modal, orphaned certificate cleanup, and **Root CA Download** (`root.crt`).
 5. **Access Logs** — Streaming log tailing with keyword search and level filters (`ERROR`, `WARN`, `INFO`).
 6. **Log Configuration** — Toggle access logging per site block directly from the UI.
 7. **Metrics** — RPS gauge, average response latency, status code breakdown (`2xx`, `3xx`, `4xx`, `5xx`), and p50/p95/p99 percentiles.

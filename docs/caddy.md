@@ -39,7 +39,13 @@ Access **Caddy Ingress** in the Web Dashboard (Port 4001) to interact with 7 spe
 1. **Dashboard**: Live server status across all cluster Caddies, TLS state, process info (version, uptime, memory, last reload timestamp).
 2. **Route Manager**: Reverse proxy routes table, live upstream health checks, uptime %, domain search/filter, clickable links, and per-route notes.
 3. **Caddyfile Editor**: Real-time Caddyfile viewer & editor, syntax validation, `caddy fmt` formatting, backup history, and 1-click rollback.
-4. **TLS Certificates**: Certificate status, expiration countdowns, orphan detection, and **Root CA Download** (`root.crt`) with installation guides for macOS, Linux, and Windows.
+4. **TLS Certificates**: Full lifecycle management with:
+   - **X.509 Inspector**: Deep inspection of Subject, Issuer, SANs, validity dates, serial number, SHA-256 fingerprint, and key algorithm.
+   - **Forced Renewal / Rotation**: 1-click certificate rotation via API and UI.
+   - **Domain Cert Download**: Direct download of domain-specific `.crt` / `.pem` files.
+   - **Root CA Download**: Export `root.crt` for OS trust installation.
+   - **Custom TLS Upload**: Install custom commercial/corporate certificates and private keys.
+   - **Orphan Pruning**: Clean up stale certificates from deleted stacks.
 5. **Access Logs**: Streaming log tailing with SSE, keyword search, log level filters (`ERROR`, `WARN`, `INFO`), and JSON/TXT log export.
 6. **Log Configuration**: Toggle JSON access logging per site block directly from the UI.
 7. **Metrics**: Real-time request count, RPS gauge, avg latency, HTTP status code breakdown (`2xx`, `3xx`, `4xx`, `5xx`), and latency percentiles (`p50`, `p95`, `p99`) powered by Caddy's `:2019/metrics` Prometheus endpoint.
@@ -76,7 +82,12 @@ Import-Certificate -FilePath ".\root.crt" -CertStoreLocation Cert:\LocalMachine\
 | --- | --- | --- |
 | `/v1/caddy/status` | `GET` | Get process info, uptime, memory, and active instance count |
 | `/v1/caddy/routes` | `GET` | Get active reverse proxy route matrix and upstream health |
-| `/v1/caddy/certs` | `GET` | Get managed TLS certificates and expiration dates |
+| `/v1/caddy/certs` | `GET` | Get managed TLS certificates with full X.509 metadata |
+| `/v1/caddy/certs/download` | `GET` | Download certificate `.crt` file for a specific domain |
+| `/v1/caddy/certs/inspect` | `GET` | Inspect complete X.509 properties and SHA-256 fingerprint |
+| `/v1/caddy/certs/renew` | `POST` | Force immediate renewal and rotation of a domain certificate |
+| `/v1/caddy/certs/custom` | `POST` | Upload and install a custom TLS certificate and private key |
+| `/v1/caddy/certs/orphaned` | `DELETE` | Prune orphaned certificates no longer in any Caddyfile |
 | `/v1/caddy/ca.crt` | `GET` | Download Root CA certificate (`root.crt`) |
 | `/v1/caddy/logs` | `GET` | Get container access log stream lines |
 | `/v1/caddy/metrics` | `GET` | Get Prometheus request counts, RPS, and percentiles |

@@ -79,7 +79,7 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 
 ### 1. Ingress & Service Discovery (The Aqueducts)
 * **CoreDNS Integration:** A minimal Gubernator node deployment will consist of **Gubernator + CoreDNS + Caddy**. CoreDNS will be deployed so that all Docker containers can resolve internal IPs via DNS. Gubernator will act as the source of truth, actively updating CoreDNS records as containers spin up or die.
-* **Caddy Ingress Suite:** Full multi-node Caddy cluster proxy management with 7-tab UI visualization (Dashboard, Routes, Caddyfile, TLS Certs, Access Logs, Log Config, Prometheus Metrics) and Root CA trust installation. Full specification detailed in [`SPEC-caddy.md`](SPEC-caddy.md).
+* **Caddy Ingress Suite:** Full multi-node Caddy cluster proxy management with 7-tab UI visualization (Dashboard, Routes, Caddyfile, TLS Certs, Access Logs, Log Config, Prometheus Metrics), Root CA trust installation, and complete TLS certificate lifecycle management (X.509 inspection, forced rotation/renewal, domain `.crt` download, custom cert & key upload, and orphan pruning). Full specification detailed in [`SPEC-caddy.md`](SPEC-caddy.md).
 
 ### 2. High Availability / HA (The Senate)
 * **Distributed SQLite:** To eliminate the single point of failure (SPOF) of a single Manager, Gubernator can evolve to use **rqlite** or **dqlite** (SQLite over Raft). This allows for a multi-manager setup (e.g., 3 Managers) keeping the relational simplicity while providing fault tolerance.
