@@ -9,6 +9,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 )
 
 // JoinRequest represents the payload for joining the cluster
@@ -122,6 +123,9 @@ func NodeHeartbeatHandler(c *gin.Context) {
 	// Ensure Worker Core & SRE Stacks are synced in DB
 	coredns.SyncWorkerCoreStacks(db.DB)
 	monitor.RegisterInDB(db.DB)
+
+	nodemanager.ClearAuthMismatch(c.ClientIP())
+	nodemanager.ClearAuthMismatch(existingNode.IP)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Heartbeat received"})
 }

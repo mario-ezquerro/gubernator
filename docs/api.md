@@ -30,6 +30,7 @@ While `./gbnt serve` is running:
 | `POST` | `/v1/node/heartbeat` | Worker heartbeat ping |
 | `POST` | `/v1/node/{id}/role` | Promote or demote a node |
 | `POST` | `/v1/node/{id}/availability` | Set node state (active/pause/drain) |
+| `POST` | `/v1/node/{id}/sync-token` | Synchronize API tokens to worker host via SSH |
 | `POST` | `/v1/node/{id}/leave` | Remove a node from the cluster |
 | `GET` | `/v1/cluster/token` | Get the join token |
 

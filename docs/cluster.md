@@ -185,3 +185,16 @@ node-gbnt-worker2    192.168.252.7   worker    active
 * **Prometheus Dashboard**: `http://<MANAGER-IP>:9090`
 * **cAdvisor Dashboard**: `http://<MANAGER-IP>:8081`
 * **Node Exporter**: `http://<MANAGER-IP>:9100/metrics`
+
+---
+
+## 🔐 7. Token Mismatch Detection & SSH Auto-Sync
+
+When rotating the cluster's `GBNT_API_TOKEN` or when worker daemons attempt to heartbeat with an outdated token:
+1. **Automatic Detection**: The Manager's authentication watchdog detects failed 401 attempts originating from registered worker IPs.
+2. **Visual Warning Badge**: The Web Dashboard flags the node with an orange **`Token Mismatch`** badge in the Centurions table.
+3. **Interactive Sync Dialog**:
+   - Activating the node or clicking the badge opens the **Token Desincronizado** dialog.
+   - Displays the exact `gbnt legion join` update command with current active tokens.
+   - Provides a **"Auto-Sync vía SSH"** button that executes `POST /api/node/:id/sync-token`, updating the worker daemon and restarting the container remotely over SSH without manual terminal intervention.
+

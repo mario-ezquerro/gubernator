@@ -17,6 +17,8 @@ class Node {
   final double memPercent;
   final double netBps;
 
+  final bool authMismatch;
+
   Node({
     required this.id,
     required this.ip,
@@ -25,6 +27,7 @@ class Node {
     this.labels = const {},
     this.caddyStatus = '',
     this.caddyfile = '',
+    this.authMismatch = false,
     this.createdAt = '',
     this.updatedAt = '',
     this.cpuPercent = 0.0,
@@ -43,6 +46,7 @@ class Node {
       labels: json['labels'] ?? {},
       caddyStatus: json['caddy_status'] ?? '',
       caddyfile: json['caddyfile'] ?? '',
+      authMismatch: json['auth_mismatch'] == true,
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
       cpuPercent: (json['cpu_percent'] as num?)?.toDouble() ?? 0.0,
@@ -165,6 +169,9 @@ class DashboardState {
   final String caddyStatus;
   final String caddyfile;
   final String version;
+  final String clusterJoinToken;
+  final String activeApiToken;
+  final String managerIp;
   final bool updateAvailable;
   final String latestVersion;
   final String releaseNotes;
@@ -180,6 +187,9 @@ class DashboardState {
     this.caddyStatus = 'not running',
     this.caddyfile = '',
     this.version = 'dev',
+    this.clusterJoinToken = '',
+    this.activeApiToken = '',
+    this.managerIp = '',
     this.updateAvailable = false,
     this.latestVersion = '',
     this.releaseNotes = '',
@@ -207,6 +217,9 @@ class DashboardState {
       caddyStatus: json['caddy_status'] ?? 'not running',
       caddyfile: json['caddyfile'] ?? '',
       version: json['version'] ?? 'dev',
+      clusterJoinToken: json['cluster_join_token'] ?? '',
+      activeApiToken: json['active_api_token'] ?? '',
+      managerIp: json['manager_ip'] ?? '',
       updateAvailable: json['update_available'] ?? false,
       latestVersion: json['latest_version'] ?? '',
       releaseNotes: json['release_notes'] ?? '',

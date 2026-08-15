@@ -180,10 +180,169 @@ class _CenturionsPageState extends State<CenturionsPage> {
     if (ok) widget.onRefresh();
   }
 
-  Future<void> _updateNodeAvailability(String id, String availability) async {
-    final ok = await ApiService.updateNodeAvailability(id, availability);
-    _showSnackBar(ok ? 'Node availability updated!' : 'Failed to update availability.', isError: !ok);
-    if (ok) widget.onRefresh();
+  Future<void> _updateNodeAvailability(String id, String availability, [Node? node]) async {
+    final res = await ApiService.updateNodeAvailability(id, availability);
+    if (res['error'] != null) {
+      _showSnackBar('Failed to update availability: ${res['error']}', isError: true);
+      return;
+    }
+
+    if (res['auth_mismatch'] == true && node != null) {
+      _showSnackBar('Node activated in DB, but stale auth token detected!');
+      widget.onRefresh();
+      _showTokenMismatchDialog(node, res);
+      return;
+    }
+
+    _showSnackBar('Node availability updated!');
+    widget.onRefresh();
+  }
+
+  void _showTokenMismatchDialog(Node node, [Map<String, dynamic>? res]) {
+    final activeToken = res?['active_token'] ?? widget.state.activeApiToken;
+    final joinToken = res?['join_token'] ?? widget.state.clusterJoinToken;
+    final managerAddr = res?['manager_addr'] ?? (widget.state.managerIp.isNotEmpty ? '${widget.state.managerIp}:4000' : '192.168.252.27:4000');
+    final command = res?['update_command'] ??
+        'gbnt legion join --token $joinToken --api-token $activeToken --manager $managerAddr';
+
+    bool syncing = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.key_off, color: Colors.orange, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Token Desincronizado Detectado',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'El nodo worker "${node.id}" (${node.ip}) está intentando comunicarse con el Manager con un token de autenticación antiguo o incorrecto.\n\nSi no se actualiza, el Manager no aceptará sus latidos de salud y volverá a marcar el nodo como inactivo ("down").',
+                              style: const TextStyle(fontSize: 12.5, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Comando para actualizar el worker manualmente:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SelectableText(
+                              command,
+                              style: const TextStyle(
+                                fontFamily: 'Courier New',
+                                fontSize: 11.5,
+                                color: Color(0xFFF97316),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 16),
+                            tooltip: 'Copiar comando',
+                            onPressed: () {
+                              ClipboardService.copy(command);
+                              _showSnackBar('Comando de actualización copiado');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'O sincronizar automáticamente ahora vía conexión SSH remota:',
+                      style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                ),
+                onPressed: syncing
+                    ? null
+                    : () async {
+                        setDialogState(() => syncing = true);
+                        final res = await ApiService.syncNodeToken(node.id);
+                        setDialogState(() => syncing = false);
+                        if (res['error'] != null) {
+                          _showSnackBar('Error al sincronizar token: ${res['error']}', isError: true);
+                        } else {
+                          _showSnackBar(res['message'] ?? 'Token sincronizado y worker reiniciado correctamente!');
+                          Navigator.pop(ctx);
+                          widget.onRefresh();
+                        }
+                      },
+                icon: syncing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.sync_lock, size: 16),
+                label: Text(syncing ? 'Sincronizando...' : 'Auto-Sync vía SSH'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _rebootNode(String id) async {
@@ -462,7 +621,45 @@ class _CenturionsPageState extends State<CenturionsPage> {
                               ])),
                               DataCell(Text(n.ip)),
                               DataCell(StatusBadge(label: n.role)),
-                              DataCell(StatusBadge(label: n.status)),
+                              DataCell(Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  StatusBadge(label: n.status),
+                                  if (n.authMismatch) ...[
+                                    const SizedBox(width: 6),
+                                    Tooltip(
+                                      message: 'Token de autenticación antiguo/desincronizado detectado. Haz clic para actualizar.',
+                                      child: InkWell(
+                                        onTap: () => _showTokenMismatchDialog(n),
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.orange.shade700),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.key_off, size: 12, color: Colors.orange),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Token Mismatch',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.orange,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              )),
                               DataCell(SizedBox(width: 90, child: _buildMiniThermometer(theme, '${n.cpuPercent.toStringAsFixed(1)}%', n.cpuPercent, const Color(0xFF3B82F6)))),
                               DataCell(SizedBox(width: 170, child: _buildMiniThermometer(theme, '${_formatBytes(n.memUsedBytes)} / ${_formatBytes(n.memTotalBytes)}', n.memPercent, const Color(0xFF10B981)))),
                               DataCell(Text(_formatNetSpeed(n.netBps), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF8B5CF6)))),
@@ -510,8 +707,9 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                     else if (action == 'promote') _updateNodeRole(n.id, 'manager');
                                     else if (action == 'demote') _updateNodeRole(n.id, 'worker');
                                     else if (action == 'reboot') _rebootNode(n.id);
-                                    else if (action == 'activate') _updateNodeAvailability(n.id, 'active');
-                                    else if (action == 'maintenance') _updateNodeAvailability(n.id, 'maintenance');
+                                    else if (action == 'activate') _updateNodeAvailability(n.id, 'active', n);
+                                    else if (action == 'maintenance') _updateNodeAvailability(n.id, 'maintenance', n);
+                                    else if (action == 'sync-token') _showTokenMismatchDialog(n);
                                     else if (action == 'leave') _leaveNode(n.id);
                                   },
                                   itemBuilder: (context) => [
@@ -531,6 +729,10 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                       const PopupMenuItem(value: 'activate', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Activate Node')]))
                                     else
                                       const PopupMenuItem(value: 'maintenance', child: Row(children: [Icon(Icons.build_circle_outlined, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Set Maintenance')])),
+                                    if (n.role == 'worker') ...[
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(value: 'sync-token', child: Row(children: [Icon(Icons.sync_lock, size: 18, color: Color(0xFFF97316)), SizedBox(width: 8), Text('Sync Auth Token')])),
+                                    ],
                                     const PopupMenuDivider(),
                                     const PopupMenuItem(value: 'reboot', child: Row(children: [Icon(Icons.restart_alt, size: 18, color: Colors.orangeAccent), SizedBox(width: 8), Text('Reboot Node')])),
                                     PopupMenuItem(value: 'leave', enabled: n.status != 'left', child: const Row(children: [Icon(Icons.exit_to_app, size: 18, color: Colors.redAccent), SizedBox(width: 8), Text('Force Leave')])),

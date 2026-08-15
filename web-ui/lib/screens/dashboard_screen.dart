@@ -792,14 +792,169 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _updateNodeAvailability(String id, String availability) async {
-    final ok = await ApiService.updateNodeAvailability(id, availability);
-    if (ok) {
-      _showSnackBar('Node availability updated successfully!');
-      _fetchData();
-    } else {
-      _showSnackBar('Failed to update node availability.', isError: true);
+  Future<void> _updateNodeAvailability(String id, String availability, [Node? node]) async {
+    final res = await ApiService.updateNodeAvailability(id, availability);
+    if (res['error'] != null) {
+      _showSnackBar('Failed to update node availability: ${res['error']}', isError: true);
+      return;
     }
+
+    if (res['auth_mismatch'] == true && node != null) {
+      _showSnackBar('Node activated in DB, but stale auth token detected!');
+      _fetchData();
+      _showTokenMismatchDialog(node, res);
+      return;
+    }
+
+    _showSnackBar('Node availability updated successfully!');
+    _fetchData();
+  }
+
+  void _showTokenMismatchDialog(Node node, [Map<String, dynamic>? res]) {
+    final activeToken = res?['active_token'] ?? _state.activeApiToken;
+    final joinToken = res?['join_token'] ?? _state.clusterJoinToken;
+    final managerAddr = res?['manager_addr'] ?? (_state.managerIp.isNotEmpty ? '${_state.managerIp}:4000' : '192.168.252.27:4000');
+    final command = res?['update_command'] ??
+        'gbnt legion join --token $joinToken --api-token $activeToken --manager $managerAddr';
+
+    bool syncing = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.key_off, color: Colors.orange, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Token Desincronizado Detectado',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'El nodo worker "${node.id}" (${node.ip}) está intentando comunicarse con el Manager con un token de autenticación antiguo o incorrecto.\n\nSi no se actualiza, el Manager no aceptará sus latidos de salud y volverá a marcar el nodo como inactivo ("down").',
+                              style: const TextStyle(fontSize: 12.5, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Comando para actualizar el worker manualmente:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8)),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SelectableText(
+                              command,
+                              style: const TextStyle(
+                                fontFamily: 'Courier New',
+                                fontSize: 11.5,
+                                color: Color(0xFFF97316),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 16),
+                            tooltip: 'Copiar comando',
+                            onPressed: () {
+                              ClipboardService.copy(command);
+                              _showSnackBar('Comando de actualización copiado');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'O sincronizar automáticamente ahora vía conexión SSH remota:',
+                      style: TextStyle(fontSize: 11.5, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316),
+                ),
+                onPressed: syncing
+                    ? null
+                    : () async {
+                        setDialogState(() => syncing = true);
+                        final res = await ApiService.syncNodeToken(node.id);
+                        setDialogState(() => syncing = false);
+                        if (res['error'] != null) {
+                          _showSnackBar('Error al sincronizar token: ${res['error']}', isError: true);
+                        } else {
+                          _showSnackBar(res['message'] ?? 'Token sincronizado y worker reiniciado correctamente!');
+                          Navigator.pop(ctx);
+                          _fetchData();
+                        }
+                      },
+                icon: syncing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.sync_lock, size: 16),
+                label: Text(syncing ? 'Sincronizando...' : 'Auto-Sync vía SSH'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _rebootNode(String id) async {
@@ -1749,9 +1904,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             } else if (action == 'reboot') {
                               _rebootNode(n.id);
                             } else if (action == 'activate') {
-                              _updateNodeAvailability(n.id, 'active');
+                              _updateNodeAvailability(n.id, 'active', n);
                             } else if (action == 'maintenance') {
-                              _updateNodeAvailability(n.id, 'maintenance');
+                              _updateNodeAvailability(n.id, 'maintenance', n);
+                            } else if (action == 'sync-token') {
+                              _showTokenMismatchDialog(n);
                             } else if (action == 'leave') {
                               _leaveNode(n.id);
                             }
@@ -1845,6 +2002,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ],
                                 ),
                               ),
+                            if (n.role == 'worker') ...[
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: 'sync-token',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.sync_lock, size: 18, color: Color(0xFFF97316)),
+                                    SizedBox(width: 8),
+                                    Text('Sync Auth Token'),
+                                  ],
+                                ),
+                              ),
+                            ],
                             const PopupMenuDivider(),
                             const PopupMenuItem(
                               value: 'reboot',

@@ -22,6 +22,7 @@ type Node struct {
 	NetBps        float64            `gorm:"-" json:"net_bps"`
 	CaddyStatus   string             `gorm:"type:text" json:"caddy_status"`
 	Caddyfile     string             `gorm:"type:text" json:"caddyfile"`
+	AuthMismatch  bool               `gorm:"-" json:"auth_mismatch"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
 }

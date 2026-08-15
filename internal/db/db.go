@@ -194,6 +194,15 @@ func GetJoinToken() string {
 	return config.JoinToken
 }
 
+// GetManagerIP returns the IP address of the cluster manager node.
+func GetManagerIP() string {
+	var manager Node
+	if err := DB.First(&manager, "role = ?", "manager").Error; err == nil && manager.IP != "" {
+		return manager.IP
+	}
+	return detectLocalIP()
+}
+
 // detectLocalIP returns the preferred outbound IP of this machine
 // by opening a UDP connection (no data is sent) and reading the local address.
 // If GBNT_HOST_IP is set, it will be prioritized.

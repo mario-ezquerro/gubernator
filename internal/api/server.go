@@ -20,6 +20,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/sshkeys"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
@@ -133,6 +134,8 @@ func Start(ctx context.Context) error {
 		auth := c.GetHeader("Authorization")
 
 		if auth != "Bearer "+expectedToken && (joinToken == "" || auth != "Bearer "+joinToken) {
+			clientIP := c.ClientIP()
+			nodemanager.RecordAuthMismatch(clientIP, "")
 			c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized API access. Invalid or missing Bearer token."})
 			return
 		}

@@ -26,6 +26,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
 	"golang.org/x/crypto/ssh"
@@ -39,6 +40,9 @@ var flutterFS embed.FS
 var Version = "dev"
 
 func GetVersion() string {
+	if Version != "" && Version != "dev" {
+		return Version
+	}
 	for _, path := range []string{"VERSION", "/app/VERSION", "../VERSION"} {
 		if data, err := os.ReadFile(path); err == nil {
 			v := strings.TrimSpace(string(data))
@@ -283,6 +287,7 @@ func StartDashboard() {
 		api.POST("/node/:id/reboot", nodeRebootHandler)
 		api.POST("/node/:id/leave", nodeLeaveHandler)
 		api.POST("/node/:id/labels", nodeLabelsHandler)
+		api.POST("/node/:id/sync-token", nodeSyncTokenHandler)
 		api.POST("/node/add", nodeAddHandler)
 		api.GET("/node/:id/shell", nodeShellHandler)
 
@@ -449,30 +454,44 @@ func stateHandler(c *gin.Context) {
 		caddyfileContent = string(content)
 	}
 
-	// Dynamic population of the Manager's live Caddy configuration inside the nodes list
+	// Dynamic population of the Manager's live Caddy configuration and AuthMismatch flags inside the nodes list
 	for i, n := range nodes {
 		if n.Role == "manager" {
 			nodes[i].CaddyStatus = caddy.Status()
 			nodes[i].Caddyfile = caddyfileContent
 		}
+		nodes[i].AuthMismatch = nodemanager.HasAuthMismatch(n.IP, n.ID)
+	}
+
+	apiToken := os.Getenv("GBNT_API_TOKEN")
+	if apiToken == "" {
+		apiToken = db.GetAPIToken()
+	}
+	joinToken := db.GetJoinToken()
+	managerIP := db.GetManagerIP()
+	if managerIP == "" {
+		managerIP = "192.168.252.27"
 	}
 
 	upInfo, _ := updater.CheckLatestRelease(GetVersion(), false)
 
 	c.JSON(http.StatusOK, gin.H{
-		"nodes":            nodes,
-		"stacks":           stacks,
-		"services":         services,
-		"tasks":            tasks,
-		"monitor_running":  monitor.IsRunning(),
-		"dns_records":      getDNSRecords(),
-		"caddy_status":     caddy.Status(),
-		"caddyfile":        caddyfileContent,
-		"version":          GetVersion(),
-		"update_available": upInfo.UpdateAvailable,
-		"latest_version":   upInfo.LatestVersion,
-		"release_notes":    upInfo.ReleaseNotes,
-		"release_url":      upInfo.ReleaseURL,
+		"nodes":              nodes,
+		"stacks":             stacks,
+		"services":           services,
+		"tasks":              tasks,
+		"monitor_running":    monitor.IsRunning(),
+		"dns_records":        getDNSRecords(),
+		"caddy_status":       caddy.Status(),
+		"caddyfile":          caddyfileContent,
+		"version":            GetVersion(),
+		"cluster_join_token": joinToken,
+		"active_api_token":   apiToken,
+		"manager_ip":         managerIP,
+		"update_available":   upInfo.UpdateAvailable,
+		"latest_version":     upInfo.LatestVersion,
+		"release_notes":      upInfo.ReleaseNotes,
+		"release_url":        upInfo.ReleaseURL,
 	})
 }
 
@@ -1398,7 +1417,13 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	res := db.DB.Model(&db.Node{}).Where("id = ?", id).Update("status", status)
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
+		return
+	}
+
+	res := db.DB.Model(&node).Update("status", status)
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
@@ -1417,7 +1442,49 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		slog.Warn("failed to update Prometheus config on node availability change", "err", err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
+	// Check for stale/mismatched authentication token
+	authMismatch := false
+	if status == "active" && node.Role == "worker" {
+		authMismatch = nodemanager.HasAuthMismatch(node.IP, node.ID)
+	}
+
+	apiToken := os.Getenv("GBNT_API_TOKEN")
+	if apiToken == "" {
+		apiToken = db.GetAPIToken()
+	}
+	joinToken := db.GetJoinToken()
+	managerIP := db.GetManagerIP()
+	if managerIP == "" {
+		managerIP = "192.168.252.27"
+	}
+	managerAddr := fmt.Sprintf("%s:4000", managerIP)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Node availability updated",
+		"auth_mismatch":  authMismatch,
+		"node_id":        node.ID,
+		"node_ip":        node.IP,
+		"active_token":   apiToken,
+		"join_token":     joinToken,
+		"manager_addr":   managerAddr,
+		"update_command": fmt.Sprintf("gbnt legion join --token %s --api-token %s --manager %s", joinToken, apiToken, managerAddr),
+	})
+}
+
+func nodeSyncTokenHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := nodemanager.SyncWorkerToken(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to sync token to node %s: %v", id, err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ok",
+		"message": fmt.Sprintf("Authentication token synchronized and worker restarted on %s", id),
+	})
 }
 
 func nodeRebootHandler(c *gin.Context) {

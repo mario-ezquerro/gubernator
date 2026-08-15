@@ -179,14 +179,35 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  /// Updates a node's availability status.
-  static Future<bool> updateNodeAvailability(String id, String availability) async {
-    final response = await http.post(
-      Uri.parse('/api/node/$id/availability'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'availability': availability}),
-    );
-    return response.statusCode == 200;
+  /// Updates a node's availability status. Returns parsed response Map.
+  static Future<Map<String, dynamic>> updateNodeAvailability(String id, String availability) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/node/$id/availability'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'availability': availability}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return {'error': 'Failed with status ${response.statusCode}'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  /// Synchronizes the active authentication token to the remote worker node via SSH.
+  static Future<Map<String, dynamic>> syncNodeToken(String id) async {
+    try {
+      final response = await http.post(Uri.parse('/api/node/$id/sync-token'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      final body = jsonDecode(response.body);
+      return {'error': body['error'] ?? 'Failed to sync token'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
   }
 
   /// Commands the node to leave the cluster.
