@@ -535,6 +535,55 @@ class ApiService {
     }
     return caddyfile;
   }
+
+  /// Caddy: Inspects full X.509 certificate details for a domain.
+  static Future<Map<String, dynamic>?> inspectCaddyCert(String domain, {String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/certs/inspect?domain=${Uri.encodeComponent(domain)}${nodeId != null ? '&node_id=$nodeId' : ''}');
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['certificate'];
+    }
+    return null;
+  }
+
+  /// Caddy: Forces certificate renewal/rotation for a domain.
+  static Future<Map<String, dynamic>> renewCaddyCert(String domain, {String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/certs/renew${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'domain': domain}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Caddy: Installs a custom TLS certificate and private key.
+  static Future<Map<String, dynamic>> uploadCustomCaddyCert(
+    String domain,
+    String certPem,
+    String keyPem, {
+    String? nodeId,
+  }) async {
+    final uri = Uri.parse('/api/caddy/certs/custom${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'domain': domain,
+        'cert_pem': certPem,
+        'key_pem': keyPem,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Caddy: Prunes orphaned certificates no longer referenced in Caddyfile.
+  static Future<Map<String, dynamic>> pruneOrphanedCaddyCerts({String? nodeId}) async {
+    final uri = Uri.parse('/api/caddy/certs/orphaned${nodeId != null ? '?node_id=$nodeId' : ''}');
+    final response = await http.delete(uri);
+    return jsonDecode(response.body);
+  }
 }
 
 

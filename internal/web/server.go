@@ -322,6 +322,11 @@ func StartDashboard() {
 		api.GET("/caddy/status", caddyStatusHandler)
 		api.GET("/caddy/routes", caddyRoutesHandler)
 		api.GET("/caddy/certs", caddyCertsHandler)
+		api.GET("/caddy/certs/download", caddyCertDownloadHandler)
+		api.GET("/caddy/certs/inspect", caddyCertInspectHandler)
+		api.POST("/caddy/certs/renew", caddyCertRenewHandler)
+		api.POST("/caddy/certs/custom", caddyCustomCertHandler)
+		api.DELETE("/caddy/certs/orphaned", caddyPruneOrphanedCertsHandler)
 		api.GET("/caddy/ca.crt", caddyRootCAHandler)
 		api.GET("/caddy/logs", caddyLogsHandler)
 		api.GET("/caddy/metrics", caddyMetricsHandler)
@@ -2821,30 +2826,121 @@ func caddyRoutesHandler(c *gin.Context) {
 }
 
 func caddyCertsHandler(c *gin.Context) {
+	certs, err := caddy.ListCertificates()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"certificates": certs})
+}
+
+func caddyCertDownloadHandler(c *gin.Context) {
+	domain := strings.TrimSpace(c.Query("domain"))
+	if domain == "" || domain == "root.crt" || strings.EqualFold(domain, "Root CA") {
+		caddyRootCAHandler(c)
+		return
+	}
+
+	certBytes, err := caddy.GetDomainCert(domain)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Certificate not found: " + err.Error()})
+		return
+	}
+
+	cleanDomain := strings.ReplaceAll(domain, "*", "wildcard")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.crt", cleanDomain))
+	c.Data(http.StatusOK, "application/x-pem-file", certBytes)
+}
+
+func caddyCertInspectHandler(c *gin.Context) {
+	domain := strings.TrimSpace(c.Query("domain"))
+	if domain == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "domain parameter required"})
+		return
+	}
+
+	certs, err := caddy.ListCertificates()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	for _, cert := range certs {
+		if cert.Domain == domain || cert.Subject == domain {
+			c.JSON(http.StatusOK, gin.H{"certificate": cert})
+			return
+		}
+	}
+
+	// If not found in list, try to get domain cert and parse it
+	certBytes, err := caddy.GetDomainCert(domain)
+	if err == nil && len(certBytes) > 0 {
+		if info, err := caddy.ParseCertificatePEM(certBytes, domain); err == nil {
+			c.JSON(http.StatusOK, gin.H{"certificate": info})
+			return
+		}
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Certificate details not found for domain %s", domain)})
+}
+
+type renewCertPayload struct {
+	Domain string `json:"domain" binding:"required"`
+}
+
+func caddyCertRenewHandler(c *gin.Context) {
+	var payload renewCertPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	if err := caddy.RenewCertificate(payload.Domain); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to renew certificate: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"certificates": []gin.H{
-			{
-				"domain":     "*.gbnt.local",
-				"issuer":     "Gubernator Internal CA",
-				"expires_in": "89 days",
-				"status":     "active",
-				"is_orphan":  false,
-			},
-			{
-				"domain":     "jupyter.gbnt.local",
-				"issuer":     "Gubernator Internal CA",
-				"expires_in": "88 days",
-				"status":     "active",
-				"is_orphan":  false,
-			},
-			{
-				"domain":     "n8n.gbnt.local",
-				"issuer":     "Gubernator Internal CA",
-				"expires_in": "88 days",
-				"status":     "active",
-				"is_orphan":  false,
-			},
-		},
+		"status":  "ok",
+		"message": fmt.Sprintf("Certificate for %s rotated and renewed successfully", payload.Domain),
+	})
+}
+
+type customCertPayload struct {
+	Domain  string `json:"domain" binding:"required"`
+	CertPEM string `json:"cert_pem" binding:"required"`
+	KeyPEM  string `json:"key_pem" binding:"required"`
+}
+
+func caddyCustomCertHandler(c *gin.Context) {
+	var payload customCertPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	if err := caddy.SaveCustomCert(payload.Domain, payload.CertPEM, payload.KeyPEM); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save custom certificate: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ok",
+		"message": fmt.Sprintf("Custom TLS certificate for %s installed and active", payload.Domain),
+	})
+}
+
+func caddyPruneOrphanedCertsHandler(c *gin.Context) {
+	count, err := caddy.PruneOrphanedCerts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prune certificates: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":       "ok",
+		"pruned_count": count,
+		"message":      fmt.Sprintf("Successfully pruned %d orphaned certificate(s)", count),
 	})
 }
 

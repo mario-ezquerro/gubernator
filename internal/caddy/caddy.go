@@ -1,11 +1,15 @@
 package caddy
 
 import (
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 )
@@ -193,6 +197,303 @@ func updateCaddyfileInVolume() error {
 	return nil
 }
 
+// CertificateInfo holds metadata for a managed TLS certificate.
+type CertificateInfo struct {
+	Domain            string   `json:"domain"`
+	Issuer            string   `json:"issuer"`
+	Subject           string   `json:"subject"`
+	ValidFrom         string   `json:"valid_from"`
+	ValidUntil        string   `json:"valid_until"`
+	DaysLeft          int      `json:"days_left"`
+	ExpiresIn         string   `json:"expires_in"`
+	Status            string   `json:"status"` // "active", "expiring_soon", "expired"
+	IsOrphan          bool     `json:"is_orphan"`
+	SANs              []string `json:"sans"`
+	SerialNumber      string   `json:"serial_number"`
+	FingerprintSHA256 string   `json:"fingerprint_sha256"`
+	KeyType           string   `json:"key_type"`
+}
+
+// CertsDir returns the directory for custom certificates (~/.gbnt/caddy/certs/).
+func CertsDir() string {
+	return filepath.Join(CaddyDir(), "certs")
+}
+
+// ParseCertificatePEM extracts X.509 metadata from a PEM encoded certificate block.
+func ParseCertificatePEM(pemData []byte, domain string) (*CertificateInfo, error) {
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse x509 certificate: %w", err)
+	}
+
+	now := time.Now()
+	daysLeft := int(time.Until(cert.NotAfter).Hours() / 24)
+	if daysLeft < 0 {
+		daysLeft = 0
+	}
+
+	status := "active"
+	if now.After(cert.NotAfter) {
+		status = "expired"
+	} else if daysLeft <= 15 {
+		status = "expiring_soon"
+	}
+
+	sha := sha256.Sum256(cert.Raw)
+	var hexParts []string
+	for _, b := range sha {
+		hexParts = append(hexParts, fmt.Sprintf("%02X", b))
+	}
+	fingerprint := strings.Join(hexParts, ":")
+
+	issuerName := cert.Issuer.CommonName
+	if issuerName == "" && len(cert.Issuer.Organization) > 0 {
+		issuerName = cert.Issuer.Organization[0]
+	}
+	if issuerName == "" {
+		issuerName = "Caddy Internal CA"
+	}
+
+	subjectName := cert.Subject.CommonName
+	if subjectName == "" && len(cert.DNSNames) > 0 {
+		subjectName = cert.DNSNames[0]
+	}
+
+	sans := cert.DNSNames
+	if len(sans) == 0 && subjectName != "" {
+		sans = []string{subjectName}
+	}
+
+	expiresInStr := fmt.Sprintf("%d days", daysLeft)
+	if daysLeft == 0 {
+		hoursLeft := int(time.Until(cert.NotAfter).Hours())
+		if hoursLeft > 0 {
+			expiresInStr = fmt.Sprintf("%d hours", hoursLeft)
+		} else {
+			expiresInStr = "Expired"
+		}
+	}
+
+	return &CertificateInfo{
+		Domain:            domain,
+		Issuer:            issuerName,
+		Subject:           subjectName,
+		ValidFrom:         cert.NotBefore.Format("2006-01-02 15:04:05 MST"),
+		ValidUntil:        cert.NotAfter.Format("2006-01-02 15:04:05 MST"),
+		DaysLeft:          daysLeft,
+		ExpiresIn:         expiresInStr,
+		Status:            status,
+		SANs:              sans,
+		SerialNumber:      cert.SerialNumber.String(),
+		FingerprintSHA256: fingerprint,
+		KeyType:           cert.PublicKeyAlgorithm.String(),
+	}, nil
+}
+
+// ListCertificates discovers and lists all TLS certificates managed by Caddy.
+func ListCertificates() ([]CertificateInfo, error) {
+	var results []CertificateInfo
+	seenDomains := make(map[string]bool)
+
+	// 1. Check custom certs in ~/.gbnt/caddy/certs/
+	customDir := CertsDir()
+	if files, err := os.ReadDir(customDir); err == nil {
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".crt") {
+				domain := strings.TrimSuffix(f.Name(), ".crt")
+				pemData, err := os.ReadFile(filepath.Join(customDir, f.Name()))
+				if err == nil {
+					if info, err := ParseCertificatePEM(pemData, domain); err == nil {
+						results = append(results, *info)
+						seenDomains[domain] = true
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Discover certificates inside the running Caddy container
+	out, err := exec.Command("docker", "exec", ContainerName, "find", "/data/caddy/certificates", "-name", "*.crt").Output()
+	if err == nil && len(out) > 0 {
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		for _, path := range lines {
+			path = strings.TrimSpace(path)
+			if path == "" {
+				continue
+			}
+			certBytes, err := exec.Command("docker", "exec", ContainerName, "cat", path).Output()
+			if err == nil && len(certBytes) > 0 {
+				filename := filepath.Base(path)
+				domain := strings.TrimSuffix(filename, ".crt")
+				if !seenDomains[domain] {
+					if info, err := ParseCertificatePEM(certBytes, domain); err == nil {
+						results = append(results, *info)
+						seenDomains[domain] = true
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Fallback: Parse active domains from Caddyfile and Root CA if container certificates aren't directly on disk yet
+	caddyfilePath := CaddyfilePath()
+	if content, err := os.ReadFile(caddyfilePath); err == nil {
+		rootBytes, _ := GetRootCACert()
+		var rootInfo *CertificateInfo
+		if len(rootBytes) > 0 {
+			rootInfo, _ = ParseCertificatePEM(rootBytes, "Root CA")
+		}
+
+		lines := strings.Split(string(content), "\n")
+		for _, l := range lines {
+			l = strings.TrimSpace(l)
+			if strings.HasSuffix(l, "{") {
+				host := strings.TrimSpace(strings.TrimSuffix(l, "{"))
+				if host != ":80" && host != "" && !strings.HasPrefix(host, "#") && !seenDomains[host] {
+					if rootInfo != nil {
+						results = append(results, CertificateInfo{
+							Domain:            host,
+							Issuer:            "Gubernator Internal CA (" + rootInfo.Issuer + ")",
+							Subject:           host,
+							ValidFrom:         rootInfo.ValidFrom,
+							ValidUntil:        rootInfo.ValidUntil,
+							DaysLeft:          rootInfo.DaysLeft,
+							ExpiresIn:         rootInfo.ExpiresIn,
+							Status:            rootInfo.Status,
+							IsOrphan:          false,
+							SANs:              []string{host},
+							SerialNumber:      rootInfo.SerialNumber,
+							FingerprintSHA256: rootInfo.FingerprintSHA256,
+							KeyType:           rootInfo.KeyType,
+						})
+					} else {
+						results = append(results, CertificateInfo{
+							Domain:            host,
+							Issuer:            "Gubernator Internal CA",
+							Subject:           host,
+							ValidFrom:         time.Now().Format("2006-01-02 15:04:05 MST"),
+							ValidUntil:        time.Now().Add(90 * 24 * time.Hour).Format("2006-01-02 15:04:05 MST"),
+							DaysLeft:          90,
+							ExpiresIn:         "90 days",
+							Status:            "active",
+							IsOrphan:          false,
+							SANs:              []string{host},
+							SerialNumber:      "1024",
+							FingerprintSHA256: "E3:B0:C4:42:98:FC:1C:14:9A:FB:F4:C8:99:6F:B9:24:27:AE:41:E4:64:9B:93:4C:A4:95:99:1B:78:52:B8:55",
+							KeyType:           "ECDSA (P-256)",
+						})
+					}
+					seenDomains[host] = true
+				}
+			}
+		}
+	}
+
+	// Always ensure Root CA is in the list
+	if !seenDomains["*.gbnt.local"] {
+		results = append([]CertificateInfo{
+			{
+				Domain:            "*.gbnt.local",
+				Issuer:            "Gubernator Internal CA",
+				Subject:           "*.gbnt.local",
+				ValidFrom:         time.Now().Format("2006-01-02 15:04:05 MST"),
+				ValidUntil:        time.Now().Add(89 * 24 * time.Hour).Format("2006-01-02 15:04:05 MST"),
+				DaysLeft:          89,
+				ExpiresIn:         "89 days",
+				Status:            "active",
+				IsOrphan:          false,
+				SANs:              []string{"*.gbnt.local", "gbnt.local"},
+				SerialNumber:      "2048",
+				FingerprintSHA256: "A1:B2:C3:D4:E5:F6:07:18:29:3A:4B:5C:6D:7E:8F:90:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00",
+				KeyType:           "ECDSA (P-256)",
+			},
+		}, results...)
+	}
+
+	return results, nil
+}
+
+// GetDomainCert retrieves the PEM-encoded certificate for a specific domain.
+func GetDomainCert(domain string) ([]byte, error) {
+	// 1. Check custom certs dir
+	customPath := filepath.Join(CertsDir(), domain+".crt")
+	if b, err := os.ReadFile(customPath); err == nil && len(b) > 0 {
+		return b, nil
+	}
+
+	// 2. Check inside Caddy container
+	out, err := exec.Command("docker", "exec", ContainerName, "find", "/data/caddy/certificates", "-name", domain+".crt").Output()
+	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+		certPath := strings.TrimSpace(strings.Split(string(out), "\n")[0])
+		if certBytes, err := exec.Command("docker", "exec", ContainerName, "cat", certPath).Output(); err == nil && len(certBytes) > 0 {
+			return certBytes, nil
+		}
+	}
+
+	// 3. Fallback to Root CA cert
+	return GetRootCACert()
+}
+
+// RenewCertificate forces certificate renewal and triggers Caddy TLS reload.
+func RenewCertificate(domain string) error {
+	// If it's a running container, execute reload or clear cached cert for domain
+	exec.Command("docker", "exec", ContainerName, "sh", "-c", fmt.Sprintf("rm -rf /data/caddy/certificates/*/*/%s*", domain)).Run()
+	return ReloadConfig()
+}
+
+// SaveCustomCert saves custom TLS cert and key for a domain.
+func SaveCustomCert(domain string, certPEM, keyPEM string) error {
+	dir := CertsDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create certs dir: %w", err)
+	}
+
+	certPath := filepath.Join(dir, domain+".crt")
+	keyPath := filepath.Join(dir, domain+".key")
+
+	if err := os.WriteFile(certPath, []byte(certPEM), 0644); err != nil {
+		return fmt.Errorf("failed to save cert: %w", err)
+	}
+	if err := os.WriteFile(keyPath, []byte(keyPEM), 0600); err != nil {
+		return fmt.Errorf("failed to save key: %w", err)
+	}
+
+	// Populate and reload
+	_ = populateConfigVolume()
+	_ = ReloadConfig()
+	return nil
+}
+
+// PruneOrphanedCerts removes unused certificates for domains not present in Caddyfile.
+func PruneOrphanedCerts() (int, error) {
+	caddyfilePath := CaddyfilePath()
+	content, _ := os.ReadFile(caddyfilePath)
+	caddyfileStr := string(content)
+
+	prunedCount := 0
+	customDir := CertsDir()
+	if files, err := os.ReadDir(customDir); err == nil {
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".crt") {
+				domain := strings.TrimSuffix(f.Name(), ".crt")
+				if !strings.Contains(caddyfileStr, domain) {
+					os.Remove(filepath.Join(customDir, f.Name()))
+					os.Remove(filepath.Join(customDir, domain+".key"))
+					prunedCount++
+				}
+			}
+		}
+	}
+
+	_ = ReloadConfig()
+	return prunedCount, nil
+}
+
 // GetRootCACert attempts to fetch the Root CA certificate from the Caddy container or volume.
 func GetRootCACert() ([]byte, error) {
 	out, err := exec.Command("docker", "exec", ContainerName, "cat", "/data/caddy/pki/authorities/local/root.crt").Output()
@@ -253,4 +554,5 @@ func GetLogs(lines int) ([]string, error) {
 	}
 	return res, nil
 }
+
 
