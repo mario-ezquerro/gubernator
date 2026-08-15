@@ -1,10 +1,16 @@
 package caddy
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,6 +68,10 @@ func EnsureRunning() error {
 	if err := EnsureConfigDir(); err != nil {
 		return err
 	}
+
+	// Pre-generate / ensure Root CA and Wildcard certificate exist
+	_, _ = EnsureRootCA()
+	_, _ = EnsureDomainCertificate("*.gbnt.local")
 
 	// Populate the config volume
 	if err := populateConfigVolume(); err != nil {
@@ -418,9 +428,93 @@ func ListCertificates() ([]CertificateInfo, error) {
 	return results, nil
 }
 
-// GetDomainCert retrieves the PEM-encoded certificate for a specific domain.
-func GetDomainCert(domain string) ([]byte, error) {
-	// 1. Check custom certs dir
+// EnsureRootCA generates a valid Root CA certificate and private key if not already present.
+func EnsureRootCA() ([]byte, error) {
+	// 1. Try reading from container or disk first
+	out, err := exec.Command("docker", "exec", ContainerName, "cat", "/data/caddy/pki/authorities/local/root.crt").Output()
+	if err == nil && len(out) > 0 {
+		return out, nil
+	}
+	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
+	if b, err := os.ReadFile(certPath); err == nil && len(b) > 0 {
+		return b, nil
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		if b, err := os.ReadFile(filepath.Join(home, ".gbnt", "caddy-root.crt")); err == nil && len(b) > 0 {
+			return b, nil
+		}
+	}
+	if b, err := os.ReadFile("caddy-root.crt"); err == nil && len(b) > 0 {
+		return b, nil
+	}
+
+	// 2. Generate an ECDSA P-256 Root CA certificate
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate CA private key: %w", err)
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		serialNumber = big.NewInt(2048)
+	}
+
+	caTemplate := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   "Gubernator Internal Root CA",
+			Organization: []string{"Gubernator Cluster"},
+			Country:      []string{"ES"},
+		},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour), // 10 years
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &privKey.PublicKey, privKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CA certificate: %w", err)
+	}
+
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caBytes})
+	keyBytes, err := x509.MarshalECPrivateKey(privKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal CA private key: %w", err)
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
+
+	// Save to ~/.gbnt/caddy/pki/authorities/local/
+	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	_ = os.MkdirAll(localPKIDir, 0755)
+	_ = os.WriteFile(filepath.Join(localPKIDir, "root.crt"), caPEM, 0644)
+	_ = os.WriteFile(filepath.Join(localPKIDir, "root.key"), keyPEM, 0600)
+
+	// Save to ~/.gbnt/caddy-root.crt
+	if home != "" {
+		_ = os.WriteFile(filepath.Join(home, ".gbnt", "caddy-root.crt"), caPEM, 0644)
+	}
+	_ = os.WriteFile("caddy-root.crt", caPEM, 0644)
+
+	// Copy into Caddy container if running
+	exec.Command("docker", "exec", ContainerName, "mkdir", "-p", "/data/caddy/pki/authorities/local").Run()
+	cmd := exec.Command("docker", "exec", "-i", ContainerName, "sh", "-c", "cat > /data/caddy/pki/authorities/local/root.crt")
+	cmd.Stdin = bytes.NewReader(caPEM)
+	_ = cmd.Run()
+
+	keyCmd := exec.Command("docker", "exec", "-i", ContainerName, "sh", "-c", "cat > /data/caddy/pki/authorities/local/root.key")
+	keyCmd.Stdin = bytes.NewReader(keyPEM)
+	_ = keyCmd.Run()
+
+	return caPEM, nil
+}
+
+// EnsureDomainCertificate generates a leaf certificate signed by the Root CA for any domain.
+func EnsureDomainCertificate(domain string) ([]byte, error) {
+	// 1. Check if already exists in custom certs dir
 	customPath := filepath.Join(CertsDir(), domain+".crt")
 	if b, err := os.ReadFile(customPath); err == nil && len(b) > 0 {
 		return b, nil
@@ -435,15 +529,78 @@ func GetDomainCert(domain string) ([]byte, error) {
 		}
 	}
 
-	// 3. Fallback to Root CA cert
-	return GetRootCACert()
-}
+	// 3. Ensure Root CA exists
+	caPEM, err := EnsureRootCA()
+	if err != nil {
+		return nil, err
+	}
 
-// RenewCertificate forces certificate renewal and triggers Caddy TLS reload.
-func RenewCertificate(domain string) error {
-	// If it's a running container, execute reload or clear cached cert for domain
-	exec.Command("docker", "exec", ContainerName, "sh", "-c", fmt.Sprintf("rm -rf /data/caddy/certificates/*/*/%s*", domain)).Run()
-	return ReloadConfig()
+	// Read CA key
+	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	caKeyPEM, err := os.ReadFile(filepath.Join(localPKIDir, "root.key"))
+	if err != nil {
+		return caPEM, nil
+	}
+
+	caBlock, _ := pem.Decode(caPEM)
+	if caBlock == nil {
+		return caPEM, nil
+	}
+	caCert, err := x509.ParseCertificate(caBlock.Bytes)
+	if err != nil {
+		return caPEM, nil
+	}
+
+	keyBlock, _ := pem.Decode(caKeyPEM)
+	if keyBlock == nil {
+		return caPEM, nil
+	}
+	caKey, err := x509.ParseECPrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return caPEM, nil
+	}
+
+	// Generate leaf key
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return caPEM, nil
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
+
+	dnsNames := []string{domain}
+	if strings.HasPrefix(domain, "*.") {
+		dnsNames = append(dnsNames, strings.TrimPrefix(domain, "*."))
+	}
+
+	leafTemplate := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   domain,
+			Organization: []string{"Gubernator Cluster"},
+		},
+		DNSNames:              dnsNames,
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(90 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+	}
+
+	leafBytes, err := x509.CreateCertificate(rand.Reader, leafTemplate, caCert, &leafKey.PublicKey, caKey)
+	if err != nil {
+		return caPEM, nil
+	}
+
+	leafCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafBytes})
+	leafKeyBytes, _ := x509.MarshalECPrivateKey(leafKey)
+	leafKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: leafKeyBytes})
+
+	// Save to custom certs
+	_ = SaveCustomCert(domain, string(leafCertPEM), string(leafKeyPEM))
+
+	return leafCertPEM, nil
 }
 
 // SaveCustomCert saves custom TLS cert and key for a domain.
@@ -469,6 +626,15 @@ func SaveCustomCert(domain string, certPEM, keyPEM string) error {
 	return nil
 }
 
+// RenewCertificate forces certificate renewal and triggers Caddy TLS reload.
+func RenewCertificate(domain string) error {
+	exec.Command("docker", "exec", ContainerName, "sh", "-c", fmt.Sprintf("rm -rf /data/caddy/certificates/*/*/%s*", domain)).Run()
+	_ = os.Remove(filepath.Join(CertsDir(), domain+".crt"))
+	_ = os.Remove(filepath.Join(CertsDir(), domain+".key"))
+	_, _ = EnsureDomainCertificate(domain)
+	return ReloadConfig()
+}
+
 // PruneOrphanedCerts removes unused certificates for domains not present in Caddyfile.
 func PruneOrphanedCerts() (int, error) {
 	caddyfilePath := CaddyfilePath()
@@ -481,7 +647,7 @@ func PruneOrphanedCerts() (int, error) {
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".crt") {
 				domain := strings.TrimSuffix(f.Name(), ".crt")
-				if !strings.Contains(caddyfileStr, domain) {
+				if domain != "*.gbnt.local" && !strings.Contains(caddyfileStr, domain) {
 					os.Remove(filepath.Join(customDir, f.Name()))
 					os.Remove(filepath.Join(customDir, domain+".key"))
 					prunedCount++
@@ -494,34 +660,17 @@ func PruneOrphanedCerts() (int, error) {
 	return prunedCount, nil
 }
 
-// GetRootCACert attempts to fetch the Root CA certificate from the Caddy container or volume.
-func GetRootCACert() ([]byte, error) {
-	out, err := exec.Command("docker", "exec", ContainerName, "cat", "/data/caddy/pki/authorities/local/root.crt").Output()
-	if err == nil && len(out) > 0 {
-		return out, nil
+// GetDomainCert retrieves the PEM-encoded certificate for a specific domain.
+func GetDomainCert(domain string) ([]byte, error) {
+	if domain == "root.crt" || domain == "ca.crt" || strings.EqualFold(domain, "Root CA") || domain == "" {
+		return EnsureRootCA()
 	}
-	// Fallback 1: checking local dir in ~/.gbnt/caddy/pki/
-	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
-	if b, err := os.ReadFile(certPath); err == nil && len(b) > 0 {
-		return b, nil
-	}
-	// Fallback 2: checking ~/.gbnt/caddy-root.crt
-	home, _ := os.UserHomeDir()
-	if home != "" {
-		if b, err := os.ReadFile(filepath.Join(home, ".gbnt", "caddy-root.crt")); err == nil && len(b) > 0 {
-			return b, nil
-		}
-	}
-	// Fallback 3: checking current working dir caddy-root.crt
-	if b, err := os.ReadFile("caddy-root.crt"); err == nil && len(b) > 0 {
-		return b, nil
-	}
-	// Fallback 4: checking container fallback path /app/caddy-root.crt
-	if b, err := os.ReadFile("/app/caddy-root.crt"); err == nil && len(b) > 0 {
-		return b, nil
-	}
+	return EnsureDomainCertificate(domain)
+}
 
-	return nil, fmt.Errorf("root CA certificate not found; ensure Caddy has initialized TLS")
+// GetRootCACert attempts to fetch the Root CA certificate.
+func GetRootCACert() ([]byte, error) {
+	return EnsureRootCA()
 }
 
 // FormatCaddyfile formats Caddyfile content using 'caddy fmt'.
