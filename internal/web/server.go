@@ -331,6 +331,7 @@ func StartDashboard() {
 		api.GET("/caddy/certs/inspect", caddyCertInspectHandler)
 		api.POST("/caddy/certs/renew", caddyCertRenewHandler)
 		api.POST("/caddy/certs/custom", caddyCustomCertHandler)
+		api.POST("/caddy/certs/sync", caddyCertSyncHandler)
 		api.DELETE("/caddy/certs/orphaned", caddyPruneOrphanedCertsHandler)
 		api.GET("/caddy/ca.crt", caddyRootCAHandler)
 		api.GET("/caddy/logs", caddyLogsHandler)
@@ -3008,6 +3009,21 @@ func caddyPruneOrphanedCertsHandler(c *gin.Context) {
 		"status":       "ok",
 		"pruned_count": count,
 		"message":      fmt.Sprintf("Successfully pruned %d orphaned certificate(s)", count),
+	})
+}
+
+func caddyCertSyncHandler(c *gin.Context) {
+	syncedNodes, count, err := caddy.SyncCertificatesToNodes()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sync certificates: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":             "ok",
+		"synced_nodes":       syncedNodes,
+		"synced_certs_count": count,
+		"message":            fmt.Sprintf("Successfully synchronized %d certificate(s) across %d cluster node(s)", count, len(syncedNodes)),
 	})
 }
 

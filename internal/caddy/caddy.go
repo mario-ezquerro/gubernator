@@ -8,8 +8,10 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"os"
 	"os/exec"
@@ -18,6 +20,7 @@ import (
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 const (
@@ -620,9 +623,15 @@ func SaveCustomCert(domain string, certPEM, keyPEM string) error {
 		return fmt.Errorf("failed to save key: %w", err)
 	}
 
-	// Populate and reload
+	// Populate and reload local Caddy
 	_ = populateConfigVolume()
 	_ = ReloadConfig()
+
+	// Automatically broadcast to all active cluster nodes in the background
+	go func() {
+		_, _, _ = SyncCertificatesToNodes()
+	}()
+
 	return nil
 }
 
@@ -632,7 +641,121 @@ func RenewCertificate(domain string) error {
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".crt"))
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".key"))
 	_, _ = EnsureDomainCertificate(domain)
+	
+	// Automatically broadcast to all active cluster nodes in the background
+	go func() {
+		_, _, _ = SyncCertificatesToNodes()
+	}()
+
 	return ReloadConfig()
+}
+
+// SyncCertificatesToNodes broadcasts all certificates (custom + Root CA) to all active cluster nodes.
+func SyncCertificatesToNodes() ([]string, int, error) {
+	syncedNodes := []string{"node-local-manager"}
+
+	// Read all certs in ~/.gbnt/caddy/certs/
+	customDir := CertsDir()
+	fileMap := make(map[string][]byte)
+	if entries, err := os.ReadDir(customDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				if b, err := os.ReadFile(filepath.Join(customDir, entry.Name())); err == nil {
+					fileMap["certs/"+entry.Name()] = b
+				}
+			}
+		}
+	}
+
+	// Read Root CA cert & key
+	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	if caCert, err := os.ReadFile(filepath.Join(localPKIDir, "root.crt")); err == nil {
+		fileMap["pki/authorities/local/root.crt"] = caCert
+	}
+	if caKey, err := os.ReadFile(filepath.Join(localPKIDir, "root.key")); err == nil {
+		fileMap["pki/authorities/local/root.key"] = caKey
+	}
+	if rootCrt, err := os.ReadFile("caddy-root.crt"); err == nil {
+		fileMap["caddy-root.crt"] = rootCrt
+	}
+
+	totalCerts := len(fileMap)
+
+	// Ensure local Caddy is up to date
+	_ = populateConfigVolume()
+	_ = ReloadConfig()
+
+	// Query active worker nodes from DB
+	var nodes []db.Node
+	if db.GetDB() != nil {
+		_ = db.GetDB().Find(&nodes).Error
+	}
+
+	keyCandidates := []string{
+		"/data/ssh/id_ed25519",
+		"/data/ssh/id_rsa",
+		"/root/.ssh/id_ed25519",
+		"/root/.ssh/id_rsa",
+		"/data/id_ed25519",
+		"/data/id_rsa",
+	}
+
+	var sshKeyArg string
+	for _, k := range keyCandidates {
+		if _, err := os.Stat(k); err == nil {
+			sshKeyArg = k
+			break
+		}
+	}
+
+	for _, node := range nodes {
+		if node.Role == "manager" || node.Status != "active" || node.IP == "" || node.IP == "127.0.0.1" {
+			continue
+		}
+
+		slog.Info("syncing TLS certificates to node", "node_id", node.ID, "ip", node.IP)
+
+		// Build remote script to write all files
+		var scriptBuilder strings.Builder
+		scriptBuilder.WriteString("set -e\n")
+		scriptBuilder.WriteString("TARGET_DIR=\"$HOME/.gbnt/caddy\"\n")
+		scriptBuilder.WriteString("mkdir -p \"$TARGET_DIR/certs\" \"$TARGET_DIR/pki/authorities/local\"\n")
+		for relPath, content := range fileMap {
+			b64 := base64.StdEncoding.EncodeToString(content)
+			scriptBuilder.WriteString(fmt.Sprintf("echo '%s' | base64 -d > \"$TARGET_DIR/%s\"\n", b64, relPath))
+		}
+		// Also update gbnt-caddy container if running
+		scriptBuilder.WriteString("if sudo docker ps -q -f name=gbnt-caddy | grep -q .; then\n")
+		scriptBuilder.WriteString("  sudo docker exec gbnt-caddy mkdir -p /etc/caddy/certs /data/caddy/pki/authorities/local 2>/dev/null || true\n")
+		for relPath, content := range fileMap {
+			if strings.HasPrefix(relPath, "certs/") {
+				b64 := base64.StdEncoding.EncodeToString(content)
+				scriptBuilder.WriteString(fmt.Sprintf("  echo '%s' | base64 -d | sudo docker exec -i gbnt-caddy sh -c 'cat > /etc/caddy/%s' 2>/dev/null || true\n", b64, relPath))
+			} else if strings.HasPrefix(relPath, "pki/") {
+				b64 := base64.StdEncoding.EncodeToString(content)
+				scriptBuilder.WriteString(fmt.Sprintf("  echo '%s' | base64 -d | sudo docker exec -i gbnt-caddy sh -c 'cat > /data/caddy/%s' 2>/dev/null || true\n", b64, relPath))
+			}
+		}
+		scriptBuilder.WriteString("  sudo docker exec gbnt-caddy caddy reload 2>/dev/null || true\n")
+		scriptBuilder.WriteString("fi\n")
+
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		if sshKeyArg != "" {
+			sshArgs = append(sshArgs, "-i", sshKeyArg)
+		}
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), "sh")
+
+		cmd := exec.Command("ssh", sshArgs...)
+		cmd.Stdin = strings.NewReader(scriptBuilder.String())
+		if out, err := cmd.CombinedOutput(); err != nil {
+			slog.Warn("failed to sync certificates to node via SSH", "node_id", node.ID, "ip", node.IP, "err", err, "out", string(out))
+		} else {
+			syncedNodes = append(syncedNodes, node.ID)
+			slog.Info("successfully synced certificates to node", "node_id", node.ID, "ip", node.IP)
+		}
+	}
+
+	return syncedNodes, totalCerts, nil
 }
 
 // PruneOrphanedCerts removes unused certificates for domains not present in Caddyfile.

@@ -72,6 +72,7 @@ While `./gbnt serve` is running:
 | `GET` | `/v1/caddy/certs/inspect` | Inspect complete X.509 properties and SHA-256 fingerprint |
 | `POST` | `/v1/caddy/certs/renew` | Force immediate renewal and rotation of a domain certificate |
 | `POST` | `/v1/caddy/certs/custom` | Upload and install a custom TLS certificate and private key |
+| `POST` | `/v1/caddy/certs/sync` | Broadcast and synchronize all certificates across all active cluster nodes |
 | `DELETE` | `/v1/caddy/certs/orphaned` | Prune orphaned certificates no longer in any Caddyfile |
 | `GET` | `/v1/caddy/ca.crt` | Download Caddy internal Root CA certificate (`root.crt`) |
 | `GET` | `/v1/caddy/logs` | Stream/tail container access log output |

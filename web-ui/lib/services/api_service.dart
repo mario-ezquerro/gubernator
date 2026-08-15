@@ -605,6 +605,12 @@ class ApiService {
     final response = await http.delete(uri);
     return jsonDecode(response.body);
   }
+
+  /// Caddy: Synchronizes all TLS certificates across all active cluster nodes.
+  static Future<Map<String, dynamic>> syncCaddyCerts() async {
+    final response = await http.post(Uri.parse('/api/caddy/certs/sync'));
+    return jsonDecode(response.body);
+  }
 }
 
 

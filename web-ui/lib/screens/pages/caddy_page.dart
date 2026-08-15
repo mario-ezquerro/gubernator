@@ -90,6 +90,22 @@ class _CaddyPageState extends State<CaddyPage> with SingleTickerProviderStateMix
     }
   }
 
+  bool _syncingCerts = false;
+
+  Future<void> _syncCertsToAllNodes() async {
+    setState(() => _syncingCerts = true);
+    try {
+      final res = await ApiService.syncCaddyCerts();
+      final msg = res['message'] ?? 'Certificates synchronized successfully across cluster';
+      _showSnackBar('✅ $msg');
+      await _loadCaddyData();
+    } catch (e) {
+      _showSnackBar('❌ Error syncing certificates: $e');
+    } finally {
+      if (mounted) setState(() => _syncingCerts = false);
+    }
+  }
+
   Future<void> _renewCert(String domain) async {
     setState(() => _loading = true);
     try {
@@ -767,6 +783,15 @@ class _CaddyPageState extends State<CaddyPage> with SingleTickerProviderStateMix
                 const SizedBox(width: 8),
                 Text('Managed TLS Certificates', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+                  icon: _syncingCerts
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.sync, size: 16),
+                  label: Text(_syncingCerts ? 'Syncing...' : 'Sync to All Nodes'),
+                  onPressed: _syncingCerts ? null : _syncCertsToAllNodes,
+                ),
+                const SizedBox(width: 8),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
                   icon: const Icon(Icons.upload_file, size: 16),

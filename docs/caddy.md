@@ -40,6 +40,7 @@ Access **Caddy Ingress** in the Web Dashboard (Port 4001) to interact with 7 spe
 2. **Route Manager**: Reverse proxy routes table, live upstream health checks, uptime %, domain search/filter, clickable links, and per-route notes.
 3. **Caddyfile Editor**: Real-time Caddyfile viewer & editor, syntax validation, `caddy fmt` formatting, backup history, and 1-click rollback.
 4. **TLS Certificates**: Full lifecycle management with:
+   - **Multi-Node Cluster Sync**: 1-click **"Sync to All Nodes"** button (`POST /api/caddy/certs/sync`) and automatic background broadcast whenever new certificates are uploaded or rotated.
    - **X.509 Inspector**: Deep inspection of Subject, Issuer, SANs, validity dates, serial number, SHA-256 fingerprint, and key algorithm.
    - **Forced Renewal / Rotation**: 1-click certificate rotation via API and UI.
    - **Domain Cert Download**: Direct download of domain-specific `.crt` / `.pem` files.
