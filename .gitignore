@@ -42,6 +42,9 @@ test_output.txt
 /gbnt-linux-arm64
 /gbnt-mac
 *.tar.gz
+*.tar
+*.log
+scratch/
 
 # Flutter build cache
 web-ui/build/
