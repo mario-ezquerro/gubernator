@@ -13,7 +13,7 @@ var healthCmd = &cobra.Command{
 	Use:   "health",
 	Short: "Check the health of the local Gubernator process",
 	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := http.Get("http://localhost:4002/health")
+		resp, err := http.Get("http://127.0.0.1:4002/health")
 		if err != nil {
 			fmt.Printf("Gubernator is unhealthy: %v\n", err)
 			os.Exit(1)

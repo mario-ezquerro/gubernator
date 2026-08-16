@@ -204,6 +204,17 @@ var legionJoinCmd = &cobra.Command{
 		// Start heartbeat loop
 		fmt.Println("\n💓 Starting background loops (Heartbeat & Executor)...")
 
+		// Start lightweight health endpoint for Docker healthcheck
+		go func() {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"status":"healthy","role":"worker"}`))
+			})
+			_ = http.ListenAndServe(":4002", mux)
+		}()
+
 		go func() {
 			for {
 				time.Sleep(10 * time.Second)
