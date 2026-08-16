@@ -30,7 +30,7 @@ Full multi-node Caddy proxy management interface:
 ![CoreDNS Suite Auto](../images/v2.13.0/coredns_suite_auto.png)
 
 Internal service discovery and DNS management:
-- **Automatic Host Records**: Real-time DNS record generation (`<service>.<stack>.gbnt.test`) for container communication.
+- **Automatic Host Records**: Real-time DNS record generation (`<service>.<stack>.gbnt.local`) for container communication.
 - **Custom DNS Records**: Ability to add custom domain mappings across the cluster.
 
 ### CoreDNS Corefile Editor (`coredns_suite_corefile.png`)

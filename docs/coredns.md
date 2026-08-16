@@ -1,6 +1,6 @@
 # CoreDNS Service Discovery & Management Suite
 
-Gubernator features a native **CoreDNS** management engine that powers internal service discovery (`*.gbnt` and `*.gbnt.test`), custom static DNS record management (`A`, `AAAA`, `CNAME`, `TXT`, `PTR`), an interactive **DNS Dig Playground**, and upstream DNS forwarder configuration.
+Gubernator features a native **CoreDNS** management engine that powers internal service discovery (`*.gbnt` and `*.gbnt.local`), custom static DNS record management (`A`, `AAAA`, `CNAME`, `TXT`, `PTR`), an interactive **DNS Dig Playground**, and upstream DNS forwarder configuration.
 
 Every container deployed by Gubernator receives transparent `--dns <CoreDNS_IP>` injection, enabling zero-config inter-service communication across multi-node clusters.
 
@@ -8,7 +8,7 @@ Every container deployed by Gubernator receives transparent `--dns <CoreDNS_IP>`
 
 ## 🎯 Key Features
 
-- **Transparent Container Service Discovery**: Automatically maps running services to `<service>.<stack>.gbnt` and `<service>.gbnt.test` without manual hosts configuration.
+- **Transparent Container Service Discovery**: Automatically maps running services to `<service>.<stack>.gbnt.local`, `<service>.gbnt.local`, and `<service>.<stack>.gbnt` without manual hosts configuration.
 - **Custom Static DNS Records**: Add, edit, and delete custom static DNS records (`A`, `AAAA`, `CNAME`, `TXT`, `PTR`) stored in SQLite and synced into `/etc/coredns/gubernator.hosts`.
 - **Interactive DNS Playground (`Dig / Nslookup`)**: Perform real-time DNS query testing directly against `127.0.0.1:5354`, benchmark query latency in milliseconds, and inspect raw DNS answers.
 - **Upstream DNS Forwarders**: Configure external DNS resolution servers with quick presets for Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), Quad9 (`9.9.9.9`), or custom upstream DNS servers.

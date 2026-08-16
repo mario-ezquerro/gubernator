@@ -32,7 +32,7 @@ This example demonstrates **Distributed Tracing** in Gubernator using **OpenTele
 │   jaeger-frontend    │    │    jaeger-api        │    │    jaeger-worker     │
 │   (Port 8080)        │───►│    (Port 8085)       │───►│    (Port 8086)       │
 │ ingress:             │    │                      │    │                      │
-│ jaeger.gbnt.test     │    │                      │    │                      │
+│ jaeger.gbnt.local    │    │                      │    │                      │
 └──────────────────────┘    └──────────────────────┘    └──────────────────────┘
 ```
 
@@ -40,7 +40,7 @@ This example demonstrates **Distributed Tracing** in Gubernator using **OpenTele
 
 ## ⚡ Microservices & Scenarios Included
 
-1. **`jaeger-frontend`** (`:8080`): Web frontend receiving requests on `http://jaeger.gbnt.test/`. Generates root trace spans and routes internal logic to backend services.
+1. **`jaeger-frontend`** (`:8080`): Web frontend receiving requests on `http://jaeger.gbnt.local/`. Generates root trace spans and routes internal logic to backend services.
 2. **`jaeger-api`** (`:8085`): Internal REST API microservice processing requests and emitting child spans.
 3. **`jaeger-worker`** (`:8086`): Background worker microservice handling asynchronous jobs and emitting grandchild spans.
 

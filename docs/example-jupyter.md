@@ -21,7 +21,7 @@ The stack file `docker-compose.yml` located in `examples/example-jupyter/` defin
 ## Prerequisites
 
 - **Gubernator** running on your manager node with Caddy Ingress active.
-- Configure your host OS resolver to use Gubernator's DNS for `.gbnt` and `.gbnt.test` domains (see Installation guide). No `/etc/hosts` modifications needed!
+- Configure your host OS resolver to use Gubernator's DNS for `.gbnt` and `.gbnt.local` domains (see Installation guide). No `/etc/hosts` modifications needed!
 
 ---
 
@@ -55,7 +55,7 @@ Gubernator's Ingress engine automatically reads the internal container port (`88
 
 Verify the connection using curl:
 ```bash
-curl -k -i https://jupyter.gbnt.test --resolve jupyter.gbnt.test:443:127.0.0.1 --head
+curl -k -i https://jupyter.gbnt.local --resolve jupyter.gbnt.local:443:127.0.0.1 --head
 ```
 You should receive an **HTTP 302 Found** or **HTTP 200 OK** redirecting to the Jupyter login screen.
 
@@ -63,7 +63,7 @@ You should receive an **HTTP 302 Found** or **HTTP 200 OK** redirecting to the J
 
 ## Step 3: Accessing the Notebook
 
-1. Open your browser and navigate to [https://jupyter.gbnt.test](https://jupyter.gbnt.test).
+1. Open your browser and navigate to [https://jupyter.gbnt.local](https://jupyter.gbnt.local).
 2. Enter the default token **`gubernator-secret`** in the Password or Token field to log in.
 3. You will be greeted by the JupyterLab dashboard. Any notebook or file created in the `work/` folder will be persisted inside the `jupyter_workspace` volume.
 

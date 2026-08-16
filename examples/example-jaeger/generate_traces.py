@@ -67,7 +67,7 @@ def build_scenario_spans(scenario):
         
         spans_by_service.append(('checkout-frontend', [
             create_span('POST /api/v1/checkout', 'checkout-frontend', trace_id, s_front, '', 120, {
-                'http.method': 'POST', 'http.url': 'https://shop.gbnt.test/checkout',
+                'http.method': 'POST', 'http.url': 'https://shop.gbnt.local/checkout',
                 'user.id': user_id, 'order.id': order_id, 'order.amount': str(amount)
             })
         ]))
@@ -177,7 +177,7 @@ def build_scenario_spans(scenario):
         
         spans_by_service.append(('jaeger-frontend', [
             create_span('GET /', 'jaeger-frontend', trace_id, s_front, '', 45, {
-                'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.test/'
+                'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.local/'
             })
         ]))
         

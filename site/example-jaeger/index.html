@@ -990,7 +990,7 @@
 
 
 <h1 id="distributed-tracing-jaeger-example">Distributed Tracing (Jaeger Example)</h1>
-<p>This tutorial walks through deploying a microservice architecture configured with <strong>Caddy Ingress</strong> domain <code>jaeger.gbnt.test</code>, generating synthetic OpenTelemetry traffic, and integrating with Gubernator's built-in <strong>Jaeger SRE Trace Collector</strong>.</p>
+<p>This tutorial walks through deploying a microservice architecture configured with <strong>Caddy Ingress</strong> domain <code>jaeger.gbnt.local</code>, generating synthetic OpenTelemetry traffic, and integrating with Gubernator's built-in <strong>Jaeger SRE Trace Collector</strong>.</p>
 <hr />
 <blockquote>
 <p>📘 <strong>Guía Paso a Paso para Desarrolladores</strong>: Para aprender a configurar cualquier contenedor o aplicación propia (Python, Node.js, Go) para enviar trazas a Jaeger, lee la guía <a href="https://github.com/mario-ezquerro/gubernator/tree/main/examples/example-jaeger/how-use-jaeger.md"><code>how-use-jaeger.md</code></a>.</p>
@@ -998,7 +998,7 @@
 <hr />
 <h2 id="overview-architecture">🏛 Overview &amp; Architecture</h2>
 <p>When deploying microservice stacks, distributed tracing allows operators to follow a request as it travels through frontend gateways, backend APIs, and background processing workers.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Client / Browser ──► Caddy Ingress (jaeger.gbnt.test:80)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Client / Browser ──► Caddy Ingress (jaeger.gbnt.local:80)
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                           │
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                           ▼
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                    jaeger-frontend (:8080)

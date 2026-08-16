@@ -35,7 +35,7 @@ x-ollama: &service-ollama
   deploy:
     placement:
       constraints:
-        - ingress.host == ollama.gbnt.test
+        - ingress.host == ollama.gbnt.local
 
 x-init-ollama: &init-ollama
   image: curlimages/curl:latest
@@ -77,7 +77,7 @@ services:
       placement:
         constraints:
           - stack.name == n8n-stack
-          - ingress.host == n8n.gbnt.test
+          - ingress.host == n8n.gbnt.local
 
   qdrant:
     image: qdrant/qdrant
@@ -92,7 +92,7 @@ services:
     deploy:
       placement:
         constraints:
-          - ingress.host == qdrant.gbnt.test
+          - ingress.host == qdrant.gbnt.local
 
   ollama:
     <<: *service-ollama

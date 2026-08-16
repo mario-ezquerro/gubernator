@@ -277,7 +277,7 @@ python3 examples/example-jaeger/generate_traces.py --count 15 --scenario all --t
 ./examples/example-jaeger/send_traces.sh 10
 ```
 
-> 📘 See [Distributed Tracing Example (`example-jaeger`)](example-jaeger.md) for a full multi-service tutorial with domain `jaeger.gbnt.test`.
+> 📘 See [Distributed Tracing Example (`example-jaeger`)](example-jaeger.md) for a full multi-service tutorial with domain `jaeger.gbnt.local`.
 
 ---
 

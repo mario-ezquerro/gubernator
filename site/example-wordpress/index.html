@@ -1152,9 +1152,9 @@ You will see the active container instances running, linked to the <code>gbnt-ne
 <h3 id="3-access-wordpress">3. Access WordPress</h3>
 <ul>
 <li><strong>Direct Access:</strong> Open <a href="http://localhost:8080">http://localhost:8080</a> in your browser. You should see the WordPress setup screen.</li>
-<li><strong>Caddy Ingress:</strong> Caddy routes traffic from the local host name <code>http://hello-101.gbnt.test</code> directly to the WordPress task container.</li>
+<li><strong>Caddy Ingress:</strong> Caddy routes traffic from the local host name <code>http://hello-101.gbnt.local</code> directly to the WordPress task container.</li>
 </ul>
-<p><em>Note: If you configured your host OS resolver as described in the Installation guide, <code>hello-101.gbnt.test</code> will automatically resolve to <code>127.0.0.1</code> natively without editing <code>/etc/hosts</code>.</em></p>
+<p><em>Note: If you configured your host OS resolver as described in the Installation guide, <code>hello-101.gbnt.local</code> will automatically resolve to <code>127.0.0.1</code> natively without editing <code>/etc/hosts</code>.</em></p>
 <blockquote>
 <p>[!TIP]
 <strong>Trusting Local HTTPS with Caddy:</strong>

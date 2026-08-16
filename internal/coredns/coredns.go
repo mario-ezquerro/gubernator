@@ -88,7 +88,7 @@ func EnsureConfigDir() error {
 }
 
 // defaultCorefile returns the CoreDNS configuration.
-// Uses the 'hosts' plugin to serve *.gbnt and *.gbnt.test from gubernator.hosts,
+// Uses the 'hosts' plugin to serve *.gbnt and *.gbnt.local from gubernator.hosts,
 // falling back to templated host IP, and forwarding other queries to public DNS.
 func defaultCorefile() string {
 	forwarders := os.Getenv("GBNT_DNS_FORWARDERS")
@@ -99,7 +99,7 @@ func defaultCorefile() string {
 	return fmt.Sprintf(`# Gubernator CoreDNS Configuration
 # Managed automatically — do not edit manually.
 
-gbnt gbnt.test {
+gbnt gbnt.local {
     hosts /etc/coredns/gubernator.hosts {
         ttl 5
         reload 3s
@@ -110,7 +110,7 @@ gbnt gbnt.test {
     errors
 }
 
-gbnt:1053 gbnt.test:1053 {
+gbnt:1053 gbnt.local:1053 {
     template IN A {
         match "^.*$"
         answer "{{ .Name }} 60 IN A %s"
@@ -137,7 +137,7 @@ func EnsureRunningWorker(managerIP string) error {
 
 	// Write Corefile that forwards gbnt to the manager
 	corefileContent := fmt.Sprintf(`# Gubernator CoreDNS Worker Configuration
-gbnt gbnt.test {
+gbnt gbnt.local {
     forward . %s:5354
     log
     errors

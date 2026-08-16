@@ -61,14 +61,19 @@ func GenerateHostsFile() {
 					}
 				}
 
-				// Format: IP task.service.stack.gbnt
-				// Example: 172.17.0.2 task-abc.web.mystack.gbnt
-				domain := fmt.Sprintf("%s.%s.%s.gbnt", t.ID, svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s\n", targetIP, domain)
+				// Format: IP task.service.stack.gbnt.local and aliases
+				domainLocal := fmt.Sprintf("%s.%s.%s.gbnt.local", t.ID, svc.Name, stack.Name)
+				domainShortLocal := fmt.Sprintf("%s.%s.gbnt.local", svc.Name, stack.Name)
+				domainSvcLocal := fmt.Sprintf("%s.gbnt.local", svc.Name)
 
-				// Short alias (e.g. web.mystack.gbnt points to the first container MVP)
-				shortDomain := fmt.Sprintf("%s.%s.gbnt", svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s\n", targetIP, shortDomain)
+				content += fmt.Sprintf("%s\t%s\n", targetIP, domainLocal)
+				content += fmt.Sprintf("%s\t%s\n", targetIP, domainShortLocal)
+				content += fmt.Sprintf("%s\t%s\n", targetIP, domainSvcLocal)
+
+				// Backward compatibility aliases (.gbnt)
+				content += fmt.Sprintf("%s\t%s.%s.%s.gbnt\n", targetIP, t.ID, svc.Name, stack.Name)
+				content += fmt.Sprintf("%s\t%s.%s.gbnt\n", targetIP, svc.Name, stack.Name)
+				content += fmt.Sprintf("%s\t%s.gbnt\n", targetIP, svc.Name)
 			}
 		}
 	}

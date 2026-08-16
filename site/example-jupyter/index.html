@@ -1103,7 +1103,7 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li><strong>Gubernator</strong> running on your manager node with Caddy Ingress active.</li>
-<li>Configure your host OS resolver to use Gubernator's DNS for <code>.gbnt</code> and <code>.gbnt.test</code> domains (see Installation guide). No <code>/etc/hosts</code> modifications needed!</li>
+<li>Configure your host OS resolver to use Gubernator's DNS for <code>.gbnt</code> and <code>.gbnt.local</code> domains (see Installation guide). No <code>/etc/hosts</code> modifications needed!</li>
 </ul>
 <hr />
 <h2 id="step-1-deploy-the-stack">Step 1: Deploy the Stack</h2>
@@ -1125,13 +1125,13 @@ You should see the <code>jupyter</code> task listed as <code>running</code> with
 <h3 id="2-verify-caddy-ingress">2. Verify Caddy Ingress</h3>
 <p>Gubernator's Ingress engine automatically reads the internal container port (<code>8888</code>) and configures Caddy to reverse proxy external requests to the correct target.</p>
 <p>Verify the connection using curl:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://jupyter.gbnt.test<span class="w"> </span>--resolve<span class="w"> </span>jupyter.gbnt.test:443:127.0.0.1<span class="w"> </span>--head
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://jupyter.gbnt.local<span class="w"> </span>--resolve<span class="w"> </span>jupyter.gbnt.local:443:127.0.0.1<span class="w"> </span>--head
 </span></code></pre></div>
 You should receive an <strong>HTTP 302 Found</strong> or <strong>HTTP 200 OK</strong> redirecting to the Jupyter login screen.</p>
 <hr />
 <h2 id="step-3-accessing-the-notebook">Step 3: Accessing the Notebook</h2>
 <ol>
-<li>Open your browser and navigate to <a href="https://jupyter.gbnt.test">https://jupyter.gbnt.test</a>.</li>
+<li>Open your browser and navigate to <a href="https://jupyter.gbnt.local">https://jupyter.gbnt.local</a>.</li>
 <li>Enter the default token <strong><code>gubernator-secret</code></strong> in the Password or Token field to log in.</li>
 <li>You will be greeted by the JupyterLab dashboard. Any notebook or file created in the <code>work/</code> folder will be persisted inside the <code>jupyter_workspace</code> volume.</li>
 </ol>

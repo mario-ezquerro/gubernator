@@ -1087,7 +1087,7 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li><strong>Gubernator</strong> running on your manager node with Caddy Ingress and CoreDNS enabled.</li>
-<li>Configure your host OS resolver to use Gubernator's DNS for <code>.gbnt</code> and <code>.gbnt.test</code> domains (see Installation guide). No <code>/etc/hosts</code> modifications needed!</li>
+<li>Configure your host OS resolver to use Gubernator's DNS for <code>.gbnt</code> and <code>.gbnt.local</code> domains (see Installation guide). No <code>/etc/hosts</code> modifications needed!</li>
 </ul>
 <hr />
 <h2 id="step-1-deploy-the-stack">Step 1: Deploy the Stack</h2>
@@ -1108,18 +1108,18 @@
 You should see all 5 tasks (<code>postgres</code>, <code>n8n</code>, <code>qdrant</code>, <code>ollama</code>, <code>ollama-pull-llama</code>) listed as <code>running</code> and assigned container IPs.</p>
 <h3 id="2-verify-caddy-ingress">2. Verify Caddy Ingress</h3>
 <p>Gubernator's Ingress engine auto-detects the internal container ports and configures Caddy to reverse proxy external requests to the correct targets:
-* <strong>n8n</strong>: Routes traffic for <code>n8n.gbnt.test</code> to the container's port <code>5678</code>.
-* <strong>qdrant</strong>: Routes traffic for <code>qdrant.gbnt.test</code> to the container's port <code>6333</code>.
-* <strong>ollama</strong>: Routes traffic for <code>ollama.gbnt.test</code> to the container's port <code>11434</code>.</p>
+* <strong>n8n</strong>: Routes traffic for <code>n8n.gbnt.local</code> to the container's port <code>5678</code>.
+* <strong>qdrant</strong>: Routes traffic for <code>qdrant.gbnt.local</code> to the container's port <code>6333</code>.
+* <strong>ollama</strong>: Routes traffic for <code>ollama.gbnt.local</code> to the container's port <code>11434</code>.</p>
 <p>Test the connections with curl:
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Verify n8n</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://n8n.gbnt.test<span class="w"> </span>--resolve<span class="w"> </span>n8n.gbnt.test:443:127.0.0.1<span class="w"> </span>--head
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://n8n.gbnt.local<span class="w"> </span>--resolve<span class="w"> </span>n8n.gbnt.local:443:127.0.0.1<span class="w"> </span>--head
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Verify Qdrant API</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://qdrant.gbnt.test<span class="w"> </span>--resolve<span class="w"> </span>qdrant.gbnt.test:443:127.0.0.1
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://qdrant.gbnt.local<span class="w"> </span>--resolve<span class="w"> </span>qdrant.gbnt.local:443:127.0.0.1
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Verify Ollama API</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://ollama.gbnt.test<span class="w"> </span>--resolve<span class="w"> </span>ollama.gbnt.test:443:127.0.0.1
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>curl<span class="w"> </span>-k<span class="w"> </span>-i<span class="w"> </span>https://ollama.gbnt.local<span class="w"> </span>--resolve<span class="w"> </span>ollama.gbnt.local:443:127.0.0.1
 </span></code></pre></div></p>
 <h3 id="3-verify-model-download">3. Verify Model Download</h3>
 <p>The <code>ollama-pull-llama</code> service triggers a script to download <code>llama3.2</code> as soon as Ollama is ready. You can inspect its logs to monitor download progress:
@@ -1129,8 +1129,8 @@ You should see all 5 tasks (<code>postgres</code>, <code>n8n</code>, <code>qdran
 <hr />
 <h2 id="step-3-accessing-the-web-interfaces">Step 3: Accessing the Web Interfaces</h2>
 <ul>
-<li><strong>n8n Workflow Editor</strong>: Open <a href="https://n8n.gbnt.test">https://n8n.gbnt.test</a> in your browser. Complete the initial setup screen to start building workflows.</li>
-<li><strong>Qdrant Dashboard</strong>: Open <a href="https://qdrant.gbnt.test/dashboard">https://qdrant.gbnt.test/dashboard</a> in your browser to inspect collections.</li>
+<li><strong>n8n Workflow Editor</strong>: Open <a href="https://n8n.gbnt.local">https://n8n.gbnt.local</a> in your browser. Complete the initial setup screen to start building workflows.</li>
+<li><strong>Qdrant Dashboard</strong>: Open <a href="https://qdrant.gbnt.local/dashboard">https://qdrant.gbnt.local/dashboard</a> in your browser to inspect collections.</li>
 </ul>
 <hr />
 <h2 id="step-4-connecting-services-inside-n8n">Step 4: Connecting Services inside n8n</h2>

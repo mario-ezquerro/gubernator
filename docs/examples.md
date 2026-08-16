@@ -61,12 +61,12 @@ This page is your index to the progressive tutorials included with Gubernator. E
 ## Example Jaeger — Distributed Tracing Stack
 
 **Target**: Advanced / SRE  
-**Goal**: Deploy a 3-tier microservice architecture sending OTLP traces to Jaeger with Caddy Ingress domain `jaeger.gbnt.test`
+**Goal**: Deploy a 3-tier microservice architecture sending OTLP traces to Jaeger with Caddy Ingress domain `jaeger.gbnt.local`
 
 [Start Example Jaeger →](example-jaeger.md)
 
 - Multi-microservice trace propagation (Frontend -> API -> Worker)
-- Caddy Ingress reverse proxy domain binding (`jaeger.gbnt.test`)
+- Caddy Ingress reverse proxy domain binding (`jaeger.gbnt.local`)
 - Automatic OTLP HTTP trace submission to `gbnt-monitor-jaeger`
 - Real-time trace visualization in Gubernator Web UI Jaeger tab
 

@@ -1078,11 +1078,11 @@
 <hr />
 <h2 id="example-jaeger-distributed-tracing-stack">Example Jaeger — Distributed Tracing Stack</h2>
 <p><strong>Target</strong>: Advanced / SRE<br />
-<strong>Goal</strong>: Deploy a 3-tier microservice architecture sending OTLP traces to Jaeger with Caddy Ingress domain <code>jaeger.gbnt.test</code></p>
+<strong>Goal</strong>: Deploy a 3-tier microservice architecture sending OTLP traces to Jaeger with Caddy Ingress domain <code>jaeger.gbnt.local</code></p>
 <p><a href="../example-jaeger/">Start Example Jaeger →</a></p>
 <ul>
 <li>Multi-microservice trace propagation (Frontend -&gt; API -&gt; Worker)</li>
-<li>Caddy Ingress reverse proxy domain binding (<code>jaeger.gbnt.test</code>)</li>
+<li>Caddy Ingress reverse proxy domain binding (<code>jaeger.gbnt.local</code>)</li>
 <li>Automatic OTLP HTTP trace submission to <code>gbnt-monitor-jaeger</code></li>
 <li>Real-time trace visualization in Gubernator Web UI Jaeger tab</li>
 </ul>

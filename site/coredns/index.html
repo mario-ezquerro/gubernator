@@ -951,12 +951,12 @@
 
 
 <h1 id="coredns-service-discovery-management-suite">CoreDNS Service Discovery &amp; Management Suite</h1>
-<p>Gubernator features a native <strong>CoreDNS</strong> management engine that powers internal service discovery (<code>*.gbnt</code> and <code>*.gbnt.test</code>), custom static DNS record management (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>), an interactive <strong>DNS Dig Playground</strong>, and upstream DNS forwarder configuration.</p>
+<p>Gubernator features a native <strong>CoreDNS</strong> management engine that powers internal service discovery (<code>*.gbnt</code> and <code>*.gbnt.local</code>), custom static DNS record management (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>), an interactive <strong>DNS Dig Playground</strong>, and upstream DNS forwarder configuration.</p>
 <p>Every container deployed by Gubernator receives transparent <code>--dns &lt;CoreDNS_IP&gt;</code> injection, enabling zero-config inter-service communication across multi-node clusters.</p>
 <hr />
 <h2 id="key-features">🎯 Key Features</h2>
 <ul>
-<li><strong>Transparent Container Service Discovery</strong>: Automatically maps running services to <code>&lt;service&gt;.&lt;stack&gt;.gbnt</code> and <code>&lt;service&gt;.gbnt.test</code> without manual hosts configuration.</li>
+<li><strong>Transparent Container Service Discovery</strong>: Automatically maps running services to <code>&lt;service&gt;.&lt;stack&gt;.gbnt</code> and <code>&lt;service&gt;.gbnt.local</code> without manual hosts configuration.</li>
 <li><strong>Custom Static DNS Records</strong>: Add, edit, and delete custom static DNS records (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>) stored in SQLite and synced into <code>/etc/coredns/gubernator.hosts</code>.</li>
 <li><strong>Interactive DNS Playground (<code>Dig / Nslookup</code>)</strong>: Perform real-time DNS query testing directly against <code>127.0.0.1:5354</code>, benchmark query latency in milliseconds, and inspect raw DNS answers.</li>
 <li><strong>Upstream DNS Forwarders</strong>: Configure external DNS resolution servers with quick presets for Cloudflare (<code>1.1.1.1</code>), Google (<code>8.8.8.8</code>), Quad9 (<code>9.9.9.9</code>), or custom upstream DNS servers.</li>

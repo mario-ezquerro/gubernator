@@ -11,7 +11,7 @@ services:
       placement:
         constraints:
           - stack.name == jaeger-stack
-          - ingress.host == jaeger.gbnt.test
+          - ingress.host == jaeger.gbnt.local
     command: |
       python -c "import http.server, socketserver, urllib.request, json, time, secrets, threading
       def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs, is_error=False, err_msg=''):
@@ -39,7 +39,7 @@ services:
                   f_span = secrets.token_hex(8)
                   a_span = secrets.token_hex(8)
                   w_span = secrets.token_hex(8)
-                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /auto-ping', 45, {'http.url': 'http://jaeger.gbnt.test/auto-ping'})
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /auto-ping', 45, {'http.url': 'http://jaeger.gbnt.local/auto-ping'})
                   send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /api/process', 30, {'http.target': '/api/process'})
                   send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /worker/task', 15, {'db.system': 'postgresql', 'task.type': 'batch'})
               except Exception: pass
@@ -74,10 +74,10 @@ services:
                   res_html = f'<h1>Internal Server Error (Simulated)</h1><p>Trace ID: {trace_id}</p>'
                   self.send_response(500)
               else:
-                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /', 50, {'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.test/'})
+                  send_otlp_trace('jaeger-frontend', trace_id, f_span, '', 'GET /', 50, {'http.method': 'GET', 'http.url': 'http://jaeger.gbnt.local/'})
                   send_otlp_trace('jaeger-api', trace_id, a_span, f_span, 'POST /process', 35, {'http.method': 'POST', 'http.target': '/process'})
                   send_otlp_trace('jaeger-worker', trace_id, w_span, a_span, 'EXEC /work', 20, {'job.status': 'completed'})
-                  res_html = f'''<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:40px;\"><h1>🚀 Jaeger Tracing Example (jaeger.gbnt.test)</h1><p>Distributed tracing active across 3 microservices:</p><ul><li><b>jaeger-frontend</b> (Port 8080, Ingress jaeger.gbnt.test)</li><li><b>jaeger-api</b> (Port 8085, Internal REST API)</li><li><b>jaeger-worker</b> (Port 8086, Background Job Worker)</li></ul><div style=\"background:#1e293b;padding:20px;border-radius:8px;font-family:monospace;\"><p style=\"color:#38bdf8;\">Generated Trace ID: {trace_id}</p><p>Frontend Span ID: {f_span}</p><p>API Span ID: {a_span} (Parent: {f_span})</p><p>Worker Span ID: {w_span} (Parent: {a_span})</p></div><p style=\"margin-top:20px;\">Inspect this trace in the <a href=\"http://localhost:4001/jaeger/\" style=\"color:#60a5fa;\" target=\"_blank\">Gubernator Jaeger UI Dashboard</a>.</p></body></html>'''
+                  res_html = f'''<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:40px;\"><h1>🚀 Jaeger Tracing Example (jaeger.gbnt.local)</h1><p>Distributed tracing active across 3 microservices:</p><ul><li><b>jaeger-frontend</b> (Port 8080, Ingress jaeger.gbnt.local)</li><li><b>jaeger-api</b> (Port 8085, Internal REST API)</li><li><b>jaeger-worker</b> (Port 8086, Background Job Worker)</li></ul><div style=\"background:#1e293b;padding:20px;border-radius:8px;font-family:monospace;\"><p style=\"color:#38bdf8;\">Generated Trace ID: {trace_id}</p><p>Frontend Span ID: {f_span}</p><p>API Span ID: {a_span} (Parent: {f_span})</p><p>Worker Span ID: {w_span} (Parent: {a_span})</p></div><p style=\"margin-top:20px;\">Inspect this trace in the <a href=\"http://localhost:4001/jaeger/\" style=\"color:#60a5fa;\" target=\"_blank\">Gubernator Jaeger UI Dashboard</a>.</p></body></html>'''
                   self.send_response(200)
               
               self.send_header('Content-type', 'text/html')

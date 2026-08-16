@@ -329,8 +329,8 @@ When a task starts, the worker extracts its internal Docker IP. Gubernator then 
 
 To complete the Empire Trifecta, simply run Caddy and CoreDNS in the same directory alongside the Manager, and they will pick up these auto-generated routing tables!
 
-> **Pro Tip (Host DNS):** Want to access `*.gbnt.test` and `*.gbnt` domains from your host browser without touching `/etc/hosts`? Configure your OS resolver! On macOS, just run:
-> `sudo mkdir -p /etc/resolver && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt' && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt.test'`
+> **Pro Tip (Host DNS):** Want to access `*.gbnt.local` and `*.gbnt` domains from your host browser without touching `/etc/hosts`? Configure your OS resolver! On macOS, just run:
+> `sudo mkdir -p /etc/resolver && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt' && sudo sh -c 'echo "nameserver 127.0.0.1" > /etc/resolver/gbnt.local'`
 
 ---
 
@@ -389,7 +389,7 @@ This command deploys 7 containers on a dedicated Docker network (`gbnt-monitor-n
 
 Configuration files are auto-generated in `~/.gbnt/monitor/` and can be customized.
 
-> 💡 **Try the Jaeger Tracing Example**: See [`examples/example-jaeger`](examples/example-jaeger) (`jaeger.gbnt.test`) for a 3-service distributed tracing demo and traffic generation tools (`python3 generate_traces.py --count 15`).
+> 💡 **Try the Jaeger Tracing Example**: See [`examples/example-jaeger`](examples/example-jaeger) (`jaeger.gbnt.local`) for a 3-service distributed tracing demo and traffic generation tools (`python3 generate_traces.py --count 15`).
 
 ---
 

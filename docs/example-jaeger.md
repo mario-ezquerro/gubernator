@@ -1,6 +1,6 @@
 # Distributed Tracing (Jaeger Example)
 
-This tutorial walks through deploying a microservice architecture configured with **Caddy Ingress** domain `jaeger.gbnt.test`, generating synthetic OpenTelemetry traffic, and integrating with Gubernator's built-in **Jaeger SRE Trace Collector**.
+This tutorial walks through deploying a microservice architecture configured with **Caddy Ingress** domain `jaeger.gbnt.local`, generating synthetic OpenTelemetry traffic, and integrating with Gubernator's built-in **Jaeger SRE Trace Collector**.
 
 ---
 
@@ -13,7 +13,7 @@ This tutorial walks through deploying a microservice architecture configured wit
 When deploying microservice stacks, distributed tracing allows operators to follow a request as it travels through frontend gateways, backend APIs, and background processing workers.
 
 ```
-Client / Browser ──► Caddy Ingress (jaeger.gbnt.test:80)
+Client / Browser ──► Caddy Ingress (jaeger.gbnt.local:80)
                            │
                            ▼
                     jaeger-frontend (:8080)

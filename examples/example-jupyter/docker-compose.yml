@@ -19,6 +19,6 @@ services:
       placement:
         constraints:
           - stack.name == jupyter-stack
-          - ingress.host == jupyter.gbnt.test
+          - ingress.host == jupyter.gbnt.local
           - node.labels.gbnt.node.hostname == gbnt-worker2
 
