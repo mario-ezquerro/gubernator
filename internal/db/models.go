@@ -193,3 +193,29 @@ type LDAPConfig struct {
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
+
+// LocalUser represents a local user account stored in the Gubernator DB.
+type LocalUser struct {
+	ID           string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Username     string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
+	PasswordHash string     `gorm:"type:varchar(255);not null" json:"-"`
+	DisplayName  string     `gorm:"type:varchar(255)" json:"display_name"`
+	Email        string     `gorm:"type:varchar(255)" json:"email"`
+	Role         string     `gorm:"type:varchar(50);default:'readonly'" json:"role"` // admin, operator, readonly
+	Enabled      bool       `gorm:"default:true" json:"enabled"`
+	LastLogin    *time.Time `json:"last_login,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// AuditLog represents a security event or user access log entry.
+type AuditLog struct {
+	ID        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Timestamp time.Time `gorm:"index;not null" json:"timestamp"`
+	Username  string    `gorm:"type:varchar(100);index;not null" json:"username"`
+	Provider  string    `gorm:"type:varchar(50);default:'LOCAL'" json:"provider"` // LOCAL, ACTIVE_DIRECTORY
+	IPAddress string    `gorm:"type:varchar(50)" json:"ip_address"`
+	Action    string    `gorm:"type:varchar(100);index;not null" json:"action"` // LOGIN_SUCCESS, LOGIN_FAILED, PASSWORD_CHANGE, USER_CREATE, USER_UPDATE, USER_DELETE
+	Status    string    `gorm:"type:varchar(50);default:'SUCCESS'" json:"status"` // SUCCESS, FAILURE
+	Details   string    `gorm:"type:text" json:"details"`
+}

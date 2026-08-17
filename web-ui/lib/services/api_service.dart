@@ -780,6 +780,153 @@ class ApiService {
       latencyMs: 0,
     );
   }
-}
 
+  /// Fetches all local user accounts.
+  static Future<List<LocalUser>> fetchLocalUsers() async {
+    final response = await http.get(Uri.parse("/api/security/users"), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data["users"] as List? ?? [])
+          .map((e) => LocalUser.fromJson(e))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Creates a new local user.
+  static Future<Map<String, dynamic>> createLocalUser({
+    required String username,
+    required String password,
+    required String displayName,
+    required String email,
+    required String role,
+    required bool enabled,
+  }) async {
+    final response = await http.post(
+      Uri.parse("/api/security/users"),
+      headers: authHeaders,
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+        "display_name": displayName,
+        "email": email,
+        "role": role,
+        "enabled": enabled,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Updates an existing local user.
+  static Future<Map<String, dynamic>> updateLocalUser(LocalUser user) async {
+    final response = await http.put(
+      Uri.parse("/api/security/users/${user.id}"),
+      headers: authHeaders,
+      body: jsonEncode(user.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Resets a local user password.
+  static Future<Map<String, dynamic>> resetLocalUserPassword(String id, String newPassword) async {
+    final response = await http.post(
+      Uri.parse("/api/security/users/$id/password"),
+      headers: authHeaders,
+      body: jsonEncode({"new_password": newPassword}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Deletes a local user account.
+  static Future<bool> deleteLocalUser(String id) async {
+    final response = await http.delete(Uri.parse("/api/security/users/$id"), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Fetches access and audit logs.
+  static Future<List<AuditLog>> fetchAuditLogs({String provider = "", String action = ""}) async {
+    var url = "/api/security/audit-logs";
+    List<String> queryParams = [];
+    if (provider.isNotEmpty) queryParams.add("provider=$provider");
+    if (action.isNotEmpty) queryParams.add("action=$action");
+    if (queryParams.isNotEmpty) {
+      url += "?${queryParams.join("&")}";
+    }
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data["audit_logs"] as List? ?? [])
+          .map((e) => AuditLog.fromJson(e))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Checks status and readiness of Loki aggregator.
+  static Future<Map<String, dynamic>> fetchLokiStatus() async {
+    try {
+      final response = await http.get(Uri.parse("/api/logs/status"), headers: authHeaders);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (_) {}
+    return {"active": false, "driver": "docker_fallback"};
+  }
+
+  /// Fetches available containers, nodes, stacks, and streams for Loki filters.
+  static Future<LokiLabelsResponse> fetchLokiLogLabels() async {
+    try {
+      final response = await http.get(Uri.parse("/api/logs/labels"), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return LokiLabelsResponse.fromJson(data);
+      }
+    } catch (_) {}
+    return LokiLabelsResponse(containers: [], nodes: [], stacks: [], streams: [], levels: []);
+  }
+
+  /// Queries logs with multi-dimensional filtering.
+  static Future<Map<String, dynamic>> queryLokiLogs({
+    String query = "",
+    String container = "",
+    String node = "",
+    String stack = "",
+    String stream = "",
+    String level = "",
+    String timeRange = "1h",
+    int limit = 200,
+  }) async {
+    try {
+      List<String> params = [];
+      if (query.isNotEmpty) params.add("query=${Uri.encodeQueryComponent(query)}");
+      if (container.isNotEmpty) params.add("container=${Uri.encodeQueryComponent(container)}");
+      if (node.isNotEmpty) params.add("node=${Uri.encodeQueryComponent(node)}");
+      if (stack.isNotEmpty) params.add("stack=${Uri.encodeQueryComponent(stack)}");
+      if (stream.isNotEmpty) params.add("stream=${Uri.encodeQueryComponent(stream)}");
+      if (level.isNotEmpty) params.add("level=${Uri.encodeQueryComponent(level)}");
+      params.add("range=$timeRange");
+      params.add("limit=$limit");
+
+      var url = "/api/logs/query";
+      if (params.isNotEmpty) {
+        url += "?${params.join("&")}";
+      }
+
+      final response = await http.get(Uri.parse(url), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = (data["logs"] as List? ?? [])
+            .map((e) => LokiLogEntry.fromJson(e))
+            .toList();
+        return {
+          "status": data["status"] ?? "success",
+          "driver": data["driver"] ?? "loki",
+          "total": data["total"] ?? list.length,
+          "logs": list,
+        };
+      }
+    } catch (_) {}
+    return {"status": "error", "driver": "none", "total": 0, "logs": <LokiLogEntry>[]};
+  }
+}
 

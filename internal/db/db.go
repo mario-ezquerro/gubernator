@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+	"golang.org/x/crypto/bcrypt"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -35,7 +37,7 @@ func Init(dbPath string) error {
 
 	slog.Info("database connection established")
 
-	err = DB.AutoMigrate(&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{}, &CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{})
+	err = DB.AutoMigrate(&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{}, &CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &LocalUser{}, &AuditLog{})
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
@@ -223,6 +225,7 @@ func detectLocalIP() string {
 
 // seedInitialData ensures that at least the local Manager node exists in the DB.
 func seedInitialData() {
+	seedInitialLocalUser()
 	var count int64
 	DB.Model(&Node{}).Count(&count)
 
@@ -298,4 +301,33 @@ func UpdateNodeLabels(nodeID string, newLabels map[string]string) error {
 
 	node.Labels = newLabels
 	return DB.Save(&node).Error
+}
+
+
+func seedInitialLocalUser() {
+	var userCount int64
+	DB.Model(&LocalUser{}).Count(&userCount)
+	if userCount == 0 {
+		hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+		if err != nil {
+			slog.Error("failed to hash default admin password", "err", err)
+			return
+		}
+		adminUser := LocalUser{
+			ID:           "usr-admin-default",
+			Username:     "admin",
+			PasswordHash: string(hash),
+			DisplayName:  "Default Administrator",
+			Email:        "admin@gubernator.local",
+			Role:         "admin",
+			Enabled:      true,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		if err := DB.Create(&adminUser).Error; err != nil {
+			slog.Error("failed to seed initial local admin user", "err", err)
+		} else {
+			slog.Info("initial local admin user seeded (username: admin)")
+		}
+	}
 }

@@ -753,3 +753,188 @@ class CoreDNSStatusInfo {
     );
   }
 }
+
+
+class LocalUser {
+  final String id;
+  final String username;
+  final String displayName;
+  final String email;
+  final String role;
+  final bool enabled;
+  final String? lastLogin;
+  final String createdAt;
+  final String updatedAt;
+
+  LocalUser({
+    required this.id,
+    required this.username,
+    required this.displayName,
+    required this.email,
+    required this.role,
+    required this.enabled,
+    this.lastLogin,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory LocalUser.fromJson(Map<String, dynamic> json) {
+    return LocalUser(
+      id: json["id"] ?? "",
+      username: json["username"] ?? "",
+      displayName: json["display_name"] ?? "",
+      email: json["email"] ?? "",
+      role: json["role"] ?? "readonly",
+      enabled: json["enabled"] ?? true,
+      lastLogin: json["last_login"],
+      createdAt: json["created_at"] ?? "",
+      updatedAt: json["updated_at"] ?? "",
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "id": id,
+      "username": username,
+      "display_name": displayName,
+      "email": email,
+      "role": role,
+      "enabled": enabled,
+    };
+  }
+}
+
+class AuditLog {
+  final String id;
+  final String timestamp;
+  final String username;
+  final String provider;
+  final String ipAddress;
+  final String action;
+  final String status;
+  final String details;
+
+  AuditLog({
+    required this.id,
+    required this.timestamp,
+    required this.username,
+    required this.provider,
+    required this.ipAddress,
+    required this.action,
+    required this.status,
+    required this.details,
+  });
+
+  factory AuditLog.fromJson(Map<String, dynamic> json) {
+    return AuditLog(
+      id: json["id"] ?? "",
+      timestamp: json["timestamp"] ?? "",
+      username: json["username"] ?? "",
+      provider: json["provider"] ?? "LOCAL",
+      ipAddress: json["ip_address"] ?? "",
+      action: json["action"] ?? "",
+      status: json["status"] ?? "SUCCESS",
+      details: json["details"] ?? "",
+    );
+  }
+}
+
+class LokiLogEntry {
+  final String timestamp;
+  final String timestampNs;
+  final String container;
+  final String node;
+  final String stack;
+  final String stream;
+  final String level;
+  final String message;
+  final Map<String, String> labels;
+
+  LokiLogEntry({
+    required this.timestamp,
+    required this.timestampNs,
+    required this.container,
+    required this.node,
+    required this.stack,
+    required this.stream,
+    required this.level,
+    required this.message,
+    this.labels = const {},
+  });
+
+  factory LokiLogEntry.fromJson(Map<String, dynamic> json) {
+    Map<String, String> labelsMap = {};
+    if (json['labels'] != null && json['labels'] is Map) {
+      (json['labels'] as Map).forEach((k, v) {
+        labelsMap[k.toString()] = v.toString();
+      });
+    }
+
+    return LokiLogEntry(
+      timestamp: json['timestamp']?.toString() ?? '',
+      timestampNs: json['timestamp_ns']?.toString() ?? '',
+      container: json['container']?.toString() ?? '',
+      node: json['node']?.toString() ?? 'manager',
+      stack: json['stack']?.toString() ?? '',
+      stream: json['stream']?.toString() ?? 'stdout',
+      level: json['level']?.toString() ?? 'INFO',
+      message: json['message']?.toString() ?? '',
+      labels: labelsMap,
+    );
+  }
+}
+
+class LokiLabelsResponse {
+  final List<String> containers;
+  final List<String> nodes;
+  final List<String> stacks;
+  final List<String> streams;
+  final List<String> levels;
+
+  LokiLabelsResponse({
+    required this.containers,
+    required this.nodes,
+    required this.stacks,
+    required this.streams,
+    required this.levels,
+  });
+
+  factory LokiLabelsResponse.fromJson(Map<String, dynamic> json) {
+    List<String> parseList(dynamic raw) {
+      if (raw == null || raw is! List) return [];
+      return raw.map((e) => e.toString()).toList();
+    }
+
+    List<String> nodeNames = [];
+    if (json['nodes'] != null && json['nodes'] is List) {
+      for (var item in json['nodes']) {
+        if (item is Map && item['name'] != null) {
+          nodeNames.add(item['name'].toString());
+        } else if (item is Map && item['id'] != null) {
+          nodeNames.add(item['id'].toString());
+        } else {
+          nodeNames.add(item.toString());
+        }
+      }
+    }
+
+    List<String> stackNames = [];
+    if (json['stacks'] != null && json['stacks'] is List) {
+      for (var item in json['stacks']) {
+        if (item is Map && item['name'] != null) {
+          stackNames.add(item['name'].toString());
+        } else {
+          stackNames.add(item.toString());
+        }
+      }
+    }
+
+    return LokiLabelsResponse(
+      containers: parseList(json['containers']),
+      nodes: nodeNames,
+      stacks: stackNames,
+      streams: parseList(json['streams']),
+      levels: parseList(json['levels']),
+    );
+  }
+}

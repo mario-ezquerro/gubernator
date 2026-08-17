@@ -1,6 +1,7 @@
 package web
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"bytes"
 	"embed"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -261,6 +263,16 @@ func StartDashboard() {
 		api.DELETE("/auth/ldap/:id", auth.RequireRole(auth.RoleAdmin), authDeleteLDAPHandler)
 		api.POST("/auth/ldap/test", auth.RequireRole(auth.RoleAdmin), authTestLDAPHandler)
 
+		// Security & User Management (Admin only)
+		api.GET("/security/users", auth.RequireRole(auth.RoleAdmin), listSecurityUsersHandler)
+		api.POST("/security/users", auth.RequireRole(auth.RoleAdmin), createSecurityUserHandler)
+		api.PUT("/security/users/:id", auth.RequireRole(auth.RoleAdmin), updateSecurityUserHandler)
+		api.POST("/security/users/:id/password", auth.RequireRole(auth.RoleAdmin), resetSecurityUserPasswordHandler)
+		api.DELETE("/security/users/:id", auth.RequireRole(auth.RoleAdmin), deleteSecurityUserHandler)
+
+		// Audit Logs (Admin only)
+		api.GET("/security/audit-logs", auth.RequireRole(auth.RoleAdmin), listSecurityAuditLogsHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -287,6 +299,12 @@ func StartDashboard() {
 		api.GET("/caddy/ca.crt", caddyRootCAHandler)
 		api.GET("/caddy/logs", caddyLogsHandler)
 		api.GET("/caddy/metrics", caddyMetricsHandler)
+
+		// Loki Logs & Observability
+		api.GET("/logs/status", logsStatusHandler)
+		api.GET("/logs/labels", logsLabelsHandler)
+		api.GET("/logs/query", logsQueryHandler)
+		api.GET("/logs/export", logsExportHandler)
 
 		// Operator & Admin write operations (Stacks & Tasks & Shell)
 		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
@@ -3229,6 +3247,24 @@ func authProvidersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"providers": providers})
 }
 
+func logAudit(c *gin.Context, username, provider, action, status, details string) {
+	clientIP := ""
+	if c != nil {
+		clientIP = c.ClientIP()
+	}
+	audit := db.AuditLog{
+		ID:        "aud-" + uuid.New().String()[:12],
+		Timestamp: time.Now(),
+		Username:  username,
+		Provider:  provider,
+		IPAddress: clientIP,
+		Action:    action,
+		Status:    status,
+		Details:   details,
+	}
+	_ = db.DB.Create(&audit).Error
+}
+
 func authLoginHandler(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
@@ -3241,17 +3277,55 @@ func authLoginHandler(c *gin.Context) {
 	}
 
 	req.Username = strings.TrimSpace(req.Username)
-	expectedUser := os.Getenv("GBNT_WEB_USER")
-	if expectedUser == "" {
-		expectedUser = "admin"
-	}
-	expectedPass := os.Getenv("GBNT_WEB_PASSWORD")
-	if expectedPass == "" {
-		expectedPass = "admin"
-	}
 
-	// 1. Try Local Admin if selected or auto
+	// 1. Try Local User authentication if provider is "local" or empty
 	if req.Provider == "local" || req.Provider == "" {
+		var localUser db.LocalUser
+		if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(req.Username)).Error; err == nil {
+			if !localUser.Enabled {
+				logAudit(c, req.Username, "LOCAL", "LOGIN_FAILED", "FAILURE", "Account is disabled")
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "User account is disabled"})
+				return
+			}
+			if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err == nil {
+				now := time.Now()
+				localUser.LastLogin = &now
+				db.DB.Model(&localUser).Update("last_login", now)
+
+				role := auth.NormalizeRole(localUser.Role)
+				session := auth.UserSession{
+					Username:    localUser.Username,
+					DisplayName: localUser.DisplayName,
+					Email:       localUser.Email,
+					Role:        role,
+					Provider:    "local",
+					Permissions: auth.GetPermissions(role),
+					ExpiresAt:   time.Now().Add(24 * time.Hour),
+				}
+				token, tErr := auth.GenerateToken(session)
+				if tErr != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+					return
+				}
+				c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+				logAudit(c, localUser.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "Local user authenticated")
+				c.JSON(http.StatusOK, gin.H{
+					"token": token,
+					"user":  session,
+				})
+				return
+			}
+		}
+
+		// Fallback for environment variable admin account
+		expectedUser := os.Getenv("GBNT_WEB_USER")
+		if expectedUser == "" {
+			expectedUser = "admin"
+		}
+		expectedPass := os.Getenv("GBNT_WEB_PASSWORD")
+		if expectedPass == "" {
+			expectedPass = "admin"
+		}
 		if req.Username == expectedUser && req.Password == expectedPass {
 			session := auth.GenerateLocalAdminSession(req.Username)
 			token, err := auth.GenerateToken(session)
@@ -3260,13 +3334,16 @@ func authLoginHandler(c *gin.Context) {
 				return
 			}
 			c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+			logAudit(c, req.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "Fallback local admin authenticated")
 			c.JSON(http.StatusOK, gin.H{
 				"token": token,
 				"user":  session,
 			})
 			return
 		}
+
 		if req.Provider == "local" {
+			logAudit(c, req.Username, "LOCAL", "LOGIN_FAILED", "FAILURE", "Invalid local credentials")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid local administrator credentials"})
 			return
 		}
@@ -3297,6 +3374,7 @@ func authLoginHandler(c *gin.Context) {
 					return
 				}
 				c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+				logAudit(c, res.Username, "ACTIVE_DIRECTORY", "LOGIN_SUCCESS", "SUCCESS", "Authenticated via "+cfg.Name)
 				c.JSON(http.StatusOK, gin.H{
 					"token": token,
 					"user":  session,
@@ -3306,6 +3384,7 @@ func authLoginHandler(c *gin.Context) {
 		}
 	}
 
+	logAudit(c, req.Username, "UNKNOWN", "LOGIN_FAILED", "FAILURE", "Invalid credentials or unauthorized user")
 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials or unauthorized user"})
 }
 
@@ -3409,3 +3488,550 @@ func authTestLDAPHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"result": res})
 }
 
+
+
+func listSecurityUsersHandler(c *gin.Context) {
+	var users []db.LocalUser
+	if err := db.DB.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"users": users})
+}
+
+func createSecurityUserHandler(c *gin.Context) {
+	var req struct {
+		Username    string `json:"username" binding:"required"`
+		Password    string `json:"password" binding:"required"`
+		DisplayName string `json:"display_name"`
+		Email       string `json:"email"`
+		Role        string `json:"role"`
+		Enabled     bool   `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		return
+	}
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username cannot be empty"})
+		return
+	}
+	var existing db.LocalUser
+	if db.DB.First(&existing, "LOWER(username) = ?", strings.ToLower(username)).Error == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User with this username already exists"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+	role := req.Role
+	if role == "" {
+		role = "readonly"
+	}
+	user := db.LocalUser{
+		ID:           "usr-" + uuid.New().String()[:8],
+		Username:     username,
+		PasswordHash: string(hash),
+		DisplayName:  req.DisplayName,
+		Email:        req.Email,
+		Role:         role,
+		Enabled:      req.Enabled,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := db.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
+		return
+	}
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "USER_CREATE", "SUCCESS", fmt.Sprintf("Created local user '%s' (%s)", username, role))
+	c.JSON(http.StatusOK, gin.H{"message": "User created successfully", "user": user})
+}
+
+func updateSecurityUserHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		DisplayName string `json:"display_name"`
+		Email       string `json:"email"`
+		Role        string `json:"role"`
+		Enabled     bool   `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+	var user db.LocalUser
+	if err := db.DB.First(&user, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.DisplayName = req.DisplayName
+	user.Email = req.Email
+	if req.Role != "" {
+		user.Role = req.Role
+	}
+	user.Enabled = req.Enabled
+	user.UpdatedAt = time.Now()
+	if err := db.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "USER_UPDATE", "SUCCESS", fmt.Sprintf("Updated local user '%s'", user.Username))
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "user": user})
+}
+
+func resetSecurityUserPasswordHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		NewPassword string `json:"new_password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.NewPassword) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New password is required"})
+		return
+	}
+	var user db.LocalUser
+	if err := db.DB.First(&user, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+	user.PasswordHash = string(hash)
+	user.UpdatedAt = time.Now()
+	if err := db.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "PASSWORD_CHANGE", "SUCCESS", fmt.Sprintf("Reset password for user '%s'", user.Username))
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
+func deleteSecurityUserHandler(c *gin.Context) {
+	id := c.Param("id")
+	var user db.LocalUser
+	if err := db.DB.First(&user, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	if user.Username == "admin" {
+		var adminCount int64
+		db.DB.Model(&db.LocalUser{}).Where("role = ? AND enabled = ?", "admin", true).Count(&adminCount)
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete the last active local administrator account"})
+			return
+		}
+	}
+	if err := db.DB.Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "USER_DELETE", "SUCCESS", fmt.Sprintf("Deleted local user '%s'", user.Username))
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+func listSecurityAuditLogsHandler(c *gin.Context) {
+	var logs []db.AuditLog
+	query := db.DB.Order("timestamp desc").Limit(200)
+	if provider := c.Query("provider"); provider != "" {
+		query = query.Where("provider = ?", provider)
+	}
+	if action := c.Query("action"); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if err := query.Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"audit_logs": logs})
+}
+
+// ---------------------------------------------------------------------------
+// LOKI LOGS & OBSERVABILITY HANDLERS
+// ---------------------------------------------------------------------------
+
+type LokiLogItem struct {
+	Timestamp   string            `json:"timestamp"`
+	TimestampNs string            `json:"timestamp_ns"`
+	Container   string            `json:"container"`
+	Node        string            `json:"node"`
+	Stack       string            `json:"stack"`
+	Stream      string            `json:"stream"`
+	Level       string            `json:"level"`
+	Message     string            `json:"message"`
+	Labels      map[string]string `json:"labels,omitempty"`
+}
+
+func getLokiBaseURL() string {
+	if u := os.Getenv("GBNT_LOKI_URL"); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	return "http://127.0.0.1:3100"
+}
+
+func logsStatusHandler(c *gin.Context) {
+	baseURL := getLokiBaseURL()
+	client := http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(baseURL + "/ready")
+	if err == nil && (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable) {
+		resp.Body.Close()
+		c.JSON(http.StatusOK, gin.H{
+			"active": true,
+			"driver": "loki",
+			"url":    baseURL,
+		})
+		return
+	}
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"active": false,
+		"driver": "docker_fallback",
+		"url":    "",
+	})
+}
+
+func logsLabelsHandler(c *gin.Context) {
+	baseURL := getLokiBaseURL()
+	containerSet := make(map[string]bool)
+
+	// Fetch containers from Loki if available
+	client := http.Client{Timeout: 3 * time.Second}
+	for _, labelKey := range []string{"container_name", "container"} {
+		resp, err := client.Get(fmt.Sprintf("%s/loki/api/v1/label/%s/values", baseURL, labelKey))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			var lokiRes struct {
+				Data []string `json:"data"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&lokiRes) == nil {
+				for _, val := range lokiRes.Data {
+					cleaned := strings.TrimPrefix(val, "/")
+					if cleaned != "" {
+						containerSet[cleaned] = true
+					}
+				}
+			}
+			resp.Body.Close()
+		}
+	}
+
+	// Also fetch containers from active Tasks in SQLite
+	var tasks []db.Task
+	if err := db.DB.Find(&tasks).Error; err == nil {
+		for _, t := range tasks {
+			if t.ContainerName != "" {
+				containerSet[t.ContainerName] = true
+			}
+			if t.ServiceID != "" {
+				containerSet[t.ServiceID] = true
+			}
+		}
+	}
+
+	// Always add common system containers
+	for _, sys := range []string{"gbnt-manager", "gbnt-caddy", "gbnt-coredns", "gbnt-monitor-grafana", "gbnt-monitor-prometheus", "gbnt-monitor-loki", "gbnt-monitor-jaeger", "gbnt-monitor-promtail", "gbnt-monitor-scope"} {
+		containerSet[sys] = true
+	}
+
+	containers := make([]string, 0, len(containerSet))
+	for k := range containerSet {
+		containers = append(containers, k)
+	}
+	sort.Strings(containers)
+
+	// Fetch nodes
+	var nodes []db.Node
+	_ = db.DB.Find(&nodes)
+
+	// Fetch stacks
+	var stacks []db.Stack
+	_ = db.DB.Find(&stacks)
+
+	c.JSON(http.StatusOK, gin.H{
+		"containers": containers,
+		"nodes":      nodes,
+		"stacks":     stacks,
+		"streams":    []string{"stdout", "stderr"},
+		"levels":     []string{"ERROR", "WARN", "INFO", "DEBUG"},
+	})
+}
+
+func parseLogLevel(msg, stream string) string {
+	lower := strings.ToLower(msg)
+	if strings.Contains(lower, "error") || strings.Contains(lower, "fatal") || strings.Contains(lower, "panic") || strings.Contains(lower, "exception") || stream == "stderr" {
+		return "ERROR"
+	}
+	if strings.Contains(lower, "warn") || strings.Contains(lower, "warning") {
+		return "WARN"
+	}
+	if strings.Contains(lower, "debug") || strings.Contains(lower, "trace") {
+		return "DEBUG"
+	}
+	return "INFO"
+}
+
+func fetchLogsInternal(query, container, node, stack, stream, level, timeRange string, limit int) ([]LokiLogItem, string, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	if limit > 2000 {
+		limit = 2000
+	}
+
+	baseURL := getLokiBaseURL()
+	client := http.Client{Timeout: 6 * time.Second}
+
+	// Determine duration for time range
+	dur := 1 * time.Hour
+	switch timeRange {
+	case "5m":
+		dur = 5 * time.Minute
+	case "15m":
+		dur = 15 * time.Minute
+	case "1h":
+		dur = 1 * time.Hour
+	case "6h":
+		dur = 6 * time.Hour
+	case "24h":
+		dur = 24 * time.Hour
+	case "7d":
+		dur = 7 * 24 * time.Hour
+	}
+
+	now := time.Now()
+	startTime := now.Add(-dur)
+	startNs := strconv.FormatInt(startTime.UnixNano(), 10)
+	endNs := strconv.FormatInt(now.UnixNano(), 10)
+
+	// Build LogQL query
+	var logql string
+	if container != "" {
+		logql = fmt.Sprintf(`{container_name=~".*%s.*"}`, container)
+	} else if stream != "" {
+		logql = fmt.Sprintf(`{stream="%s"}`, stream)
+	} else {
+		logql = `{job=~".+"}`
+	}
+
+	if query != "" {
+		logql += fmt.Sprintf(` |~ "(?i)%s"`, regexp.QuoteMeta(query))
+	}
+	if level != "" {
+		logql += fmt.Sprintf(` |~ "(?i)%s"`, level)
+	}
+
+	reqURL := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&limit=%d&start=%s&end=%s&direction=backward",
+		baseURL, url.QueryEscape(logql), limit, startNs, endNs)
+
+	resp, err := client.Get(reqURL)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		var lokiRes struct {
+			Status string `json:"status"`
+			Data   struct {
+				ResultType string `json:"resultType"`
+				Result     []struct {
+					Stream map[string]string `json:"stream"`
+					Values [][]string        `json:"values"`
+				} `json:"result"`
+			} `json:"data"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&lokiRes); err == nil && len(lokiRes.Data.Result) > 0 {
+			var logs []LokiLogItem
+			for _, streamItem := range lokiRes.Data.Result {
+				labels := streamItem.Stream
+				cName := labels["container_name"]
+				if cName == "" {
+					cName = labels["container"]
+				}
+				cName = strings.TrimPrefix(cName, "/")
+				if cName == "" {
+					cName = labels["service_name"]
+				}
+				if cName == "" {
+					cName = "system"
+				}
+
+				hostName := labels["host"]
+				if hostName == "" {
+					hostName = labels["node"]
+				}
+				if hostName == "" {
+					hostName = "manager"
+				}
+
+				st := labels["stream"]
+				if st == "" {
+					st = "stdout"
+				}
+
+				for _, val := range streamItem.Values {
+					if len(val) >= 2 {
+						tsNs := val[0]
+						rawMsg := strings.TrimRight(val[1], "\r\n")
+
+						var tsFormatted string
+						if nsInt, err := strconv.ParseInt(tsNs, 10, 64); err == nil {
+							t := time.Unix(0, nsInt)
+							tsFormatted = t.Format("2006-01-02 15:04:05.000")
+						} else {
+							tsFormatted = time.Now().Format("2006-01-02 15:04:05.000")
+						}
+
+						lvl := parseLogLevel(rawMsg, st)
+
+						if container != "" && !strings.Contains(strings.ToLower(cName), strings.ToLower(container)) {
+							continue
+						}
+						if node != "" && !strings.Contains(strings.ToLower(hostName), strings.ToLower(node)) {
+							continue
+						}
+
+						logs = append(logs, LokiLogItem{
+							Timestamp:   tsFormatted,
+							TimestampNs: tsNs,
+							Container:   cName,
+							Node:        hostName,
+							Stream:      st,
+							Level:       lvl,
+							Message:     rawMsg,
+							Labels:      labels,
+						})
+					}
+				}
+			}
+
+			sort.Slice(logs, func(i, j int) bool {
+				return logs[i].TimestampNs > logs[j].TimestampNs
+			})
+
+			if len(logs) > limit {
+				logs = logs[:limit]
+			}
+
+			return logs, "loki", nil
+		}
+	}
+
+	// Graceful Docker CLI fallback
+	targetContainer := container
+	if targetContainer == "" {
+		targetContainer = "gbnt-manager"
+	}
+	out, err := exec.Command("docker", "logs", "--tail", strconv.Itoa(limit), "--timestamps", targetContainer).CombinedOutput()
+	if err != nil {
+		return []LokiLogItem{}, "none", nil
+	}
+
+	var fallbackLogs []LokiLogItem
+	lines := strings.Split(string(out), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		ts := time.Now().Format("2006-01-02 15:04:05.000")
+		msg := line
+		if len(parts) == 2 {
+			if parsedT, err := time.Parse(time.RFC3339Nano, parts[0]); err == nil {
+				ts = parsedT.Format("2006-01-02 15:04:05.000")
+				msg = parts[1]
+			}
+		}
+
+		if query != "" && !strings.Contains(strings.ToLower(msg), strings.ToLower(query)) {
+			continue
+		}
+		lvl := parseLogLevel(msg, "stdout")
+		if level != "" && lvl != strings.ToUpper(level) {
+			continue
+		}
+
+		fallbackLogs = append(fallbackLogs, LokiLogItem{
+			Timestamp: ts,
+			Container: targetContainer,
+			Node:      "manager",
+			Stream:    "stdout",
+			Level:     lvl,
+			Message:   msg,
+		})
+	}
+
+	return fallbackLogs, "docker_fallback", nil
+}
+
+func logsQueryHandler(c *gin.Context) {
+	q := c.Query("query")
+	container := c.Query("container")
+	node := c.Query("node")
+	stack := c.Query("stack")
+	stream := c.Query("stream")
+	level := c.Query("level")
+	timeRange := c.DefaultQuery("range", "1h")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "200"))
+
+	logs, driver, err := fetchLogsInternal(q, container, node, stack, stream, level, timeRange, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"driver": driver,
+		"total":  len(logs),
+		"logs":   logs,
+	})
+}
+
+func logsExportHandler(c *gin.Context) {
+	q := c.Query("query")
+	container := c.Query("container")
+	node := c.Query("node")
+	stack := c.Query("stack")
+	stream := c.Query("stream")
+	level := c.Query("level")
+	timeRange := c.DefaultQuery("range", "24h")
+
+	logs, _, _ := fetchLogsInternal(q, container, node, stack, stream, level, timeRange, 2000)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# Gubernator Cluster Logs Export - %s\n", time.Now().Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("# Total Entries: %d | Query: '%s' | Container: '%s' | Range: %s\n\n", len(logs), q, container, timeRange))
+
+	for _, l := range logs {
+		sb.WriteString(fmt.Sprintf("[%s] [%s] [%s] [%s] %s\n", l.Timestamp, l.Node, l.Container, l.Level, l.Message))
+	}
+
+	filename := fmt.Sprintf("gubernator-logs-%s.log", time.Now().Format("20060102-150405"))
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.String(http.StatusOK, sb.String())
+}

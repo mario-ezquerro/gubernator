@@ -13,6 +13,7 @@ import 'pages/tasks_page.dart';
 import 'pages/caddy_page.dart';
 import 'pages/coredns_page.dart';
 import 'pages/grafana_page.dart';
+import 'pages/loki_logs_page.dart';
 import 'pages/jaeger_page.dart';
 import 'pages/network_page.dart';
 import 'pages/scope_page.dart';
@@ -169,11 +170,16 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.manage_search,
         label: 'CoreDNS',
       ),
-      // Grafana, Network & Jaeger (conditional in sidebar, always defined)
+      // Monitoring (Grafana), Loki Logs, Network & Jaeger
       const SidebarItem(
         icon: Icons.analytics_outlined,
         activeIcon: Icons.analytics,
-        label: 'Grafana',
+        label: 'Monitoring',
+      ),
+      const SidebarItem(
+        icon: Icons.receipt_long_outlined,
+        activeIcon: Icons.receipt_long,
+        label: 'Loki Logs',
       ),
       const SidebarItem(
         icon: Icons.network_check_outlined,
@@ -208,7 +214,8 @@ class _AppShellState extends State<AppShell> {
     'SLO & Error Budgets',
     'Caddy Ingress',
     'CoreDNS',
-    'Grafana',
+    'Monitoring',
+    'Loki Logs',
     'Network Monitor',
     'Jaeger',
     'Network Topology',
@@ -240,12 +247,14 @@ class _AppShellState extends State<AppShell> {
       case 7:
         return const GrafanaPage();
       case 8:
-        return const NetworkPage();
+        return const LokiLogsPage();
       case 9:
-        return const JaegerPage();
+        return const NetworkPage();
       case 10:
-        return const ScopePage();
+        return const JaegerPage();
       case 11:
+        return const ScopePage();
+      case 12:
         return SecurityPage(state: _state, onRefresh: _fetchData);
       default:
         return OverviewPage(
