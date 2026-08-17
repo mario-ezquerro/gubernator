@@ -94,4 +94,4 @@ Import-Certificate -FilePath ".\root.crt" -CertStoreLocation Cert:\LocalMachine\
 | `/v1/caddy/metrics` | `GET` | Get Prometheus request counts, RPS, and percentiles |
 | `/v1/caddy/fmt` | `POST` | Format Caddyfile via `caddy fmt` |
 
-For full specification, refer to [`SPEC-caddy.md`](SPEC-caddy.md).
+For full specification, refer to [`SPEC-caddy.md`](https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md).

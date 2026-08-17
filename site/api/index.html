@@ -462,6 +462,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -555,6 +559,62 @@
     
   
     Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots (v2.13.0)
   
 
     
@@ -1097,6 +1157,11 @@
 </tr>
 <tr>
 <td><code>POST</code></td>
+<td><code>/v1/node/{id}/sync-token</code></td>
+<td>Synchronize API tokens to worker host via SSH</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
 <td><code>/v1/node/{id}/leave</code></td>
 <td>Remove a node from the cluster</td>
 </tr>
@@ -1226,7 +1291,37 @@
 <tr>
 <td><code>GET</code></td>
 <td><code>/v1/caddy/certs</code></td>
-<td>Get managed TLS certificates and expiration dates</td>
+<td>Get managed TLS certificates with full X.509 metadata</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/certs/download</code></td>
+<td>Download domain-specific <code>.crt</code> / <code>.pem</code> certificate</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/certs/inspect</code></td>
+<td>Inspect complete X.509 properties and SHA-256 fingerprint</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/certs/renew</code></td>
+<td>Force immediate renewal and rotation of a domain certificate</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/certs/custom</code></td>
+<td>Upload and install a custom TLS certificate and private key</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/certs/sync</code></td>
+<td>Broadcast and synchronize all certificates across all active cluster nodes</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/v1/caddy/certs/orphaned</code></td>
+<td>Prune orphaned certificates no longer in any Caddyfile</td>
 </tr>
 <tr>
 <td><code>GET</code></td>

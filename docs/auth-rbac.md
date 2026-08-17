@@ -4,6 +4,16 @@ Gubernator provides enterprise-grade identity federation and Role-Based Access C
 
 ---
 
+## 📸 Visual Showcase
+
+### Modern Login Screen & Domain Selector
+![Login Screen](images/login_screen.png)
+
+### Security & Active Directory Management Dashboard
+![Security & AD Management](images/security_ad.png)
+
+---
+
 ## 🏛 Architecture & Security Model
 
 ```
@@ -50,27 +60,31 @@ Gubernator provides enterprise-grade identity federation and Role-Based Access C
 
 ---
 
-## ⚙️ Active Directory Configuration
+## ⚙️ Active Directory Configuration Guide
 
 ### 1. Web UI Configuration
 Navigate to **Seguridad & AD** in the sidebar:
 1. Click **Añadir Servidor AD / LDAP**.
-2. Configure your server:
-   - **Host / Port:** `dc1.empresa.local` : `636` (LDAPS / TLS).
-   - **Base DN:** `DC=empresa,DC=local`.
-   - **Bind DN / Password:** `CN=svc_gubernator,OU=ServiceAccounts,DC=empresa,DC=local`.
+2. Configure your server parameters:
+   - **Nombre Descriptivo:** `Corporate Active Directory`
+   - **Host / Puerto:** `dc1.empresa.local` : `636` (LDAPS / TLS) o `389` (StartTLS).
+   - **Base DN (Search Base):** `DC=empresa,DC=local`.
+   - **Service Account Bind DN:** `CN=svc_gubernator,OU=ServiceAccounts,DC=empresa,DC=local`.
+   - **Bind Password:** `••••••••`.
    - **User Filter:** `(&(objectClass=user)(sAMAccountName=%s))`.
-   - **Group Mappings:**
+   - **Mapeo de Grupos a Roles RBAC:**
      - 👑 **Admin Group:** `CN=Gubernator_Admins,OU=Groups,DC=empresa,DC=local`
      - ⚡ **Operator Group:** `CN=Gubernator_Operators,OU=Groups,DC=empresa,DC=local`
      - 👁️ **Read-Only Group:** `CN=Gubernator_Viewers,OU=Groups,DC=empresa,DC=local`
-     - **Default Role:** `readonly`
-3. Click **Test Connection** to verify TCP, TLS handshake, Bind authentication, and user lookup.
+     - **Default Role:** `readonly` (asignado si el usuario no pertenece a ningún grupo específico).
+3. Click **Test Connection** para validar la conectividad TCP, negociación TLS, autenticación del Bind y resolución de atributos de usuario y grupos en tiempo real.
 4. Click **Guardar**.
 
-### 2. REST API Specification
+---
 
-#### List Auth Providers
+## 🔌 REST API Specification
+
+### 1. List Auth Providers
 ```http
 GET /api/auth/providers
 ```
@@ -79,12 +93,12 @@ Response:
 {
   "providers": [
     {"id": "local", "name": "Local Administrator", "type": "local"},
-    {"id": "ad-primary", "name": "Corporate Active Directory", "type": "ldap"}
+    {"id": "ad-corp-primary", "name": "Corporate Active Directory", "type": "ldap"}
   ]
 }
 ```
 
-#### Authenticate
+### 2. User Authentication (Login)
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -92,7 +106,7 @@ Content-Type: application/json
 {
   "username": "mario.ezquerro",
   "password": "CorporatePassword123!",
-  "provider": "ad-primary"
+  "provider": "ad-corp-primary"
 }
 ```
 Response:
@@ -104,7 +118,7 @@ Response:
     "display_name": "Mario Ezquerro",
     "email": "mario.ezquerro@empresa.local",
     "role": "admin",
-    "provider": "ldap:ad-primary",
+    "provider": "ldap:ad-corp-primary",
     "permissions": {
       "can_deploy_stacks": true,
       "can_delete_stacks": true,
@@ -116,20 +130,33 @@ Response:
       "can_manage_coredns": true,
       "can_manage_security": true,
       "can_view_observability": true
-    }
+    },
+    "expires_at": "2026-08-18T08:00:00Z"
   }
 }
 ```
+
+### 3. Verify Active Session
+```http
+GET /api/auth/me
+Authorization: Bearer <jwt-token>
+```
+
+### 4. LDAP Configuration Management (`admin` only)
+- `GET /api/auth/ldap`: List configured LDAP servers (passwords masked as `••••••••`).
+- `POST /api/auth/ldap`: Create or update LDAP configuration.
+- `DELETE /api/auth/ldap/:id`: Remove LDAP directory connection.
+- `POST /api/auth/ldap/test`: Live connection test and diagnostic analyzer.
 
 ---
 
 ## 🔒 Emergency Local Administrator Access
 
-If Active Directory is unreachable or undergoing maintenance, Gubernator maintains an emergency local administrator account configured via environment variables:
+If the Active Directory domain controllers are offline or during disaster recovery, Gubernator always maintains an emergency local administrator account configured via environment variables:
 
 ```bash
 export GBNT_WEB_USER="admin"
 export GBNT_WEB_PASSWORD="YourStrongLocalPassword"
 ```
 
-In the login screen, select **Local Administrator** to bypass network directory queries and authenticate directly.
+In the login screen, choose **Local Administrator** (or click *"Acceso Rápido Local"*) to authenticate immediately without LDAP dependencies.

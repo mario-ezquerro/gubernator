@@ -48,24 +48,30 @@ This document tracks the development journey of Gubernator, divided into "Campai
 - [x] **Phase 11 — SRE Monitor (`gbnt monitor init`)**
   Built-in SRE observability stack with a single command. `gbnt monitor init` deploys **cAdvisor** (container metrics), **Prometheus** (metrics collection), **Grafana** (dashboards with pre-configured datasources), **Loki** (log aggregation), and **Promtail** (log shipping) — all on a dedicated Docker network (`gbnt-monitor-net`). `gbnt monitor status` and `gbnt monitor stop` for lifecycle management. Config files auto-generated in `~/.gbnt/monitor/`.
 
+- [x] **Phase 12 — Sloth SLO Engine & Google SRE Alerts (`gbnt slo`)**
+  Native integration of Sloth (`slok/sloth`) into Gubernator's core engine. Translates `gbnt.slo.*` Compose labels into production-grade Prometheus recording and alerting rules with multi-window burn rate alerts and real-time Error Budget tracking via Web UI and REST API.
+
+- [x] **Phase 13 — Enterprise Active Directory, LDAP & Dynamic RBAC (`v2.20.0`)**
+  Multi-server Active Directory / OpenLDAP SSO with LDAPS (`:636`) and StartTLS (`:389`), automated Bind searches, dynamic group mapping to 3-tier RBAC (`admin`, `operator`, `readonly`), cryptographic HMAC-SHA256 JWT tokens, emergency local administrator fallback, modern Flutter login screen with domain selector, and dedicated Security & AD management screen with live "Test Connection" diagnostic tool.
+
 ---
 
 ## Upcoming Development
 
-- [ ] **Phase 12 — High Availability (The Senate)**
+- [ ] **Phase 14 — High Availability (The Senate)**
   Distributed SQLite via `rqlite` or `dqlite` (SQLite over Raft) for multi-manager fault tolerance. Eliminate the single point of failure.
 
-- [ ] **Phase 13 — Live Observability**
+- [ ] **Phase 15 — Live Observability**
   WebSocket streaming for container logs (`docker logs -f`) directly in the Web UI dashboard.
 
-- [ ] **Phase 14 — Secret Management (The Praetorian Guard)**
+- [ ] **Phase 16 — Secret Management (The Praetorian Guard)**
   Encrypted variable injection from Gubernator's DB into containers — no plaintext secrets in Compose files.
 
-- [ ] **Phase 15 — Rolling Updates**
+- [ ] **Phase 17 — Rolling Updates**
   Zero-downtime deployments: update replicas sequentially, wait for health checks before removing old containers.
 
-- [ ] **Phase 16 — Storage Affinity**
+- [ ] **Phase 18 — Storage Affinity**
   Scheduler awareness of local persistent volumes — reschedule containers back to the same node where their data lives.
 
-- [ ] **Phase 17 — Multi-arch Build Registry**
+- [ ] **Phase 19 — Multi-arch Build Registry**
   Optional integrated lightweight image registry for air-gapped deployments.

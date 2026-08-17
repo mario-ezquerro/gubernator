@@ -249,7 +249,15 @@ The Web UI communicates with the internal `/api` routes (on port 4001, protected
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/state` | Returns all nodes, stacks, services, tasks |
+| `GET` | `/api/auth/providers` | Lists available auth domains and directories |
+| `POST` | `/api/auth/login` | Authenticates against Local Admin or Active Directory |
+| `GET` | `/api/auth/me` | Retrieves active user identity and permissions |
+| `POST` | `/api/auth/logout` | Clears user session |
+| `GET` | `/api/auth/ldap` | Lists configured LDAP/AD servers (Admin only) |
+| `POST` | `/api/auth/ldap` | Saves/updates an LDAP/AD server (Admin only) |
+| `DELETE` | `/api/auth/ldap/:id` | Deletes an LDAP/AD directory connection |
+| `POST` | `/api/auth/ldap/test` | Live connection & user lookup diagnostic tool |
+| `GET` | `/api/state` | Returns all nodes, stacks, services, tasks, user |
 | `GET` | `/api/stack/:id/compose` | Fetches raw YAML for a stack |
 | `PUT` | `/api/stack/:id/compose` | Updates raw YAML in DB |
 | `POST` | `/api/stack/:id/redeploy` | Stop + redeploy a stack |
@@ -259,7 +267,19 @@ The Web UI communicates with the internal `/api` routes (on port 4001, protected
 | `PUT` | `/api/settings` | Update user settings |
 | `PUT` | `/api/settings/password` | Change web dashboard password |
 
-> These routes are separate from the CLI API on port 4000 and use Basic Auth instead of Bearer tokens.
+---
+
+## 🛡️ Enterprise Login & Security Suite
+
+### 1. Modern Login Screen
+The dashboard features an enterprise SSO login interface supporting both Microsoft Active Directory and emergency Local Administrator access:
+
+![Login Screen](images/login_screen.png)
+
+### 2. Active Directory & LDAP Management
+Admins can manage identity providers directly from the **Seguridad & AD** screen, test connectivity in real-time, and inspect assigned RBAC roles:
+
+![Security & AD Management](images/security_ad.png)
 
 ---
 

@@ -750,6 +750,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#7-token-mismatch-detection-ssh-auto-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔐 7. Token Mismatch Detection &amp; SSH Auto-Sync
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -774,6 +785,10 @@
   
     
     
+      
+        
+      
+        
       
         
       
@@ -1188,6 +1203,15 @@ Output:
 <li><strong>cAdvisor Dashboard</strong>: <code>http://&lt;MANAGER-IP&gt;:8081</code></li>
 <li><strong>Node Exporter</strong>: <code>http://&lt;MANAGER-IP&gt;:9100/metrics</code></li>
 </ul>
+<hr />
+<h2 id="7-token-mismatch-detection-ssh-auto-sync">🔐 7. Token Mismatch Detection &amp; SSH Auto-Sync</h2>
+<p>When rotating the cluster's <code>GBNT_API_TOKEN</code> or when worker daemons attempt to heartbeat with an outdated token:
+1. <strong>Automatic Detection</strong>: The Manager's authentication watchdog detects failed 401 attempts originating from registered worker IPs.
+2. <strong>Visual Warning Badge</strong>: The Web Dashboard flags the node with an orange <strong><code>Token Mismatch</code></strong> badge in the Centurions table.
+3. <strong>Interactive Sync Dialog</strong>:
+   - Activating the node or clicking the badge opens the <strong>Token Desincronizado</strong> dialog.
+   - Displays the exact <code>gbnt legion join</code> update command with current active tokens.
+   - Provides a <strong>"Auto-Sync vía SSH"</strong> button that executes <code>POST /api/node/:id/sync-token</code>, updating the worker daemon and restarting the container remotely over SSH without manual terminal intervention.</p>
 
 
 

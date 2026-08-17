@@ -564,6 +564,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -855,12 +859,16 @@
 <td>Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings</td>
 </tr>
 <tr>
+<td><strong>Enterprise AD / LDAP &amp; RBAC</strong></td>
+<td>Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (<code>admin</code>, <code>operator</code>, <code>readonly</code>)</td>
+</tr>
+<tr>
 <td><strong>Ingress + DNS</strong></td>
 <td>Auto-configures CoreDNS and Caddy as containers start</td>
 </tr>
 <tr>
 <td><strong>Secure API</strong></td>
-<td>Bearer token auth on port 4000, Basic Auth on Web UI</td>
+<td>Bearer token auth on port 4000, JWT / Session Auth on Web UI</td>
 </tr>
 <tr>
 <td><strong>Observability</strong></td>
@@ -890,8 +898,8 @@
 </tr>
 <tr>
 <td><code>:4001</code></td>
-<td>Web UI Dashboard</td>
-<td>HTTP Basic Auth (<code>GBNT_WEB_USER</code> / <code>GBNT_WEB_PASSWORD</code>)</td>
+<td>Web UI Dashboard &amp; SSO</td>
+<td>Active Directory / LDAP / JWT Cookie / Basic Auth</td>
 </tr>
 <tr>
 <td><code>:4002</code></td>
@@ -1041,6 +1049,7 @@
 <h2 id="documentation">Documentation</h2>
 <ul>
 <li><a href="install/">Installation Guide</a> — Download pre-built binaries or compile from source</li>
+<li><a href="screens/">Screenshots Gallery (v2.13.0)</a> — Visual showcase of Dashboard, Caddy, CoreDNS, SLO &amp; Topology</li>
 <li><a href="cli/">CLI Reference</a> — All <code>gbnt</code> commands explained</li>
 <li><a href="architecture/">Architecture</a> — Deep dive into how Gubernator works</li>
 <li><a href="web-ui/">Web UI</a> — Dashboard features and usage</li>

@@ -785,6 +785,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1170,14 +1174,13 @@ You can use the provided <code>docker-compose.yml</code> and <code>.env</code> f
 <hr />
 <h2 id="3-host-os-dns-configuration-optional-but-recommended">3. Host OS DNS Configuration (Optional but Recommended)</h2>
 <p>Gubernator comes with a built-in CoreDNS server and an automatic Caddy Ingress. It automatically creates internal domains (<code>*.gbnt</code>) and ingress domains (<code>*.gbnt.local</code>).</p>
-<p>To browse to these local domains (e.g., <code>http://hello-101.gbnt.local</code>) directly from your host machine's browser <strong>without editing <code>/etc/hosts</code></strong>, you can configure your OS to query Gubernator's CoreDNS.</p>
+<p>To browse to these local domains (e.g., <code>http://hello-101.gbnt.local</code> or <code>https://hello-101.gbnt.local</code>) directly from your host machine's browser <strong>without editing <code>/etc/hosts</code></strong>, you can configure your OS to query Gubernator's CoreDNS.</p>
 <h3 id="macos_1">macOS</h3>
-<p>macOS allows domain-specific DNS resolvers. Run this command once to point all <code>.gbnt</code> and <code>.gbnt.local</code> queries to Gubernator's CoreDNS (which listens locally on port 53):</p>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/resolver
+<p>macOS allows domain-specific DNS resolvers. Run this command once to point all <code>.gbnt</code> and <code>.gbnt.local</code> queries to Gubernator's CoreDNS:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/resolver
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;echo &quot;nameserver 127.0.0.1&quot; &gt; /etc/resolver/gbnt&#39;</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;echo &quot;nameserver 127.0.0.1&quot; &gt; /etc/resolver/gbnt.local&#39;</span>
 </span></code></pre></div>
-<em>(Note: Do not use <code>.local</code> for domains on macOS, as Apple reserves it for Multicast DNS/Bonjour).</em></p>
 <h3 id="linux-systemd-resolved">Linux (systemd-resolved)</h3>
 <p>Create a drop-in config for systemd-resolved:
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/systemd/resolved.conf.d

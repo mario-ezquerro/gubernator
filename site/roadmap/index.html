@@ -635,6 +635,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -953,32 +957,40 @@
 <p>[x] <strong>Phase 11 — SRE Monitor (<code>gbnt monitor init</code>)</strong>
   Built-in SRE observability stack with a single command. <code>gbnt monitor init</code> deploys <strong>cAdvisor</strong> (container metrics), <strong>Prometheus</strong> (metrics collection), <strong>Grafana</strong> (dashboards with pre-configured datasources), <strong>Loki</strong> (log aggregation), and <strong>Promtail</strong> (log shipping) — all on a dedicated Docker network (<code>gbnt-monitor-net</code>). <code>gbnt monitor status</code> and <code>gbnt monitor stop</code> for lifecycle management. Config files auto-generated in <code>~/.gbnt/monitor/</code>.</p>
 </li>
+<li>
+<p>[x] <strong>Phase 12 — Sloth SLO Engine &amp; Google SRE Alerts (<code>gbnt slo</code>)</strong>
+  Native integration of Sloth (<code>slok/sloth</code>) into Gubernator's core engine. Translates <code>gbnt.slo.*</code> Compose labels into production-grade Prometheus recording and alerting rules with multi-window burn rate alerts and real-time Error Budget tracking via Web UI and REST API.</p>
+</li>
+<li>
+<p>[x] <strong>Phase 13 — Enterprise Active Directory, LDAP &amp; Dynamic RBAC (<code>v2.20.0</code>)</strong>
+  Multi-server Active Directory / OpenLDAP SSO with LDAPS (<code>:636</code>) and StartTLS (<code>:389</code>), automated Bind searches, dynamic group mapping to 3-tier RBAC (<code>admin</code>, <code>operator</code>, <code>readonly</code>), cryptographic HMAC-SHA256 JWT tokens, emergency local administrator fallback, modern Flutter login screen with domain selector, and dedicated Security &amp; AD management screen with live "Test Connection" diagnostic tool.</p>
+</li>
 </ul>
 <hr />
 <h2 id="upcoming-development">Upcoming Development</h2>
 <ul>
 <li>
-<p>[ ] <strong>Phase 12 — High Availability (The Senate)</strong>
+<p>[ ] <strong>Phase 14 — High Availability (The Senate)</strong>
   Distributed SQLite via <code>rqlite</code> or <code>dqlite</code> (SQLite over Raft) for multi-manager fault tolerance. Eliminate the single point of failure.</p>
 </li>
 <li>
-<p>[ ] <strong>Phase 13 — Live Observability</strong>
+<p>[ ] <strong>Phase 15 — Live Observability</strong>
   WebSocket streaming for container logs (<code>docker logs -f</code>) directly in the Web UI dashboard.</p>
 </li>
 <li>
-<p>[ ] <strong>Phase 14 — Secret Management (The Praetorian Guard)</strong>
+<p>[ ] <strong>Phase 16 — Secret Management (The Praetorian Guard)</strong>
   Encrypted variable injection from Gubernator's DB into containers — no plaintext secrets in Compose files.</p>
 </li>
 <li>
-<p>[ ] <strong>Phase 15 — Rolling Updates</strong>
+<p>[ ] <strong>Phase 17 — Rolling Updates</strong>
   Zero-downtime deployments: update replicas sequentially, wait for health checks before removing old containers.</p>
 </li>
 <li>
-<p>[ ] <strong>Phase 16 — Storage Affinity</strong>
+<p>[ ] <strong>Phase 18 — Storage Affinity</strong>
   Scheduler awareness of local persistent volumes — reschedule containers back to the same node where their data lives.</p>
 </li>
 <li>
-<p>[ ] <strong>Phase 17 — Multi-arch Build Registry</strong>
+<p>[ ] <strong>Phase 19 — Multi-arch Build Registry</strong>
   Optional integrated lightweight image registry for air-gapped deployments.</p>
 </li>
 </ul>

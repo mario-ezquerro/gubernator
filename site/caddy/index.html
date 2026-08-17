@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../web-ui/">
+        <link rel="prev" href="../screens/">
       
       
         <link rel="next" href="../coredns/">
@@ -462,6 +462,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -555,6 +559,62 @@
     
   
     Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots (v2.13.0)
   
 
     
@@ -1031,7 +1091,14 @@
 <li><strong>Dashboard</strong>: Live server status across all cluster Caddies, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
 <li><strong>Route Manager</strong>: Reverse proxy routes table, live upstream health checks, uptime %, domain search/filter, clickable links, and per-route notes.</li>
 <li><strong>Caddyfile Editor</strong>: Real-time Caddyfile viewer &amp; editor, syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
-<li><strong>TLS Certificates</strong>: Certificate status, expiration countdowns, orphan detection, and <strong>Root CA Download</strong> (<code>root.crt</code>) with installation guides for macOS, Linux, and Windows.</li>
+<li><strong>TLS Certificates</strong>: Full lifecycle management with:</li>
+<li><strong>Multi-Node Cluster Sync</strong>: 1-click <strong>"Sync to All Nodes"</strong> button (<code>POST /api/caddy/certs/sync</code>) and automatic background broadcast whenever new certificates are uploaded or rotated.</li>
+<li><strong>X.509 Inspector</strong>: Deep inspection of Subject, Issuer, SANs, validity dates, serial number, SHA-256 fingerprint, and key algorithm.</li>
+<li><strong>Forced Renewal / Rotation</strong>: 1-click certificate rotation via API and UI.</li>
+<li><strong>Domain Cert Download</strong>: Direct download of domain-specific <code>.crt</code> / <code>.pem</code> files.</li>
+<li><strong>Root CA Download</strong>: Export <code>root.crt</code> for OS trust installation.</li>
+<li><strong>Custom TLS Upload</strong>: Install custom commercial/corporate certificates and private keys.</li>
+<li><strong>Orphan Pruning</strong>: Clean up stale certificates from deleted stacks.</li>
 <li><strong>Access Logs</strong>: Streaming log tailing with SSE, keyword search, log level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>), and JSON/TXT log export.</li>
 <li><strong>Log Configuration</strong>: Toggle JSON access logging per site block directly from the UI.</li>
 <li><strong>Metrics</strong>: Real-time request count, RPS gauge, avg latency, HTTP status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and latency percentiles (<code>p50</code>, <code>p95</code>, <code>p99</code>) powered by Caddy's <code>:2019/metrics</code> Prometheus endpoint.</li>
@@ -1075,7 +1142,32 @@
 <tr>
 <td><code>/v1/caddy/certs</code></td>
 <td><code>GET</code></td>
-<td>Get managed TLS certificates and expiration dates</td>
+<td>Get managed TLS certificates with full X.509 metadata</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/download</code></td>
+<td><code>GET</code></td>
+<td>Download certificate <code>.crt</code> file for a specific domain</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/inspect</code></td>
+<td><code>GET</code></td>
+<td>Inspect complete X.509 properties and SHA-256 fingerprint</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/renew</code></td>
+<td><code>POST</code></td>
+<td>Force immediate renewal and rotation of a domain certificate</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/custom</code></td>
+<td><code>POST</code></td>
+<td>Upload and install a custom TLS certificate and private key</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/orphaned</code></td>
+<td><code>DELETE</code></td>
+<td>Prune orphaned certificates no longer in any Caddyfile</td>
 </tr>
 <tr>
 <td><code>/v1/caddy/ca.crt</code></td>
@@ -1099,7 +1191,7 @@
 </tr>
 </tbody>
 </table>
-<p>For full specification, refer to <a href="SPEC-caddy.md"><code>SPEC-caddy.md</code></a>.</p>
+<p>For full specification, refer to <a href="https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md"><code>SPEC-caddy.md</code></a>.</p>
 
 
 

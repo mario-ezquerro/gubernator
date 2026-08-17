@@ -15,8 +15,9 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Single-node mode** | No workers needed — the Manager runs containers locally |
 | **Built-in executor** | Passes `ports`, `environment`, `volumes`, and `command` to Docker |
 | **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings |
+| **Enterprise AD / LDAP & RBAC** | Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (`admin`, `operator`, `readonly`) |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
-| **Secure API** | Bearer token auth on port 4000, Basic Auth on Web UI |
+| **Secure API** | Bearer token auth on port 4000, JWT / Session Auth on Web UI |
 | **Observability** | Prometheus metrics, Swagger, and health on port 4002 |
 | **SRE Monitor** | One-command deploy: cAdvisor + Node Exporter + Prometheus + Grafana + Loki + Promtail + Jaeger |
 
@@ -27,7 +28,7 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | Port | Service | Auth |
 |------|---------|------|
 | `:4000` | REST API (CLI endpoint) | `Authorization: Bearer <GBNT_API_TOKEN>` |
-| `:4001` | Web UI Dashboard | HTTP Basic Auth (`GBNT_WEB_USER` / `GBNT_WEB_PASSWORD`) |
+| `:4001` | Web UI Dashboard & SSO | Active Directory / LDAP / JWT Cookie / Basic Auth |
 | `:4002` | Telemetry, Swagger, Health | Public (internal monitoring only) |
 
 ---

@@ -16,7 +16,7 @@
         <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../caddy/">
+        <link rel="next" href="../auth-rbac/">
       
       
         
@@ -462,6 +462,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -862,6 +866,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#enterprise-login-security-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Enterprise Login &amp; Security Suite
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛡️ Enterprise Login &amp; Security Suite">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-modern-login-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Modern Login Screen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-active-directory-ldap-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Active Directory &amp; LDAP Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#building-the-flutter-ui-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -876,6 +919,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots (v2.13.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1478,7 +1577,7 @@
 <li><strong>Dashboard</strong> — Live server status, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
 <li><strong>Route Manager</strong> — Reverse proxy routes matrix, live upstream health checks, uptime %, search/filter by domain.</li>
 <li><strong>Caddyfile Editor</strong> — Syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
-<li><strong>TLS Certificates</strong> — Certificate status, expiration countdowns, orphan detection, and <strong>Root CA Download</strong> (<code>root.crt</code>).</li>
+<li><strong>TLS Certificates</strong> — Full certificate lifecycle manager: X.509 deep inspection modal (Subject, Issuer, SANs, serial, SHA-256 fingerprint), 1-click forced renewal/rotation, individual domain <code>.crt</code> download, custom cert &amp; key upload modal, orphaned certificate cleanup, and <strong>Root CA Download</strong> (<code>root.crt</code>).</li>
 <li><strong>Access Logs</strong> — Streaming log tailing with keyword search and level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>).</li>
 <li><strong>Log Configuration</strong> — Toggle access logging per site block directly from the UI.</li>
 <li><strong>Metrics</strong> — RPS gauge, average response latency, status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and p50/p95/p99 percentiles.</li>
@@ -1507,8 +1606,48 @@
 <tbody>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/auth/providers</code></td>
+<td>Lists available auth domains and directories</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/login</code></td>
+<td>Authenticates against Local Admin or Active Directory</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/auth/me</code></td>
+<td>Retrieves active user identity and permissions</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/logout</code></td>
+<td>Clears user session</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/auth/ldap</code></td>
+<td>Lists configured LDAP/AD servers (Admin only)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/ldap</code></td>
+<td>Saves/updates an LDAP/AD server (Admin only)</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/auth/ldap/:id</code></td>
+<td>Deletes an LDAP/AD directory connection</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/ldap/test</code></td>
+<td>Live connection &amp; user lookup diagnostic tool</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/state</code></td>
-<td>Returns all nodes, stacks, services, tasks</td>
+<td>Returns all nodes, stacks, services, tasks, user</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -1552,9 +1691,14 @@
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>These routes are separate from the CLI API on port 4000 and use Basic Auth instead of Bearer tokens.</p>
-</blockquote>
+<hr />
+<h2 id="enterprise-login-security-suite">🛡️ Enterprise Login &amp; Security Suite</h2>
+<h3 id="1-modern-login-screen">1. Modern Login Screen</h3>
+<p>The dashboard features an enterprise SSO login interface supporting both Microsoft Active Directory and emergency Local Administrator access:</p>
+<p><img alt="Login Screen" src="../images/login_screen.png" /></p>
+<h3 id="2-active-directory-ldap-management">2. Active Directory &amp; LDAP Management</h3>
+<p>Admins can manage identity providers directly from the <strong>Seguridad &amp; AD</strong> screen, test connectivity in real-time, and inspect assigned RBAC roles:</p>
+<p><img alt="Security &amp; AD Management" src="../images/security_ad.png" /></p>
 <hr />
 <h2 id="building-the-flutter-ui-from-source">Building the Flutter UI from Source</h2>
 <p>If you need to modify the dashboard:</p>

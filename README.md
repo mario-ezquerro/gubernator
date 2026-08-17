@@ -33,9 +33,18 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 * **State:** Powered by SQLite and GORM.
 * **Container Engine:** Direct communication with the Docker Engine.
 * **Web Dashboard:** Flutter Web with Material Design 3 (embedded into the Go binary).
+* **Enterprise Security & RBAC:** Multi-Server Active Directory / OpenLDAP authentication with LDAPS/StartTLS, JWT HMAC-SHA256 sessions, emergency local admin, and dynamic 3-tier RBAC (`admin`, `operator`, `readonly`) (see [docs/auth-rbac.md](docs/auth-rbac.md)).
 * **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and multi-node Caddy Ingress with full 7-tab UI management (see [SPEC-caddy.md](SPEC-caddy.md) and [caddy.md](docs/caddy.md)).
 
 *(See [architecture.md](architecture.md) for a deeper dive).*
+
+---
+
+## 📸 Enterprise Active Directory & RBAC (`v2.20.0`)
+
+| Modern Login Screen & Domain Selector | Security & Active Directory Management |
+| :---: | :---: |
+| ![Login Screen](docs/images/login_screen.png) | ![Security & AD](docs/images/security_ad.png) |
 
 ---
 
@@ -497,6 +506,6 @@ From the Swagger UI, you can directly test endpoints.
 
 ##  Current Roadmap State
 
-Gubernator's development is divided into "Campaigns". We've completed up to **Phase 11**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, and the built-in SRE Monitoring Stack.
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 13**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, built-in SRE Monitoring Stack, Google SRE Sloth SLO Engine, and Enterprise Active Directory / LDAP Authentication + RBAC (`v2.20.0`).
 
 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
