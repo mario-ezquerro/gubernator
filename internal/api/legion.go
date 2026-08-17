@@ -118,7 +118,7 @@ func NodeHeartbeatHandler(c *gin.Context) {
 		updates["status"] = "active"
 	}
 
-	db.DB.Model(&existingNode).Updates(updates)
+	db.DB.Model(&db.Node{}).Where("id = ?", req.ID).Updates(updates)
 
 	// Ensure Worker Core & SRE Stacks are synced in DB
 	coredns.SyncWorkerCoreStacks(db.DB)

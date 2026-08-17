@@ -310,8 +310,8 @@ func startWatchtowers(ctx context.Context) {
 		db.DB.Model(&db.Task{}).Count(&taskCount)
 		telemetry.TotalTasks.Set(float64(taskCount))
 
-		// Mark nodes as 'down' if no heartbeat in 30 seconds
-		threshold := time.Now().Add(-30 * time.Second)
+		// Mark nodes as 'down' if no heartbeat in 45 seconds (allows for temporary network jitter or image pulls)
+		threshold := time.Now().Add(-45 * time.Second)
 		db.DB.Model(&db.Node{}).
 			Where("role = ?", "worker").
 			Where("updated_at < ?", threshold).

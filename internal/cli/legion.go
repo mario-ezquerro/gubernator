@@ -216,6 +216,7 @@ var legionJoinCmd = &cobra.Command{
 		}()
 
 		go func() {
+			hbClient := &http.Client{Timeout: 5 * time.Second}
 			for {
 				time.Sleep(10 * time.Second)
 				hbPayload, _ := json.Marshal(map[string]interface{}{
@@ -233,11 +234,20 @@ var legionJoinCmd = &cobra.Command{
 				} else if joinToken != "" {
 					req.Header.Set("Authorization", "Bearer "+joinToken)
 				}
-				http.DefaultClient.Do(req)
+				resp, err := hbClient.Do(req)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "⚠️  Heartbeat network error: %v\n", err)
+				} else {
+					if resp.StatusCode != http.StatusOK {
+						fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
+					}
+					resp.Body.Close()
+				}
 			}
 		}()
 
 		// Executor loop
+		execClient := &http.Client{Timeout: 10 * time.Second}
 		for {
 			time.Sleep(5 * time.Second)
 
@@ -249,7 +259,7 @@ var legionJoinCmd = &cobra.Command{
 			if apiToken != "" {
 				req.Header.Set("Authorization", "Bearer "+apiToken)
 			}
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := execClient.Do(req)
 			if err != nil {
 				continue
 			}
