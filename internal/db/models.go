@@ -169,3 +169,27 @@ type CustomDNSRecord struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+
+// LDAPConfig represents an Active Directory or LDAP identity provider.
+type LDAPConfig struct {
+	ID                 string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name               string    `gorm:"type:varchar(255);not null" json:"name"`
+	Enabled            bool      `gorm:"default:true" json:"enabled"`
+	Host               string    `gorm:"type:varchar(255);not null" json:"host"`
+	Port               int       `gorm:"default:389" json:"port"`
+	Security           string    `gorm:"type:varchar(50);default:'none'" json:"security"` // none, tls (LDAPS), starttls
+	InsecureSkipVerify bool      `gorm:"default:false" json:"insecure_skip_verify"`
+	BindDN             string    `gorm:"type:varchar(255)" json:"bind_dn"`
+	BindPassword       string    `gorm:"type:varchar(255)" json:"bind_password"`
+	BaseDN             string    `gorm:"type:varchar(255);not null" json:"base_dn"`
+	UserFilter         string    `gorm:"type:varchar(255);default:'(&(objectClass=user)(sAMAccountName=%s))'" json:"user_filter"`
+	UserAttr           string    `gorm:"type:varchar(50);default:'sAMAccountName'" json:"user_attr"` // sAMAccountName, uid, mail
+	GroupBaseDN        string    `gorm:"type:varchar(255)" json:"group_base_dn"`
+	GroupFilter        string    `gorm:"type:varchar(255);default:'(&(objectClass=group)(member=%s))'" json:"group_filter"`
+	AdminGroupDN       string    `gorm:"type:varchar(255)" json:"admin_group_dn"`
+	OperatorGroupDN    string    `gorm:"type:varchar(255)" json:"operator_group_dn"`
+	ReadOnlyGroupDN    string    `gorm:"type:varchar(255)" json:"readonly_group_dn"`
+	DefaultRole        string    `gorm:"type:varchar(50);default:'readonly'" json:"default_role"` // admin, operator, readonly, none
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}

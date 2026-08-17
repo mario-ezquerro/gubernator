@@ -176,6 +176,7 @@ class DashboardState {
   final String latestVersion;
   final String releaseNotes;
   final String releaseUrl;
+  final UserSession? currentUser;
 
   DashboardState({
     this.nodes = const [],
@@ -194,6 +195,7 @@ class DashboardState {
     this.latestVersion = '',
     this.releaseNotes = '',
     this.releaseUrl = '',
+    this.currentUser,
   });
 
   factory DashboardState.fromJson(Map<String, dynamic> json) {
@@ -224,6 +226,222 @@ class DashboardState {
       latestVersion: json['latest_version'] ?? '',
       releaseNotes: json['release_notes'] ?? '',
       releaseUrl: json['release_url'] ?? '',
+      currentUser: json['current_user'] != null ? UserSession.fromJson(json['current_user']) : null,
+    );
+  }
+}
+
+class UserPermissions {
+  final bool canDeployStacks;
+  final bool canDeleteStacks;
+  final bool canRestartTasks;
+  final bool canDeleteTasks;
+  final bool canExecuteShell;
+  final bool canManageNodes;
+  final bool canManageCaddy;
+  final bool canManageCoreDNS;
+  final bool canManageSecurity;
+  final bool canViewObservability;
+
+  const UserPermissions({
+    this.canDeployStacks = true,
+    this.canDeleteStacks = true,
+    this.canRestartTasks = true,
+    this.canDeleteTasks = true,
+    this.canExecuteShell = true,
+    this.canManageNodes = true,
+    this.canManageCaddy = true,
+    this.canManageCoreDNS = true,
+    this.canManageSecurity = true,
+    this.canViewObservability = true,
+  });
+
+  factory UserPermissions.fromJson(Map<String, dynamic> json) {
+    return UserPermissions(
+      canDeployStacks: json['can_deploy_stacks'] ?? true,
+      canDeleteStacks: json['can_delete_stacks'] ?? true,
+      canRestartTasks: json['can_restart_tasks'] ?? true,
+      canDeleteTasks: json['can_delete_tasks'] ?? true,
+      canExecuteShell: json['can_execute_shell'] ?? true,
+      canManageNodes: json['can_manage_nodes'] ?? true,
+      canManageCaddy: json['can_manage_caddy'] ?? true,
+      canManageCoreDNS: json['can_manage_coredns'] ?? true,
+      canManageSecurity: json['can_manage_security'] ?? true,
+      canViewObservability: json['can_view_observability'] ?? true,
+    );
+  }
+}
+
+class UserSession {
+  final String username;
+  final String displayName;
+  final String email;
+  final String role; // "admin", "operator", "readonly"
+  final String provider;
+  final UserPermissions permissions;
+
+  const UserSession({
+    required this.username,
+    required this.displayName,
+    this.email = '',
+    this.role = 'admin',
+    this.provider = 'local',
+    this.permissions = const UserPermissions(),
+  });
+
+  bool get isAdmin => role == 'admin';
+  bool get isOperator => role == 'operator';
+  bool get isReadOnly => role == 'readonly';
+
+  factory UserSession.fromJson(Map<String, dynamic> json) {
+    return UserSession(
+      username: json['username'] ?? '',
+      displayName: json['display_name'] ?? json['username'] ?? '',
+      email: json['email'] ?? '',
+      role: json['role'] ?? 'admin',
+      provider: json['provider'] ?? 'local',
+      permissions: json['permissions'] != null
+          ? UserPermissions.fromJson(json['permissions'])
+          : const UserPermissions(),
+    );
+  }
+}
+
+class AuthProvider {
+  final String id;
+  final String name;
+  final String type; // "local", "ldap"
+
+  const AuthProvider({
+    required this.id,
+    required this.name,
+    required this.type,
+  });
+
+  factory AuthProvider.fromJson(Map<String, dynamic> json) {
+    return AuthProvider(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      type: json['type'] ?? 'local',
+    );
+  }
+}
+
+class LDAPConfig {
+  final String id;
+  final String name;
+  final bool enabled;
+  final String host;
+  final int port;
+  final String security; // "none", "tls", "starttls"
+  final bool insecureSkipVerify;
+  final String bindDn;
+  final String bindPassword;
+  final String baseDn;
+  final String userFilter;
+  final String userAttr;
+  final String groupBaseDn;
+  final String groupFilter;
+  final String adminGroupDn;
+  final String operatorGroupDn;
+  final String readOnlyGroupDn;
+  final String defaultRole;
+
+  LDAPConfig({
+    required this.id,
+    required this.name,
+    this.enabled = true,
+    required this.host,
+    this.port = 389,
+    this.security = 'none',
+    this.insecureSkipVerify = false,
+    this.bindDn = '',
+    this.bindPassword = '',
+    required this.baseDn,
+    this.userFilter = '(&(objectClass=user)(sAMAccountName=%s))',
+    this.userAttr = 'sAMAccountName',
+    this.groupBaseDn = '',
+    this.groupFilter = '(&(objectClass=group)(member=%s))',
+    this.adminGroupDn = '',
+    this.operatorGroupDn = '',
+    this.readOnlyGroupDn = '',
+    this.defaultRole = 'readonly',
+  });
+
+  factory LDAPConfig.fromJson(Map<String, dynamic> json) {
+    return LDAPConfig(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      enabled: json['enabled'] ?? true,
+      host: json['host'] ?? '',
+      port: (json['port'] as num?)?.toInt() ?? 389,
+      security: json['security'] ?? 'none',
+      insecureSkipVerify: json['insecure_skip_verify'] == true,
+      bindDn: json['bind_dn'] ?? '',
+      bindPassword: json['bind_password'] ?? '',
+      baseDn: json['base_dn'] ?? '',
+      userFilter: json['user_filter'] ?? '(&(objectClass=user)(sAMAccountName=%s))',
+      userAttr: json['user_attr'] ?? 'sAMAccountName',
+      groupBaseDn: json['group_base_dn'] ?? '',
+      groupFilter: json['group_filter'] ?? '(&(objectClass=group)(member=%s))',
+      adminGroupDn: json['admin_group_dn'] ?? '',
+      operatorGroupDn: json['operator_group_dn'] ?? '',
+      readOnlyGroupDn: json['readonly_group_dn'] ?? '',
+      defaultRole: json['default_role'] ?? 'readonly',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'enabled': enabled,
+        'host': host,
+        'port': port,
+        'security': security,
+        'insecure_skip_verify': insecureSkipVerify,
+        'bind_dn': bindDn,
+        'bind_password': bindPassword,
+        'base_dn': baseDn,
+        'user_filter': userFilter,
+        'user_attr': userAttr,
+        'group_base_dn': groupBaseDn,
+        'group_filter': groupFilter,
+        'admin_group_dn': adminGroupDn,
+        'operator_group_dn': operatorGroupDn,
+        'readonly_group_dn': readOnlyGroupDn,
+        'default_role': defaultRole,
+      };
+}
+
+class LDAPTestResult {
+  final bool connected;
+  final bool tlsActive;
+  final bool bindSuccessful;
+  final bool userFound;
+  final String message;
+  final int latencyMs;
+  final String? assignedRole;
+
+  LDAPTestResult({
+    required this.connected,
+    required this.tlsActive,
+    required this.bindSuccessful,
+    required this.userFound,
+    required this.message,
+    required this.latencyMs,
+    this.assignedRole,
+  });
+
+  factory LDAPTestResult.fromJson(Map<String, dynamic> json) {
+    final authRes = json['auth_result'] as Map<String, dynamic>?;
+    return LDAPTestResult(
+      connected: json['connected'] == true,
+      tlsActive: json['tls_active'] == true,
+      bindSuccessful: json['bind_successful'] == true,
+      userFound: json['user_found'] == true,
+      message: json['message'] ?? '',
+      latencyMs: (json['latency_ms'] as num?)?.toInt() ?? 0,
+      assignedRole: authRes?['role']?.toString(),
     );
   }
 }

@@ -17,6 +17,7 @@ import 'pages/jaeger_page.dart';
 import 'pages/network_page.dart';
 import 'pages/scope_page.dart';
 import 'pages/slo_page.dart';
+import 'pages/security_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -24,6 +25,8 @@ class AppShell extends StatefulWidget {
   final ValueChanged<bool> onThemeChanged;
   final String displayName;
   final ValueChanged<String> onNameChanged;
+  final UserSession? currentUser;
+  final VoidCallback? onLogout;
 
   const AppShell({
     super.key,
@@ -31,6 +34,8 @@ class AppShell extends StatefulWidget {
     required this.onThemeChanged,
     required this.displayName,
     required this.onNameChanged,
+    this.currentUser,
+    this.onLogout,
   });
 
   @override
@@ -122,7 +127,7 @@ class _AppShellState extends State<AppShell> {
 
   List<SidebarItem> _buildSidebarItems() {
     final running = _state.tasks.where((t) => t.status == 'running').length;
-    return [
+    final items = [
       const SidebarItem(
         icon: Icons.dashboard_outlined,
         activeIcon: Icons.dashboard,
@@ -185,7 +190,13 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.hub,
         label: 'Network Topology',
       ),
+      const SidebarItem(
+        icon: Icons.shield_outlined,
+        activeIcon: Icons.shield,
+        label: 'Seguridad & AD',
+      ),
     ];
+    return items;
   }
 
   // Navigation labels for the header breadcrumb
@@ -201,6 +212,7 @@ class _AppShellState extends State<AppShell> {
     'Network Monitor',
     'Jaeger',
     'Network Topology',
+    'Seguridad & AD',
   ];
 
   Widget _buildCurrentPage() {
@@ -233,6 +245,8 @@ class _AppShellState extends State<AppShell> {
         return const JaegerPage();
       case 10:
         return const ScopePage();
+      case 11:
+        return SecurityPage(state: _state, onRefresh: _fetchData);
       default:
         return OverviewPage(
           state: _state,
@@ -248,6 +262,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final user = widget.currentUser ?? _state.currentUser;
 
     return Scaffold(
       body: Row(
@@ -257,7 +272,7 @@ class _AppShellState extends State<AppShell> {
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
               // Guard Grafana/Jaeger if monitor not running
-              if (index >= 7 && !_state.monitorRunning) return;
+              if (index >= 7 && index <= 9 && !_state.monitorRunning) return;
               setState(() => _selectedIndex = index);
             },
             isDark: widget.isDark,
@@ -296,7 +311,7 @@ class _AppShellState extends State<AppShell> {
                     children: [
                       // Breadcrumb
                       Text(
-                        _pageLabels[_selectedIndex],
+                        _selectedIndex < _pageLabels.length ? _pageLabels[_selectedIndex] : 'Overview',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -304,10 +319,71 @@ class _AppShellState extends State<AppShell> {
 
                       const Spacer(),
 
+                      // User Profile Badge & Role Chip
+                      if (user != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: user.isAdmin
+                                    ? Colors.amber.withValues(alpha: 0.2)
+                                    : user.isOperator
+                                        ? Colors.blue.withValues(alpha: 0.2)
+                                        : Colors.green.withValues(alpha: 0.2),
+                                child: Text(
+                                  user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : 'U',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: user.isAdmin ? Colors.amber : user.isOperator ? Colors.blue : Colors.green,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                user.displayName,
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: user.isAdmin
+                                      ? Colors.amber.withValues(alpha: 0.15)
+                                      : user.isOperator
+                                          ? Colors.blue.withValues(alpha: 0.15)
+                                          : Colors.green.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  user.isAdmin ? '👑 ADMIN' : user.isOperator ? '⚡ OPERATOR' : '👁️ READ-ONLY',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: user.isAdmin ? Colors.amber : user.isOperator ? Colors.blue : Colors.green,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+
                       // Last refresh
                       if (_lastRefresh != null)
                         Padding(
-                          padding: const EdgeInsets.only(right: 16),
+                          padding: const EdgeInsets.only(right: 8),
                           child: Row(
                             children: [
                               Icon(Icons.access_time,
@@ -341,7 +417,7 @@ class _AppShellState extends State<AppShell> {
                           onPressed: () =>
                               html.window.open('/jaeger/', '_blank'),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                       ],
 
                       // Refresh button
@@ -350,6 +426,14 @@ class _AppShellState extends State<AppShell> {
                         tooltip: 'Refresh now',
                         onPressed: _fetchData,
                       ),
+
+                      // Logout button
+                      if (widget.onLogout != null)
+                        IconButton(
+                          icon: const Icon(Icons.logout, size: 20, color: Colors.redAccent),
+                          tooltip: 'Cerrar Sesión',
+                          onPressed: widget.onLogout,
+                        ),
                     ],
                   ),
                 ),

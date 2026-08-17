@@ -41,6 +41,7 @@ test_output.txt
 /gbnt_linux
 /gbnt-linux-arm64
 /gbnt-mac
+bin/
 *.tar.gz
 *.tar
 *.log

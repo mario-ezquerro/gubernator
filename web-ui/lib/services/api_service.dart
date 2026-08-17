@@ -1,12 +1,45 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
 /// Service class to communicate with the Gubernator backend API.
 class ApiService {
+  static String? _authToken;
+
+  static String? get authToken {
+    if (_authToken != null && _authToken!.isNotEmpty) {
+      return _authToken;
+    }
+    try {
+      _authToken = html.window.localStorage['gbnt_token'];
+    } catch (_) {}
+    return _authToken;
+  }
+
+  static set authToken(String? token) {
+    _authToken = token;
+    try {
+      if (token != null && token.isNotEmpty) {
+        html.window.localStorage['gbnt_token'] = token;
+      } else {
+        html.window.localStorage.remove('gbnt_token');
+      }
+    } catch (_) {}
+  }
+
+  static Map<String, String> get authHeaders {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final token = authToken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   /// Fetches the full dashboard state from the backend.
   static Future<DashboardState> fetchState() async {
-    final response = await http.get(Uri.parse('/api/state'));
+    final response = await http.get(Uri.parse('/api/state'), headers: authHeaders);
     if (response.statusCode == 200) {
       return DashboardState.fromJson(jsonDecode(response.body));
     }
@@ -15,13 +48,13 @@ class ApiService {
 
   /// Deletes a stack and stops all its containers.
   static Future<bool> deleteStack(String id) async {
-    final response = await http.delete(Uri.parse('/api/stack/$id'));
+    final response = await http.delete(Uri.parse('/api/stack/$id'), headers: authHeaders);
     return response.statusCode == 200;
   }
 
   /// Redeploys a stack.
   static Future<bool> redeployStack(String id) async {
-    final response = await http.post(Uri.parse('/api/stack/$id/redeploy'));
+    final response = await http.post(Uri.parse('/api/stack/$id/redeploy'), headers: authHeaders);
     return response.statusCode == 200;
   }
 
@@ -608,8 +641,126 @@ class ApiService {
 
   /// Caddy: Synchronizes all TLS certificates across all active cluster nodes.
   static Future<Map<String, dynamic>> syncCaddyCerts() async {
-    final response = await http.post(Uri.parse('/api/caddy/certs/sync'));
+    final response = await http.post(Uri.parse('/api/caddy/certs/sync'), headers: authHeaders);
     return jsonDecode(response.body);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Enterprise Authentication & Active Directory / LDAP APIs
+  // ─────────────────────────────────────────────────────────────
+
+  /// Fetches available identity providers (Local Admin + Active Directory/LDAP).
+  static Future<List<AuthProvider>> fetchAuthProviders() async {
+    final response = await http.get(Uri.parse('/api/auth/providers'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['providers'] as List? ?? [])
+          .map((e) => AuthProvider.fromJson(e))
+          .toList();
+    }
+    return [const AuthProvider(id: 'local', name: 'Local Administrator', type: 'local')];
+  }
+
+  /// Logs in against Local Admin or an Active Directory/LDAP provider.
+  static Future<Map<String, dynamic>> login(
+    String username,
+    String password, {
+    String? provider,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+        'provider': provider ?? 'local',
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['token'] != null) {
+      authToken = data['token'];
+      return {'success': true, 'user': UserSession.fromJson(data['user'])};
+    }
+    return {'success': false, 'error': data['error'] ?? 'Login failed (${response.statusCode})'};
+  }
+
+  /// Fetches the currently authenticated user profile and permissions.
+  static Future<UserSession?> fetchMe() async {
+    try {
+      final response = await http.get(Uri.parse('/api/auth/me'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserSession.fromJson(data['user']);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Logs out the user and clears stored session tokens.
+  static Future<void> logout() async {
+    try {
+      await http.post(Uri.parse('/api/auth/logout'), headers: authHeaders);
+    } catch (_) {}
+    authToken = null;
+  }
+
+  /// Fetches all configured LDAP / Active Directory servers (Admin only).
+  static Future<List<LDAPConfig>> fetchLDAPConfigs() async {
+    final response = await http.get(Uri.parse('/api/auth/ldap'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['configs'] as List? ?? [])
+          .map((e) => LDAPConfig.fromJson(e))
+          .toList();
+    }
+    return [];
+  }
+
+  /// Creates or updates an LDAP / Active Directory configuration.
+  static Future<Map<String, dynamic>> saveLDAPConfig(LDAPConfig config) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/ldap'),
+      headers: authHeaders,
+      body: jsonEncode(config.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Deletes an LDAP / Active Directory configuration.
+  static Future<bool> deleteLDAPConfig(String id) async {
+    final response = await http.delete(Uri.parse('/api/auth/ldap/$id'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Tests connectivity and optional user credentials against an LDAP configuration.
+  static Future<LDAPTestResult> testLDAPConfig(
+    LDAPConfig config, {
+    String testUsername = '',
+    String testPassword = '',
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/ldap/test'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'config': config.toJson(),
+        'test_username': testUsername,
+        'test_password': testPassword,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (data['result'] != null) {
+      return LDAPTestResult.fromJson(data['result']);
+    }
+    return LDAPTestResult(
+      connected: false,
+      tlsActive: false,
+      bindSuccessful: false,
+      userFound: false,
+      message: data['error'] ?? 'Connection test failed',
+      latencyMs: 0,
+    );
   }
 }
 

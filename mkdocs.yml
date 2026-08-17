@@ -50,6 +50,7 @@ nav:
   - Architecture & UI:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md
+    - Active Directory, LDAP & RBAC: auth-rbac.md
     - Screenshots (v2.13.0): screens.md
     - Caddy Ingress Suite: caddy.md
     - CoreDNS Suite: coredns.md

@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/creack/pty"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
+	"github.com/mario-ezquerro/gubernator/internal/auth"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -244,99 +245,86 @@ func StartDashboard() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// Setup Basic Auth
-	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
-		user: pass,
-	}))
+	// Public Auth endpoints
+	r.GET("/api/auth/providers", authProvidersHandler)
+	r.POST("/api/auth/login", authLoginHandler)
+	r.POST("/api/auth/logout", authLogoutHandler)
 
-	// Middleware to set SSO cookie on successful Basic Auth & disable static caching
-	authorized.Use(func(c *gin.Context) {
-		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
-		c.Header("Pragma", "no-cache")
-		c.Header("Expires", "0")
-		authUser := c.GetString(gin.AuthUserKey)
-		if authUser != "" {
-			c.SetCookie("gbnt_session", sessionToken, 3600*24, "/", "", false, true)
-		}
-		c.Next()
-	})
-
-	// API for dashboard
-	api := authorized.Group("/api")
+	// API for dashboard with RBAC
+	api := r.Group("/api", auth.RequireAuth())
 	{
+		api.GET("/auth/me", authMeHandler)
+		api.GET("/auth/ldap", auth.RequireRole(auth.RoleAdmin), authListLDAPHandler)
+		api.POST("/auth/ldap", auth.RequireRole(auth.RoleAdmin), authSaveLDAPHandler)
+		api.DELETE("/auth/ldap/:id", auth.RequireRole(auth.RoleAdmin), authDeleteLDAPHandler)
+		api.POST("/auth/ldap/test", auth.RequireRole(auth.RoleAdmin), authTestLDAPHandler)
+
+		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
-		api.PUT("/stack/:id/compose", updateStackComposeHandler)
-		api.POST("/stack/:id/redeploy", redeployStackHandler)
-		api.POST("/stack", deployStackHandler)
-		api.DELETE("/stack/:id", deleteStackHandler)
-		api.POST("/stack/:id/migrate", migrateStackHandler)
-		api.DELETE("/task/:id", deleteTaskHandler)
-		api.POST("/task/:id/action", taskActionHandler)
 		api.GET("/task/:id/logs", taskLogsHandler)
 		api.GET("/task/:id/inspect", taskInspectHandler)
-		api.GET("/task/:id/shell", taskShellHandler)
 		api.GET("/settings", getSettingsHandler)
-		api.PUT("/settings", updateSettingsHandler)
-		api.PUT("/settings/password", changePasswordHandler)
-
-		// Node operations
 		api.GET("/node/:id", nodeInspectHandler)
-		api.POST("/node/:id/role", nodeRoleHandler)
-		api.POST("/node/:id/availability", nodeAvailabilityHandler)
-		api.POST("/node/:id/reboot", nodeRebootHandler)
-		api.POST("/node/:id/leave", nodeLeaveHandler)
-		api.POST("/node/:id/labels", nodeLabelsHandler)
-		api.POST("/node/:id/sync-token", nodeSyncTokenHandler)
-		api.POST("/node/add", nodeAddHandler)
-		api.GET("/node/:id/shell", nodeShellHandler)
-
-		// CoreDNS config & management
 		api.GET("/coredns/config", getCoreDNSConfigHandler)
-		api.PUT("/coredns/config", updateCoreDNSConfigHandler)
 		api.GET("/coredns/status", coreDNSStatusHandler)
 		api.GET("/coredns/custom-records", getCustomDNSRecordsHandler)
-		api.POST("/coredns/custom-records", createCustomDNSRecordHandler)
-		api.DELETE("/coredns/custom-records/:id", deleteCustomDNSRecordHandler)
-		api.POST("/coredns/dig", coreDNSDigHandler)
-
-		// Weave Scope Network Topology
 		api.GET("/scope/status", scopeStatusHandler)
-		api.POST("/scope/enable", scopeEnableHandler)
-		api.POST("/scope/disable", scopeDisableHandler)
-
-		// Cluster Auto-Update
 		api.GET("/update/check", updateCheckHandler)
-		api.POST("/update/apply", updateApplyHandler)
-
-		// SLO Engine
 		api.GET("/slo", sloListHandler)
-		api.POST("/slo/sync", sloSyncHandler)
-		api.POST("/slo/validate", sloValidateHandler)
 		api.GET("/slo/journeys", sloJourneysHandler)
 		api.GET("/slo/correlation", sloCorrelationHandler)
 		api.GET("/slo/history", sloHistoryHandler)
 		api.GET("/slo/red", sloREDMetricsHandler)
-		api.POST("/slo/edit", sloEditHandler)
-		api.DELETE("/slo/:service_id", sloDeleteHandler)
 		api.GET("/slo/notify/config", sloGetNotifyConfigHandler)
-		api.POST("/slo/notify/config", sloSaveNotifyConfigHandler)
-		api.POST("/slo/notify/test", sloTestNotifyHandler)
-
-		// Caddy Subsystem
 		api.GET("/caddy/status", caddyStatusHandler)
 		api.GET("/caddy/routes", caddyRoutesHandler)
 		api.GET("/caddy/certs", caddyCertsHandler)
 		api.GET("/caddy/certs/download", caddyCertDownloadHandler)
 		api.GET("/caddy/certs/inspect", caddyCertInspectHandler)
-		api.POST("/caddy/certs/renew", caddyCertRenewHandler)
-		api.POST("/caddy/certs/custom", caddyCustomCertHandler)
-		api.POST("/caddy/certs/sync", caddyCertSyncHandler)
-		api.DELETE("/caddy/certs/orphaned", caddyPruneOrphanedCertsHandler)
 		api.GET("/caddy/ca.crt", caddyRootCAHandler)
 		api.GET("/caddy/logs", caddyLogsHandler)
 		api.GET("/caddy/metrics", caddyMetricsHandler)
-		api.POST("/caddy/fmt", caddyFmtHandler)
+
+		// Operator & Admin write operations (Stacks & Tasks & Shell)
+		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
+		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
+		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
+		api.DELETE("/stack/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteStackHandler)
+		api.POST("/stack/:id/migrate", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), migrateStackHandler)
+		api.DELETE("/task/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteTaskHandler)
+		api.POST("/task/:id/action", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskActionHandler)
+		api.GET("/task/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskShellHandler)
+		api.GET("/node/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), nodeShellHandler)
+		api.POST("/coredns/dig", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSDigHandler)
+		api.POST("/caddy/fmt", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyFmtHandler)
+
+		// Admin-only operations (Security, Nodes, Caddy TLS, CoreDNS config, Update, SLO edit)
+		api.PUT("/settings", auth.RequireRole(auth.RoleAdmin), updateSettingsHandler)
+		api.PUT("/settings/password", auth.RequireRole(auth.RoleAdmin), changePasswordHandler)
+		api.POST("/node/:id/role", auth.RequireRole(auth.RoleAdmin), nodeRoleHandler)
+		api.POST("/node/:id/availability", auth.RequireRole(auth.RoleAdmin), nodeAvailabilityHandler)
+		api.POST("/node/:id/reboot", auth.RequireRole(auth.RoleAdmin), nodeRebootHandler)
+		api.POST("/node/:id/leave", auth.RequireRole(auth.RoleAdmin), nodeLeaveHandler)
+		api.POST("/node/:id/labels", auth.RequireRole(auth.RoleAdmin), nodeLabelsHandler)
+		api.POST("/node/:id/sync-token", auth.RequireRole(auth.RoleAdmin), nodeSyncTokenHandler)
+		api.POST("/node/add", auth.RequireRole(auth.RoleAdmin), nodeAddHandler)
+		api.PUT("/coredns/config", auth.RequireRole(auth.RoleAdmin), updateCoreDNSConfigHandler)
+		api.POST("/coredns/custom-records", auth.RequireRole(auth.RoleAdmin), createCustomDNSRecordHandler)
+		api.DELETE("/coredns/custom-records/:id", auth.RequireRole(auth.RoleAdmin), deleteCustomDNSRecordHandler)
+		api.POST("/scope/enable", auth.RequireRole(auth.RoleAdmin), scopeEnableHandler)
+		api.POST("/scope/disable", auth.RequireRole(auth.RoleAdmin), scopeDisableHandler)
+		api.POST("/update/apply", auth.RequireRole(auth.RoleAdmin), updateApplyHandler)
+		api.POST("/slo/sync", auth.RequireRole(auth.RoleAdmin), sloSyncHandler)
+		api.POST("/slo/validate", auth.RequireRole(auth.RoleAdmin), sloValidateHandler)
+		api.POST("/slo/edit", auth.RequireRole(auth.RoleAdmin), sloEditHandler)
+		api.DELETE("/slo/:service_id", auth.RequireRole(auth.RoleAdmin), sloDeleteHandler)
+		api.POST("/slo/notify/config", auth.RequireRole(auth.RoleAdmin), sloSaveNotifyConfigHandler)
+		api.POST("/slo/notify/test", auth.RequireRole(auth.RoleAdmin), sloTestNotifyHandler)
+		api.POST("/caddy/certs/renew", auth.RequireRole(auth.RoleAdmin), caddyCertRenewHandler)
+		api.POST("/caddy/certs/custom", auth.RequireRole(auth.RoleAdmin), caddyCustomCertHandler)
+		api.POST("/caddy/certs/sync", auth.RequireRole(auth.RoleAdmin), caddyCertSyncHandler)
+		api.DELETE("/caddy/certs/orphaned", auth.RequireRole(auth.RoleAdmin), caddyPruneOrphanedCertsHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -348,7 +336,7 @@ func StartDashboard() {
 	fileServer := http.FileServer(http.FS(flutterContent))
 
 	// Serve root path
-	authorized.GET("/", func(c *gin.Context) {
+	r.GET("/", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
@@ -377,7 +365,7 @@ func StartDashboard() {
 	})
 
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
-	r.NoRoute(gin.BasicAuth(gin.Accounts{user: pass}), func(c *gin.Context) {
+	r.NoRoute(func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
@@ -489,6 +477,7 @@ func stateHandler(c *gin.Context) {
 		"cluster_join_token": joinToken,
 		"active_api_token":   apiToken,
 		"manager_ip":         managerIP,
+		"current_user":       auth.ExtractUserSession(c),
 		"update_available":   upInfo.UpdateAvailable,
 		"latest_version":     upInfo.LatestVersion,
 		"release_notes":      upInfo.ReleaseNotes,
@@ -3091,3 +3080,211 @@ func caddyFmtHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"formatted": formatted})
 }
+
+// ─────────────────────────────────────────────────────────────
+// Enterprise Authentication & LDAP Handlers
+// ─────────────────────────────────────────────────────────────
+
+func authProvidersHandler(c *gin.Context) {
+	providers := []gin.H{
+		{
+			"id":   "local",
+			"name": "Local Administrator",
+			"type": "local",
+		},
+	}
+
+	var ldapConfigs []db.LDAPConfig
+	if err := db.DB.Where("enabled = ?", true).Find(&ldapConfigs).Error; err == nil {
+		for _, cfg := range ldapConfigs {
+			providers = append(providers, gin.H{
+				"id":   cfg.ID,
+				"name": cfg.Name,
+				"type": "ldap",
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"providers": providers})
+}
+
+func authLoginHandler(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		Provider string `json:"provider"` // "local", "<ldap_id>", or ""
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		return
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	expectedUser := os.Getenv("GBNT_WEB_USER")
+	if expectedUser == "" {
+		expectedUser = "admin"
+	}
+	expectedPass := os.Getenv("GBNT_WEB_PASSWORD")
+	if expectedPass == "" {
+		expectedPass = "admin"
+	}
+
+	// 1. Try Local Admin if selected or auto
+	if req.Provider == "local" || req.Provider == "" {
+		if req.Username == expectedUser && req.Password == expectedPass {
+			session := auth.GenerateLocalAdminSession(req.Username)
+			token, err := auth.GenerateToken(session)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+				return
+			}
+			c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+			c.JSON(http.StatusOK, gin.H{
+				"token": token,
+				"user":  session,
+			})
+			return
+		}
+		if req.Provider == "local" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid local administrator credentials"})
+			return
+		}
+	}
+
+	// 2. Try LDAP / Active Directory
+	var ldapConfigs []db.LDAPConfig
+	query := db.DB.Where("enabled = ?", true)
+	if req.Provider != "" && req.Provider != "local" {
+		targetID := strings.TrimPrefix(req.Provider, "ldap:")
+		query = query.Where("id = ?", targetID)
+	}
+	if err := query.Find(&ldapConfigs).Error; err == nil && len(ldapConfigs) > 0 {
+		for _, cfg := range ldapConfigs {
+			if res, err := auth.AuthenticateLDAP(cfg, req.Username, req.Password); err == nil {
+				session := auth.UserSession{
+					Username:    res.Username,
+					DisplayName: res.DisplayName,
+					Email:       res.Email,
+					Role:        res.Role,
+					Provider:    "ldap:" + cfg.ID,
+					Permissions: auth.GetPermissions(res.Role),
+					ExpiresAt:   time.Now().Add(24 * time.Hour),
+				}
+				token, tErr := auth.GenerateToken(session)
+				if tErr != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+					return
+				}
+				c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+				c.JSON(http.StatusOK, gin.H{
+					"token": token,
+					"user":  session,
+				})
+				return
+			}
+		}
+	}
+
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials or unauthorized user"})
+}
+
+func authMeHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user": session})
+}
+
+func authLogoutHandler(c *gin.Context) {
+	c.SetCookie("gbnt_session", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+func authListLDAPHandler(c *gin.Context) {
+	var configs []db.LDAPConfig
+	if err := db.DB.Find(&configs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for i := range configs {
+		if configs[i].BindPassword != "" {
+			configs[i].BindPassword = "••••••••"
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"configs": configs})
+}
+
+func authSaveLDAPHandler(c *gin.Context) {
+	var req db.LDAPConfig
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	if req.ID == "" {
+		req.ID = "ad-" + uuid.New().String()[:8]
+	}
+	if req.Name == "" {
+		req.Name = "Active Directory"
+	}
+	if req.Port == 0 {
+		if strings.ToLower(req.Security) == "tls" || strings.ToLower(req.Security) == "ldaps" {
+			req.Port = 636
+		} else {
+			req.Port = 389
+		}
+	}
+
+	// Preserve existing bind password if masked
+	if req.BindPassword == "••••••••" {
+		var existing db.LDAPConfig
+		if db.DB.First(&existing, "id = ?", req.ID).Error == nil {
+			req.BindPassword = existing.BindPassword
+		}
+	}
+
+	if err := db.DB.Save(&req).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save LDAP configuration: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "LDAP configuration saved", "config": req})
+}
+
+func authDeleteLDAPHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Delete(&db.LDAPConfig{}, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "LDAP configuration deleted"})
+}
+
+func authTestLDAPHandler(c *gin.Context) {
+	var req struct {
+		Config       db.LDAPConfig `json:"config"`
+		TestUsername string        `json:"test_username"`
+		TestPassword string        `json:"test_password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	if req.Config.BindPassword == "••••••••" && req.Config.ID != "" {
+		var existing db.LDAPConfig
+		if db.DB.First(&existing, "id = ?", req.Config.ID).Error == nil {
+			req.Config.BindPassword = existing.BindPassword
+		}
+	}
+
+	res, err := auth.TestLDAPConnection(req.Config, req.TestUsername, req.TestPassword)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"result": res, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"result": res})
+}
+

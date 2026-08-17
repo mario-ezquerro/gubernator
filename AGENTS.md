@@ -117,3 +117,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 ### 12. Git Commits & Release Tag Quality
 * **Descriptive Commit Messages:** Whenever creating commits and tags for version bumps, the commit message MUST be detailed, informative, and explicitly describe what changed (e.g. `feat(scope): ...` or `fix(component): ...`). Avoid generic messages like `bump version` or `fix bug`.
 
+### 13. Enterprise Active Directory & LDAP Authentication + RBAC (`v2.20.0`)
+* **Multi-Server Enterprise Directory:** Connects Gubernator to multiple Active Directory / OpenLDAP servers with TLS/LDAPS (636) and StartTLS support, custom bind accounts, base search filters, and live connection diagnostics.
+* **Role-Based Access Control (RBAC):** Group DN mapping to three distinct operational tiers:
+  * 👑 `admin`: Unrestricted full access across cluster nodes, stacks, container shells, Caddy TLS certificates, CoreDNS configuration, and LDAP security.
+  * ⚡ `operator`: Stacks deployment/redeploy, task lifecycle (start, stop, restart), container logs, and terminal access without cluster/security mutation rights.
+  * 👁️ `readonly`: Visual-only audit access across overview, stacks, tasks, topology, Caddy routes, Grafana, Jaeger, and SLOs (all mutating actions disabled).
+* **Dual Emergency Auth & JWT Sessions:** Seamless fallback to local administrator (`admin` / `admin`) with 24-hour cryptographically signed HMAC-SHA256 JWT tokens.
+* **Dedicated Security UI:** Modern Directory Server management screen with "Test Connection" diagnostic tool and visual profile chips.
+

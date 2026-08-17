@@ -1,7 +1,10 @@
 import 'dart:ui_web' as ui_web;
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'models/models.dart';
 import 'screens/app_shell.dart';
+import 'screens/login_screen.dart';
+import 'services/api_service.dart';
 import 'theme/theme.dart';
 
 void main() {
@@ -53,8 +56,44 @@ class GubernatorApp extends StatefulWidget {
 }
 
 class _GubernatorAppState extends State<GubernatorApp> {
-  bool _isDark = true; // Default to dark mode
+  bool _isDark = true;
   String _displayName = 'Admin';
+  UserSession? _currentUser;
+  bool _checkingAuth = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    try {
+      final user = await ApiService.fetchMe();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          if (user != null) {
+            _displayName = user.displayName;
+          }
+          _checkingAuth = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _checkingAuth = false);
+      }
+    }
+  }
+
+  void _handleLogout() async {
+    await ApiService.logout();
+    if (mounted) {
+      setState(() {
+        _currentUser = null;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +103,36 @@ class _GubernatorAppState extends State<GubernatorApp> {
       theme: GubernatorTheme.light(),
       darkTheme: GubernatorTheme.dark(),
       themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
-      home: AppShell(
-        isDark: _isDark,
-        onThemeChanged: (dark) => setState(() => _isDark = dark),
-        displayName: _displayName,
-        onNameChanged: (name) => setState(() => _displayName = name),
-      ),
+      home: _checkingAuth
+          ? const Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🏛', style: TextStyle(fontSize: 48)),
+                    SizedBox(height: 16),
+                    CircularProgressIndicator(),
+                  ],
+                ),
+              ),
+            )
+          : _currentUser == null
+              ? LoginScreen(
+                  onLoginSuccess: (user) {
+                    setState(() {
+                      _currentUser = user;
+                      _displayName = user.displayName;
+                    });
+                  },
+                )
+              : AppShell(
+                  isDark: _isDark,
+                  onThemeChanged: (dark) => setState(() => _isDark = dark),
+                  displayName: _displayName,
+                  onNameChanged: (name) => setState(() => _displayName = name),
+                  currentUser: _currentUser,
+                  onLogout: _handleLogout,
+                ),
     );
   }
 }
