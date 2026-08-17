@@ -1,4 +1,5 @@
 import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 
@@ -26,6 +27,20 @@ class _ScopePageState extends State<ScopePage> {
     _checkStatus();
   }
 
+  void _registerScopeIframe() {
+    final host = html.window.location.hostname ?? 'localhost';
+    final target = _scopeUrl.isNotEmpty ? _scopeUrl : 'http://$host:4040/';
+    ui_web.platformViewRegistry.registerViewFactory(
+      'scope-view-$_iframeRefreshCount',
+      (int viewId) => html.IFrameElement()
+        ..src = target
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen'),
+    );
+  }
+
   Future<void> _checkStatus() async {
     try {
       final res = await ApiService.fetchScopeStatus();
@@ -36,6 +51,7 @@ class _ScopePageState extends State<ScopePage> {
           _image = res['image'] ?? 'marioezquerro/scope:latest';
           _imageId = res['image_id'] ?? '';
           _loading = false;
+          _registerScopeIframe();
         });
       }
     } catch (_) {
@@ -55,6 +71,7 @@ class _ScopePageState extends State<ScopePage> {
       }
       // Wait briefly for container initialization
       await Future.delayed(const Duration(seconds: 2));
+      _iframeRefreshCount++;
       await _checkStatus();
     } finally {
       if (mounted) {
@@ -83,6 +100,7 @@ class _ScopePageState extends State<ScopePage> {
           ),
         );
       }
+      _iframeRefreshCount++;
       await _checkStatus();
     } catch (e) {
       if (mounted) {
@@ -353,7 +371,8 @@ class _ScopePageState extends State<ScopePage> {
   }
 
   Widget _buildScopeActiveView(ThemeData theme) {
-    final targetUrl = _scopeUrl.isNotEmpty ? _scopeUrl : '/scope/';
+    final host = html.window.location.hostname ?? 'localhost';
+    final targetUrl = _scopeUrl.isNotEmpty ? _scopeUrl : 'http://$host:4040/';
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -400,7 +419,12 @@ class _ScopePageState extends State<ScopePage> {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => setState(() => _iframeRefreshCount++),
+                      onPressed: () {
+                        setState(() {
+                          _iframeRefreshCount++;
+                          _registerScopeIframe();
+                        });
+                      },
                       icon: const Icon(Icons.refresh, size: 14),
                       label: const Text('Refresh View', style: TextStyle(fontSize: 12)),
                       style: OutlinedButton.styleFrom(
@@ -431,8 +455,8 @@ class _ScopePageState extends State<ScopePage> {
           // Embedded Iframe
           Expanded(
             child: HtmlElementView(
-              key: ValueKey('scope-iframe-$_iframeRefreshCount-$_enabled'),
-              viewType: 'scope-iframe',
+              key: ValueKey('scope-view-$_iframeRefreshCount-$_enabled'),
+              viewType: 'scope-view-$_iframeRefreshCount',
             ),
           ),
         ],
