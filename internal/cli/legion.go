@@ -329,7 +329,7 @@ var legionJoinCmd = &cobra.Command{
 								"-v", "/var/run/docker.sock:/var/run/docker.sock",
 								"-v", "/proc:/host/proc:ro",
 								"-v", "/sys:/sys:ro",
-								"weaveworks/scope:latest",
+								"marioezquerro/scope:latest",
 							}
 							if t.Command != "" {
 								args = append(args, strings.Fields(t.Command)...)

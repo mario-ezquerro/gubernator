@@ -82,7 +82,7 @@ func EnableScope() error {
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 		"-v", "/proc:/host/proc:ro",
 		"-v", "/sys:/sys:ro",
-		"weaveworks/scope:latest",
+		"marioezquerro/scope:latest",
 		"--weave=false",
 		"--probe.docker=true",
 		"--probe.processes=true",
