@@ -14,7 +14,10 @@ class _ScopePageState extends State<ScopePage> {
   bool _loading = true;
   bool _enabled = false;
   bool _actionInProgress = false;
+  bool _updatingImage = false;
   String _scopeUrl = '';
+  String _image = 'marioezquerro/scope:latest';
+  String _imageId = '';
 
   @override
   void initState() {
@@ -29,6 +32,8 @@ class _ScopePageState extends State<ScopePage> {
         setState(() {
           _enabled = res['enabled'] == true;
           _scopeUrl = res['url'] ?? '';
+          _image = res['image'] ?? 'marioezquerro/scope:latest';
+          _imageId = res['image_id'] ?? '';
           _loading = false;
         });
       }
@@ -53,6 +58,44 @@ class _ScopePageState extends State<ScopePage> {
     } finally {
       if (mounted) {
         setState(() => _actionInProgress = false);
+      }
+    }
+  }
+
+  Future<void> _updateImage() async {
+    setState(() => _updatingImage = true);
+    try {
+      final res = await ApiService.updateScopeImage();
+      if (mounted) {
+        final msg = res['message'] ?? 'Image updated successfully';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(msg)),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _checkStatus();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update image: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _updatingImage = false);
       }
     }
   }
@@ -125,10 +168,46 @@ class _ScopePageState extends State<ScopePage> {
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          // Custom Docker Hub image chip
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.layers, size: 12, color: Colors.blue),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _image,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                if (_imageId.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '(${_imageId.replaceAll('sha256:', '').substring(0, 7)})',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.blue.shade300,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                       Text(
-                        'Interactive real-time container & host topology graphics (Weave Scope)',
+                        'Interactive real-time container & host topology graphics (Weave Scope ARM64)',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
@@ -138,9 +217,24 @@ class _ScopePageState extends State<ScopePage> {
                 ],
               ),
 
-              // Master Toggle Switch
+              // Action Buttons & Master Toggle Switch
               Row(
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: (_actionInProgress || _updatingImage) ? null : () => _updateImage(),
+                    icon: _updatingImage
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.cloud_sync, size: 15),
+                    label: Text(_updatingImage ? 'Pulling Image...' : 'Pull Latest Image', style: const TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   if (_actionInProgress)
                     const Padding(
                       padding: EdgeInsets.only(right: 12),
@@ -212,7 +306,7 @@ class _ScopePageState extends State<ScopePage> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Network Topology & Container Graphics (Weave Scope) provides live interactive maps of your Docker containers, sockets, host networks, and process connections.',
+                  'Network Topology provides live interactive maps of your Docker containers, sockets, host networks, and process connections powered by $_image.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),

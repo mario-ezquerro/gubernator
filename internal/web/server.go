@@ -316,6 +316,7 @@ func StartDashboard() {
 		api.DELETE("/coredns/custom-records/:id", auth.RequireRole(auth.RoleAdmin), deleteCustomDNSRecordHandler)
 		api.POST("/scope/enable", auth.RequireRole(auth.RoleAdmin), scopeEnableHandler)
 		api.POST("/scope/disable", auth.RequireRole(auth.RoleAdmin), scopeDisableHandler)
+		api.POST("/scope/update", auth.RequireRole(auth.RoleAdmin), scopeUpdateHandler)
 		api.POST("/update/apply", auth.RequireRole(auth.RoleAdmin), updateApplyHandler)
 		api.POST("/slo/sync", auth.RequireRole(auth.RoleAdmin), sloSyncHandler)
 		api.POST("/slo/validate", auth.RequireRole(auth.RoleAdmin), sloValidateHandler)
@@ -2031,6 +2032,23 @@ func scopeDisableHandler(c *gin.Context) {
 		return
 	}
 	scopeStatusHandler(c)
+}
+
+func scopeUpdateHandler(c *gin.Context) {
+	out, err := monitor.UpdateScopeImage()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	hostIP := c.Request.Host
+	if idx := strings.Index(hostIP, ":"); idx != -1 {
+		hostIP = hostIP[:idx]
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Weave Scope image pulled and updated successfully",
+		"output":  out,
+		"status":  monitor.GetScopeStatus(hostIP),
+	})
 }
 
 func sanitizeScopeTopologies(data []byte) []byte {

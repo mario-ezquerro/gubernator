@@ -11,6 +11,7 @@ import (
 const (
 	ScopeContainerName = "gbnt-monitor-scope"
 	ScopePort          = "4040"
+	ScopeImage         = "marioezquerro/scope:latest"
 )
 
 // ScopeStatusResponse holds the status information for Weave Scope.
@@ -20,6 +21,8 @@ type ScopeStatusResponse struct {
 	Port      string `json:"port"`
 	URL       string `json:"url,omitempty"`
 	Container string `json:"container"`
+	Image     string `json:"image"`
+	ImageID   string `json:"image_id,omitempty"`
 }
 
 // IsScopeRunning checks if the Weave Scope container is currently running.
@@ -48,12 +51,24 @@ func GetScopeStatus(hostIP string) ScopeStatusResponse {
 		}
 	}
 
+	imgID := ""
+	if out, err := exec.Command("docker", "inspect", "-f", "{{.Image}}", ScopeContainerName).Output(); err == nil {
+		raw := strings.TrimSpace(string(out))
+		if len(raw) > 19 {
+			imgID = raw[:19]
+		} else {
+			imgID = raw
+		}
+	}
+
 	return ScopeStatusResponse{
 		Enabled:   running,
 		Status:    statusStr,
 		Port:      ScopePort,
 		URL:       urlStr,
 		Container: ScopeContainerName,
+		Image:     ScopeImage,
+		ImageID:   imgID,
 	}
 }
 
@@ -72,7 +87,10 @@ func EnableScope() error {
 		return nil
 	}
 
-	fmt.Println("\n🕸️  Deploying Network Topology (Weave Scope)...")
+	fmt.Println("\n🕸️  Deploying Network Topology (marioezquerro/scope)...")
+
+	// Pull latest image to ensure the most updated image is used
+	_ = exec.Command("docker", "pull", ScopeImage).Run()
 
 	args := []string{
 		"-e", "CHECKPOINT_DISABLE=1",
@@ -82,7 +100,7 @@ func EnableScope() error {
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 		"-v", "/proc:/host/proc:ro",
 		"-v", "/sys:/sys:ro",
-		"marioezquerro/scope:latest",
+		ScopeImage,
 		"--weave=false",
 		"--probe.docker=true",
 		"--probe.processes=true",
@@ -100,6 +118,25 @@ func EnableScope() error {
 
 	fmt.Println("✅ Network Topology (Weave Scope) is now active on port 4040.")
 	return nil
+}
+
+// UpdateScopeImage pulls the latest image from Docker Hub and recreates Scope container.
+func UpdateScopeImage() (string, error) {
+	fmt.Println("\n🔄 Pulling latest marioezquerro/scope:latest from Docker Hub...")
+	pullOut, err := exec.Command("docker", "pull", ScopeImage).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to pull image: %w (output: %s)", err, string(pullOut))
+	}
+
+	wasRunning := IsScopeRunning()
+	if wasRunning {
+		_ = DisableScope()
+		if err := EnableScope(); err != nil {
+			return "", fmt.Errorf("failed to restart scope with updated image: %w", err)
+		}
+	}
+
+	return strings.TrimSpace(string(pullOut)), nil
 }
 
 // DisableScope stops and removes the Weave Scope container.

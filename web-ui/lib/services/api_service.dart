@@ -360,14 +360,32 @@ class ApiService {
 
   /// Enables Weave Scope container.
   static Future<bool> enableScope() async {
-    final response = await http.post(Uri.parse('/api/scope/enable'));
+    final response = await http.post(
+      Uri.parse('/api/scope/enable'),
+      headers: authHeaders,
+    );
     return response.statusCode == 200;
   }
 
   /// Disables Weave Scope container.
   static Future<bool> disableScope() async {
-    final response = await http.post(Uri.parse('/api/scope/disable'));
+    final response = await http.post(
+      Uri.parse('/api/scope/disable'),
+      headers: authHeaders,
+    );
     return response.statusCode == 200;
+  }
+
+  /// Updates and pulls latest Weave Scope container image from Docker Hub.
+  static Future<Map<String, dynamic>> updateScopeImage() async {
+    final response = await http.post(
+      Uri.parse('/api/scope/update'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {'error': 'Failed to update Scope image'};
   }
 
   /// Triggers cluster auto-update.
