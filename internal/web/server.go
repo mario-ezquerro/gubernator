@@ -1807,7 +1807,6 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 	}
 
 	if username == "" {
-		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -1857,7 +1856,6 @@ func jaegerProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass
 	}
 
 	if username == "" {
-		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -2096,7 +2094,6 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 	}
 
 	if username == "" {
-		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -2158,7 +2155,6 @@ func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expecte
 	}
 
 	if username == "" {
-		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}

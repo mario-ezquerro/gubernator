@@ -106,7 +106,6 @@ func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := ExtractUserSession(c)
 		if session == nil {
-			c.Header("WWW-Authenticate", `Basic realm="Gubernator Secured Access"`)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "Authentication required. Please log in.",
 			})
