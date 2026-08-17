@@ -1,9 +1,11 @@
 package web
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net"
@@ -2033,6 +2035,44 @@ func scopeDisableHandler(c *gin.Context) {
 	scopeStatusHandler(c)
 }
 
+func sanitizeScopeTopologies(data []byte) []byte {
+	var list []map[string]interface{}
+	if err := json.Unmarshal(data, &list); err != nil {
+		return data
+	}
+
+	var cleaned []map[string]interface{}
+	for _, item := range list {
+		name, _ := item["name"].(string)
+		// Skip empty Kubernetes/ECS/Swarm topologies
+		if name == "Pods" || name == "Services" || name == "Tasks" {
+			continue
+		}
+
+		// Filter sub_topologies to remove "Weave Net"
+		if subs, ok := item["sub_topologies"].([]interface{}); ok {
+			var newSubs []interface{}
+			for _, sub := range subs {
+				if subMap, ok := sub.(map[string]interface{}); ok {
+					subName, _ := subMap["name"].(string)
+					if strings.EqualFold(subName, "Weave Net") {
+						continue
+					}
+					newSubs = append(newSubs, subMap)
+				}
+			}
+			item["sub_topologies"] = newSubs
+		}
+		cleaned = append(cleaned, item)
+	}
+
+	res, err := json.Marshal(cleaned)
+	if err != nil {
+		return data
+	}
+	return res
+}
+
 func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
 	// Check JWT, session cookie, or basic auth before passing to proxy
 	userSession := auth.ExtractUserSession(c)
@@ -2061,6 +2101,11 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 		return
 	}
 
+	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
+		c.Redirect(http.StatusTemporaryRedirect, "/scope/api/topology/containers")
+		return
+	}
+
 	targetURL, err := url.Parse("http://127.0.0.1:4040")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Invalid target URL")
@@ -2071,6 +2116,15 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("X-Frame-Options")
 		resp.Header.Del("Content-Security-Policy")
+		if strings.HasSuffix(c.Request.URL.Path, "/api/topology") && resp.StatusCode == http.StatusOK {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err == nil {
+				cleaned := sanitizeScopeTopologies(bodyBytes)
+				resp.Body = io.NopCloser(bytes.NewReader(cleaned))
+				resp.ContentLength = int64(len(cleaned))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(cleaned)))
+			}
+		}
 		return nil
 	}
 
@@ -2109,6 +2163,11 @@ func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expecte
 		return
 	}
 
+	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
+		c.Redirect(http.StatusTemporaryRedirect, "/api/topology/containers")
+		return
+	}
+
 	targetURL, err := url.Parse("http://127.0.0.1:4040")
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Invalid target URL")
@@ -2119,6 +2178,15 @@ func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expecte
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("X-Frame-Options")
 		resp.Header.Del("Content-Security-Policy")
+		if strings.HasSuffix(c.Request.URL.Path, "/api/topology") && resp.StatusCode == http.StatusOK {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err == nil {
+				cleaned := sanitizeScopeTopologies(bodyBytes)
+				resp.Body = io.NopCloser(bytes.NewReader(cleaned))
+				resp.ContentLength = int64(len(cleaned))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(cleaned)))
+			}
+		}
 		return nil
 	}
 
