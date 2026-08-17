@@ -1443,10 +1443,17 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		slog.Warn("failed to update Prometheus config on node availability change", "err", err)
 	}
 
-	// Check for stale/mismatched authentication token
+	// Check for stale/mismatched authentication token and auto-sync
 	authMismatch := false
+	autoSynced := false
 	if status == "active" && node.Role == "worker" {
 		authMismatch = nodemanager.HasAuthMismatch(node.IP, node.ID)
+		if authMismatch {
+			autoSynced = true
+			go func(nid string) {
+				_ = nodemanager.AutoSyncWorkerToken(nid)
+			}(node.ID)
+		}
 	}
 
 	apiToken := os.Getenv("GBNT_API_TOKEN")
@@ -1460,9 +1467,15 @@ func nodeAvailabilityHandler(c *gin.Context) {
 	}
 	managerAddr := fmt.Sprintf("%s:4000", managerIP)
 
+	msg := "Node availability updated"
+	if autoSynced {
+		msg = "Node activated. Authentication token was automatically synchronized via SSH."
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":        "Node availability updated",
+		"message":        msg,
 		"auth_mismatch":  authMismatch,
+		"auto_synced":    autoSynced,
 		"node_id":        node.ID,
 		"node_ip":        node.IP,
 		"active_token":   apiToken,

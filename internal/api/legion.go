@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
@@ -70,6 +71,11 @@ func NodeJoinHandler(c *gin.Context) {
 	coredns.SyncWorkerCoreStacks(db.DB)
 	monitor.RegisterInDB(db.DB)
 
+	// Broadcast Caddy TLS certificates to newly joined node in background
+	go func() {
+		_, _, _ = caddy.SyncCertificatesToNodes()
+	}()
+
 	// Regenerate and reload Prometheus configurations with the new worker target
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
 		slog.Warn("failed to update Prometheus config on node join", "err", err)
@@ -114,8 +120,13 @@ func NodeHeartbeatHandler(c *gin.Context) {
 
 	// Only transition status to "active" if it was "down" or empty.
 	// Preserve maintenance, pause, drain, and left states during heartbeats!
-	if existingNode.Status == "down" || existingNode.Status == "" {
+	wasDown := existingNode.Status == "down" || existingNode.Status == ""
+	if wasDown {
 		updates["status"] = "active"
+		// Automatically ensure certificates are synced to this newly active node
+		go func() {
+			_, _, _ = caddy.SyncCertificatesToNodes()
+		}()
 	}
 
 	db.DB.Model(&db.Node{}).Where("id = ?", req.ID).Updates(updates)

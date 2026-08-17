@@ -188,9 +188,8 @@ class _CenturionsPageState extends State<CenturionsPage> {
     }
 
     if (res['auth_mismatch'] == true && node != null) {
-      _showSnackBar('Node activated in DB, but stale auth token detected!');
+      _showSnackBar('⚡ Token desincronizado detectado: Gubernator ha auto-sincronizado el nodo vía SSH automáticamente.');
       widget.onRefresh();
-      _showTokenMismatchDialog(node, res);
       return;
     }
 
@@ -218,15 +217,15 @@ class _CenturionsPageState extends State<CenturionsPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.15),
+                    color: Colors.blue.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.key_off, color: Colors.orange, size: 24),
+                  child: const Icon(Icons.sync_lock, color: Colors.blue, size: 24),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'Token Desincronizado Detectado',
+                    'Auto-Sincronización de Token',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
@@ -242,18 +241,18 @@ class _CenturionsPageState extends State<CenturionsPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
+                        color: Colors.blue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                          const Icon(Icons.check_circle_outline, color: Colors.blue, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'El nodo worker "${node.id}" (${node.ip}) está intentando comunicarse con el Manager con un token de autenticación antiguo o incorrecto.\n\nSi no se actualiza, el Manager no aceptará sus latidos de salud y volverá a marcar el nodo como inactivo ("down").',
+                              'Gubernator detectó credenciales antiguas en el worker "${node.id}" (${node.ip}) y ha lanzado la auto-sincronización en segundo plano vía SSH para actualizar sus tokens activos.',
                               style: const TextStyle(fontSize: 12.5, height: 1.4),
                             ),
                           ),

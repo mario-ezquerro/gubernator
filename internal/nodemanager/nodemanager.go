@@ -22,15 +22,18 @@ type AuthMismatch struct {
 var (
 	mismatchesLock sync.RWMutex
 	mismatches     = make(map[string]*AuthMismatch) // keyed by IP
+
+	autoSyncLock   sync.Mutex
+	lastAutoSync   = make(map[string]time.Time) // keyed by nodeID
+	autoSyncActive = make(map[string]bool)      // keyed by nodeID
 )
 
-// RecordAuthMismatch registers an unauthorized request from a given client IP/NodeID.
+// RecordAuthMismatch registers an unauthorized request from a given client IP/NodeID and auto-syncs.
 func RecordAuthMismatch(ip string, nodeID string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
 	}
 	mismatchesLock.Lock()
-	defer mismatchesLock.Unlock()
 
 	entry, exists := mismatches[ip]
 	if !exists {
@@ -45,7 +48,54 @@ func RecordAuthMismatch(ip string, nodeID string) {
 	}
 	entry.LastAttempt = time.Now()
 	entry.FailedCount++
+	mismatchesLock.Unlock()
+
 	slog.Warn("detected stale authentication token from node", "ip", ip, "node_id", nodeID, "fails", entry.FailedCount)
+
+	// Automatically self-heal: trigger background token synchronization via SSH
+	go func() {
+		var node db.Node
+		query := db.DB.Where("role = 'worker'")
+		if nodeID != "" {
+			query = query.Where("id = ?", nodeID)
+		} else {
+			query = query.Where("ip = ?", ip)
+		}
+		if err := query.First(&node).Error; err == nil && node.ID != "" {
+			_ = AutoSyncWorkerToken(node.ID)
+		}
+	}()
+}
+
+// AutoSyncWorkerToken performs rate-limited automatic token synchronization via SSH.
+func AutoSyncWorkerToken(nodeID string) error {
+	autoSyncLock.Lock()
+	if autoSyncActive[nodeID] {
+		autoSyncLock.Unlock()
+		return nil
+	}
+	if last, ok := lastAutoSync[nodeID]; ok && time.Since(last) < 30*time.Second {
+		autoSyncLock.Unlock()
+		return nil
+	}
+	autoSyncActive[nodeID] = true
+	lastAutoSync[nodeID] = time.Now()
+	autoSyncLock.Unlock()
+
+	defer func() {
+		autoSyncLock.Lock()
+		autoSyncActive[nodeID] = false
+		autoSyncLock.Unlock()
+	}()
+
+	slog.Info("self-healing: automatically synchronizing stale token to worker node", "node_id", nodeID)
+	err := SyncWorkerToken(nodeID)
+	if err != nil {
+		slog.Warn("self-healing auto-sync failed", "node_id", nodeID, "err", err)
+	} else {
+		slog.Info("self-healing auto-sync completed successfully", "node_id", nodeID)
+	}
+	return err
 }
 
 // ClearAuthMismatch clears the auth mismatch record for a given IP.
