@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Por favor ingresa usuario y contraseña');
+      setState(() => _errorMessage = 'Please enter both username and password');
       return;
     }
 
@@ -78,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _loading = false;
-        _errorMessage = res['error'] ?? 'Error de autenticación';
+        _errorMessage = res['error'] ?? 'Authentication failed';
       });
     }
   }
@@ -176,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Domain / Provider Selector
                   Text(
-                    'Dominio / Directorio de Autenticación',
+                    'Authentication Domain / Directory',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Username field
                   Text(
-                    'Usuario / SamAccountName',
+                    'Username / sAMAccountName',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -241,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextField(
                     controller: _usernameController,
                     decoration: InputDecoration(
-                      hintText: _selectedProvider == 'local' ? 'admin' : 'usuario@empresa.local',
+                      hintText: _selectedProvider == 'local' ? 'admin' : 'user@company.local',
                       prefixIcon: const Icon(Icons.person_outline, size: 20),
                       filled: true,
                       fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
@@ -261,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Password field
                   Text(
-                    'Contraseña',
+                    'Password',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -337,20 +337,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Text(
-                            'Iniciar Sesión',
+                            'Sign In',
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Demo Quick Fill Button
+                  // Quick Local Admin Button
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFFF59E0B)),
-                    label: const Text('Acceso Rápido Local (admin / admin)', style: TextStyle(fontSize: 12)),
+                    label: const Text('Quick Local Admin (admin / admin)', style: TextStyle(fontSize: 12)),
                     onPressed: () {
                       setState(() {
                         _selectedProvider = 'local';

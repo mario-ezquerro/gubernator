@@ -98,7 +98,7 @@ class _SecurityPageState extends State<SecurityPage> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 10),
-                Text(isEdit ? 'Editar Directorio LDAP / AD' : 'Añadir Directorio LDAP / Active Directory'),
+                Text(isEdit ? 'Edit Directory Server' : 'Add Active Directory / LDAP Server'),
               ],
             ),
             content: SizedBox(
@@ -116,15 +116,15 @@ class _SecurityPageState extends State<SecurityPage> {
                           child: TextField(
                             controller: nameCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Nombre Descriptivo *',
-                              hintText: 'Ej. Active Directory Corporativo',
+                              labelText: 'Display Name *',
+                              hintText: 'e.g. Corporate Active Directory',
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: SwitchListTile(
-                            title: const Text('Habilitado', style: TextStyle(fontSize: 13)),
+                            title: const Text('Enabled', style: TextStyle(fontSize: 13)),
                             value: enabled,
                             onChanged: (v) => setDialogState(() => enabled = v),
                           ),
@@ -141,8 +141,8 @@ class _SecurityPageState extends State<SecurityPage> {
                           child: TextField(
                             controller: hostCtrl,
                             decoration: const InputDecoration(
-                              labelText: 'Host / IP Servidor LDAP *',
-                              hintText: 'dc1.empresa.local',
+                              labelText: 'LDAP Host / IP *',
+                              hintText: 'dc1.company.local',
                             ),
                           ),
                         ),
@@ -152,7 +152,7 @@ class _SecurityPageState extends State<SecurityPage> {
                             controller: portCtrl,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
-                              labelText: 'Puerto',
+                              labelText: 'Port',
                               hintText: '389 / 636',
                             ),
                           ),
@@ -161,7 +161,7 @@ class _SecurityPageState extends State<SecurityPage> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: security,
-                            decoration: const InputDecoration(labelText: 'Seguridad'),
+                            decoration: const InputDecoration(labelText: 'Security Mode'),
                             items: const [
                               DropdownMenuItem(value: 'none', child: Text('None (389)')),
                               DropdownMenuItem(value: 'tls', child: Text('LDAPS / TLS (636)')),
@@ -186,20 +186,20 @@ class _SecurityPageState extends State<SecurityPage> {
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Insecure Skip Verify (Aceptar certificados autofirmados de dominio)', style: TextStyle(fontSize: 12.5)),
+                      title: const Text('Insecure Skip Verify (Accept self-signed domain certificates)', style: TextStyle(fontSize: 12.5)),
                       value: insecureSkipVerify,
                       onChanged: (v) => setDialogState(() => insecureSkipVerify = v ?? false),
                     ),
                     const Divider(height: 24),
 
                     // Search Base & Service Account
-                    const Text('Credenciales de Búsqueda (Service Account)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Search Credentials (Service Account)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: baseDnCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Base DN (Search Base) *',
-                        hintText: 'DC=empresa,DC=local',
+                        hintText: 'DC=company,DC=local',
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -210,7 +210,7 @@ class _SecurityPageState extends State<SecurityPage> {
                             controller: bindDnCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Bind DN / Service User',
-                              hintText: 'CN=svc_gubernator,OU=ServiceAccounts,DC=empresa,DC=local',
+                              hintText: 'CN=svc_gubernator,OU=ServiceAccounts,DC=company,DC=local',
                             ),
                           ),
                         ),
@@ -230,7 +230,7 @@ class _SecurityPageState extends State<SecurityPage> {
                     const Divider(height: 24),
 
                     // User Filter
-                    const Text('Filtro de Usuarios', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('User Search Filter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -259,13 +259,13 @@ class _SecurityPageState extends State<SecurityPage> {
                     const Divider(height: 24),
 
                     // RBAC Group Mappings
-                    const Text('Mapeo de Grupos a Roles RBAC (Gubernator)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Group Mappings to RBAC Roles (Gubernator)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: adminGroupCtrl,
                       decoration: const InputDecoration(
-                        labelText: '👑 Grupo para Rol ADMINISTRADOR (Full Access)',
-                        hintText: 'CN=Gubernator_Admins,OU=Groups,DC=empresa,DC=local',
+                        labelText: '👑 Group for ADMIN Role (Full Access)',
+                        hintText: 'CN=Gubernator_Admins,OU=Groups,DC=company,DC=local',
                         prefixIcon: Icon(Icons.admin_panel_settings, color: Colors.amber, size: 20),
                       ),
                     ),
@@ -273,8 +273,8 @@ class _SecurityPageState extends State<SecurityPage> {
                     TextField(
                       controller: operatorGroupCtrl,
                       decoration: const InputDecoration(
-                        labelText: '⚡ Grupo para Rol OPERADOR (Deploy & Restart)',
-                        hintText: 'CN=Gubernator_Operators,OU=Groups,DC=empresa,DC=local',
+                        labelText: '⚡ Group for OPERATOR Role (Deploy & Restart)',
+                        hintText: 'CN=Gubernator_Operators,OU=Groups,DC=company,DC=local',
                         prefixIcon: Icon(Icons.engineering, color: Colors.blue, size: 20),
                       ),
                     ),
@@ -282,19 +282,19 @@ class _SecurityPageState extends State<SecurityPage> {
                     TextField(
                       controller: readOnlyGroupCtrl,
                       decoration: const InputDecoration(
-                        labelText: '👁️ Grupo para Rol SOLO LECTURA (Viewer)',
-                        hintText: 'CN=Gubernator_Viewers,OU=Groups,DC=empresa,DC=local',
+                        labelText: '👁️ Group for READ-ONLY Role (Viewer)',
+                        hintText: 'CN=Gubernator_Viewers,OU=Groups,DC=company,DC=local',
                         prefixIcon: Icon(Icons.visibility, color: Colors.green, size: 20),
                       ),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       value: defaultRole,
-                      decoration: const InputDecoration(labelText: 'Rol por Defecto (si no coincide ningún grupo)'),
+                      decoration: const InputDecoration(labelText: 'Default Fallback Role (if no group matches)'),
                       items: const [
-                        DropdownMenuItem(value: 'readonly', child: Text('👁️ Solo Lectura (Recomendado)')),
-                        DropdownMenuItem(value: 'operator', child: Text('⚡ Operador')),
-                        DropdownMenuItem(value: 'admin', child: Text('👑 Administrador')),
+                        DropdownMenuItem(value: 'readonly', child: Text('👁️ Read-Only (Recommended)')),
+                        DropdownMenuItem(value: 'operator', child: Text('⚡ Operator')),
+                        DropdownMenuItem(value: 'admin', child: Text('👑 Administrator')),
                       ],
                       onChanged: (v) {
                         if (v != null) setDialogState(() => defaultRole = v);
@@ -329,7 +329,7 @@ class _SecurityPageState extends State<SecurityPage> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  testResult!.connected ? 'Prueba de Conexión: Exitosa (${testResult!.latencyMs} ms)' : 'Prueba de Conexión: Fallida',
+                                  testResult!.connected ? 'Connection Test: Successful (${testResult!.latencyMs} ms)' : 'Connection Test: Failed',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -365,7 +365,7 @@ class _SecurityPageState extends State<SecurityPage> {
                         final host = hostCtrl.text.trim();
                         final baseDn = baseDnCtrl.text.trim();
                         if (host.isEmpty || baseDn.isEmpty) {
-                          _showSnackBar('Host y Base DN son obligatorios para probar', isError: true);
+                          _showSnackBar('Host and Base DN are required to test connection', isError: true);
                           return;
                         }
 
@@ -403,7 +403,7 @@ class _SecurityPageState extends State<SecurityPage> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancelar'),
+                child: const Text('Cancel'),
               ),
               FilledButton(
                 onPressed: () async {
@@ -412,7 +412,7 @@ class _SecurityPageState extends State<SecurityPage> {
                   final baseDn = baseDnCtrl.text.trim();
 
                   if (name.isEmpty || host.isEmpty || baseDn.isEmpty) {
-                    _showSnackBar('Por favor completa los campos requeridos (*)', isError: true);
+                    _showSnackBar('Please fill all required fields (*)', isError: true);
                     return;
                   }
 
@@ -438,15 +438,15 @@ class _SecurityPageState extends State<SecurityPage> {
 
                   final res = await ApiService.saveLDAPConfig(cfg);
                   if (res['error'] != null) {
-                    _showSnackBar('Error guardando LDAP: ${res['error']}', isError: true);
+                    _showSnackBar('Failed to save directory config: ${res['error']}', isError: true);
                     return;
                   }
 
                   Navigator.pop(ctx);
-                  _showSnackBar('Directorio LDAP guardado correctamente');
+                  _showSnackBar('Directory server configuration saved');
                   _loadLDAPConfigs();
                 },
-                child: const Text('Guardar'),
+                child: const Text('Save'),
               ),
             ],
           );
@@ -459,14 +459,14 @@ class _SecurityPageState extends State<SecurityPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar Directorio LDAP'),
-        content: Text('¿Estás seguro de eliminar el directorio "${config.name}"? Los usuarios de este dominio ya no podrán autenticarse.'),
+        title: const Text('Delete Directory Server'),
+        content: Text('Are you sure you want to remove "${config.name}"? Users from this domain will no longer be able to authenticate.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -475,10 +475,10 @@ class _SecurityPageState extends State<SecurityPage> {
     if (confirmed == true) {
       final ok = await ApiService.deleteLDAPConfig(config.id);
       if (ok) {
-        _showSnackBar('Directorio LDAP eliminado');
+        _showSnackBar('Directory server removed');
         _loadLDAPConfigs();
       } else {
-        _showSnackBar('Error al eliminar directorio LDAP', isError: true);
+        _showSnackBar('Failed to remove directory server', isError: true);
       }
     }
   }
@@ -511,14 +511,14 @@ class _SecurityPageState extends State<SecurityPage> {
                         Icon(Icons.shield_outlined, color: primaryColor, size: 28),
                         const SizedBox(width: 10),
                         const Text(
-                          'Seguridad & Directorios Active Directory',
+                          'Security & Directory Services',
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Gestión de autenticación corporativa, servidores LDAP/AD y políticas de acceso RBAC.',
+                      'Enterprise directory authentication, Active Directory/LDAP servers, and RBAC access policies.',
                       style: TextStyle(
                         fontSize: 13,
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -528,7 +528,7 @@ class _SecurityPageState extends State<SecurityPage> {
                 ),
                 FilledButton.icon(
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Añadir Servidor AD / LDAP'),
+                  label: const Text('Add Directory Server (AD / LDAP)'),
                   onPressed: () => _openLDAPDialog(),
                 ),
               ],
@@ -546,10 +546,10 @@ class _SecurityPageState extends State<SecurityPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Identidades & Control de Acceso (RBAC)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text('Identities & Access Control (RBAC)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 8),
                   Text(
-                    'Gubernator soporta autenticación dual: cuenta Local Administrator de emergencia y múltiples servidores Active Directory / LDAP con mapeo dinámico de grupos a roles de Administrador, Operador y Solo Lectura.',
+                    'Gubernator supports dual authentication: an emergency Local Administrator account and multiple Active Directory / OpenLDAP servers with dynamic group mapping to Administrator, Operator, and Read-Only roles.',
                     style: TextStyle(fontSize: 13, height: 1.4, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                   ),
                   const SizedBox(height: 16),
@@ -557,9 +557,9 @@ class _SecurityPageState extends State<SecurityPage> {
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _buildRoleBadge('👑 Administrador', 'Acceso total (Crear/Destruir/Nodos/Caddy/Seguridad)', Colors.amber),
-                      _buildRoleBadge('⚡ Operador', 'Despliegues y reinicio de stacks, sin alterar infraestructura', Colors.blue),
-                      _buildRoleBadge('👁️ Solo Lectura', 'Auditoría y monitorización (Visualización pura sin acciones destructivas)', Colors.green),
+                      _buildRoleBadge('👑 Administrator', 'Full access (Deploy/Destroy/Nodes/Caddy/Security)', Colors.amber),
+                      _buildRoleBadge('⚡ Operator', 'Deploy and restart stacks, without cluster infrastructure mutations', Colors.blue),
+                      _buildRoleBadge('👁️ Read-Only', 'Audit and monitoring (Pure visualization without destructive actions)', Colors.green),
                     ],
                   ),
                 ],
@@ -572,12 +572,12 @@ class _SecurityPageState extends State<SecurityPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Servidores Active Directory / LDAP Conectados',
+                  'Connected Active Directory / LDAP Servers',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 20),
-                  tooltip: 'Refrescar',
+                  tooltip: 'Refresh',
                   onPressed: _loadLDAPConfigs,
                 ),
               ],
@@ -594,7 +594,7 @@ class _SecurityPageState extends State<SecurityPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
-                child: Text('Error cargando servidores LDAP: $_error', style: const TextStyle(color: Colors.red)),
+                child: Text('Error loading directory servers: $_error', style: const TextStyle(color: Colors.red)),
               )
             else if (_ldapConfigs.isEmpty)
               Container(
@@ -609,13 +609,13 @@ class _SecurityPageState extends State<SecurityPage> {
                   children: [
                     Icon(Icons.corporate_fare_outlined, size: 48, color: Colors.grey.withValues(alpha: 0.5)),
                     const SizedBox(height: 12),
-                    const Text('No hay servidores Active Directory / LDAP configurados', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Text('No Active Directory / LDAP servers configured', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 6),
-                    const Text('Actualmente el clúster utiliza la cuenta Local Administrator (admin / admin).', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    const Text('Currently the cluster is using the Local Administrator account (admin / admin).', style: TextStyle(fontSize: 13, color: Colors.grey)),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Conectar primer Active Directory'),
+                      label: const Text('Connect First Active Directory'),
                       onPressed: () => _openLDAPDialog(),
                     ),
                   ],
@@ -663,7 +663,7 @@ class _SecurityPageState extends State<SecurityPage> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      cfg.enabled ? 'ACTIVO' : 'DESHABILITADO',
+                                      cfg.enabled ? 'ACTIVE' : 'DISABLED',
                                       style: TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.bold,
@@ -706,12 +706,12 @@ class _SecurityPageState extends State<SecurityPage> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 20),
-                          tooltip: 'Editar',
+                          tooltip: 'Edit',
                           onPressed: () => _openLDAPDialog(cfg),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                          tooltip: 'Eliminar',
+                          tooltip: 'Delete',
                           onPressed: () => _deleteLDAP(cfg),
                         ),
                       ],
@@ -736,12 +736,12 @@ class _SecurityPageState extends State<SecurityPage> {
                     children: [
                       const Icon(Icons.key, color: Colors.orange, size: 22),
                       const SizedBox(width: 10),
-                      const Text('Tokens de Clúster & Acceso CLI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('Cluster Security Tokens & CLI Access', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tokens criptográficos utilizados para la autenticación asimétrica de la API REST (Puerto 4000) y el comando `gbnt legion join`.',
+                    'Cryptographic tokens used for asymmetric REST API authentication (Port 4000) and `gbnt legion join` commands.',
                     style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
                   ),
                   const SizedBox(height: 16),
@@ -810,16 +810,16 @@ class _SecurityPageState extends State<SecurityPage> {
               children: [
                 Expanded(
                   child: Text(
-                    value.isNotEmpty ? value : '(No configurado)',
+                    value.isNotEmpty ? value : '(Not configured)',
                     style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Color(0xFFF97316)),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 16),
-                  tooltip: 'Copiar',
+                  tooltip: 'Copy',
                   onPressed: () {
                     ClipboardService.copy(value);
-                    _showSnackBar('$label copiado');
+                    _showSnackBar('$label copied to clipboard');
                   },
                 ),
               ],

@@ -193,7 +193,7 @@ class _AppShellState extends State<AppShell> {
       const SidebarItem(
         icon: Icons.shield_outlined,
         activeIcon: Icons.shield,
-        label: 'Seguridad & AD',
+        label: 'Security & Directory',
       ),
     ];
     return items;
@@ -212,7 +212,7 @@ class _AppShellState extends State<AppShell> {
     'Network Monitor',
     'Jaeger',
     'Network Topology',
-    'Seguridad & AD',
+    'Security & Directory',
   ];
 
   Widget _buildCurrentPage() {
@@ -431,7 +431,7 @@ class _AppShellState extends State<AppShell> {
                       if (widget.onLogout != null)
                         IconButton(
                           icon: const Icon(Icons.logout, size: 20, color: Colors.redAccent),
-                          tooltip: 'Cerrar Sesión',
+                          tooltip: 'Sign Out',
                           onPressed: widget.onLogout,
                         ),
                     ],
