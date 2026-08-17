@@ -364,6 +364,23 @@ func StartDashboard() {
 		scopeProxyHandler(c, sessionToken, user, pass)
 	})
 
+	// Direct Weave Scope API routes when embedded in iframe or web frontend
+	r.Any("/api/topology", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/topology/*proxyPath", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/report", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/probes", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/control/*proxyPath", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+
 	// Catch-all: serve static file if exists, otherwise serve index.html (SPA)
 	r.NoRoute(func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -1733,14 +1750,19 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 		
-		username := c.GetString(gin.AuthUserKey)
-		
+		userSession := auth.ExtractUserSession(c)
+		username := ""
+		if userSession != nil {
+			username = userSession.Username
+		}
+		if username == "" {
+			username = c.GetString(gin.AuthUserKey)
+		}
 		if username == "" {
 			if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
 				username = expectedUser
 			}
 		}
-
 		if username == "" {
 			u, p, hasAuth := req.BasicAuth()
 			if hasAuth && u == expectedUser && p == expectedPass {
@@ -1811,8 +1833,15 @@ func jaegerProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass
 		return nil
 	}
 
-	// Manually check auth before passing to proxy
-	username := c.GetString(gin.AuthUserKey)
+	// Check JWT, session cookie, or basic auth before passing to proxy
+	userSession := auth.ExtractUserSession(c)
+	username := ""
+	if userSession != nil {
+		username = userSession.Username
+	}
+	if username == "" {
+		username = c.GetString(gin.AuthUserKey)
+	}
 	if username == "" {
 		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
 			username = expectedUser
@@ -2005,8 +2034,15 @@ func scopeDisableHandler(c *gin.Context) {
 }
 
 func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
-	// Manually check auth before passing to proxy
-	username := c.GetString(gin.AuthUserKey)
+	// Check JWT, session cookie, or basic auth before passing to proxy
+	userSession := auth.ExtractUserSession(c)
+	username := ""
+	if userSession != nil {
+		username = userSession.Username
+	}
+	if username == "" {
+		username = c.GetString(gin.AuthUserKey)
+	}
 	if username == "" {
 		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
 			username = expectedUser
@@ -2041,6 +2077,49 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 	c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/scope")
 	if c.Request.URL.Path == "" {
 		c.Request.URL.Path = "/"
+	}
+
+	proxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+	userSession := auth.ExtractUserSession(c)
+	username := ""
+	if userSession != nil {
+		username = userSession.Username
+	}
+	if username == "" {
+		username = c.GetString(gin.AuthUserKey)
+	}
+	if username == "" {
+		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
+			username = expectedUser
+		}
+	}
+	if username == "" {
+		u, p, hasAuth := c.Request.BasicAuth()
+		if hasAuth && u == expectedUser && p == expectedPass {
+			username = expectedUser
+		}
+	}
+
+	if username == "" {
+		c.Header("WWW-Authenticate", `Basic realm="Restricted"`)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	targetURL, err := url.Parse("http://127.0.0.1:4040")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Invalid target URL")
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("X-Frame-Options")
+		resp.Header.Del("Content-Security-Policy")
+		return nil
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)

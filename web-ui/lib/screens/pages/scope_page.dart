@@ -280,6 +280,26 @@ class _ScopePageState extends State<ScopePage> {
                       'Live Topology Map running on port 4040',
                       style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                     ),
+                    const SizedBox(width: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lightbulb_outline, size: 13, color: Colors.blue),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Select "Containers" or "Hosts" in top bar for interactive network maps.',
+                            style: TextStyle(fontSize: 11, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 Row(
