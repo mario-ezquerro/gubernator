@@ -18,6 +18,7 @@ class _ScopePageState extends State<ScopePage> {
   String _scopeUrl = '';
   String _image = 'marioezquerro/scope:latest';
   String _imageId = '';
+  int _iframeRefreshCount = 0;
 
   @override
   void initState() {
@@ -399,6 +400,15 @@ class _ScopePageState extends State<ScopePage> {
                 Row(
                   children: [
                     OutlinedButton.icon(
+                      onPressed: () => setState(() => _iframeRefreshCount++),
+                      icon: const Icon(Icons.refresh, size: 14),
+                      label: const Text('Refresh View', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
                       onPressed: () => html.window.open(targetUrl, '_blank'),
                       icon: const Icon(Icons.open_in_new, size: 14),
                       label: const Text('Open in New Tab', style: TextStyle(fontSize: 12)),
@@ -419,8 +429,11 @@ class _ScopePageState extends State<ScopePage> {
           ),
           const Divider(height: 1),
           // Embedded Iframe
-          const Expanded(
-            child: HtmlElementView(viewType: 'scope-iframe'),
+          Expanded(
+            child: HtmlElementView(
+              key: ValueKey('scope-iframe-$_iframeRefreshCount-$_enabled'),
+              viewType: 'scope-iframe',
+            ),
           ),
         ],
       ),

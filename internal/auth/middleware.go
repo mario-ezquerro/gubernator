@@ -44,7 +44,16 @@ func ExtractUserSession(c *gin.Context) *UserSession {
 		}
 	}
 
-	// 3. Check Session Cookie (`gbnt_session`)
+	// 3. Check Query Parameter (?token=... or ?jwt=...) for iframes and websockets
+	if tokenParam := c.Query("token"); tokenParam != "" {
+		if session, err := ValidateToken(tokenParam); err == nil {
+			c.Set(ContextUserKey, session)
+			c.SetCookie("gbnt_session", tokenParam, 3600*24, "/", "", false, false)
+			return session
+		}
+	}
+
+	// 4. Check Session Cookie (`gbnt_session`)
 	if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie != "" {
 		if session, err := ValidateToken(cookie); err == nil {
 			c.Set(ContextUserKey, session)

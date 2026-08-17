@@ -377,10 +377,19 @@ func StartDashboard() {
 	r.Any("/api/report", func(c *gin.Context) {
 		scopeDirectProxyHandler(c, sessionToken, user, pass)
 	})
+	r.Any("/api/report/*proxyPath", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
 	r.Any("/api/probes", func(c *gin.Context) {
 		scopeDirectProxyHandler(c, sessionToken, user, pass)
 	})
 	r.Any("/api/control/*proxyPath", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/pipe/*proxyPath", func(c *gin.Context) {
+		scopeDirectProxyHandler(c, sessionToken, user, pass)
+	})
+	r.Any("/api/version", func(c *gin.Context) {
 		scopeDirectProxyHandler(c, sessionToken, user, pass)
 	})
 
@@ -2090,32 +2099,6 @@ func sanitizeScopeTopologies(data []byte) []byte {
 }
 
 func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
-	// Check JWT, session cookie, or basic auth before passing to proxy
-	userSession := auth.ExtractUserSession(c)
-	username := ""
-	if userSession != nil {
-		username = userSession.Username
-	}
-	if username == "" {
-		username = c.GetString(gin.AuthUserKey)
-	}
-	if username == "" {
-		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
-			username = expectedUser
-		}
-	}
-	if username == "" {
-		u, p, hasAuth := c.Request.BasicAuth()
-		if hasAuth && u == expectedUser && p == expectedPass {
-			username = expectedUser
-		}
-	}
-
-	if username == "" {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
 	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
 		c.Redirect(http.StatusTemporaryRedirect, "/scope/api/topology/containers")
 		return
@@ -2131,6 +2114,7 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("X-Frame-Options")
 		resp.Header.Del("Content-Security-Policy")
+		resp.Header.Set("Access-Control-Allow-Origin", "*")
 		if strings.HasSuffix(c.Request.URL.Path, "/api/topology") && resp.StatusCode == http.StatusOK {
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err == nil {
@@ -2152,31 +2136,6 @@ func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass 
 }
 
 func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
-	userSession := auth.ExtractUserSession(c)
-	username := ""
-	if userSession != nil {
-		username = userSession.Username
-	}
-	if username == "" {
-		username = c.GetString(gin.AuthUserKey)
-	}
-	if username == "" {
-		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
-			username = expectedUser
-		}
-	}
-	if username == "" {
-		u, p, hasAuth := c.Request.BasicAuth()
-		if hasAuth && u == expectedUser && p == expectedPass {
-			username = expectedUser
-		}
-	}
-
-	if username == "" {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
 	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
 		c.Redirect(http.StatusTemporaryRedirect, "/api/topology/containers")
 		return
@@ -2192,6 +2151,7 @@ func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expecte
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("X-Frame-Options")
 		resp.Header.Del("Content-Security-Policy")
+		resp.Header.Set("Access-Control-Allow-Origin", "*")
 		if strings.HasSuffix(c.Request.URL.Path, "/api/topology") && resp.StatusCode == http.StatusOK {
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err == nil {
