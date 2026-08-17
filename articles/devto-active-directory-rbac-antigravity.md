@@ -1,34 +1,34 @@
 ---
-title: Cómo dotamos a Gubernator de Autenticación Empresarial con Active Directory, LDAP y RBAC en Go & Flutter usando Google Antigravity
+title: Building Enterprise Active Directory, LDAP & Dynamic RBAC in Go & Flutter with Google Antigravity
 published: false
-description: Arquitectura e implementación de autenticación multi-directorio Active Directory (LDAPS), tokens JWT y control de acceso basado en roles (RBAC) en el orquestador Gubernator con pair-programming de Google Antigravity.
+description: A deep dive into implementing multi-server Active Directory SSO (LDAPS), JWT authentication, and 3-tier RBAC for Gubernator using Google Antigravity as an AI pair programmer.
 tags: go, docker, devops, flutter, ai
 cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/docs/images/security_ad.png
 ---
 
-# 🏛️ Cómo dotamos a Gubernator de Autenticación Empresarial con Active Directory, LDAP y RBAC usando Google Antigravity
+# 🏛️ Building Enterprise Active Directory, LDAP & Dynamic RBAC in Go & Flutter with Google Antigravity
 
-Cuando construyes un orquestador de contenedores como **[Gubernator (gbnt)](https://github.com/mario-ezquerro/gubernator)** —cuyo objetivo es ofrecer el punto óptimo entre la **simplicidad de Docker Swarm** y la **potencia de Nomad** con temática del Imperio Romano—, tarde o temprano surge un hito ineludible para dar el salto a entornos corporativos reales: **la seguridad empresarial y el control de acceso**.
+When building a lightweight container orchestrator like **[Gubernator (gbnt)](https://github.com/mario-ezquerro/gubernator)** — designed to strike the perfect balance between the **simplicity of Docker Swarm** and the **flexibility of Nomad** under a Roman Empire theme — a critical milestone inevitably emerges: **Enterprise Security and Access Control**.
 
-Tener un usuario `admin` por defecto está bien para un laboratorio local. Pero en una infraestructura de producción empresarial con cientos de ingenieros, necesitas:
-1. **Single Sign-On (SSO) con Microsoft Active Directory y OpenLDAP**.
-2. **Control de Acceso Basado en Roles (RBAC)** para segregar quién puede desplegar, quién puede reiniciar tareas y quién tiene acceso solo de lectura/auditoría.
-3. **Mapeo dinámico de Grupos de Seguridad** de la empresa hacia roles del orquestador.
-4. **Acceso de Emergencia (Break-glass Local Admin)** por si los controladores de dominio están caídos.
+While a default `admin` credential works well for local dev environments, moving into enterprise production with multi-disciplinary engineering teams demands:
+1. **Corporate Single Sign-On (SSO)** with Microsoft Active Directory and OpenLDAP.
+2. **Role-Based Access Control (RBAC)** to clearly segregate who can deploy stacks, restart containers, or audit telemetries in read-only mode.
+3. **Dynamic Group Mapping** from corporate security groups (`memberOf`) to orchestrator roles.
+4. **Emergency Break-Glass Access** (Local Administrator) in case network directory controllers are unreachable.
 
-En este artículo explicamos la arquitectura completa de esta feature introducida en **Gubernator v2.20.0** y cómo utilizamos **Google Antigravity (AGY)** para acelerar el diseño, la implementación Full-Stack (Go + Flutter Web) y la validación en un clúster real de 3 nodos.
+In this article, we explore the complete architecture of the enterprise security engine introduced in **Gubernator v2.20.0**, and how we leveraged **Google Antigravity (AGY)** as an autonomous AI pair programmer to design, implement, test, and verify this Full-Stack feature (Go + Flutter Web) across a live 3-node cluster.
 
 ---
 
-## 🏗️ La Arquitectura de Seguridad
+## 🏗️ The Security Architecture
 
-Diseñamos una arquitectura asimétrica desacoplada entre el motor de identidades, la API REST y el frontend web:
+We designed a decoupled, asymmetric architecture connecting identity providers, REST API middleware, and the Flutter Web UI:
 
 ```
  ┌────────────────────────────────────────────────────────┐
  │                   GUBERNATOR WEB UI                    │
- │   - Pantalla de Login con Selector de Directorio / AD  │
- │   - Header con Badge de Rol: 👑 Admin | ⚡ Ops | 👁️ View│
+ │   - Modern Login Screen with Domain / AD Selector      │
+ │   - Header Role Badge: 👑 Admin | ⚡ Ops | 👁️ Read-Only│
  └──────────────────────────┬─────────────────────────────┘
                             │ (REST /api/auth/login)
                             ▼
@@ -36,9 +36,9 @@ Diseñamos una arquitectura asimétrica desacoplada entre el motor de identidade
  │             GUBERNATOR CORE AUTH ENGINE (Go)           │
  │  - Local Emergency Admin (admin / admin fallback)      │
  │  - Multi-Server Active Directory / OpenLDAP Dialers    │
- │  - Negociación LDAPS (Puerto 636) y StartTLS (389)     │
- │  - Resolución Dinámica: Group DN -> Rol RBAC           │
- │  - Emisión y Firma de Tokens JWT (HMAC-SHA256)         │
+ │  - LDAPS (Port 636) & StartTLS (Port 389) Handshake    │
+ │  - Dynamic Group DN -> RBAC Role Resolution            │
+ │  - Cryptographic HMAC-SHA256 JWT Token Signing         │
  └─────────────┬────────────────────────────┬─────────────┘
                │                            │
                ▼                            ▼
@@ -48,34 +48,34 @@ Diseñamos una arquitectura asimétrica desacoplada entre el motor de identidade
  └───────────────────────────┘ └──────────────────────────┘
 ```
 
-### 👥 Matriz de Roles (RBAC)
+### 👥 Role-Based Access Control (RBAC) Matrix
 
-Definimos tres niveles operativos bien diferenciados:
+We established three distinct operational tiers:
 
-| Capacidad Operativa | 👑 `admin` | ⚡ `operator` | 👁️ `readonly` |
+| Operational Capability | 👑 `admin` | ⚡ `operator` | 👁️ `readonly` |
 | :--- | :---: | :---: | :---: |
-| **Overview, Métricas y Telemetría** | ✅ Total | ✅ Total | ✅ Total |
-| **Desplegar Stacks (`docker-compose.yml`)** | ✅ Total | ✅ Total | ❌ Bloqueado |
-| **Re-desplegar y Duplicar Stacks** | ✅ Total | ✅ Total | ❌ Bloqueado |
-| **Eliminar Stacks** | ✅ Total | ❌ Bloqueado | ❌ Bloqueado |
-| **Ciclo de Tareas (Start / Stop / Restart)** | ✅ Total | ✅ Total | ❌ Bloqueado |
-| **Acceso a Shell / Terminal de Contenedores** | ✅ Total | ✅ Total | ❌ Bloqueado |
-| **Gestión de Nodos (Drain, Activate, Leave)** | ✅ Total | ❌ Bloqueado | ❌ Bloqueado |
-| **Certificados TLS y Rutas Caddy** | ✅ Total | ❌ Bloqueado | ❌ Bloqueado |
-| **Gestión de Servidores Active Directory / LDAP** | ✅ Total | ❌ Bloqueado | ❌ Bloqueado |
-| **Dashboards de Grafana, Jaeger y Weave Scope** | ✅ Total | ✅ Total | ✅ Total |
+| **Overview, Metrics & SRE Telemetry** | ✅ Full | ✅ Full | ✅ Full |
+| **Deploy Stacks (`docker-compose.yml`)** | ✅ Full | ✅ Full | ❌ Restricted |
+| **Redeploy & Duplicate Stacks** | ✅ Full | ✅ Full | ❌ Restricted |
+| **Delete Stacks** | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Task Lifecycle (Start / Stop / Restart)** | ✅ Full | ✅ Full | ❌ Restricted |
+| **Container & Node Terminal Shell** | ✅ Full | ✅ Full | ❌ Restricted |
+| **Node Fleet Management (Drain / Activate / Leave)** | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Caddy TLS Certificates & Ingress Routes** | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Active Directory & LDAP Directory Settings** | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Grafana, Jaeger & Weave Scope Dashboards** | ✅ Full | ✅ Full | ✅ Full |
 
 ---
 
-## 💻 El Motor en Go (`internal/auth/`)
+## 💻 The Go Backend Engine (`internal/auth/`)
 
-Para la autenticación LDAP/Active Directory utilizamos `github.com/go-ldap/ldap/v3` y para la gestión de sesiones `github.com/golang-jwt/jwt/v5`.
+For LDAP/Active Directory interactions, we used `github.com/go-ldap/ldap/v3`, and for session management `github.com/golang-jwt/jwt/v5`.
 
-### 1. Búsqueda y Validación de Credenciales
-El proceso sigue un patrón seguro en dos fases:
-1. Conexión y **Bind de Servicio** con una cuenta técnica (`BindDN` / `BindPassword`).
-2. Búsqueda del usuario mediante filtro configurable (por defecto `(&(objectClass=user)(sAMAccountName=%s))`).
-3. Conexión secundaria y **Direct User Bind** con las credenciales introducidas por el operador para validar su contraseña contra el controlador de dominio.
+### 1. Two-Phase Bind & Credential Verification
+Authentication follows a secure two-phase pattern:
+1. Connect and perform a **Service Account Bind** (`BindDN` / `BindPassword`) to query the directory.
+2. Search for the user object using a configurable LDAP filter (defaulting to `(&(objectClass=user)(sAMAccountName=%s))`).
+3. Open a secondary connection and perform a **Direct User Bind** with the user-submitted password against the domain controller.
 
 ```go
 func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult, error) {
@@ -85,14 +85,14 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
     }
     defer conn.Close()
 
-    // 1. Bind de cuenta de servicio
+    // 1. Initial service account bind
     if cfg.BindDN != "" && cfg.BindPassword != "" {
         if err := conn.Bind(cfg.BindDN, cfg.BindPassword); err != nil {
             return nil, fmt.Errorf("service account bind failed: %w", err)
         }
     }
 
-    // 2. Búsqueda del usuario
+    // 2. Search for the user
     filter := fmt.Sprintf(cfg.UserFilter, ldap.EscapeFilter(username))
     searchReq := ldap.NewSearchRequest(
         cfg.BaseDN,
@@ -108,7 +108,7 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 
     userEntry := sr.Entries[0]
 
-    // 3. Autenticación con las credenciales del usuario
+    // 3. Direct user bind to verify password
     userConn, err := ConnectLDAP(cfg)
     if err != nil {
         return nil, err
@@ -119,7 +119,7 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
         return nil, errors.New("invalid credentials")
     }
 
-    // 4. Mapeo de grupos a rol RBAC
+    // 4. Map groups to RBAC role
     groups := userEntry.GetAttributeValues("memberOf")
     role := ResolveRole(cfg, groups)
 
@@ -134,8 +134,8 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 }
 ```
 
-### 2. Mapeo Dinámico de Grupos a Roles
-Gubernator compara las membresías del usuario contra los DNs configurados para cada rol:
+### 2. Dynamic Group-to-Role Mapping
+Gubernator inspects the user's `memberOf` group list and matches them against the configured group DNs:
 
 ```go
 func ResolveRole(cfg db.LDAPConfig, userGroups []string) Role {
@@ -160,60 +160,60 @@ func ResolveRole(cfg db.LDAPConfig, userGroups []string) Role {
 
 ---
 
-## 🎨 La Experiencia en Flutter Web
+## 🎨 The Flutter Web UI Experience
 
-El Web Dashboard de Gubernator está construido en **Flutter Web** con **Material Design 3** y compilado directamente dentro del binario Go (`go:embed`).
+Gubernator's Web Dashboard is built with **Flutter Web** and **Material Design 3**, compiled and embedded directly into the Go binary (`go:embed`).
 
-### 1. Pantalla de Login con Selector de Directorio
-Permite a los usuarios elegir si se autentican contra el **Active Directory Primario**, un **Directorio Secundario** o el **Administrador Local**:
+### 1. Modern Login Screen with Domain Selector
+Operators can select their target authentication provider (`Corporate Active Directory`, `DR Site LDAP`, or `Local Administrator`):
 
 ![Login Screen](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/docs/images/login_screen.png)
 
-### 2. Suite de Administración de Active Directory & Diagnóstico
-En la nueva pestaña **Seguridad & AD**, los administradores pueden añadir servidores, configurar certificados LDAPS y ejecutar la herramienta de diagnóstico **"Test Connection"** en tiempo real:
+### 2. Active Directory Management & Diagnostics
+In the new **Seguridad & AD** tab, cluster administrators can configure directory servers, TLS certificates, and run a live **"Test Connection"** diagnostic tool:
 
 ![Security & AD Management](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/docs/images/security_ad.png)
 
-### 3. Badge de Rol en Tiempo Real
-En la barra superior, la interfaz muestra el avatar, nombre de usuario y el badge del rol asignado (`👑 ADMIN`, `⚡ OPERATOR`, `👁️ READ-ONLY`), adaptando dinámicamente los botones y acciones permitidas en cada pantalla.
+### 3. Real-Time Role Badges & Contextual Guards
+The dashboard header displays the active user and their assigned role (`👑 ADMIN`, `⚡ OPERATOR`, `👁️ READ-ONLY`). Mutating actions (e.g., Delete Stack, Drain Node, Shell) are automatically disabled for read-only audit accounts.
 
 ---
 
-## 🚀 El Rol de Google Antigravity en el Desarrollo
+## 🚀 How Google Antigravity Accelerated Development
 
-Para construir esta funcionalidad de principio a fin, utilizamos **Google Antigravity (AGY)** como agente de pair-programming autónomo. La experiencia fue clave en varios aspectos:
+We utilized **Google Antigravity (AGY)** as an autonomous AI pair programmer to build this feature end-to-end. AGY accelerated the development cycle through several key workflows:
 
-1. **Arquitectura y Planificación Previa**:
-   Antigravity elaboró un plan de implementación detallado (`implementation_plan.md`) definiendo la matriz de permisos, el modelo de base de datos GORM (`LDAPConfig`), las rutas API y los cambios en la UI antes de escribir código.
+1. **Architectural Planning**:
+   Before writing code, Antigravity produced a comprehensive implementation plan (`implementation_plan.md`) outlining the GORM schema changes (`LDAPConfig`), RBAC authorization matrix, and API routes.
 
-2. **Desarrollo Full-Stack Sincronizado**:
-   En una sola sesión iterativa, Antigravity:
-   - Creó el paquete Go `internal/auth/` con soporte LDAP, JWT y middlewares Gin.
-   - Actualizó los modelos GORM y la migración automática de SQLite.
-   - Creó las pantallas de Flutter (`login_screen.dart`, `security_page.dart`) y actualizó el `ApiService`.
-   - Modificó las vistas existentes (`legions_page.dart`, `tasks_page.dart`, `centurions_page.dart`) para respetar los permisos del usuario.
+2. **Synchronized Full-Stack Implementation**:
+   In a single coordinated session, Antigravity:
+   - Built the Go `internal/auth/` engine with LDAP dialers, JWT session handlers, and Gin middlewares.
+   - Applied SQLite database auto-migrations.
+   - Implemented the Flutter Web UI (`login_screen.dart`, `security_page.dart`, and state models).
+   - Updated existing views (`legions_page.dart`, `tasks_page.dart`, `centurions_page.dart`) with RBAC permission guards.
 
-3. **Validación en un Clúster Real**:
-   Mediante comandos automatizados en un clúster multipass de 3 nodos (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`), Antigravity:
-   - Desplegó y reinició los binarios ARM64 en caliente.
-   - Probó los endpoints REST mediante `curl` (login válido, login inválido, test de conexión LDAP, borrado de configuración).
-   - Verificó que los tests unitarios pasaran al 100% en Go (`go test ./internal/auth/...`).
+3. **Live Cluster Testing & Verification**:
+   Using automated commands across a 3-node multipass cluster (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`), Antigravity:
+   - Deployed and hot-restarted the ARM64 binaries.
+   - Tested REST endpoints via `curl` (valid login, invalid login, LDAP connection tests, configuration lifecycle).
+   - Executed Go unit tests (`go test ./internal/auth/...`) with 100% pass rates.
 
-4. **Documentación y Versionado Automático**:
-   - Generación de capturas de pantalla de alta fidelidad.
-   - Creación de la documentación en [`docs/auth-rbac.md`](https://mario-ezquerro.github.io/gubernator/auth-rbac/) y compilación estricta de **MkDocs**.
-   - Bump de versión a `v2.20.0`, creación del tag Git y sincronización con GitHub Pages.
+4. **Automated Documentation & Release**:
+   - Generated high-fidelity visual UI showcases.
+   - Authored complete documentation in [`docs/auth-rbac.md`](https://mario-ezquerro.github.io/gubernator/auth-rbac/) and validated MkDocs builds in strict mode.
+   - Bumped the version to `v2.20.0`, created git release tags, and triggered GitHub Pages publishing.
 
 ---
 
-## 🏁 Conclusión y Enlaces
+## 🏁 Conclusion & Open Source
 
-Dotar a Gubernator de autenticación Active Directory y RBAC permite llevar un orquestador ligero a organizaciones corporativas que necesitan cumplimiento de seguridad sin la complejidad abrumadora de Kubernetes.
+Adding Active Directory SSO and RBAC allows teams to deploy Gubernator in enterprise production environments that require enterprise security compliance without the operational overhead of Kubernetes.
 
-Puedes probar Gubernator o desplegarlo en tu propia infraestructura:
+Check out Gubernator and try it out:
 
-* 📦 **Repositorio en GitHub:** [github.com/mario-ezquerro/gubernator](https://github.com/mario-ezquerro/gubernator)
-* 📖 **Documentación Oficial:** [mario-ezquerro.github.io/gubernator](https://mario-ezquerro.github.io/gubernator/)
-* 🛡️ **Guía de Active Directory & RBAC:** [docs/auth-rbac.md](https://mario-ezquerro.github.io/gubernator/auth-rbac/)
+* 📦 **GitHub Repository:** [github.com/mario-ezquerro/gubernator](https://github.com/mario-ezquerro/gubernator)
+* 📖 **Official Documentation:** [mario-ezquerro.github.io/gubernator](https://mario-ezquerro.github.io/gubernator/)
+* 🛡️ **Active Directory & RBAC Guide:** [docs/auth-rbac.md](https://mario-ezquerro.github.io/gubernator/auth-rbac/)
 
-¿Qué opinas sobre este enfoque híbrido para orquestación de contenedores? ¡Déjanos tus comentarios y sugerencias en GitHub! 🏛️
+What do you think about this hybrid approach to container orchestration? Let us know your thoughts and suggestions in the comments! 🏛️
