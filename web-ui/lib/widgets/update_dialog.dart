@@ -99,6 +99,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       'security': [],
       'other': [],
     };
+    final Set<String> seenItems = {};
 
     final lines = notes.split('\n');
     for (var line in lines) {
@@ -115,9 +116,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
       trimmed = trimmed.replaceAll('**', '').replaceAll('`', '');
 
       final lower = trimmed.toLowerCase();
-      if (lower.startsWith('what') || lower.startsWith('release notes') || lower.startsWith('changelog')) {
+      // Ignore changelog compare URLs, release headings, and raw URLs
+      if (lower.startsWith('what') ||
+          lower.startsWith('release notes') ||
+          lower.startsWith('changelog') ||
+          lower.startsWith('full changelog') ||
+          lower.startsWith('commits & improvements') ||
+          lower.startsWith('gubernator v') ||
+          lower.startsWith('http://') ||
+          lower.startsWith('https://') ||
+          (lower.contains('github.com/') && lower.contains('/compare/'))) {
         continue;
       }
+
+      // Avoid duplicate items
+      if (seenItems.contains(lower)) continue;
+      seenItems.add(lower);
 
       if (lower.contains('feat') || lower.contains('add') || lower.contains('new') || lower.contains('novedad') || lower.contains('mejora')) {
         categories['features']!.add(trimmed);
@@ -125,7 +139,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         categories['fixes']!.add(trimmed);
       } else if (lower.contains('slo') || lower.contains('perf') || lower.contains('speed') || lower.contains('optimi') || lower.contains('rendimiento')) {
         categories['slo']!.add(trimmed);
-      } else if (lower.contains('sec') || lower.contains('auth') || lower.contains('token') || lower.contains('tls') || lower.contains('seguridad')) {
+      } else if (lower.contains('sec') || lower.contains('auth') || lower.contains('token') || lower.contains('tls') || lower.contains('ldap') || lower.contains('seguridad')) {
         categories['security']!.add(trimmed);
       } else {
         categories['other']!.add(trimmed);

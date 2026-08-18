@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  build_and_release:
-    name: Build and Upload
+  build:
+    name: Build Binaries
     strategy:
       matrix:
         include:
@@ -28,8 +28,6 @@ jobs:
             goarch: amd64
             ext: '.exe'
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,9 +46,58 @@ jobs:
         run: |
           go build -v -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o gbnt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/gbnt
 
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: gbnt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
-          generate_release_notes: true
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: gbnt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+
+  release:
+    name: Publish Release & Changelog
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate Descriptive Changelog
+        id: changelog
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG_NAME}^" 2>/dev/null || "")
+          TAG_MSG=$(git tag -l --format='%(contents)' "${TAG_NAME}" | sed '/^$/d')
+          
+          echo "### 🚀 Gubernator ${TAG_NAME}" > changelog.md
+          echo "" >> changelog.md
+          
+          if [ -n "$TAG_MSG" ]; then
+            echo "$TAG_MSG" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          echo "### 📝 Commits & Improvements" >> changelog.md
+          if [ -n "$PREV_TAG" ]; then
+            git log "${PREV_TAG}..${TAG_NAME}" --pretty=format:"* %s" --no-merges >> changelog.md
+          else
+            git log -n 10 --pretty=format:"* %s" --no-merges >> changelog.md
+          fi
+          echo "" >> changelog.md
+          
+          cat changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body_path: changelog.md
+          generate_release_notes: false
