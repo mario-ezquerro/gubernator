@@ -1,0 +1,20 @@
+[Unit]
+Description=Gubernator Orchestrator Manager (REST API, Web UI, Observability)
+Documentation=https://github.com/mario-ezquerro/gubernator
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=simple
+WorkingDirectory={{ gbnt_data_dir }}
+ExecStart={{ gbnt_install_path }} serve
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+Environment="GBNT_API_TOKEN={{ gbnt_api_token }}"
+Environment="GBNT_PORT_API={{ gbnt_api_port }}"
+Environment="GBNT_PORT_WEB={{ gbnt_web_port }}"
+Environment="GBNT_PORT_OBS={{ gbnt_obs_port }}"
+
+[Install]
+WantedBy=multi-user.target

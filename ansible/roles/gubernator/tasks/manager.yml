@@ -1,0 +1,40 @@
+---
+# Manager installation & cluster initialization
+
+- name: Create Manager systemd service file
+  ansible.builtin.template:
+    src: gbnt-manager.service.j2
+    dest: /etc/systemd/system/gbnt-manager.service
+    mode: '0644'
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Start and enable Gubernator Manager service
+  ansible.builtin.systemd:
+    name: gbnt-manager
+    state: started
+    enabled: yes
+
+- name: Wait for Gubernator REST API to become available
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ gbnt_api_port }}/healthz"
+    status_code: [200, 401]
+  register: api_health
+  until: api_health.status is defined
+  retries: 15
+  delay: 2
+  ignore_errors: yes
+
+- name: Obtain cluster join token from Manager
+  ansible.builtin.command: "{{ gbnt_install_path }} legion token"
+  register: legion_token_cmd
+  changed_when: false
+  environment:
+    GBNT_API_TOKEN: "{{ gbnt_api_token }}"
+
+- name: Set cluster join token fact
+  ansible.builtin.set_fact:
+    cluster_join_token: "{{ legion_token_cmd.stdout | trim }}"
+    cacheable: yes

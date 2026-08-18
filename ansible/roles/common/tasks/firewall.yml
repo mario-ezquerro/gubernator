@@ -1,0 +1,66 @@
+---
+# Firewall port rules for UFW (Debian/Ubuntu) and Firewalld (RedHat/Rocky/AlmaLinux)
+
+- name: Check if ufw is active
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "Debian"
+
+- name: Allow Manager ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ manager_ports }}"
+  when:
+    - ansible_os_family == "Debian"
+    - ufw_status.rc == 0
+    - "'Status: active' in ufw_status.stdout"
+    - gbnt_node_role == "manager"
+
+- name: Allow Worker ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ worker_ports }}"
+  when:
+    - ansible_os_family == "Debian"
+    - ufw_status.rc == 0
+    - "'Status: active' in ufw_status.stdout"
+    - gbnt_node_role == "worker"
+
+- name: Check if firewalld is active
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_status
+  ignore_errors: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Allow Manager ports in Firewalld
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ manager_ports }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - firewalld_status.status.ActiveState | default('') == "active"
+    - gbnt_node_role == "manager"
+
+- name: Allow Worker ports in Firewalld
+  ansible.posix.firewalld:
+    port: "{{ item.port }}/{{ item.proto }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ worker_ports }}"
+  when:
+    - ansible_os_family == "RedHat"
+    - firewalld_status.status.ActiveState | default('') == "active"
+    - gbnt_node_role == "worker"

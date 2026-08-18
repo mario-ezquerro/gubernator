@@ -1,0 +1,39 @@
+---
+# Weave Net / Wave Scope Topology Probe deployment
+
+- name: Pull Wave Scope Docker image
+  community.docker.docker_image:
+    name: "{{ wave_scope_image }}"
+    source: pull
+    force_source: yes
+  ignore_errors: yes
+
+- name: Deploy Wave Scope on Manager (App & Probe)
+  community.docker.docker_container:
+    name: gbnt-wave-scope
+    image: "{{ wave_scope_image }}"
+    state: started
+    restart_policy: always
+    network_mode: host
+    pid_mode: host
+    privileged: yes
+    command: --probe.docker=true --app.http.address=:{{ wave_scope_port }}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/kernel/debug:/sys/kernel/debug
+  when: gbnt_node_role == "manager"
+
+- name: Deploy Wave Scope on Worker (Probe reporting to Manager)
+  community.docker.docker_container:
+    name: gbnt-wave-scope
+    image: "{{ wave_scope_image }}"
+    state: started
+    restart_policy: always
+    network_mode: host
+    pid_mode: host
+    privileged: yes
+    command: "--probe.docker=true {{ hostvars[groups['manager'][0]]['ansible_host'] | default(groups['manager'][0]) }}:{{ wave_scope_port }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/kernel/debug:/sys/kernel/debug
+  when: gbnt_node_role == "worker"

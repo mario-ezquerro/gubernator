@@ -1,0 +1,40 @@
+---
+# Docker installation & daemon configuration for all nodes
+
+- name: Include Docker installation for Debian / Ubuntu
+  ansible.builtin.include_tasks: docker_debian.yml
+  when: ansible_os_family == "Debian"
+
+- name: Include Docker installation for RedHat / Rocky / AlmaLinux / Fedora
+  ansible.builtin.include_tasks: docker_redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Create Docker configuration directory
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+
+- name: Configure Docker daemon.json
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+  notify: Restart Docker
+
+- name: Ensure Docker and Containerd services are started and enabled
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - containerd
+    - docker
+
+- name: Add configured users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users }}"
+  ignore_errors: yes

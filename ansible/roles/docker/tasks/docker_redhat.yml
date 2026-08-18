@@ -1,0 +1,18 @@
+---
+# Official Docker CE installation on RedHat / Rocky / AlmaLinux / CentOS / Fedora
+
+- name: Add Docker CE official repository for RedHat family
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ 'fedora' if ansible_distribution == 'Fedora' else 'centos' }}/docker-ce.repo"
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+
+- name: Install Docker CE packages on RedHat family
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present

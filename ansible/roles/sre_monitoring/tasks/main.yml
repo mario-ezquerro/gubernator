@@ -1,0 +1,27 @@
+---
+# SRE Observability Stack deployment (cAdvisor, Prometheus, Grafana, Loki, Promtail, Jaeger)
+
+- name: Initialize SRE Monitoring stack on Manager
+  ansible.builtin.command: "{{ gbnt_install_path }} monitor init"
+  environment:
+    GBNT_API_TOKEN: "{{ gbnt_api_token }}"
+  when: gbnt_node_role == "manager"
+  register: monitor_init_res
+  changed_when: "'created' in monitor_init_res.stdout or 'started' in monitor_init_res.stdout"
+  ignore_errors: yes
+
+- name: Display SRE Monitor status
+  ansible.builtin.command: "{{ gbnt_install_path }} monitor status"
+  environment:
+    GBNT_API_TOKEN: "{{ gbnt_api_token }}"
+  when: gbnt_node_role == "manager"
+  register: monitor_status_res
+  changed_when: false
+  ignore_errors: yes
+
+- name: Show Monitor status output
+  ansible.builtin.debug:
+    msg: "{{ monitor_status_res.stdout_lines }}"
+  when:
+    - gbnt_node_role == "manager"
+    - monitor_status_res.stdout_lines is defined

@@ -1,0 +1,11 @@
+---
+# ==============================================================================
+# Gubernator Workers Variables
+# ==============================================================================
+
+gbnt_node_role: "worker"
+
+# Ports to open on Workers
+worker_ports:
+  - { port: 4040, proto: "tcp", comment: "Wave Scope Probe" }
+  - { port: 8081, proto: "tcp", comment: "cAdvisor" }

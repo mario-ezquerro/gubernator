@@ -1,0 +1,26 @@
+---
+# ==============================================================================
+# Gubernator Manager Variables
+# ==============================================================================
+
+gbnt_node_role: "manager"
+
+# Ingress & DNS ports to open on Manager
+manager_ports:
+  - { port: 4000, proto: "tcp", comment: "Gubernator REST API" }
+  - { port: 4001, proto: "tcp", comment: "Gubernator Web UI" }
+  - { port: 4002, proto: "tcp", comment: "Gubernator Observability & Swagger" }
+  - { port: 53, proto: "tcp", comment: "CoreDNS TCP" }
+  - { port: 53, proto: "udp", comment: "CoreDNS UDP" }
+  - { port: 5354, proto: "tcp", comment: "CoreDNS Fallback TCP" }
+  - { port: 5354, proto: "udp", comment: "CoreDNS Fallback UDP" }
+  - { port: 80, proto: "tcp", comment: "Caddy Ingress HTTP" }
+  - { port: 443, proto: "tcp", comment: "Caddy Ingress HTTPS" }
+  - { port: 4040, proto: "tcp", comment: "Wave Scope App & Probe" }
+  - { port: 3000, proto: "tcp", comment: "Grafana Monitoring" }
+  - { port: 3100, proto: "tcp", comment: "Loki Logs" }
+  - { port: 9090, proto: "tcp", comment: "Prometheus Metrics" }
+  - { port: 8081, proto: "tcp", comment: "cAdvisor Container Metrics" }
+  - { port: 16686, proto: "tcp", comment: "Jaeger Distributed Tracing UI" }
+  - { port: 4317, proto: "tcp", comment: "Jaeger OTLP gRPC" }
+  - { port: 4318, proto: "tcp", comment: "Jaeger OTLP HTTP" }

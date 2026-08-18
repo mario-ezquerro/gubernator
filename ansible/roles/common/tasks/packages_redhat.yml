@@ -1,0 +1,37 @@
+---
+# RedHat / CentOS / Rocky / AlmaLinux / Fedora package installation
+
+- name: Install EPEL repository on RHEL / CentOS / Rocky / AlmaLinux
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_distribution != "Fedora"
+  ignore_errors: yes
+
+- name: Install base dependencies & container tools on RedHat family
+  ansible.builtin.dnf:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg2
+      - wget
+      - tar
+      - gzip
+      - jq
+      - iproute
+      - conntrack-tools
+      - iptables
+      - ebtables
+      - ethtool
+      - socat
+      - sudo
+      - procps-ng
+      - chrony
+    state: present
+
+- name: Ensure chronyd is enabled and started on RedHat family
+  ansible.builtin.systemd:
+    name: chronyd
+    state: started
+    enabled: yes
+  ignore_errors: yes

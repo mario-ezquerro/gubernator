@@ -1,0 +1,28 @@
+---
+# Kernel modules required for Docker, Weave Net & Wave Scope
+
+- name: Write kernel modules to load on boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/gubernator.conf
+    content: |
+      overlay
+      br_netfilter
+      ip_tables
+      ip6_tables
+      iptable_nat
+      iptable_filter
+      nf_conntrack
+    mode: '0644'
+
+- name: Load kernel modules immediately
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+    - ip_tables
+    - ip6_tables
+    - iptable_nat
+    - iptable_filter
+  ignore_errors: yes

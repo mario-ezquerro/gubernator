@@ -47,6 +47,7 @@ nav:
     - Roadmap: roadmap.md
     - Installation: install.md
     - Multi-Host Clustering: cluster.md
+    - Ansible Automation: ansible.md
   - Architecture & UI:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md

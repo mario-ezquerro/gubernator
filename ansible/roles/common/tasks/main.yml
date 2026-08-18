@@ -1,0 +1,33 @@
+---
+# Common tasks for all cluster nodes
+
+- name: Include OS-specific packages for Debian / Ubuntu
+  ansible.builtin.include_tasks: packages_debian.yml
+  when: ansible_os_family == "Debian"
+
+- name: Include OS-specific packages for RedHat / Rocky / AlmaLinux / CentOS / Fedora
+  ansible.builtin.include_tasks: packages_redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure kernel modules are loaded
+  ansible.builtin.include_tasks: kernel_modules.yml
+  when: enable_kernel_modules | bool
+
+- name: Configure sysctl network parameters for containers & Weave
+  ansible.builtin.include_tasks: sysctl.yml
+  when: enable_sysctl_tuning | bool
+
+- name: Configure firewall rules if enabled
+  ansible.builtin.include_tasks: firewall.yml
+  when: enable_firewall_rules | bool
+
+- name: Ensure Gubernator directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ gbnt_data_dir }}"
+    - "{{ gbnt_config_dir }}"
+    - /etc/modules-load.d
+    - /etc/sysctl.d

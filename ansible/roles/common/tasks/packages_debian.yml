@@ -1,0 +1,37 @@
+---
+# Debian / Ubuntu package installation & system preparation
+
+- name: Update apt repository cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install base dependencies & container tools on Debian/Ubuntu
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - wget
+      - tar
+      - gzip
+      - jq
+      - iproute2
+      - conntrack
+      - iptables
+      - ebtables
+      - ethtool
+      - socat
+      - sudo
+      - procps
+      - systemd-timesyncd
+    state: present
+
+- name: Ensure systemd-timesyncd is enabled and active
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    state: started
+    enabled: yes
+  ignore_errors: yes

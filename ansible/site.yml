@@ -1,0 +1,51 @@
+---
+# ==============================================================================
+# Gubernator Master Provisioning Playbook
+# ==============================================================================
+# Prepares Linux hosts (Ubuntu/Debian/RHEL/Rocky/AlmaLinux/Fedora), installs Docker,
+# configures kernel modules & sysctl tuning, sets up Weave/Wave Scope, deploys
+# Gubernator Manager & Centurion Workers, and initializes the SRE monitoring stack.
+
+- name: 1. System Preparation & Base Dependencies
+  hosts: cluster
+  become: yes
+  tags: [bootstrap, common]
+  roles:
+    - role: common
+
+- name: 2. Docker Engine Installation & Daemon Configuration
+  hosts: cluster
+  become: yes
+  tags: [docker]
+  roles:
+    - role: docker
+
+- name: 3. Gubernator Manager Deployment & Token Generation
+  hosts: manager
+  become: yes
+  tags: [gubernator, manager]
+  roles:
+    - role: gubernator
+
+- name: 4. Gubernator Worker (Centurion) Deployment & Cluster Join
+  hosts: workers
+  become: yes
+  tags: [gubernator, workers]
+  roles:
+    - role: gubernator
+
+- name: 5. Weave Net / Wave Scope Topology Visualization
+  hosts: cluster
+  become: yes
+  tags: [wave_scope, scope]
+  roles:
+    - role: wave_scope
+  when: enable_wave_scope | bool
+
+- name: 6. SRE Observability Stack (Prometheus, Grafana, Loki, Jaeger)
+  hosts: manager
+  become: yes
+  tags: [monitoring, sre]
+  roles:
+    - role: sre_monitoring
+  when: enable_sre_monitoring | bool

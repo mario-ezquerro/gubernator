@@ -1,0 +1,19 @@
+---
+# Sysctl network parameters for bridge networking, container routing & Wave Scope
+
+- name: Configure sysctl parameters for container networking
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-gubernator.conf
+  loop:
+    - { name: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { name: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { name: "net.ipv4.ip_forward", value: "1" }
+    - { name: "net.ipv6.conf.all.forwarding", value: "1" }
+    - { name: "fs.inotify.max_user_watches", value: "524288" }
+    - { name: "fs.inotify.max_user_instances", value: "8192" }
+    - { name: "net.core.somaxconn", value: "32768" }
+  ignore_errors: yes

@@ -1,0 +1,31 @@
+---
+# Official Docker CE installation on Debian / Ubuntu
+
+- name: Create directory for Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Docker official GPG key for Debian/Ubuntu
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+
+- name: Add Docker official repository to apt sources
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'amd64' }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    filename: docker
+    state: present
+
+- name: Install Docker CE packages on Debian/Ubuntu
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: yes

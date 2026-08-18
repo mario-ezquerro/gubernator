@@ -1,0 +1,18 @@
+---
+# Worker (Centurion) installation & cluster join
+
+- name: Create Worker systemd service file
+  ansible.builtin.template:
+    src: gbnt-worker.service.j2
+    dest: /etc/systemd/system/gbnt-worker.service
+    mode: '0644'
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Start and enable Gubernator Worker service
+  ansible.builtin.systemd:
+    name: gbnt-worker
+    state: started
+    enabled: yes

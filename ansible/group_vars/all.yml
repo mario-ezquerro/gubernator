@@ -1,0 +1,41 @@
+---
+# ==============================================================================
+# Gubernator Global Ansible Variables
+# ==============================================================================
+
+# Version & Binary Source
+gbnt_version: "v2.21.3"
+gbnt_download_url: "https://github.com/mario-ezquerro/gubernator/releases/download/{{ gbnt_version }}/gbnt-linux-{{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+gbnt_install_path: "/usr/local/bin/gbnt"
+gbnt_data_dir: "/var/lib/gubernator"
+gbnt_config_dir: "/etc/gubernator"
+
+# Security & API Tokens
+# If left blank, manager generates a random join token and stores in gbnt_data_dir
+gbnt_join_secret: ""
+gbnt_api_token: "secret-token"
+
+# Ports Configuration
+gbnt_api_port: 4000
+gbnt_web_port: 4001
+gbnt_obs_port: 4002
+
+# Docker Configuration
+docker_users:
+  - "{{ ansible_user | default('ubuntu') }}"
+docker_log_driver: "json-file"
+docker_log_max_size: "10m"
+docker_log_max_file: "3"
+
+# Kernel Tuning for Overlay, Weave Net & Wave Scope
+enable_kernel_modules: true
+enable_sysctl_tuning: true
+enable_firewall_rules: true
+
+# Wave Scope (Network & Container Topology)
+enable_wave_scope: true
+wave_scope_image: "marioezquerro/scope:latest"
+wave_scope_port: 4040
+
+# SRE Observability Stack (cAdvisor, Prometheus, Grafana, Loki, Promtail, Jaeger)
+enable_sre_monitoring: true

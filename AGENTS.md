@@ -131,6 +131,9 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Dimensional Log Filtering:** Query cluster-wide logs aggregated by Loki and Promtail with multi-dimensional filtering by Centurion node, container/service, log level (`ERROR`, `WARN`, `INFO`), stream (`stdout`, `stderr`), time range (`5m`, `15m`, `1h`, `6h`, `24h`, `7d`), and keyword/regex with live text highlighting.
 * **Live Tailing Stream:** One-click live tail mode automatically refreshing logs every 3 seconds.
 * **Terminal Console & Export:** Monospace console view with structured stream metadata inspection, one-click raw log copying, and direct `.log` file export (`GET /api/logs/export`).
-* **Grafana Dashboard Cleanup:** Pruned redundant embedded logs panel from the default Grafana home dashboard, focusing Grafana exclusively on CPU/RAM/Network/GC time-series metrics.
-
-
+### 15. Enterprise Ansible Playbooks & Multi-Distro Cluster Automation (`v2.22.0`)
+* **Multi-Distribution Automation:** Complete automated provisioning suite in `ansible/` supporting Debian/Ubuntu (20.04/22.04/24.04, 11/12) and RedHat/Rocky/AlmaLinux/Fedora (8/9).
+* **System Hardening & Kernel Tuning:** Automates loading of container & overlay modules (`overlay`, `br_netfilter`, `nf_conntrack`), sysctl network tuning (`net.bridge.bridge-nf-call-iptables`, `net.ipv4.ip_forward`), and firewall port rules (UFW / Firewalld).
+* **Docker CE Engine Automation:** Official GPG keys/repositories setup, daemon.json log rotation tuning (`10m`, `3` files), user group permissions, and service persistence.
+* **Weave Net & Wave Scope Integration:** Deploys containerized Weave Scope probe & app (`marioezquerro/scope:latest`) with host PID/network sharing for full cluster topology mapping.
+* **Full Stack Orchestration:** Configures systemd units (`gbnt-manager.service`, `gbnt-worker.service`), automatic join token discovery, and executes SRE Observability stack setup (`gbnt monitor init`).

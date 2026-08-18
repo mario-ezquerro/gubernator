@@ -1,0 +1,21 @@
+---
+# Gubernator binary installation and role dispatch
+
+- name: Download Gubernator binary from GitHub release
+  ansible.builtin.get_url:
+    url: "{{ gbnt_download_url }}"
+    dest: "{{ gbnt_install_path }}"
+    mode: '0755'
+    force: yes
+  register: download_gbnt
+  until: download_gbnt is succeeded
+  retries: 3
+  delay: 3
+
+- name: Dispatch Manager tasks
+  ansible.builtin.include_tasks: manager.yml
+  when: gbnt_node_role == "manager"
+
+- name: Dispatch Worker tasks
+  ansible.builtin.include_tasks: worker.yml
+  when: gbnt_node_role == "worker"
