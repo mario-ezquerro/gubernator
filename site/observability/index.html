@@ -16,7 +16,7 @@
         <link rel="prev" href="../compose/">
       
       
-        <link rel="next" href="../slo/">
+        <link rel="next" href="../loki-logs/">
       
       
         
@@ -590,6 +590,8 @@
       
         
       
+        
+      
     
     
     
@@ -891,15 +893,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#grafana-dashboards" class="md-nav__link">
+  <a href="#grafana-telemetry-dashboards" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Grafana Dashboards
+        Grafana Telemetry Dashboards
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Grafana Dashboards">
+    <nav class="md-nav" aria-label="Grafana Telemetry Dashboards">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -955,6 +957,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loki-logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loki Logs Explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1363,54 +1393,62 @@ This is already built into the official <code>Dockerfile</code> and is completel
 <tr>
 <th>Service</th>
 <th>URL</th>
-<th>Credentials</th>
+<th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Gubernator Web UI</td>
 <td><a href="http://localhost:4001">http://localhost:4001</a></td>
-<td>admin / admin</td>
+<td>Dashboard (Monitoring, Loki Logs, Tracing, Topology, Security)</td>
+</tr>
+<tr>
+<td>Loki Logs Explorer</td>
+<td><a href="http://localhost:4001">http://localhost:4001</a> / <code>Loki Logs</code></td>
+<td>Real-time cluster &amp; container log explorer</td>
 </tr>
 <tr>
 <td>Prometheus</td>
 <td><a href="http://localhost:9090">http://localhost:9090</a></td>
-<td>—</td>
+<td>Metrics collection &amp; PromQL engine</td>
 </tr>
 <tr>
-<td>Grafana</td>
-<td><a href="http://localhost:3000">http://localhost:3000</a></td>
-<td>admin / admin</td>
+<td>Monitoring (Grafana)</td>
+<td><a href="http://localhost:3000">http://localhost:3000</a> or <code>/grafana/</code></td>
+<td>Host &amp; container telemetry dashboards</td>
 </tr>
 <tr>
 <td>Jaeger UI</td>
 <td><a href="http://localhost:16686">http://localhost:16686</a> or <code>/jaeger/</code></td>
-<td>admin / admin</td>
+<td>Distributed tracing explorer</td>
 </tr>
 <tr>
 <td>Jaeger OTLP gRPC</td>
 <td><code>localhost:4317</code></td>
-<td>—</td>
+<td>OpenTelemetry gRPC trace ingestion</td>
 </tr>
 <tr>
 <td>Jaeger OTLP HTTP</td>
 <td><code>http://localhost:4318</code></td>
-<td>—</td>
+<td>OpenTelemetry HTTP trace ingestion</td>
 </tr>
 <tr>
 <td>Gubernator Metrics</td>
 <td><a href="http://localhost:4002/metrics">http://localhost:4002/metrics</a></td>
-<td>—</td>
+<td>Internal Prometheus metrics</td>
 </tr>
 <tr>
 <td>Health Check</td>
 <td><a href="http://localhost:4002/health">http://localhost:4002/health</a></td>
-<td>—</td>
+<td>Healthcheck probe endpoint</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="grafana-dashboards">Grafana Dashboards</h2>
+<h2 id="grafana-telemetry-dashboards">Grafana Telemetry Dashboards</h2>
+<blockquote>
+<p>💡 <strong>Logs Navigation Update</strong>: Logs are now explored directly within the dedicated <a href="../loki-logs/">Loki Logs Explorer</a> tab in the Gubernator Dashboard, allowing Grafana to focus purely on high-frequency time-series metrics and hardware telemetry.</p>
+</blockquote>
 <p>Two dashboards are provisioned automatically: <strong>Gubernator — Cluster Overview</strong> and <strong>Gubernator — Network Monitor</strong>.</p>
 <h3 id="1-cluster-overview">1. Cluster Overview</h3>
 <p>The <strong>Gubernator — Cluster Overview</strong> dashboard shows:</p>

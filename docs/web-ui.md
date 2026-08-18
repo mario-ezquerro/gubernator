@@ -266,6 +266,10 @@ The Web UI communicates with the internal `/api` routes (on port 4001, protected
 | `GET` | `/api/settings` | Get user settings (display name, theme) |
 | `PUT` | `/api/settings` | Update user settings |
 | `PUT` | `/api/settings/password` | Change web dashboard password |
+| `GET` | `/api/logs/status` | Checks Loki aggregator readiness |
+| `GET` | `/api/logs/labels` | Returns available containers, nodes, and streams |
+| `GET` | `/api/logs/query` | Multi-dimensional LogQL cluster log search |
+| `GET` | `/api/logs/export` | Downloads filtered log stream attachment |
 
 ---
 

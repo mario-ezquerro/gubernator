@@ -1069,50 +1069,6 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 50
-      },
-      "id": 14,
-      "title": "Logs",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 51
-      },
-      "id": 13,
-      "options": {
-        "showLabels": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "showTime": true,
-        "sortOrder": "Descending"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "expr": "{container=~\".+\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "Cluster & Container Logs (Loki)",
-      "type": "logs"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
         "y": 60
       },
       "id": 43,

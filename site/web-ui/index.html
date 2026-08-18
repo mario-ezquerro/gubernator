@@ -1149,6 +1149,8 @@
       
         
       
+        
+      
     
     
     
@@ -1688,6 +1690,26 @@
 <td><code>PUT</code></td>
 <td><code>/api/settings/password</code></td>
 <td>Change web dashboard password</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/status</code></td>
+<td>Checks Loki aggregator readiness</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/labels</code></td>
+<td>Returns available containers, nodes, and streams</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/query</code></td>
+<td>Multi-dimensional LogQL cluster log search</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/export</code></td>
+<td>Downloads filtered log stream attachment</td>
 </tr>
 </tbody>
 </table>

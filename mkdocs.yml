@@ -61,6 +61,7 @@ nav:
     - Docker Compose Reference: compose.md
   - Observability:
     - Health & Metrics: observability.md
+    - Loki Logs Explorer: loki-logs.md
     - SLO & Error Budgets (Sloth): slo.md
     - Distributed Tracing (Jaeger): example-jaeger.md
     - Jaeger Integration Guide: how-use-jaeger.md

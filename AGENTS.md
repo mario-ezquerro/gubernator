@@ -126,3 +126,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Dual Emergency Auth & JWT Sessions:** Seamless fallback to local administrator (`admin` / `admin`) with 24-hour cryptographically signed HMAC-SHA256 JWT tokens.
 * **Dedicated Security UI:** Modern Directory Server management screen with "Test Connection" diagnostic tool and visual profile chips.
 
+### 14. Dedicated Loki Logs Explorer & Monitoring Reorganization (`v2.21.0`)
+* **Navigation Reorganization:** Separated metrics dashboards (**Monitoring**, embedding Grafana) from the brand-new dedicated **Loki Logs Explorer** panel (`label: 'Loki Logs'`).
+* **Multi-Dimensional Log Filtering:** Query cluster-wide logs aggregated by Loki and Promtail with multi-dimensional filtering by Centurion node, container/service, log level (`ERROR`, `WARN`, `INFO`), stream (`stdout`, `stderr`), time range (`5m`, `15m`, `1h`, `6h`, `24h`, `7d`), and keyword/regex with live text highlighting.
+* **Live Tailing Stream:** One-click live tail mode automatically refreshing logs every 3 seconds.
+* **Terminal Console & Export:** Monospace console view with structured stream metadata inspection, one-click raw log copying, and direct `.log` file export (`GET /api/logs/export`).
+* **Grafana Dashboard Cleanup:** Pruned redundant embedded logs panel from the default Grafana home dashboard, focusing Grafana exclusively on CPU/RAM/Network/GC time-series metrics.
+
+

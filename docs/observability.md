@@ -199,20 +199,23 @@ curl 'http://localhost:9090/api/v1/query?query=up{job="gubernator"}' | python3 -
 
 ### Access
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Gubernator Web UI | [http://localhost:4001](http://localhost:4001) | admin / admin |
-| Prometheus | [http://localhost:9090](http://localhost:9090) | — |
-| Grafana | [http://localhost:3000](http://localhost:3000) | admin / admin |
-| Jaeger UI | [http://localhost:16686](http://localhost:16686) or `/jaeger/` | admin / admin |
-| Jaeger OTLP gRPC | `localhost:4317` | — |
-| Jaeger OTLP HTTP | `http://localhost:4318` | — |
-| Gubernator Metrics | [http://localhost:4002/metrics](http://localhost:4002/metrics) | — |
-| Health Check | [http://localhost:4002/health](http://localhost:4002/health) | — |
+| Service | URL | Role |
+|---------|-----|------|
+| Gubernator Web UI | [http://localhost:4001](http://localhost:4001) | Dashboard (Monitoring, Loki Logs, Tracing, Topology, Security) |
+| Loki Logs Explorer | [http://localhost:4001](http://localhost:4001) / `Loki Logs` | Real-time cluster & container log explorer |
+| Prometheus | [http://localhost:9090](http://localhost:9090) | Metrics collection & PromQL engine |
+| Monitoring (Grafana) | [http://localhost:3000](http://localhost:3000) or `/grafana/` | Host & container telemetry dashboards |
+| Jaeger UI | [http://localhost:16686](http://localhost:16686) or `/jaeger/` | Distributed tracing explorer |
+| Jaeger OTLP gRPC | `localhost:4317` | OpenTelemetry gRPC trace ingestion |
+| Jaeger OTLP HTTP | `http://localhost:4318` | OpenTelemetry HTTP trace ingestion |
+| Gubernator Metrics | [http://localhost:4002/metrics](http://localhost:4002/metrics) | Internal Prometheus metrics |
+| Health Check | [http://localhost:4002/health](http://localhost:4002/health) | Healthcheck probe endpoint |
 
 ---
 
-## Grafana Dashboards
+## Grafana Telemetry Dashboards
+
+> 💡 **Logs Navigation Update**: Logs are now explored directly within the dedicated [Loki Logs Explorer](loki-logs.md) tab in the Gubernator Dashboard, allowing Grafana to focus purely on high-frequency time-series metrics and hardware telemetry.
 
 Two dashboards are provisioned automatically: **Gubernator — Cluster Overview** and **Gubernator — Network Monitor**.
 
