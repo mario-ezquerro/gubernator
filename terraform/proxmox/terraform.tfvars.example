@@ -1,0 +1,16 @@
+pm_api_url          = "https://192.168.1.100:8006/api2/json"
+pm_api_token_id      = "root@pam!terraform"
+pm_api_token_secret  = "YOUR_PROXMOX_API_TOKEN_SECRET"
+target_node          = "pve"
+template_name        = "ubuntu-2404-template"
+cluster_name         = "gbnt"
+manager_cores        = 4
+manager_memory       = 8192
+worker_cores         = 2
+worker_memory        = 4096
+worker_count         = 2
+disk_storage         = "local-lvm"
+disk_size            = "30G"
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+ssh_user             = "ubuntu"

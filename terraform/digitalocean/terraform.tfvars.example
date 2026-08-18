@@ -1,0 +1,10 @@
+do_token             = "YOUR_DIGITALOCEAN_API_TOKEN"
+cluster_name         = "gbnt"
+region               = "fra1"
+manager_size         = "s-2vcpu-4gb"
+worker_size          = "s-2vcpu-2gb"
+worker_count         = 2
+image                = "ubuntu-24-04-x64"
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+ssh_user             = "root"

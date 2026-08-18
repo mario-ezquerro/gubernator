@@ -1,0 +1,10 @@
+hcloud_token         = "YOUR_HETZNER_API_TOKEN"
+cluster_name         = "gbnt"
+location             = "fsn1"
+manager_server_type  = "cax21" # 4 vCPU ARM, 8GB RAM
+worker_server_type   = "cax11" # 2 vCPU ARM, 4GB RAM
+worker_count         = 2
+image                = "ubuntu-24.04"
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+ssh_user             = "root"

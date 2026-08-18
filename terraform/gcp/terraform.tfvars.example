@@ -1,0 +1,12 @@
+project_id           = "YOUR_GCP_PROJECT_ID"
+region               = "europe-west1"
+zone                 = "europe-west1-b"
+cluster_name         = "gbnt"
+manager_machine_type = "e2-medium"
+worker_machine_type  = "e2-small"
+worker_count         = 2
+image                = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+ssh_public_key_path  = "~/.ssh/id_rsa.pub"
+ssh_private_key_path = "~/.ssh/id_rsa"
+ssh_user             = "ubuntu"
+disk_size_gb         = 30

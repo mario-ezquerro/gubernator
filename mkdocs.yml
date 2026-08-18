@@ -48,6 +48,7 @@ nav:
     - Installation: install.md
     - Multi-Host Clustering: cluster.md
     - Ansible Automation: ansible.md
+    - Terraform Multi-Cloud: terraform.md
   - Architecture & UI:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md
