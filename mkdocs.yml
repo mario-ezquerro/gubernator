@@ -74,6 +74,7 @@ nav:
     - Service Level Objectives (SLO): example-slo.md
     - AI & Automation (n8n): example-n8n.md
     - AI Development (Jupyter): example-jupyter.md
+    - Public Domain HTTPS (Let's Encrypt): example-public-https.md
 
 markdown_extensions:
   - admonition

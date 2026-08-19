@@ -32,6 +32,24 @@ When you deploy a stack with an `ingress.host` constraint (or Compose service ma
 
 ---
 
+## 🔒 Automatic HTTPS & Smart Domain Management
+
+Gubernator's Ingress engine features **Smart Domain Classification**:
+
+### 1. Public Domains (`demo.fiware.app`, `myapp.com`)
+When a public FQDN is specified in `ingress.host`:
+* **Zero-Touch Let's Encrypt / ZeroSSL**: Gubernator omits `tls internal`, allowing Caddy's built-in ACME engine to automatically request, verify (HTTP-01 / TLS-ALPN-01 on ports 80/443), install, and manage official, globally trusted X.509 certificates.
+* **Auto-Redirection**: Port 80 (HTTP) automatically redirects to port 443 (HTTPS).
+* **Automated Renewal**: Caddy automatically renews certificates 30 days before expiration without interrupting traffic.
+* **Optional ACME Email**: Supply `- ingress.email == admin@fiware.app` (or label `gbnt.ingress.email`) to receive Let's Encrypt renewal notices.
+
+### 2. Local Domains (`*.gbnt.local`, `*.internal`, `localhost`)
+When an internal or private domain is detected:
+* **Internal Root CA**: Caddy automatically applies `tls internal`, signing certificates with its internal Root CA without attempting to contact public ACME servers.
+* **Root CA Trust**: Download `root.crt` from the Web UI or via API (`GET /v1/caddy/ca.crt`) to trust local HTTPS certificates in your browser.
+
+---
+
 ## 🎨 Web UI Visualization Suite (`caddy-ui` Inspired)
 
 Access **Caddy Ingress** in the Web Dashboard (Port 4001) to interact with 7 specialized sub-tabs:

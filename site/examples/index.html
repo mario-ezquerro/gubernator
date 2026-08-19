@@ -663,6 +663,8 @@
       
         
       
+        
+      
     
     
     
@@ -867,6 +869,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#example-public-https-automatic-lets-encrypt-zerossl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Public HTTPS — Automatic Let's Encrypt / ZeroSSL
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1016,6 +1029,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-public-https/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Domain HTTPS (Let's Encrypt)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1129,6 +1170,17 @@
 <li>Built-in support for PyTorch, NumPy, Pandas, Scipy, and Scikit-Learn</li>
 <li>Persistent volume workspace for code and notebooks</li>
 <li>Caddy Ingress configuration for secure external traffic mapping on port <code>8888</code></li>
+</ul>
+<hr />
+<h2 id="example-public-https-automatic-lets-encrypt-zerossl">Example Public HTTPS — Automatic Let's Encrypt / ZeroSSL</h2>
+<p><strong>Target</strong>: Intermediate / DevOps<br />
+<strong>Goal</strong>: Deploy any web application with a real public domain (<code>demo.fiware.app</code>) and automatic SSL/TLS certificate issuance</p>
+<p><a href="../example-public-https/">Start Example Public HTTPS →</a></p>
+<ul>
+<li>Zero-touch Let's Encrypt / ZeroSSL ACME certificate issuance</li>
+<li>Automatic HTTP (<code>:80</code>) to HTTPS (<code>:443</code>) redirection</li>
+<li>Ingress constraints (<code>ingress.host</code>, <code>ingress.email</code>) and label equivalents</li>
+<li>Background certificate auto-renewal before expiration</li>
 </ul>
 
 

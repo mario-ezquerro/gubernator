@@ -1,0 +1,18 @@
+version: '3.8'
+
+# Example: Deploying a Public Web Application with Automatic Let's Encrypt HTTPS
+# Replace 'demo.fiware.app' with your own domain and 'admin@fiware.app' with your email.
+services:
+  web:
+    image: nginxdemos/hello:plain-text
+    ports:
+      - "80" # Gubernator routes ingress traffic to this target container port
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - stack.name == public-https-demo
+          # Public FQDN: Gubernator will automatically trigger Let's Encrypt / ZeroSSL via Caddy
+          - ingress.host == demo.fiware.app
+          # Optional: ACME contact email for certificate expiration alerts
+          - ingress.email == admin@fiware.app

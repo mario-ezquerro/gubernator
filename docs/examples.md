@@ -113,4 +113,19 @@ This page is your index to the progressive tutorials included with Gubernator. E
 - Persistent volume workspace for code and notebooks
 - Caddy Ingress configuration for secure external traffic mapping on port `8888`
 
+---
+
+## Example Public HTTPS — Automatic Let's Encrypt / ZeroSSL
+
+**Target**: Intermediate / DevOps  
+**Goal**: Deploy any web application with a real public domain (`demo.fiware.app`) and automatic SSL/TLS certificate issuance
+
+[Start Example Public HTTPS →](example-public-https.md)
+
+- Zero-touch Let's Encrypt / ZeroSSL ACME certificate issuance
+- Automatic HTTP (`:80`) to HTTPS (`:443`) redirection
+- Ingress constraints (`ingress.host`, `ingress.email`) and label equivalents
+- Background certificate auto-renewal before expiration
+
+
 

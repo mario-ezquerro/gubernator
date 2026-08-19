@@ -754,13 +754,91 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-caddy-ingress-routing" class="md-nav__link">
+  <a href="#3-caddy-ingress-routing-automatic-https" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Caddy Ingress Routing
+        3. Caddy Ingress Routing &amp; Automatic HTTPS
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="3. Caddy Ingress Routing &amp; Automatic HTTPS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-local-domains-gbntlocal-internal-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Local Domains (*.gbnt.local) — Internal TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-public-domains-demofiwareapp-automatic-lets-encrypt-ssltls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Public Domains (demo.fiware.app) — Automatic Let's Encrypt SSL/TLS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="B. Public Domains (demo.fiware.app) — Automatic Let&#39;s Encrypt SSL/TLS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-deploying-a-public-domain-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Deploying a Public Domain Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-format-with-service-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative Format with Service Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-ingress-constraints-labels-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Ingress Constraints &amp; Labels Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-prerequisites-for-public-https-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Prerequisites for Public HTTPS Domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -864,6 +942,8 @@
   
     
     
+      
+        
       
         
       
@@ -996,28 +1076,121 @@
 </span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">data_{{stack.name}}</span><span class="p p-Indicator">:</span>
 </span></code></pre></div>
 <hr />
-<h2 id="3-caddy-ingress-routing">3. Caddy Ingress Routing</h2>
-<p>Gubernator automatically configures a reverse proxy (Caddy) for your containers. You don't need to manually expose ports to the host network (like <code>80:80</code>) for every web app.</p>
-<p>Instead, define the <code>ingress.host</code> constraint in your service. Gubernator will automatically detect the internal IP of the running container and route traffic for that domain directly to it.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">webapp</span><span class="p">:</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-web-app:latest</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == myapp.gbnt.local</span>
+<h2 id="3-caddy-ingress-routing-automatic-https">3. Caddy Ingress Routing &amp; Automatic HTTPS</h2>
+<p>Gubernator automatically configures a high-performance reverse proxy (<strong>Caddy</strong>) across all cluster nodes. You don't need to manually expose host ports (<code>80:80</code>) for web applications.</p>
+<p>Instead, define the <code>ingress.host</code> constraint (or label) in your service. Gubernator dynamically resolves the internal container IPs, configures upstream load balancing, and manages SSL/TLS certificates.</p>
+<h3 id="a-local-domains-gbntlocal-internal-tls">A. Local Domains (<code>*.gbnt.local</code>) — Internal TLS</h3>
+<p>For development and local testing, use a <code>.local</code>, <code>.internal</code>, or <code>*.gbnt.local</code> domain. Gubernator will instruct Caddy to use its internal self-signed Root Certificate Authority (<code>tls internal</code>):</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">webapp</span><span class="p">:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;80&quot;</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == dev-app</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == myapp.gbnt.local</span>
 </span></code></pre></div>
-<p>If your container exposes a port other than <code>80</code>, define it in the standard <code>ports</code> array. Gubernator will read the <strong>first port</strong> defined and route traffic to it:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">webapp</span><span class="p">:</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-web-app:latest</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8080&quot;</span><span class="w"> </span><span class="c1"># Gubernator will route ingress traffic to port 8080</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == myapp.gbnt.local</span>
+<blockquote>
+<p>[!TIP]
+To trust local certificates in your browser without security warnings, download the Root CA (<code>root.crt</code>) from the Web Dashboard (<strong>Caddy Ingress ➔ TLS Certs</strong>) or via <code>http://&lt;manager-ip&gt;:4000/v1/caddy/ca.crt</code>.</p>
+</blockquote>
+<hr />
+<h3 id="b-public-domains-demofiwareapp-automatic-lets-encrypt-ssltls">B. Public Domains (<code>demo.fiware.app</code>) — Automatic Let's Encrypt SSL/TLS</h3>
+<p>When you provide a real, public FQDN (e.g., <code>demo.fiware.app</code>, <code>api.mycompany.com</code>), Gubernator automatically enables <strong>Caddy Automatic HTTPS</strong>:</p>
+<ol>
+<li><strong>Zero-Touch Provisioning</strong>: Caddy contacts <strong>Let's Encrypt</strong> / <strong>ZeroSSL</strong> via the ACME protocol.</li>
+<li><strong>Instant Verification</strong>: Caddy validates domain ownership over ports <code>80</code>/<code>443</code> (HTTP-01 / TLS-ALPN-01 challenges).</li>
+<li><strong>Official X.509 Certificate</strong>: A valid, globally trusted certificate is issued, installed, and HTTPS is activated in seconds.</li>
+<li><strong>Automatic HTTP ➔ HTTPS Redirect</strong>: Port 80 traffic is redirected to port 443 automatically.</li>
+<li><strong>Background Auto-Renewal</strong>: Certificates are automatically renewed 30 days before expiration.</li>
+</ol>
+<h4 id="example-deploying-a-public-domain-stack">Example: Deploying a Public Domain Stack</h4>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">frontend</span><span class="p">:</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;80&quot;</span><span class="w"> </span><span class="c1"># Target container port</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == production-demo</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">          </span><span class="c1"># Public domain for Automatic Let&#39;s Encrypt HTTPS:</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == demo.fiware.app</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">          </span><span class="c1"># (Optional) ACME email for certificate expiration alerts:</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.email == admin@fiware.app</span>
 </span></code></pre></div>
+<h4 id="alternative-format-with-service-labels">Alternative Format with Service Labels</h4>
+<p>You can also use standard Docker Compose <code>labels</code>:
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">frontend</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;80&quot;</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">      </span><span class="nt">gbnt.ingress.host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;demo.fiware.app&quot;</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">      </span><span class="nt">gbnt.ingress.email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;admin@fiware.app&quot;</span>
+</span></code></pre></div></p>
+<hr />
+<h3 id="c-ingress-constraints-labels-reference">C. Ingress Constraints &amp; Labels Reference</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Constraint / Label</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ingress.host == &lt;domain&gt;</code></td>
+<td style="text-align: left;">Domain to route to this service</td>
+<td style="text-align: left;"><code>- ingress.host == demo.fiware.app</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.email == &lt;email&gt;</code></td>
+<td style="text-align: left;">ACME contact email for Let's Encrypt</td>
+<td style="text-align: left;"><code>- ingress.email == admin@fiware.app</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.tls == internal</code></td>
+<td style="text-align: left;">Force Caddy internal self-signed CA</td>
+<td style="text-align: left;"><code>- ingress.tls == internal</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.tls == off</code></td>
+<td style="text-align: left;">Disable TLS (plain HTTP on port 80 only)</td>
+<td style="text-align: left;"><code>- ingress.tls == off</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.ingress.host</code></td>
+<td style="text-align: left;">Label equivalent of <code>ingress.host</code></td>
+<td style="text-align: left;"><code>gbnt.ingress.host: "demo.fiware.app"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.ingress.email</code></td>
+<td style="text-align: left;">Label equivalent of <code>ingress.email</code></td>
+<td style="text-align: left;"><code>gbnt.ingress.email: "admin@fiware.app"</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="d-prerequisites-for-public-https-domains">D. Prerequisites for Public HTTPS Domains</h3>
+<ol>
+<li><strong>DNS Record</strong>: In your DNS provider (Cloudflare, Route53, GoDaddy, OVH, etc.), configure an <code>A</code> record pointing <code>demo.fiware.app</code> to the <strong>public IP</strong> of your Gubernator Manager or Ingress node:
+   <div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>demo.fiware.app.   300   IN   A   &lt;YOUR_PUBLIC_SERVER_IP&gt;
+</span></code></pre></div></li>
+<li><strong>Firewall / Security Group</strong>: Ensure inbound traffic on ports <strong><code>80</code> (HTTP)</strong> and <strong><code>443</code> (HTTPS)</strong> is open to the internet (<code>0.0.0.0/0</code>).</li>
+</ol>
 <hr />
 <h2 id="4-supported-compose-fields">4. Supported Compose Fields</h2>
 <p>Gubernator's parser focuses on the fields necessary for container scheduling and networking. The following fields are actively parsed and applied:</p>
@@ -1029,7 +1202,7 @@
 <li><code>command</code>: Overrides the default container command.</li>
 <li><code>depends_on</code>: Ensures proper startup ordering of services.</li>
 <li><code>deploy.replicas</code>: Number of container instances to spawn.</li>
-<li><code>deploy.placement.constraints</code>: Used for Node affinity (e.g. <code>node.labels.gpu == nvidia</code>) and Gubernator features (<code>ingress.host</code>, <code>stack.name</code>).</li>
+<li><code>deploy.placement.constraints</code>: Used for Node affinity (e.g. <code>node.labels.gpu == nvidia</code>) and Gubernator features (<code>ingress.host</code>, <code>ingress.email</code>, <code>stack.name</code>).</li>
 </ul>
 
 

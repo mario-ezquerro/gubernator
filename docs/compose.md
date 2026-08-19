@@ -68,35 +68,102 @@ volumes:
 
 ---
 
-## 3. Caddy Ingress Routing
+## 3. Caddy Ingress Routing & Automatic HTTPS
 
-Gubernator automatically configures a reverse proxy (Caddy) for your containers. You don't need to manually expose ports to the host network (like `80:80`) for every web app.
+Gubernator automatically configures a high-performance reverse proxy (**Caddy**) across all cluster nodes. You don't need to manually expose host ports (`80:80`) for web applications.
 
-Instead, define the `ingress.host` constraint in your service. Gubernator will automatically detect the internal IP of the running container and route traffic for that domain directly to it.
+Instead, define the `ingress.host` constraint (or label) in your service. Gubernator dynamically resolves the internal container IPs, configures upstream load balancing, and manages SSL/TLS certificates.
 
-```yaml
-services:
-  webapp:
-    image: my-web-app:latest
-    deploy:
-      placement:
-        constraints:
-          - ingress.host == myapp.gbnt.local
-```
-
-If your container exposes a port other than `80`, define it in the standard `ports` array. Gubernator will read the **first port** defined and route traffic to it:
+### A. Local Domains (`*.gbnt.local`) — Internal TLS
+For development and local testing, use a `.local`, `.internal`, or `*.gbnt.local` domain. Gubernator will instruct Caddy to use its internal self-signed Root Certificate Authority (`tls internal`):
 
 ```yaml
+version: '3.8'
+
 services:
   webapp:
-    image: my-web-app:latest
+    image: nginxdemos/hello:latest
     ports:
-      - "8080" # Gubernator will route ingress traffic to port 8080
+      - "80"
     deploy:
+      replicas: 2
       placement:
         constraints:
+          - stack.name == dev-app
           - ingress.host == myapp.gbnt.local
 ```
+
+> [!TIP]
+> To trust local certificates in your browser without security warnings, download the Root CA (`root.crt`) from the Web Dashboard (**Caddy Ingress ➔ TLS Certs**) or via `http://<manager-ip>:4000/v1/caddy/ca.crt`.
+
+---
+
+### B. Public Domains (`demo.fiware.app`) — Automatic Let's Encrypt SSL/TLS
+When you provide a real, public FQDN (e.g., `demo.fiware.app`, `api.mycompany.com`), Gubernator automatically enables **Caddy Automatic HTTPS**:
+
+1. **Zero-Touch Provisioning**: Caddy contacts **Let's Encrypt** / **ZeroSSL** via the ACME protocol.
+2. **Instant Verification**: Caddy validates domain ownership over ports `80`/`443` (HTTP-01 / TLS-ALPN-01 challenges).
+3. **Official X.509 Certificate**: A valid, globally trusted certificate is issued, installed, and HTTPS is activated in seconds.
+4. **Automatic HTTP ➔ HTTPS Redirect**: Port 80 traffic is redirected to port 443 automatically.
+5. **Background Auto-Renewal**: Certificates are automatically renewed 30 days before expiration.
+
+#### Example: Deploying a Public Domain Stack
+```yaml
+version: '3.8'
+
+services:
+  frontend:
+    image: nginxdemos/hello:latest
+    ports:
+      - "80" # Target container port
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - stack.name == production-demo
+          # Public domain for Automatic Let's Encrypt HTTPS:
+          - ingress.host == demo.fiware.app
+          # (Optional) ACME email for certificate expiration alerts:
+          - ingress.email == admin@fiware.app
+```
+
+#### Alternative Format with Service Labels
+You can also use standard Docker Compose `labels`:
+```yaml
+version: '3.8'
+
+services:
+  frontend:
+    image: nginxdemos/hello:latest
+    ports:
+      - "80"
+    labels:
+      gbnt.ingress.host: "demo.fiware.app"
+      gbnt.ingress.email: "admin@fiware.app"
+```
+
+---
+
+### C. Ingress Constraints & Labels Reference
+
+| Constraint / Label | Description | Example |
+| :--- | :--- | :--- |
+| `ingress.host == <domain>` | Domain to route to this service | `- ingress.host == demo.fiware.app` |
+| `ingress.email == <email>` | ACME contact email for Let's Encrypt | `- ingress.email == admin@fiware.app` |
+| `ingress.tls == internal` | Force Caddy internal self-signed CA | `- ingress.tls == internal` |
+| `ingress.tls == off` | Disable TLS (plain HTTP on port 80 only) | `- ingress.tls == off` |
+| `gbnt.ingress.host` | Label equivalent of `ingress.host` | `gbnt.ingress.host: "demo.fiware.app"` |
+| `gbnt.ingress.email` | Label equivalent of `ingress.email` | `gbnt.ingress.email: "admin@fiware.app"` |
+
+---
+
+### D. Prerequisites for Public HTTPS Domains
+
+1. **DNS Record**: In your DNS provider (Cloudflare, Route53, GoDaddy, OVH, etc.), configure an `A` record pointing `demo.fiware.app` to the **public IP** of your Gubernator Manager or Ingress node:
+   ```text
+   demo.fiware.app.   300   IN   A   <YOUR_PUBLIC_SERVER_IP>
+   ```
+2. **Firewall / Security Group**: Ensure inbound traffic on ports **`80` (HTTP)** and **`443` (HTTPS)** is open to the internet (`0.0.0.0/0`).
 
 ---
 
@@ -111,4 +178,5 @@ Gubernator's parser focuses on the fields necessary for container scheduling and
 * `command`: Overrides the default container command.
 * `depends_on`: Ensures proper startup ordering of services.
 * `deploy.replicas`: Number of container instances to spawn.
-* `deploy.placement.constraints`: Used for Node affinity (e.g. `node.labels.gpu == nvidia`) and Gubernator features (`ingress.host`, `stack.name`).
+* `deploy.placement.constraints`: Used for Node affinity (e.g. `node.labels.gpu == nvidia`) and Gubernator features (`ingress.host`, `ingress.email`, `stack.name`).
+

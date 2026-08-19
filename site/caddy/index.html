@@ -710,6 +710,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#automatic-https-smart-domain-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 Automatic HTTPS &amp; Smart Domain Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔒 Automatic HTTPS &amp; Smart Domain Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-public-domains-demofiwareapp-myappcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Public Domains (demo.fiware.app, myapp.com)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-local-domains-gbntlocal-internal-localhost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Local Domains (*.gbnt.local, *.internal, localhost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#web-ui-visualization-suite-caddy-ui-inspired" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1000,6 +1039,8 @@
       
         
       
+        
+      
     
     
     
@@ -1090,6 +1131,19 @@
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>             +------------------+ +------------------+ +------------------+
 </span></code></pre></div>
 <p>When you deploy a stack with an <code>ingress.host</code> constraint (or Compose service mapping), Gubernator dynamically generates and broadcasts Caddyfile blocks to all node proxies.</p>
+<hr />
+<h2 id="automatic-https-smart-domain-management">🔒 Automatic HTTPS &amp; Smart Domain Management</h2>
+<p>Gubernator's Ingress engine features <strong>Smart Domain Classification</strong>:</p>
+<h3 id="1-public-domains-demofiwareapp-myappcom">1. Public Domains (<code>demo.fiware.app</code>, <code>myapp.com</code>)</h3>
+<p>When a public FQDN is specified in <code>ingress.host</code>:
+* <strong>Zero-Touch Let's Encrypt / ZeroSSL</strong>: Gubernator omits <code>tls internal</code>, allowing Caddy's built-in ACME engine to automatically request, verify (HTTP-01 / TLS-ALPN-01 on ports 80/443), install, and manage official, globally trusted X.509 certificates.
+* <strong>Auto-Redirection</strong>: Port 80 (HTTP) automatically redirects to port 443 (HTTPS).
+* <strong>Automated Renewal</strong>: Caddy automatically renews certificates 30 days before expiration without interrupting traffic.
+* <strong>Optional ACME Email</strong>: Supply <code>- ingress.email == admin@fiware.app</code> (or label <code>gbnt.ingress.email</code>) to receive Let's Encrypt renewal notices.</p>
+<h3 id="2-local-domains-gbntlocal-internal-localhost">2. Local Domains (<code>*.gbnt.local</code>, <code>*.internal</code>, <code>localhost</code>)</h3>
+<p>When an internal or private domain is detected:
+* <strong>Internal Root CA</strong>: Caddy automatically applies <code>tls internal</code>, signing certificates with its internal Root CA without attempting to contact public ACME servers.
+* <strong>Root CA Trust</strong>: Download <code>root.crt</code> from the Web UI or via API (<code>GET /v1/caddy/ca.crt</code>) to trust local HTTPS certificates in your browser.</p>
 <hr />
 <h2 id="web-ui-visualization-suite-caddy-ui-inspired">🎨 Web UI Visualization Suite (<code>caddy-ui</code> Inspired)</h2>
 <p>Access <strong>Caddy Ingress</strong> in the Web Dashboard (Port 4001) to interact with 7 specialized sub-tabs:</p>
