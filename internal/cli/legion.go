@@ -438,9 +438,13 @@ var legionJoinCmd = &cobra.Command{
 				caddyfileContent := "# Gubernator Worker Auto-Generated Caddyfile\n\n"
 				for _, host := range hostOrder {
 					upstreams := hostUpstreams[host]
+					tlsDirective := ""
+					if caddy.IsLocalDomain(host) {
+						tlsDirective = "\ttls internal\n"
+					}
 					caddyfileContent += fmt.Sprintf(
-						"%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
-						host, strings.Join(upstreams, " "),
+						"%s {\n%s\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
+						host, tlsDirective, strings.Join(upstreams, " "),
 					)
 				}
 

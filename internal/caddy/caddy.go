@@ -48,6 +48,27 @@ func CaddyfilePath() string {
 	return filepath.Join(CaddyDir(), "Caddyfile")
 }
 
+// IsLocalDomain returns true if the host is a local/internal TLD or IP address
+// where public ACME (Let's Encrypt / ZeroSSL) cannot issue public certificates.
+func IsLocalDomain(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if strings.Contains(h, ":") {
+		parts := strings.Split(h, ":")
+		h = parts[0]
+	}
+	if strings.HasSuffix(h, ".local") ||
+		strings.HasSuffix(h, ".internal") ||
+		strings.HasSuffix(h, ".lan") ||
+		strings.HasSuffix(h, ".home") ||
+		strings.HasSuffix(h, ".test") ||
+		strings.HasSuffix(h, ".localhost") ||
+		h == "localhost" ||
+		!strings.Contains(h, ".") {
+		return true
+	}
+	return false
+}
+
 // EnsureConfigDir creates the Caddy config directory and writes a default Caddyfile if it doesn't exist.
 func EnsureConfigDir() error {
 	dir := CaddyDir()

@@ -10,10 +10,11 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
+
 // GenerateCaddyfile creates a Caddyfile based on Service constraints/labels.
 // It groups all upstreams by ingress hostname to avoid duplicate site definitions.
-// Only services with running tasks are included — no DNS fallback blocks are emitted
-// since those cause "ambiguous site definition" errors when combined with IP-based blocks.
+// It automatically detects public domains (e.g. demo.fiware.app) and lets Caddy obtain
+// real Let's Encrypt / ZeroSSL TLS certificates, while using 'tls internal' for local domains (*.gbnt.local).
 func GenerateCaddyfile() {
 	aqueductMutex.Lock()
 	defer aqueductMutex.Unlock()
@@ -26,54 +27,84 @@ func GenerateCaddyfile() {
 
 	// hostUpstreams groups container IPs per ingress hostname to avoid duplicate blocks.
 	hostUpstreams := make(map[string][]string)
+	// hostTLS stores optional custom TLS configuration per hostname (e.g. email, "internal", "off").
+	hostTLS := make(map[string]string)
 	// Preserve insertion order for deterministic output.
 	var hostOrder []string
 
 	for _, svc := range services {
+		var ingressHost string
+		var ingressEmail string
+		var ingressTLS string
+
 		for _, constraint := range svc.Constraints {
-			parts := strings.Split(constraint, "==")
-			if len(parts) != 2 {
-				continue
-			}
-			key := strings.TrimSpace(parts[0])
-			val := strings.TrimSpace(parts[1])
-
-			if key != "ingress.host" && key != "node.labels.gbnt.ingress.host" {
-				continue
-			}
-
-			// Only include running tasks with a real IP.
-			var tasks []db.Task
-			if err := db.DB.Where(
-				"service_id = ? AND status = ? AND container_ip != ?",
-				svc.ID, "running", "",
-			).Find(&tasks).Error; err != nil || len(tasks) == 0 {
-				// Skip — no fallback DNS block to avoid duplicates/conflicts.
-				continue
-			}
-
-			port := "80"
-			if len(svc.Ports) > 0 {
-				p := svc.Ports[0]
-				parts := strings.Split(p, ":")
-				lastPart := parts[len(parts)-1]
-				cleaned := strings.TrimSpace(strings.Split(lastPart, "/")[0])
-				if cleaned != "" {
-					port = cleaned
+			var key, val string
+			if strings.Contains(constraint, "==") {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 {
+					key = strings.TrimSpace(parts[0])
+					val = strings.TrimSpace(parts[1])
+				}
+			} else if strings.Contains(constraint, "=") {
+				parts := strings.SplitN(constraint, "=", 2)
+				if len(parts) == 2 {
+					key = strings.TrimSpace(parts[0])
+					val = strings.TrimSpace(parts[1])
 				}
 			}
 
-			for _, t := range tasks {
-				if t.NodeID != "node-local-manager" {
-					continue
-				}
-				targetIP := t.ContainerIP
-				targetPort := port
+			switch key {
+			case "ingress.host", "node.labels.gbnt.ingress.host", "gbnt.ingress.host":
+				ingressHost = val
+			case "ingress.email", "node.labels.gbnt.ingress.email", "gbnt.ingress.email":
+				ingressEmail = val
+			case "ingress.tls", "node.labels.gbnt.ingress.tls", "gbnt.ingress.tls":
+				ingressTLS = strings.ToLower(val)
+			}
+		}
 
-				if _, seen := hostUpstreams[val]; !seen {
-					hostOrder = append(hostOrder, val)
-				}
-				hostUpstreams[val] = append(hostUpstreams[val], fmt.Sprintf("%s:%s", targetIP, targetPort))
+		if ingressHost == "" {
+			continue
+		}
+
+		// Only include running tasks with a real IP.
+		var tasks []db.Task
+		if err := db.DB.Where(
+			"service_id = ? AND status = ? AND container_ip != ?",
+			svc.ID, "running", "",
+		).Find(&tasks).Error; err != nil || len(tasks) == 0 {
+			// Skip — no fallback DNS block to avoid duplicates/conflicts.
+			continue
+		}
+
+		port := "80"
+		if len(svc.Ports) > 0 {
+			p := svc.Ports[0]
+			parts := strings.Split(p, ":")
+			lastPart := parts[len(parts)-1]
+			cleaned := strings.TrimSpace(strings.Split(lastPart, "/")[0])
+			if cleaned != "" {
+				port = cleaned
+			}
+		}
+
+		for _, t := range tasks {
+			if t.NodeID != "node-local-manager" {
+				continue
+			}
+			targetIP := t.ContainerIP
+			targetPort := port
+
+			if _, seen := hostUpstreams[ingressHost]; !seen {
+				hostOrder = append(hostOrder, ingressHost)
+			}
+			hostUpstreams[ingressHost] = append(hostUpstreams[ingressHost], fmt.Sprintf("%s:%s", targetIP, targetPort))
+
+			// Record TLS preference
+			if ingressTLS != "" {
+				hostTLS[ingressHost] = ingressTLS
+			} else if ingressEmail != "" {
+				hostTLS[ingressHost] = ingressEmail
 			}
 		}
 	}
@@ -82,9 +113,26 @@ func GenerateCaddyfile() {
 
 	for _, host := range hostOrder {
 		upstreams := hostUpstreams[host]
+		tlsDirective := ""
+
+		tlsOpt := hostTLS[host]
+		if tlsOpt == "internal" || (tlsOpt == "" && caddy.IsLocalDomain(host)) {
+			tlsDirective = "\ttls internal\n"
+		} else if tlsOpt == "off" || tlsOpt == "none" {
+			// No TLS directive, user requested plain HTTP or explicit handling
+			tlsDirective = ""
+		} else if strings.Contains(tlsOpt, "@") {
+			// ACME registration email specified (e.g. admin@fiware.app)
+			tlsDirective = fmt.Sprintf("\ttls %s\n", tlsOpt)
+		} else if tlsOpt != "" && tlsOpt != "letsencrypt" && tlsOpt != "auto" {
+			tlsDirective = fmt.Sprintf("\ttls %s\n", tlsOpt)
+		}
+		// For public domains without explicit flags, omit 'tls internal' so Caddy
+		// automatically requests and manages public Let's Encrypt / ZeroSSL certificates!
+
 		content += fmt.Sprintf(
-			"%s {\n\ttls internal\n\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
-			host, strings.Join(upstreams, " "),
+			"%s {\n%s\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
+			host, tlsDirective, strings.Join(upstreams, " "),
 		)
 	}
 
