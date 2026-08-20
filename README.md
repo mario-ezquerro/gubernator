@@ -34,9 +34,12 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 * **Container Engine:** Direct communication with the Docker Engine.
 * **Web Dashboard:** Flutter Web with Material Design 3 (embedded into the Go binary).
 * **Enterprise Security & RBAC:** Multi-Server Active Directory / OpenLDAP authentication with LDAPS/StartTLS, JWT HMAC-SHA256 sessions, emergency local admin, and dynamic 3-tier RBAC (`admin`, `operator`, `readonly`) (see [docs/auth-rbac.md](docs/auth-rbac.md)).
-* **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and multi-node Caddy Ingress with full 7-tab UI management (see [SPEC-caddy.md](SPEC-caddy.md) and [caddy.md](docs/caddy.md)).
+* **Image Security, SBOM & Cosign Signing:** Automated CVE vulnerability scanning, CycloneDX & SPDX Software Bill of Materials, Cosign ECDSA cryptographic image signing, and Gatekeeper pre-deployment admission control (see [SPEC-image-security.md](SPEC-image-security.md) and [docs/image-security.md](docs/image-security.md)).
+* **Persistent Storage & Point-in-Time Backups:** Shared volume mobility across hosts (`/var/contenedores`), zero-downtime database freeze (`docker pause`), compressed `.tar.gz` backups with SHA-256 integrity, and cron retention policies (see [SPEC-storage-backups.md](SPEC-storage-backups.md) and [docs/storage-backups.md](docs/storage-backups.md)).
+* **SLO Engine & Error Budget Tracking:** Sloth-powered Google SRE multi-window multi-burn-rate alerting, Prometheus recording rules, and real-time Error Budget monitoring (see [docs/slo.md](docs/slo.md) and [docs/example-slo.md](docs/example-slo.md)).
+* **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and multi-node Caddy Ingress with full 7-tab UI management (see [SPEC-caddy.md](SPEC-caddy.md) and [docs/caddy.md](docs/caddy.md)).
 
-*(See [architecture.md](architecture.md) for a deeper dive).*
+*(See [architecture.md](docs/architecture.md) for a deeper dive).*
 
 ---
 
