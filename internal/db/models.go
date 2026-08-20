@@ -219,3 +219,71 @@ type AuditLog struct {
 	Status    string    `gorm:"type:varchar(50);default:'SUCCESS'" json:"status"` // SUCCESS, FAILURE
 	Details   string    `gorm:"type:text" json:"details"`
 }
+
+// StorageVolume represents a discovered persistent volume or bind mount.
+type StorageVolume struct {
+	ID            string    `gorm:"primaryKey;type:varchar(100)" json:"id"`
+	Name          string    `gorm:"type:varchar(255);not null" json:"name"`
+	Type          string    `gorm:"type:varchar(50);not null" json:"type"` // "shared_pool", "docker_named", "host_bind"
+	SourcePath    string    `gorm:"type:text;not null" json:"source_path"`
+	TargetPath    string    `gorm:"type:text" json:"target_path"`
+	StackID       string    `gorm:"type:varchar(255);index" json:"stack_id"`
+	StackName     string    `gorm:"type:varchar(255)" json:"stack_name"`
+	ServiceName   string    `gorm:"type:varchar(255)" json:"service_name"`
+	NodeID        string    `gorm:"type:varchar(255);default:'all'" json:"node_id"`
+	SizeBytes     int64     `json:"size_bytes"`
+	SizeFormatted string    `gorm:"-" json:"size_formatted"`
+	IsShared      bool      `json:"is_shared"`
+	LastScannedAt time.Time `json:"last_scanned_at"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// Backup represents a point-in-time compressed archive of a volume or stack.
+type Backup struct {
+	ID            string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name          string     `gorm:"type:varchar(255);not null" json:"name"`
+	StackID       string     `gorm:"type:varchar(255);index" json:"stack_id"`
+	StackName     string     `gorm:"type:varchar(255)" json:"stack_name"`
+	VolumeName    string     `gorm:"type:varchar(255)" json:"volume_name"`
+	SourcePath    string     `gorm:"type:text" json:"source_path"`
+	FilePath      string     `gorm:"type:text;not null" json:"file_path"`
+	SizeBytes     int64      `json:"size_bytes"`
+	SizeFormatted string     `gorm:"-" json:"size_formatted"`
+	SHA256        string     `gorm:"type:varchar(64)" json:"sha256"`
+	Status        string     `gorm:"type:varchar(50);default:'completed'" json:"status"` // completed, failed, in_progress
+	IsScheduled   bool       `json:"is_scheduled"`
+	ScheduleID    string     `gorm:"type:varchar(50)" json:"schedule_id"`
+	ErrorMessage  string     `gorm:"type:text" json:"error_message,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty"`
+}
+
+// BackupSchedule defines an automated periodic backup policy.
+type BackupSchedule struct {
+	ID              string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name            string     `gorm:"type:varchar(255);not null" json:"name"`
+	CronExpression  string     `gorm:"type:varchar(100);not null" json:"cron_expression"` // e.g. "0 3 * * *" (Daily 3 AM)
+	TargetType      string     `gorm:"type:varchar(50);default:'stack'" json:"target_type"` // "stack", "volume", "all"
+	TargetID        string     `gorm:"type:varchar(255)" json:"target_id"` // StackID, VolumeName, or "all"
+	TargetName      string     `gorm:"type:varchar(255)" json:"target_name"`
+	RetentionCount  int        `gorm:"default:7" json:"retention_count"` // Keep last N backups
+	PauseContainers bool       `gorm:"default:true" json:"pause_containers"`
+	Enabled         bool       `gorm:"default:true" json:"enabled"`
+	LastRunAt       *time.Time `json:"last_run_at,omitempty"`
+	NextRunAt       *time.Time `json:"next_run_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+// StoragePool represents a shared filesystem storage mount.
+type StoragePool struct {
+	ID        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name      string    `gorm:"type:varchar(255);not null" json:"name"`
+	Path      string    `gorm:"type:text;not null" json:"path"` // e.g. "/var/contenedores"
+	FSType    string    `gorm:"type:varchar(50)" json:"fs_type"` // nfs, glusterfs, local, etc.
+	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+

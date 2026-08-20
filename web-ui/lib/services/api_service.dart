@@ -928,5 +928,133 @@ class ApiService {
     } catch (_) {}
     return {"status": "error", "driver": "none", "total": 0, "logs": <LokiLogEntry>[]};
   }
+
+  // ── Storage & Backups API Methods ─────────────────────────────────
+
+  /// Fetches all cluster persistent volumes and bind mounts.
+  static Future<List<StorageVolumeModel>> fetchStorageVolumes() async {
+    final response = await http.get(Uri.parse('/api/storage/volumes'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['volumes'] as List? ?? [])
+          .map((e) => StorageVolumeModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    throw Exception('Failed to fetch storage volumes: ${response.statusCode}');
+  }
+
+  /// Fetches shared storage pool health and capacity diagnostics.
+  static Future<PoolHealthModel> fetchStoragePoolHealth({String path = '/var/contenedores'}) async {
+    final url = '/api/storage/pools/health?path=${Uri.encodeQueryComponent(path)}';
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return PoolHealthModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch storage pool health: ${response.statusCode}');
+  }
+
+  /// Fetches all backup archives.
+  static Future<List<BackupModel>> fetchBackups() async {
+    final response = await http.get(Uri.parse('/api/backups'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['backups'] as List? ?? [])
+          .map((e) => BackupModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    throw Exception('Failed to fetch backups: ${response.statusCode}');
+  }
+
+  /// Creates a new compressed backup archive.
+  static Future<BackupModel> createBackup({
+    required String name,
+    String stackId = '',
+    String volumeName = '',
+    String sourcePath = '',
+    bool pauseContainers = true,
+  }) async {
+    final body = jsonEncode({
+      'name': name,
+      'stack_id': stackId,
+      'volume_name': volumeName,
+      'source_path': sourcePath,
+      'pause_containers': pauseContainers,
+    });
+    final response = await http.post(
+      Uri.parse('/api/backups/create'),
+      headers: authHeaders,
+      body: body,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return BackupModel.fromJson(data['backup']);
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to create backup');
+  }
+
+  /// Restores a backup archive to target directory.
+  static Future<bool> restoreBackup({
+    required String backupId,
+    String targetPath = '',
+  }) async {
+    final body = jsonEncode({
+      'backup_id': backupId,
+      'target_path': targetPath,
+    });
+    final response = await http.post(
+      Uri.parse('/api/backups/restore'),
+      headers: authHeaders,
+      body: body,
+    );
+    if (response.statusCode == 200) {
+      return true;
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to restore backup');
+  }
+
+  /// Deletes a backup archive.
+  static Future<bool> deleteBackup(String id) async {
+    final response = await http.delete(Uri.parse('/api/backups/$id'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Fetches all automated backup schedules.
+  static Future<List<BackupScheduleModel>> fetchBackupSchedules() async {
+    final response = await http.get(Uri.parse('/api/backups/schedules'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['schedules'] as List? ?? [])
+          .map((e) => BackupScheduleModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    throw Exception('Failed to fetch backup schedules: ${response.statusCode}');
+  }
+
+  /// Creates or updates a backup schedule.
+  static Future<BackupScheduleModel> saveBackupSchedule(BackupScheduleModel schedule) async {
+    final response = await http.post(
+      Uri.parse('/api/backups/schedules'),
+      headers: authHeaders,
+      body: jsonEncode(schedule.toJson()),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return BackupScheduleModel.fromJson(data['schedule']);
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to save schedule');
+  }
+
+  /// Deletes a backup schedule.
+  static Future<bool> deleteBackupSchedule(String id) async {
+    final response = await http.delete(Uri.parse('/api/backups/schedules/$id'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
 }
+
 

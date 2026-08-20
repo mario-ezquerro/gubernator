@@ -142,3 +142,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Cloud IaC Automation:** Production-grade Terraform modules in `terraform/` for **AWS**, **Hetzner Cloud**, **DigitalOcean**, **Google Cloud Platform (GCP)**, and **Proxmox VE**.
 * **Automated Ansible Inventory Bridge:** Every Terraform provider module automatically populates `ansible/inventory.ini` with provisioned public/private IPs, credentials, and node roles on `terraform apply`.
 * **Zero-Touch Infrastructure Pipeline:** Enables full multi-cloud cluster provisioning from bare metal / cloud VMs to fully orchestrated Gubernator clusters in 2 simple commands (`terraform apply && ansible-playbook site.yml`).
+
+### 17. Persistent Storage & Backups Subsystem — "The Granaries" (`v2.24.0`)
+* **Shared Storage Mobility (`/var/contenedores`)**: Enables multi-node persistent volume mobility across Centurions via shared network mounts (NFS, GlusterFS, CephFS, CIFS) or local volumes.
+* **Volume Explorer**: Automatic cluster-wide discovery and disk usage calculation for Docker Named Volumes, Shared Pools, and Host Bind Mounts.
+* **Point-in-Time Compressed Backups**: Instant creation of `.tar.gz` archives with cryptographic SHA-256 integrity verification, direct browser downloads, and external backup uploads.
+* **Zero-Downtime / Consistent Freeze**: Optional container pause (`docker pause` -> archive -> `docker unpause`) for 100% consistent database backups (Postgres, MySQL, MariaDB, SQLite).
+* **Automated Cron & Retention Policies**: Background scheduler daemon running periodic backup policies with automatic rotation and pruning of older archives.
+* **Storage Pools Health Matrix**: Live diagnostic panel verifying `/var/contenedores` mount accessibility, read/write permissions, and disk capacity across all cluster nodes.
+* **Full CLI Parity**: Dedicated commands for `gbnt volume ls`, `gbnt backup ls`, `gbnt backup create`, `gbnt backup restore`, and `gbnt backup schedule ls`.
+

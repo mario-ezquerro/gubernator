@@ -938,3 +938,258 @@ class LokiLabelsResponse {
     );
   }
 }
+
+// ── Storage & Backups Models ──────────────────────────────────────
+
+class StorageVolumeModel {
+  final String id;
+  final String name;
+  final String type; // "shared_pool", "docker_named", "host_bind"
+  final String sourcePath;
+  final String targetPath;
+  final String stackId;
+  final String stackName;
+  final String serviceName;
+  final String nodeId;
+  final int sizeBytes;
+  final String sizeFormatted;
+  final bool isShared;
+  final String lastScannedAt;
+
+  StorageVolumeModel({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.sourcePath,
+    required this.targetPath,
+    this.stackId = '',
+    this.stackName = '',
+    this.serviceName = '',
+    this.nodeId = 'cluster',
+    this.sizeBytes = 0,
+    this.sizeFormatted = '0 B',
+    this.isShared = false,
+    this.lastScannedAt = '',
+  });
+
+  factory StorageVolumeModel.fromJson(Map<String, dynamic> json) {
+    return StorageVolumeModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      type: json['type'] ?? 'host_bind',
+      sourcePath: json['source_path'] ?? '',
+      targetPath: json['target_path'] ?? '',
+      stackId: json['stack_id'] ?? '',
+      stackName: json['stack_name'] ?? '',
+      serviceName: json['service_name'] ?? '',
+      nodeId: json['node_id'] ?? 'cluster',
+      sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
+      sizeFormatted: json['size_formatted'] ?? '0 B',
+      isShared: json['is_shared'] == true,
+      lastScannedAt: json['last_scanned_at'] ?? '',
+    );
+  }
+}
+
+class BackupModel {
+  final String id;
+  final String name;
+  final String stackId;
+  final String stackName;
+  final String volumeName;
+  final String sourcePath;
+  final String filePath;
+  final int sizeBytes;
+  final String sizeFormatted;
+  final String sha256;
+  final String status;
+  final bool isScheduled;
+  final String scheduleId;
+  final String createdAt;
+
+  BackupModel({
+    required this.id,
+    required this.name,
+    this.stackId = '',
+    this.stackName = '',
+    this.volumeName = '',
+    this.sourcePath = '',
+    this.filePath = '',
+    this.sizeBytes = 0,
+    this.sizeFormatted = '0 B',
+    this.sha256 = '',
+    this.status = 'completed',
+    this.isScheduled = false,
+    this.scheduleId = '',
+    this.createdAt = '',
+  });
+
+  factory BackupModel.fromJson(Map<String, dynamic> json) {
+    return BackupModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      stackId: json['stack_id'] ?? '',
+      stackName: json['stack_name'] ?? '',
+      volumeName: json['volume_name'] ?? '',
+      sourcePath: json['source_path'] ?? '',
+      filePath: json['file_path'] ?? '',
+      sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
+      sizeFormatted: json['size_formatted'] ?? '0 B',
+      sha256: json['sha256'] ?? '',
+      status: json['status'] ?? 'completed',
+      isScheduled: json['is_scheduled'] == true,
+      scheduleId: json['schedule_id'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
+class BackupScheduleModel {
+  final String id;
+  final String name;
+  final String cronExpression;
+  final String targetType;
+  final String targetId;
+  final String targetName;
+  final int retentionCount;
+  final bool pauseContainers;
+  final bool enabled;
+  final String? lastRunAt;
+  final String createdAt;
+
+  BackupScheduleModel({
+    required this.id,
+    required this.name,
+    required this.cronExpression,
+    this.targetType = 'stack',
+    this.targetId = '',
+    this.targetName = '',
+    this.retentionCount = 7,
+    this.pauseContainers = true,
+    this.enabled = true,
+    this.lastRunAt,
+    this.createdAt = '',
+  });
+
+  factory BackupScheduleModel.fromJson(Map<String, dynamic> json) {
+    return BackupScheduleModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      cronExpression: json['cron_expression'] ?? '0 3 * * *',
+      targetType: json['target_type'] ?? 'stack',
+      targetId: json['target_id'] ?? '',
+      targetName: json['target_name'] ?? '',
+      retentionCount: (json['retention_count'] as num?)?.toInt() ?? 7,
+      pauseContainers: json['pause_containers'] != false,
+      enabled: json['enabled'] != false,
+      lastRunAt: json['last_run_at'],
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'cron_expression': cronExpression,
+      'target_type': targetType,
+      'target_id': targetId,
+      'target_name': targetName,
+      'retention_count': retentionCount,
+      'pause_containers': pauseContainers,
+      'enabled': enabled,
+    };
+  }
+}
+
+class NodePoolHealthModel {
+  final String nodeId;
+  final String nodeIp;
+  final String role;
+  final String status;
+  final String path;
+  final bool isMounted;
+  final bool isWritable;
+  final int totalBytes;
+  final int usedBytes;
+  final int freeBytes;
+  final double usagePercent;
+  final String? error;
+
+  NodePoolHealthModel({
+    required this.nodeId,
+    required this.nodeIp,
+    required this.role,
+    required this.status,
+    required this.path,
+    this.isMounted = false,
+    this.isWritable = false,
+    this.totalBytes = 0,
+    this.usedBytes = 0,
+    this.freeBytes = 0,
+    this.usagePercent = 0.0,
+    this.error,
+  });
+
+  factory NodePoolHealthModel.fromJson(Map<String, dynamic> json) {
+    return NodePoolHealthModel(
+      nodeId: json['node_id'] ?? '',
+      nodeIp: json['node_ip'] ?? '',
+      role: json['role'] ?? '',
+      status: json['status'] ?? 'unknown',
+      path: json['path'] ?? '',
+      isMounted: json['is_mounted'] == true,
+      isWritable: json['is_writable'] == true,
+      totalBytes: (json['total_bytes'] as num?)?.toInt() ?? 0,
+      usedBytes: (json['used_bytes'] as num?)?.toInt() ?? 0,
+      freeBytes: (json['free_bytes'] as num?)?.toInt() ?? 0,
+      usagePercent: (json['usage_percent'] as num?)?.toDouble() ?? 0.0,
+      error: json['error'],
+    );
+  }
+}
+
+class PoolHealthModel {
+  final String poolPath;
+  final String status;
+  final int totalBytes;
+  final int usedBytes;
+  final int freeBytes;
+  final double usagePercent;
+  final String totalFormatted;
+  final String usedFormatted;
+  final String freeFormatted;
+  final List<NodePoolHealthModel> nodes;
+
+  PoolHealthModel({
+    required this.poolPath,
+    required this.status,
+    this.totalBytes = 0,
+    this.usedBytes = 0,
+    this.freeBytes = 0,
+    this.usagePercent = 0.0,
+    this.totalFormatted = '0 B',
+    this.usedFormatted = '0 B',
+    this.freeFormatted = '0 B',
+    this.nodes = const [],
+  });
+
+  factory PoolHealthModel.fromJson(Map<String, dynamic> json) {
+    return PoolHealthModel(
+      poolPath: json['pool_path'] ?? '/var/contenedores',
+      status: json['status'] ?? 'unknown',
+      totalBytes: (json['total_bytes'] as num?)?.toInt() ?? 0,
+      usedBytes: (json['used_bytes'] as num?)?.toInt() ?? 0,
+      freeBytes: (json['free_bytes'] as num?)?.toInt() ?? 0,
+      usagePercent: (json['usage_percent'] as num?)?.toDouble() ?? 0.0,
+      totalFormatted: json['total_formatted'] ?? '0 B',
+      usedFormatted: json['used_formatted'] ?? '0 B',
+      freeFormatted: json['free_formatted'] ?? '0 B',
+      nodes: (json['nodes'] as List<dynamic>?)
+              ?.map((e) => NodePoolHealthModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+

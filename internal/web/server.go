@@ -1,6 +1,9 @@
 package web
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"path/filepath"
 	"golang.org/x/crypto/bcrypt"
 	"bytes"
 	"embed"
@@ -33,6 +36,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
+	"github.com/mario-ezquerro/gubernator/internal/storage"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -346,6 +350,19 @@ func StartDashboard() {
 		api.POST("/caddy/certs/custom", auth.RequireRole(auth.RoleAdmin), caddyCustomCertHandler)
 		api.POST("/caddy/certs/sync", auth.RequireRole(auth.RoleAdmin), caddyCertSyncHandler)
 		api.DELETE("/caddy/certs/orphaned", auth.RequireRole(auth.RoleAdmin), caddyPruneOrphanedCertsHandler)
+
+		// Storage & Backups Subsystem (The Granaries)
+		api.GET("/storage/volumes", storageVolumesHandler)
+		api.GET("/storage/pools/health", storagePoolsHealthHandler)
+		api.GET("/backups", backupsListHandler)
+		api.GET("/backups/download/:id", backupDownloadHandler)
+		api.GET("/backups/schedules", backupSchedulesListHandler)
+		api.POST("/backups/create", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), backupCreateHandler)
+		api.POST("/backups/restore", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), backupRestoreHandler)
+		api.POST("/backups/upload", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), backupUploadHandler)
+		api.DELETE("/backups/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), backupDeleteHandler)
+		api.POST("/backups/schedules", auth.RequireRole(auth.RoleAdmin), backupScheduleSaveHandler)
+		api.DELETE("/backups/schedules/:id", auth.RequireRole(auth.RoleAdmin), backupScheduleDeleteHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -365,7 +382,10 @@ func StartDashboard() {
 	})
 
 	r.GET("/grafana", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/grafana/")
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
 	r.Any("/grafana/*proxyPath", func(c *gin.Context) {
 		grafanaProxyHandler(c, sessionToken, user, pass)
@@ -431,6 +451,7 @@ func StartDashboard() {
 	})
 
 	slo.StartSLONotifierBackgroundWorker(db.DB)
+	storage.StartBackupScheduler()
 
 	slog.Info("starting web dashboard", "addr", ":4001")
 	if err := r.Run(":4001"); err != nil {
@@ -4035,3 +4056,207 @@ func logsExportHandler(c *gin.Context) {
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.String(http.StatusOK, sb.String())
 }
+
+// --- Storage & Backups Subsystem Handlers ---
+
+func storageVolumesHandler(c *gin.Context) {
+	vols, err := storage.ListVolumes()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"volumes": vols,
+		"total":   len(vols),
+	})
+}
+
+func storagePoolsHealthHandler(c *gin.Context) {
+	poolPath := c.DefaultQuery("path", storage.DefaultSharedPoolPath)
+	res := storage.CheckStoragePoolHealth(poolPath)
+	c.JSON(http.StatusOK, res)
+}
+
+func backupsListHandler(c *gin.Context) {
+	backups, err := storage.ListBackups()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"backups": backups,
+		"total":   len(backups),
+	})
+}
+
+func backupCreateHandler(c *gin.Context) {
+	var req storage.CreateBackupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := storage.CreateBackup(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Backup created successfully",
+		"backup":  b,
+	})
+}
+
+func backupRestoreHandler(c *gin.Context) {
+	var req storage.RestoreBackupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := storage.RestoreBackup(req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Backup restored successfully"})
+}
+
+func backupDownloadHandler(c *gin.Context) {
+	id := c.Param("id")
+	var b db.Backup
+	if err := db.DB.First(&b, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Backup not found"})
+		return
+	}
+
+	if _, err := os.Stat(b.FilePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Backup file not found on disk"})
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filepath.Base(b.FilePath)))
+	c.Header("Content-Type", "application/gzip")
+	c.File(b.FilePath)
+}
+
+func backupUploadHandler(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
+		return
+	}
+
+	if err := storage.EnsureBackupDir(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	destPath := filepath.Join(storage.BackupDir(), file.Filename)
+	if err := c.SaveUploadedFile(file, destPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate SHA-256
+	f, err := os.Open(destPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	_, _ = io.Copy(hasher, f)
+	shaHex := hex.EncodeToString(hasher.Sum(nil))
+
+	stackID := c.PostForm("stack_id")
+	volumeName := c.PostForm("volume_name")
+	sourcePath := c.PostForm("source_path")
+	now := time.Now()
+
+	bRecord := db.Backup{
+		ID:            uuid.New().String(),
+		Name:          strings.TrimSuffix(file.Filename, ".tar.gz"),
+		StackID:       stackID,
+		VolumeName:    volumeName,
+		SourcePath:    sourcePath,
+		FilePath:      destPath,
+		SizeBytes:     file.Size,
+		SizeFormatted: storage.FormatBytes(file.Size),
+		SHA256:        shaHex,
+		Status:        "completed",
+		CreatedAt:     now,
+		CompletedAt:   &now,
+	}
+
+	db.DB.Create(&bRecord)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Backup uploaded successfully",
+		"backup":  bRecord,
+	})
+}
+
+func backupDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.DeleteBackup(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Backup deleted successfully"})
+}
+
+func backupSchedulesListHandler(c *gin.Context) {
+	var schedules []db.BackupSchedule
+	if err := db.DB.Order("created_at desc").Find(&schedules).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"schedules": schedules,
+		"total":     len(schedules),
+	})
+}
+
+func backupScheduleSaveHandler(c *gin.Context) {
+	var req db.BackupSchedule
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ID == "" {
+		req.ID = uuid.New().String()
+		req.CreatedAt = time.Now()
+		req.UpdatedAt = time.Now()
+		if err := db.DB.Create(&req).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		req.UpdatedAt = time.Now()
+		if err := db.DB.Save(&req).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	storage.SyncSchedules()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Schedule saved successfully",
+		"schedule": req,
+	})
+}
+
+func backupScheduleDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Delete(&db.BackupSchedule{}, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	storage.SyncSchedules()
+	c.JSON(http.StatusOK, gin.H{"message": "Schedule deleted successfully"})
+}
+

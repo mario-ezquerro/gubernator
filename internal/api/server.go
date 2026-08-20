@@ -221,6 +221,23 @@ func Start(ctx context.Context) error {
 			scopeRoute.POST("/enable", ScopeEnableHandler)
 			scopeRoute.POST("/disable", ScopeDisableHandler)
 		}
+
+		storageRoute := v1.Group("/storage", authMiddleware)
+		{
+			storageRoute.GET("/volumes", StorageVolumesHandler)
+			storageRoute.GET("/pools/health", StoragePoolsHealthHandler)
+		}
+
+		backupRoute := v1.Group("/backup", authMiddleware)
+		{
+			backupRoute.GET("/ls", BackupListHandler)
+			backupRoute.POST("/create", BackupCreateHandler)
+			backupRoute.POST("/restore", BackupRestoreHandler)
+			backupRoute.DELETE("/:id", BackupDeleteHandler)
+			backupRoute.GET("/schedules", BackupSchedulesListHandler)
+			backupRoute.POST("/schedules", BackupScheduleSaveHandler)
+			backupRoute.DELETE("/schedules/:id", BackupScheduleDeleteHandler)
+		}
 	}
 
 	srv := &http.Server{Addr: ":4000", Handler: r}

@@ -19,6 +19,7 @@ import 'pages/network_page.dart';
 import 'pages/scope_page.dart';
 import 'pages/slo_page.dart';
 import 'pages/security_page.dart';
+import 'pages/storage_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -156,6 +157,11 @@ class _AppShellState extends State<AppShell> {
         showBadge: true,
       ),
       const SidebarItem(
+        icon: Icons.inventory_2_outlined,
+        activeIcon: Icons.inventory_2,
+        label: 'Storage & Backups',
+      ),
+      const SidebarItem(
         icon: Icons.speed_outlined,
         activeIcon: Icons.speed,
         label: 'SLO & Error Budgets',
@@ -211,6 +217,7 @@ class _AppShellState extends State<AppShell> {
     'Centurions [Host]',
     'Legions [Stacks]',
     'Tasks',
+    'Storage & Backups',
     'SLO & Error Budgets',
     'Caddy Ingress',
     'CoreDNS',
@@ -239,22 +246,24 @@ class _AppShellState extends State<AppShell> {
       case 3:
         return TasksPage(state: _state, onRefresh: _fetchData);
       case 4:
-        return SloPage(state: _state, onRefresh: _fetchData);
+        return StoragePage(state: _state, onRefresh: _fetchData);
       case 5:
-        return CaddyPage(state: _state, onRefresh: _fetchData);
+        return SloPage(state: _state, onRefresh: _fetchData);
       case 6:
-        return CoreDnsPage(state: _state, onRefresh: _fetchData);
+        return CaddyPage(state: _state, onRefresh: _fetchData);
       case 7:
-        return const GrafanaPage();
+        return CoreDnsPage(state: _state, onRefresh: _fetchData);
       case 8:
-        return const LokiLogsPage();
+        return const GrafanaPage();
       case 9:
-        return const NetworkPage();
+        return const LokiLogsPage();
       case 10:
-        return const JaegerPage();
+        return const NetworkPage();
       case 11:
-        return const ScopePage();
+        return const JaegerPage();
       case 12:
+        return const ScopePage();
+      case 13:
         return SecurityPage(state: _state, onRefresh: _fetchData);
       default:
         return OverviewPage(
