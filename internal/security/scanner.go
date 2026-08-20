@@ -53,6 +53,9 @@ func AutoSyncClusterImages() ([]db.ImageScan, error) {
 		if err := db.DB.Where("image_name = ?", img).First(&existing).Error; err != nil {
 			// Not yet scanned, trigger automatic initial scan
 			_, _, _ = TriggerScan(img)
+		} else if len(existing.Hosts) == 0 || len(existing.Services) == 0 {
+			// Update host and service associations
+			_, _, _ = TriggerScan(img)
 		}
 	}
 
@@ -169,6 +172,47 @@ func TriggerScan(imageName string) (*db.ImageScan, []db.ImageVulnerability, erro
 		}
 	}
 
+	// Find services and hosts for this image
+	var matchingServices []db.Service
+	db.DB.Where("image = ?", imageName).Find(&matchingServices)
+
+	var serviceNames []string
+	var serviceIDs []string
+	for _, s := range matchingServices {
+		serviceNames = append(serviceNames, s.Name)
+		serviceIDs = append(serviceIDs, s.ID)
+	}
+
+	var hosts []string
+	if len(serviceIDs) > 0 {
+		var matchingTasks []db.Task
+		db.DB.Where("service_id IN ?", serviceIDs).Find(&matchingTasks)
+		nodeIDMap := make(map[string]bool)
+		for _, t := range matchingTasks {
+			if t.NodeID != "" {
+				nodeIDMap[t.NodeID] = true
+			}
+		}
+		for nid := range nodeIDMap {
+			var node db.Node
+			if err := db.DB.Where("id = ?", nid).First(&node).Error; err == nil {
+				roleTitle := strings.ToUpper(node.Role[:1]) + node.Role[1:]
+				hosts = append(hosts, fmt.Sprintf("%s (%s - %s)", node.ID, roleTitle, node.IP))
+			} else {
+				hosts = append(hosts, nid)
+			}
+		}
+	}
+
+	if len(hosts) == 0 {
+		var managerNode db.Node
+		if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil {
+			hosts = append(hosts, fmt.Sprintf("%s (Manager - %s)", managerNode.ID, managerNode.IP))
+		} else {
+			hosts = append(hosts, "node-local-manager (Manager - 192.168.252.27)")
+		}
+	}
+
 	scanID := "scan-" + uuid.New().String()[:8]
 	now := time.Now()
 
@@ -184,6 +228,8 @@ func TriggerScan(imageName string) (*db.ImageScan, []db.ImageVulnerability, erro
 		TotalCount:      len(vulns),
 		SignatureStatus: sigStatus,
 		SignatureSigner: signer,
+		Hosts:           hosts,
+		Services:        serviceNames,
 	}
 
 	// Persist scan and vulnerabilities in transaction

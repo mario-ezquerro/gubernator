@@ -155,6 +155,29 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                       Text('Scanned: ${scan.scannedAt}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  // Deployed Hosts Bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.dns_outlined, size: 16, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
+                        const Text('Deployed on Hosts: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Expanded(
+                          child: Text(
+                            scan.hosts.isNotEmpty ? scan.hosts.join(', ') : 'node-local-manager (Manager - 192.168.252.27)',
+                            style: const TextStyle(fontSize: 12, color: Colors.blueAccent),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Expanded(
                     child: vulns.isEmpty
@@ -810,28 +833,67 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
+                                  const SizedBox(height: 6),
+                                  // Deployed Hosts & Services
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
                                     children: [
-                                      if (usedServices.isNotEmpty) ...[
+                                      // Host chips
+                                      for (final host in s.hosts.isNotEmpty ? s.hosts : ['node-local-manager (Manager - 192.168.252.27)'])
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: (host.contains('Manager') ? Colors.indigo : Colors.teal).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: (host.contains('Manager') ? Colors.indigoAccent : Colors.tealAccent).withValues(alpha: 0.3)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                host.contains('Manager') ? Icons.computer : Icons.dns_outlined,
+                                                size: 11,
+                                                color: host.contains('Manager') ? Colors.indigoAccent : Colors.tealAccent,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                host,
+                                                style: TextStyle(
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: host.contains('Manager') ? Colors.indigoAccent : Colors.tealAccent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (usedServices.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: Colors.blue.withValues(alpha: 0.15),
                                             borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
                                           ),
-                                          child: Text(
-                                            'Used in: ${usedServices.join(', ')}',
-                                            style: const TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.w600),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.widgets_outlined, size: 11, color: Colors.blueAccent),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Services: ${usedServices.join(', ')}',
+                                                style: const TextStyle(fontSize: 10.5, color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      Text(
-                                        'Digest: ${s.imageDigest.length > 18 ? s.imageDigest.substring(0, 18) + "..." : s.imageDigest} | Scanned: ${s.scannedAt}',
-                                        style: TextStyle(fontSize: 11.5, color: Colors.grey[400]),
-                                      ),
                                     ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Digest: ${s.imageDigest.length > 18 ? s.imageDigest.substring(0, 18) + "..." : s.imageDigest} | Scanned: ${s.scannedAt}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                                   ),
                                 ],
                               ),

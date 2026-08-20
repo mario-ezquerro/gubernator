@@ -42,16 +42,22 @@ var scanCmd = &cobra.Command{
 				return
 			}
 
-			fmt.Printf("%-35s %-10s %-8s %-6s %-6s %-6s %-12s\n", "IMAGE", "SIGNATURE", "CRITICAL", "HIGH", "MED", "LOW", "SCANNED")
-			fmt.Println("---------------------------------------------------------------------------------------------------------")
+			fmt.Printf("%-32s %-10s %-8s %-6s %-6s %-6s %-30s\n", "IMAGE", "SIGNATURE", "CRITICAL", "HIGH", "MED", "LOW", "DEPLOYED HOSTS")
+			fmt.Println("-----------------------------------------------------------------------------------------------------------------------------")
 			for _, s := range data.Scans {
 				sigBadge := "Unsigned"
 				if s.SignatureStatus == "verified" {
 					sigBadge = "Verified"
 				}
-				scannedStr := s.ScannedAt.Format("2006-01-02 15:04")
-				fmt.Printf("%-35s %-10s %-8d %-6d %-6d %-6d %-12s\n",
-					s.ImageName, sigBadge, s.CriticalCount, s.HighCount, s.MediumCount, s.LowCount, scannedStr)
+				hostsStr := strings.Join(s.Hosts, ", ")
+				if hostsStr == "" {
+					hostsStr = "Manager (192.168.252.27)"
+				}
+				if len(hostsStr) > 30 {
+					hostsStr = hostsStr[:27] + "..."
+				}
+				fmt.Printf("%-32s %-10s %-8d %-6d %-6d %-6d %-30s\n",
+					s.ImageName, sigBadge, s.CriticalCount, s.HighCount, s.MediumCount, s.LowCount, hostsStr)
 			}
 			return
 		}

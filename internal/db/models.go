@@ -322,6 +322,39 @@ type ImageScan struct {
 	SignatureStatus string     `gorm:"type:varchar(50);default:'unsigned'" json:"signature_status"` // 'verified', 'unsigned', 'invalid'
 	SignatureSigner string     `gorm:"type:varchar(255)" json:"signature_signer,omitempty"`
 	SignedAt        *time.Time `json:"signed_at,omitempty"`
+	HostsRaw        []byte     `gorm:"type:json" json:"-"`
+	Hosts           []string   `gorm:"-" json:"hosts"`
+	ServicesRaw     []byte     `gorm:"type:json" json:"-"`
+	Services        []string   `gorm:"-" json:"services"`
+}
+
+func (s *ImageScan) BeforeSave(tx *gorm.DB) (err error) {
+	marshalField := func(v interface{}, nilVal []byte) []byte {
+		if v == nil {
+			return nilVal
+		}
+		b, _ := json.Marshal(v)
+		return b
+	}
+	s.HostsRaw = marshalField(s.Hosts, []byte("[]"))
+	s.ServicesRaw = marshalField(s.Services, []byte("[]"))
+	return nil
+}
+
+func (s *ImageScan) AfterFind(tx *gorm.DB) (err error) {
+	if len(s.HostsRaw) > 0 {
+		json.Unmarshal(s.HostsRaw, &s.Hosts)
+	}
+	if s.Hosts == nil {
+		s.Hosts = make([]string, 0)
+	}
+	if len(s.ServicesRaw) > 0 {
+		json.Unmarshal(s.ServicesRaw, &s.Services)
+	}
+	if s.Services == nil {
+		s.Services = make([]string, 0)
+	}
+	return nil
 }
 
 // ImageVulnerability represents an individual CVE found during an image scan.

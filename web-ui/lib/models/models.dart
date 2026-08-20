@@ -1207,6 +1207,8 @@ class ImageScanModel {
   final int totalCount;
   final String signatureStatus;
   final String? signatureSigner;
+  final List<String> hosts;
+  final List<String> services;
 
   ImageScanModel({
     required this.id,
@@ -1220,6 +1222,8 @@ class ImageScanModel {
     this.totalCount = 0,
     this.signatureStatus = 'unsigned',
     this.signatureSigner,
+    this.hosts = const [],
+    this.services = const [],
   });
 
   factory ImageScanModel.fromJson(Map<String, dynamic> json) {
@@ -1235,6 +1239,8 @@ class ImageScanModel {
       totalCount: (json['total_count'] as num?)?.toInt() ?? 0,
       signatureStatus: json['signature_status'] ?? 'unsigned',
       signatureSigner: json['signature_signer'],
+      hosts: (json['hosts'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      services: (json['services'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
     );
   }
 }
