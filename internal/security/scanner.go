@@ -24,22 +24,72 @@ type SecuritySummary struct {
 	UnsignedCount  int `json:"unsigned_count"`
 }
 
-// ListScans returns all image scan summaries ordered by scan date.
-func ListScans() ([]db.ImageScan, error) {
+// DiscoverClusterImages finds all unique container images running across all stacks and services.
+func DiscoverClusterImages() []string {
+	var services []db.Service
+	db.DB.Find(&services)
+
+	imageMap := make(map[string]bool)
+	for _, s := range services {
+		img := strings.TrimSpace(s.Image)
+		if img != "" {
+			imageMap[img] = true
+		}
+	}
+
+	var images []string
+	for img := range imageMap {
+		images = append(images, img)
+	}
+	return images
+}
+
+// AutoSyncClusterImages ensures all images running in the cluster have an up-to-date vulnerability scan.
+func AutoSyncClusterImages() ([]db.ImageScan, error) {
+	clusterImages := DiscoverClusterImages()
+
+	for _, img := range clusterImages {
+		var existing db.ImageScan
+		if err := db.DB.Where("image_name = ?", img).First(&existing).Error; err != nil {
+			// Not yet scanned, trigger automatic initial scan
+			_, _, _ = TriggerScan(img)
+		}
+	}
+
 	var scans []db.ImageScan
 	err := db.DB.Order("scanned_at desc").Find(&scans).Error
 	return scans, err
+}
+
+// SyncAllClusterImages forces a fresh re-scan of all images across the cluster.
+func SyncAllClusterImages() ([]db.ImageScan, error) {
+	clusterImages := DiscoverClusterImages()
+	for _, img := range clusterImages {
+		_, _, _ = TriggerScan(img)
+	}
+
+	var scans []db.ImageScan
+	err := db.DB.Order("scanned_at desc").Find(&scans).Error
+	return scans, err
+}
+
+// ListScans returns all image scan summaries, automatically discovering all cluster images.
+func ListScans() ([]db.ImageScan, error) {
+	return AutoSyncClusterImages()
 }
 
 // GetScanDetails returns a scan report along with all associated vulnerabilities.
 func GetScanDetails(scanID string) (*db.ImageScan, []db.ImageVulnerability, error) {
 	var scan db.ImageScan
 	if err := db.DB.First(&scan, "id = ?", scanID).Error; err != nil {
-		return nil, nil, err
+		// Try finding by image name if scanID was passed as image name
+		if err2 := db.DB.Where("image_name = ?", scanID).Order("scanned_at desc").First(&scan).Error; err2 != nil {
+			return nil, nil, err
+		}
 	}
 
 	var vulns []db.ImageVulnerability
-	if err := db.DB.Where("scan_id = ?", scanID).Order("cvss_score desc, cve_id asc").Find(&vulns).Error; err != nil {
+	if err := db.DB.Where("scan_id = ?", scan.ID).Order("cvss_score desc, cve_id asc").Find(&vulns).Error; err != nil {
 		return &scan, nil, err
 	}
 
@@ -50,15 +100,16 @@ func GetScanDetails(scanID string) (*db.ImageScan, []db.ImageVulnerability, erro
 func GetScanByImage(imageName string) (*db.ImageScan, []db.ImageVulnerability, error) {
 	var scan db.ImageScan
 	if err := db.DB.Where("image_name = ?", imageName).Order("scanned_at desc").First(&scan).Error; err != nil {
-		return nil, nil, err
+		// If not scanned yet, trigger scan on demand
+		return TriggerScan(imageName)
 	}
 	return GetScanDetails(scan.ID)
 }
 
 // GetSecuritySummary aggregates cluster-wide security statistics.
 func GetSecuritySummary() (*SecuritySummary, error) {
-	var scans []db.ImageScan
-	if err := db.DB.Find(&scans).Error; err != nil {
+	scans, err := AutoSyncClusterImages()
+	if err != nil {
 		return nil, err
 	}
 

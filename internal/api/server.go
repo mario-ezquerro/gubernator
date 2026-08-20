@@ -244,6 +244,7 @@ func Start(ctx context.Context) error {
 			securityRoute.GET("/scans", SecurityScansListHandler)
 			securityRoute.GET("/scans/:id", SecurityScanDetailsHandler)
 			securityRoute.POST("/scans/trigger", SecurityScanTriggerHandler)
+			securityRoute.POST("/scans/sync-all", SecurityScanSyncAllHandler)
 			securityRoute.GET("/sbom", SecuritySBOMGetHandler)
 			securityRoute.GET("/keys", SecurityKeysListHandler)
 			securityRoute.POST("/keys/generate", SecurityKeyGenerateHandler)

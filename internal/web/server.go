@@ -357,6 +357,7 @@ func StartDashboard() {
 		api.GET("/security/scans", securityScansListHandler)
 		api.GET("/security/scans/:id", securityScanDetailsHandler)
 		api.POST("/security/scans/trigger", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanTriggerHandler)
+		api.POST("/security/scans/sync-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanSyncAllHandler)
 		api.GET("/security/sbom", securitySBOMGetHandler)
 		api.GET("/security/keys", securityKeysListHandler)
 		api.POST("/security/keys/generate", auth.RequireRole(auth.RoleAdmin), securityKeyGenerateHandler)
@@ -4310,6 +4311,20 @@ func securityScanTriggerHandler(c *gin.Context) {
 		"message":         "Scan completed successfully",
 		"scan":            scan,
 		"vulnerabilities": vulns,
+	})
+}
+
+func securityScanSyncAllHandler(c *gin.Context) {
+	scans, err := security.SyncAllClusterImages()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	summary, _ := security.GetSecuritySummary()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Cluster-wide image scan synchronized",
+		"scans":   scans,
+		"summary": summary,
 	})
 }
 

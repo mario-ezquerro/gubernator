@@ -675,6 +675,25 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
             ),
             const SizedBox(width: 12),
             FilledButton.icon(
+              icon: const Icon(Icons.sync, size: 18),
+              label: const Text('Scan All Cluster Images'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+              onPressed: () async {
+                _showSnackBar('Scanning all images deployed across cluster hosts...');
+                try {
+                  final res = await ApiService.syncAllImageScans();
+                  setState(() {
+                    _scans = res['scans'] as List<ImageScanModel>;
+                    _summary = res['summary'] as SecuritySummaryModel;
+                  });
+                  _showSnackBar('✅ Synchronized and scanned ${_scans.length} cluster images');
+                } catch (e) {
+                  _showSnackBar('❌ Failed to scan cluster images: $e', isError: true);
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
               icon: const Icon(Icons.radar, size: 18),
               label: const Text('Scan Image'),
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
@@ -686,9 +705,43 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
         Expanded(
           child: filtered.isEmpty
               ? Center(
-                  child: Text(
-                    'No scanned images found. Click "Scan Image" to scan your first container!',
-                    style: TextStyle(color: Colors.grey[500]),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.shield_outlined, size: 64, color: Colors.grey[500]),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No scanned images found in the database yet.',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Click below to automatically discover and scan all images running across all cluster nodes:',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.sync),
+                        label: const Text('Auto-Discover & Scan All Cluster Images'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        ),
+                        onPressed: () async {
+                          _showSnackBar('Auto-discovering and scanning images from all hosts...');
+                          try {
+                            final res = await ApiService.syncAllImageScans();
+                            setState(() {
+                              _scans = res['scans'] as List<ImageScanModel>;
+                              _summary = res['summary'] as SecuritySummaryModel;
+                            });
+                            _showSnackBar('✅ Discovered and scanned ${_scans.length} cluster images');
+                          } catch (e) {
+                            _showSnackBar('❌ Failed to scan images: $e', isError: true);
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 )
               : ListView.separated(
@@ -697,6 +750,13 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                   itemBuilder: (ctx, i) {
                     final s = filtered[i];
                     final isVerified = s.signatureStatus == 'verified';
+
+                    // Find where this image is used across services & tasks
+                    final usedServices = widget.state.services
+                        .where((svc) => svc.image == s.imageName)
+                        .map((svc) => svc.name)
+                        .toSet()
+                        .toList();
 
                     return Card(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -751,9 +811,27 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    'Digest: ${s.imageDigest} | Scanned: ${s.scannedAt}',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                                  Row(
+                                    children: [
+                                      if (usedServices.isNotEmpty) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Used in: ${usedServices.join(', ')}',
+                                            style: const TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      Text(
+                                        'Digest: ${s.imageDigest.length > 18 ? s.imageDigest.substring(0, 18) + "..." : s.imageDigest} | Scanned: ${s.scannedAt}',
+                                        style: TextStyle(fontSize: 11.5, color: Colors.grey[400]),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

@@ -59,6 +59,21 @@ func SecurityScanTriggerHandler(c *gin.Context) {
 	})
 }
 
+// SecurityScanSyncAllHandler triggers a full cluster-wide re-scan of all running images.
+func SecurityScanSyncAllHandler(c *gin.Context) {
+	scans, err := security.SyncAllClusterImages()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	summary, _ := security.GetSecuritySummary()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Cluster-wide image scan synchronized",
+		"scans":   scans,
+		"summary": summary,
+	})
+}
+
 // SecuritySBOMGetHandler retrieves or exports an image's SBOM.
 func SecuritySBOMGetHandler(c *gin.Context) {
 	image := c.Query("image")

@@ -1112,6 +1112,27 @@ class ApiService {
     throw Exception(err['error'] ?? 'Scan failed');
   }
 
+  /// Forces a complete re-scan and sync of all cluster images across all hosts.
+  static Future<Map<String, dynamic>> syncAllImageScans() async {
+    final response = await http.post(
+      Uri.parse('/api/security/scans/sync-all'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final scans = (data['scans'] as List? ?? [])
+          .map((e) => ImageScanModel.fromJson(e))
+          .toList();
+      final summary = data['summary'] != null ? SecuritySummaryModel.fromJson(data['summary']) : SecuritySummaryModel();
+      return {
+        'scans': scans,
+        'summary': summary,
+      };
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Sync failed');
+  }
+
   /// Fetches trusted public signing keys.
   static Future<List<TrustedKeyModel>> fetchTrustedKeys() async {
     final response = await http.get(Uri.parse('/api/security/keys'), headers: authHeaders);
