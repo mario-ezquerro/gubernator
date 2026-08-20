@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
-import 'yaml_code_editor.dart';
+import 'package:flutter_code_editor/flutter_code_editor.dart';
+import 'package:flutter_highlight/themes/monokai-sublime.dart';
+import 'package:flutter_highlight/themes/github.dart';
+import 'package:highlight/languages/yaml.dart';
 
-/// A full-screen dialog for viewing and editing a stack's compose YAML.
+import '../models/models.dart';
+
 class ComposeEditorDialog extends StatefulWidget {
   final String stackName;
   final String composeYaml;
+  final List<Node> nodes;
   final Future<bool> Function(String yaml) onSave;
-  final Future<bool> Function(String yaml) onRedeploy;
+  final Future<bool> Function(String yaml)? onRedeploy;
 
   const ComposeEditorDialog({
     super.key,
     required this.stackName,
     required this.composeYaml,
+    required this.nodes,
     required this.onSave,
-    required this.onRedeploy,
+    this.onRedeploy,
   });
 
   @override
@@ -21,23 +27,218 @@ class ComposeEditorDialog extends StatefulWidget {
 }
 
 class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
-  late TextEditingController _controller;
+  late CodeController _controller;
   late String _originalYaml;
   bool _saving = false;
   bool _redeploying = false;
-  bool _showLineNumbers = true;
+  String _activeTab = 'caddy';
 
   @override
   void initState() {
     super.initState();
     _originalYaml = widget.composeYaml;
-    _controller = TextEditingController(text: widget.composeYaml);
+    _controller = CodeController(
+      text: widget.composeYaml,
+      language: yaml,
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _injectLabel(String labelKey, String labelValue) {
+    // Basic injection logic for demonstration
+    // We append the label at the current cursor position or end of file
+    final text = _controller.text;
+    final pos = _controller.selection.baseOffset;
+    
+    final injection = '        - $labelKey=$labelValue\n';
+    
+    if (pos >= 0 && pos <= text.length) {
+      _controller.text = text.substring(0, pos) + injection + text.substring(pos);
+      _controller.selection = TextSelection.collapsed(offset: pos + injection.length);
+    } else {
+      _controller.text = text + '\n' + injection;
+    }
+  }
+
+  void _injectVolume() {
+     final injection = '      - /var/contenedores/\${STACK_NAME}/data:/data\n';
+     final pos = _controller.selection.baseOffset;
+     final text = _controller.text;
+     if (pos >= 0 && pos <= text.length) {
+      _controller.text = text.substring(0, pos) + injection + text.substring(pos);
+      _controller.selection = TextSelection.collapsed(offset: pos + injection.length);
+    } else {
+      _controller.text = text + '\n' + injection;
+    }
+  }
+
+  Widget _buildCopilotPanel(ThemeData theme) {
+    return Container(
+      width: 380,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(left: BorderSide(color: theme.dividerColor)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Gubernator Copilot',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _tabBtn('Caddy', 'caddy', Icons.public),
+                _tabBtn('SLO', 'slo', Icons.show_chart),
+                _tabBtn('Security', 'security', Icons.security),
+                _tabBtn('Nodes', 'nodes', Icons.memory),
+                _tabBtn('Storage', 'storage', Icons.storage),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_activeTab == 'caddy') ...[
+                  const Text('Caddy Ingress', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Inject routing labels to expose your service via Caddy reverse proxy.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _injectLabel('ingress.host', 'app.gbnt.local');
+                      _injectLabel('gbnt.caddy.port', '8080');
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Caddy Routing Labels'),
+                  ),
+                ],
+                if (_activeTab == 'slo') ...[
+                  const Text('SLO Engine (Sloth)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Inject Service Level Objective alerting rules.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _injectLabel('gbnt.slo.enable', 'true');
+                      _injectLabel('gbnt.slo.target', '99.9');
+                      _injectLabel('gbnt.slo.window', '30d');
+                      _injectLabel('gbnt.slo.indicator', 'latency');
+                      _injectLabel('gbnt.slo.latency.threshold', '200ms');
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add 99.9% Latency SLO'),
+                  ),
+                ],
+                if (_activeTab == 'security') ...[
+                  const Text('Security Gatekeeper', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Enforce cryptographic signatures or block vulnerable images for this specific service.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _injectLabel('gbnt.security.require-signature', 'true');
+                      _injectLabel('gbnt.security.max-cve-severity', 'critical');
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Enforce Signatures & Block CVEs'),
+                  ),
+                ],
+                if (_activeTab == 'nodes') ...[
+                  const Text('Node Placement Constraints', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Pin this service to specific hardware or node roles.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ...widget.nodes.map((n) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('${n.id} [${n.role}]', style: const TextStyle(fontSize: 13)),
+                    subtitle: Text(n.ip, style: const TextStyle(fontSize: 11)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () {
+                        // Note: actual placement constraint is not a label, but standard compose:
+                        // deploy.placement.constraints: [node.hostname == my-node]
+                        final text = _controller.text;
+                        final pos = _controller.selection.baseOffset;
+                        final injection = '      placement:\n        constraints:\n          - "node.hostname==${n.id}"\n';
+                        if (pos >= 0 && pos <= text.length) {
+                          _controller.text = text.substring(0, pos) + injection + text.substring(pos);
+                        } else {
+                          _controller.text = text + '\n' + injection;
+                        }
+                      },
+                    ),
+                  )).toList(),
+                ],
+                if (_activeTab == 'storage') ...[
+                  const Text('Storage Granaries', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Inject shared volume mounts for mobility.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _injectVolume,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add /var/contenedores/ Mount'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabBtn(String title, String id, IconData icon) {
+    final active = _activeTab == id;
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => setState(() => _activeTab = id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? theme.colorScheme.primary : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: active ? theme.colorScheme.primary : Colors.grey),
+            const SizedBox(width: 6),
+            Text(title, style: TextStyle(
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              color: active ? theme.colorScheme.primary : Colors.grey,
+            )),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -47,7 +248,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
     return Dialog(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 680),
+        constraints: const BoxConstraints(maxWidth: 1200, maxHeight: 800),
         child: Column(
           children: [
             // Header
@@ -59,7 +260,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Edit Compose: ${widget.stackName}',
+                      'Advanced Editor: ${widget.stackName}',
                       style: theme.textTheme.titleLarge
                           ?.copyWith(fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis,
@@ -74,22 +275,34 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             ),
             const Divider(height: 1),
 
-            // Editor
+            // Main Editor + Copilot Panel
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: YamlCodeEditor(
-                  controller: _controller,
-                  showLineNumbers: _showLineNumbers,
-                  onToggleLineNumbers: (val) => setState(() => _showLineNumbers = val),
-                  isDark: isDark,
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Editor
+                  Expanded(
+                    child: CodeTheme(
+                      data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                      child: SingleChildScrollView(
+                        child: CodeField(
+                          controller: _controller,
+                          textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Copilot Panel
+                  _buildCopilotPanel(theme),
+                ],
               ),
             ),
 
+            const Divider(height: 1),
             // Actions
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              color: theme.colorScheme.surface,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -106,55 +319,44 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                         ? null
                         : () async {
                             setState(() => _saving = true);
-                            final ok =
-                                await widget.onSave(_controller.text);
+                            final ok = await widget.onSave(_controller.text);
                             setState(() => _saving = false);
                             if (ok && context.mounted) {
                               _originalYaml = _controller.text;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content:
-                                        Text('Compose saved successfully')),
+                                const SnackBar(content: Text('Compose saved successfully')),
                               );
                             }
                           },
                     icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.save, size: 18),
                     label: const Text('Save'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _redeploying
-                        ? null
-                        : () async {
-                            setState(() => _redeploying = true);
-                            await widget.onSave(_controller.text);
-                            final ok =
-                                await widget.onRedeploy(_controller.text);
-                            setState(() => _redeploying = false);
-                            if (ok && context.mounted) {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Stack redeployed!')),
-                              );
-                            }
-                          },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFD29922),
+                  if (widget.onRedeploy != null) ...[
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: _redeploying
+                          ? null
+                          : () async {
+                              setState(() => _redeploying = true);
+                              await widget.onSave(_controller.text);
+                              final ok = await widget.onRedeploy!(_controller.text);
+                              setState(() => _redeploying = false);
+                              if (ok && context.mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Stack redeployed!')),
+                                );
+                              }
+                            },
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD29922)),
+                      icon: _redeploying
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.rocket_launch, size: 18),
+                      label: const Text('Save & Redeploy'),
                     ),
-                    icon: _redeploying
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.rocket_launch, size: 18),
-                    label: const Text('Save & Redeploy'),
-                  ),
+                  ],
                 ],
               ),
             ),

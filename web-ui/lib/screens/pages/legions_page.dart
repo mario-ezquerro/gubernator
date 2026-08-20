@@ -136,6 +136,7 @@ class _LegionsPageState extends State<LegionsPage> {
         builder: (ctx) => ComposeEditorDialog(
           stackName: stack.name,
           composeYaml: yaml,
+          nodes: widget.state.nodes,
           onSave: (y) => ApiService.updateStackCompose(stack.id, y),
           onRedeploy: (_) async {
             final ok = await ApiService.redeployStack(stack.id);
