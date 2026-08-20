@@ -1055,6 +1055,154 @@ class ApiService {
     final response = await http.delete(Uri.parse('/api/backups/schedules/$id'), headers: authHeaders);
     return response.statusCode == 200;
   }
+
+  // ── Image Security & SBOM API Methods ──────────────────────────────────────
+
+  /// Fetches all image vulnerability scans and cluster security summary.
+  static Future<Map<String, dynamic>> fetchImageScans() async {
+    final response = await http.get(Uri.parse('/api/security/scans'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final scans = (data['scans'] as List? ?? [])
+          .map((e) => ImageScanModel.fromJson(e))
+          .toList();
+      final summary = data['summary'] != null ? SecuritySummaryModel.fromJson(data['summary']) : SecuritySummaryModel();
+      return {
+        'scans': scans,
+        'summary': summary,
+      };
+    }
+    throw Exception('Failed to fetch security scans: ${response.statusCode}');
+  }
+
+  /// Fetches details and CVEs for a specific scan ID.
+  static Future<Map<String, dynamic>> fetchScanDetails(String scanId) async {
+    final response = await http.get(Uri.parse('/api/security/scans/$scanId'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final scan = ImageScanModel.fromJson(data['scan']);
+      final vulns = (data['vulnerabilities'] as List? ?? [])
+          .map((e) => ImageVulnerabilityModel.fromJson(e))
+          .toList();
+      return {
+        'scan': scan,
+        'vulnerabilities': vulns,
+      };
+    }
+    throw Exception('Failed to fetch scan details: ${response.statusCode}');
+  }
+
+  /// Triggers an immediate vulnerability scan for an image.
+  static Future<Map<String, dynamic>> triggerImageScan(String image) async {
+    final response = await http.post(
+      Uri.parse('/api/security/scans/trigger'),
+      headers: authHeaders,
+      body: jsonEncode({'image': image}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        'scan': ImageScanModel.fromJson(data['scan']),
+        'vulnerabilities': (data['vulnerabilities'] as List? ?? [])
+            .map((e) => ImageVulnerabilityModel.fromJson(e))
+            .toList(),
+      };
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Scan failed');
+  }
+
+  /// Fetches trusted public signing keys.
+  static Future<List<TrustedKeyModel>> fetchTrustedKeys() async {
+    final response = await http.get(Uri.parse('/api/security/keys'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['keys'] as List? ?? [])
+          .map((e) => TrustedKeyModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    throw Exception('Failed to fetch trusted keys: ${response.statusCode}');
+  }
+
+  /// Generates a new Cosign ECDSA keypair.
+  static Future<Map<String, dynamic>> generateTrustedKey(String name, {bool isDefault = false}) async {
+    final response = await http.post(
+      Uri.parse('/api/security/keys/generate'),
+      headers: authHeaders,
+      body: jsonEncode({'name': name, 'is_default': isDefault}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Keypair generation failed');
+  }
+
+  /// Saves or imports an existing public key.
+  static Future<TrustedKeyModel> saveTrustedKey(String name, String pubPEM, {bool isDefault = false}) async {
+    final response = await http.post(
+      Uri.parse('/api/security/keys'),
+      headers: authHeaders,
+      body: jsonEncode({'name': name, 'public_key_pem': pubPEM, 'is_default': isDefault}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return TrustedKeyModel.fromJson(data['key']);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to import key');
+  }
+
+  /// Deletes a trusted signing key.
+  static Future<bool> deleteTrustedKey(String id) async {
+    final response = await http.delete(Uri.parse('/api/security/keys/$id'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Signs an image with a private key.
+  static Future<Map<String, dynamic>> signImage(String image, String privateKey, {String signerName = 'Cluster Admin'}) async {
+    final response = await http.post(
+      Uri.parse('/api/security/sign'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'image': image,
+        'private_key': privateKey,
+        'signer_name': signerName,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Image signing failed');
+  }
+
+  /// Fetches cluster admission security policy.
+  static Future<SecurityPolicyModel> fetchSecurityPolicy() async {
+    final response = await http.get(Uri.parse('/api/security/policy'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return SecurityPolicyModel.fromJson(data['policy']);
+    }
+    throw Exception('Failed to fetch security policy: ${response.statusCode}');
+  }
+
+  /// Saves cluster admission security policy.
+  static Future<SecurityPolicyModel> saveSecurityPolicy(SecurityPolicyModel policy) async {
+    final response = await http.post(
+      Uri.parse('/api/security/policy'),
+      headers: authHeaders,
+      body: jsonEncode(policy.toJson()),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return SecurityPolicyModel.fromJson(data['policy']);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to update policy');
+  }
 }
+
 
 

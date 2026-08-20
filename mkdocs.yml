@@ -54,6 +54,7 @@ nav:
     - Web UI Dashboard: web-ui.md
     - Active Directory, LDAP & RBAC: auth-rbac.md
     - Storage & Backups (The Granaries): storage-backups.md
+    - Image Security & SBOM (The Imperial Seal): image-security.md
     - Screenshots (v2.13.0): screens.md
     - Caddy Ingress Suite: caddy.md
     - CoreDNS Suite: coredns.md

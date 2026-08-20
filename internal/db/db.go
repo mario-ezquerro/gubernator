@@ -41,12 +41,14 @@ func Init(dbPath string) error {
 		&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{},
 		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &LocalUser{}, &AuditLog{},
 		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{},
+		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{},
 	)
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
 
 	seedInitialData()
+	seedInitialSecurityPolicy()
 	return ensureClusterConfig()
 }
 
@@ -335,3 +337,25 @@ func seedInitialLocalUser() {
 		}
 	}
 }
+
+func seedInitialSecurityPolicy() {
+	var policyCount int64
+	DB.Model(&SecurityPolicy{}).Count(&policyCount)
+	if policyCount == 0 {
+		defaultPolicy := SecurityPolicy{
+			ID:                "default",
+			Name:              "Cluster Default Security Policy",
+			EnforceSignatures: "audit",
+			BlockCVESeverity:  "none",
+			AllowUnfixedCVE:   true,
+			TrustedRegistries: `["docker.io","ghcr.io","quay.io"]`,
+			UpdatedAt:         time.Now(),
+		}
+		if err := DB.Create(&defaultPolicy).Error; err != nil {
+			slog.Error("failed to seed initial security policy", "err", err)
+		} else {
+			slog.Info("initial cluster security policy seeded")
+		}
+	}
+}
+

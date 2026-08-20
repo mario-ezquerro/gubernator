@@ -287,3 +287,67 @@ type StoragePool struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// SecurityPolicy defines the cluster admission gatekeeper rules.
+type SecurityPolicy struct {
+	ID                string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name              string    `gorm:"type:varchar(255);not null" json:"name"`
+	EnforceSignatures string    `gorm:"type:varchar(50);default:'audit'" json:"enforce_signatures"` // 'disabled', 'audit', 'enforce'
+	BlockCVESeverity  string    `gorm:"type:varchar(50);default:'none'" json:"block_cve_severity"`  // 'none', 'critical', 'high', 'medium'
+	AllowUnfixedCVE   bool      `gorm:"default:true" json:"allow_unfixed_cve"`
+	TrustedRegistries string    `gorm:"type:text" json:"trusted_registries"` // JSON array
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// TrustedSigningKey represents a trusted public signing key for Cosign image verification.
+type TrustedSigningKey struct {
+	ID           string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name         string    `gorm:"type:varchar(255);not null" json:"name"`
+	PublicKeyPEM string    `gorm:"type:text;not null" json:"public_key_pem"`
+	KeyType      string    `gorm:"type:varchar(50);default:'cosign-ecdsa'" json:"key_type"`
+	IsDefault    bool      `gorm:"default:false" json:"is_default"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// ImageScan represents an image vulnerability scan report.
+type ImageScan struct {
+	ID              string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	ImageName       string     `gorm:"type:varchar(255);not null;index" json:"image_name"`
+	ImageDigest     string     `gorm:"type:varchar(255)" json:"image_digest"`
+	ScannedAt       time.Time  `json:"scanned_at"`
+	CriticalCount   int        `gorm:"default:0" json:"critical_count"`
+	HighCount       int        `gorm:"default:0" json:"high_count"`
+	MediumCount     int        `gorm:"default:0" json:"medium_count"`
+	LowCount        int        `gorm:"default:0" json:"low_count"`
+	TotalCount      int        `gorm:"default:0" json:"total_count"`
+	SignatureStatus string     `gorm:"type:varchar(50);default:'unsigned'" json:"signature_status"` // 'verified', 'unsigned', 'invalid'
+	SignatureSigner string     `gorm:"type:varchar(255)" json:"signature_signer,omitempty"`
+	SignedAt        *time.Time `json:"signed_at,omitempty"`
+}
+
+// ImageVulnerability represents an individual CVE found during an image scan.
+type ImageVulnerability struct {
+	ID               string   `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	ScanID           string   `gorm:"type:varchar(50);index;not null" json:"scan_id"`
+	CVEID            string   `gorm:"type:varchar(50);index;not null" json:"cve_id"`
+	PackageName      string   `gorm:"type:varchar(255);not null" json:"package_name"`
+	InstalledVersion string   `gorm:"type:varchar(100);not null" json:"installed_version"`
+	FixedVersion     string   `gorm:"type:varchar(100)" json:"fixed_version,omitempty"`
+	Severity         string   `gorm:"type:varchar(50);not null" json:"severity"` // 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
+	CVSSScore        float64  `json:"cvss_score"`
+	Title            string   `gorm:"type:varchar(255)" json:"title"`
+	Description      string   `gorm:"type:text" json:"description"`
+	PrimaryURL       string   `gorm:"type:varchar(1024)" json:"primary_url"`
+}
+
+// ImageSBOM represents a Software Bill of Materials for a container image.
+type ImageSBOM struct {
+	ID           string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	ScanID       string    `gorm:"type:varchar(50);index;not null" json:"scan_id"`
+	ImageName    string    `gorm:"type:varchar(255);not null" json:"image_name"`
+	Format       string    `gorm:"type:varchar(50);default:'cyclonedx-json'" json:"format"`
+	PackageCount int       `gorm:"default:0" json:"package_count"`
+	RawSBOMJSON  string    `gorm:"type:longtext" json:"raw_sbom_json"`
+	GeneratedAt  time.Time `json:"generated_at"`
+}
+
+

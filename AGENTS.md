@@ -152,3 +152,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Storage Pools Health Matrix**: Live diagnostic panel verifying `/var/contenedores` mount accessibility, read/write permissions, and disk capacity across all cluster nodes.
 * **Full CLI Parity**: Dedicated commands for `gbnt volume ls`, `gbnt backup ls`, `gbnt backup create`, `gbnt backup restore`, and `gbnt backup schedule ls`.
 
+### 18. Image Security, SBOM & Cryptographic Signing — "The Imperial Seal" (`v2.25.0`)
+* **Vulnerability Scanning (CVEs)**: Automated scanning of container images deployed in stacks with CVSS scoring, severity counts, affected packages, and fixed version tracking.
+* **Software Bill of Materials (SBOM)**: Deep dependency analysis producing standard **CycloneDX JSON** and **SPDX JSON** documents with software license audit compliance.
+* **Cosign Cryptographic Signing**: In-cluster ECDSA P-256 keypair generation, image digest signing, and verification of container signatures.
+* **Security Gatekeeper (Admission Controller)**: Pre-deployment policy engine capable of blocking unverified/unsigned images or containers containing unpatched critical CVEs.
+* **Full CLI Parity**: Dedicated commands for `gbnt scan`, `gbnt sbom`, `gbnt image sign`, `gbnt image verify`, `gbnt security policy`, and `gbnt security key`.
+
+

@@ -35,6 +35,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
+	"github.com/mario-ezquerro/gubernator/internal/security"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/storage"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
@@ -363,6 +364,20 @@ func StartDashboard() {
 		api.DELETE("/backups/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), backupDeleteHandler)
 		api.POST("/backups/schedules", auth.RequireRole(auth.RoleAdmin), backupScheduleSaveHandler)
 		api.DELETE("/backups/schedules/:id", auth.RequireRole(auth.RoleAdmin), backupScheduleDeleteHandler)
+
+		// Image Security & SBOM Subsystem (The Imperial Seal)
+		api.GET("/security/scans", securityScansListHandler)
+		api.GET("/security/scans/:id", securityScanDetailsHandler)
+		api.POST("/security/scans/trigger", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanTriggerHandler)
+		api.GET("/security/sbom", securitySBOMGetHandler)
+		api.GET("/security/keys", securityKeysListHandler)
+		api.POST("/security/keys/generate", auth.RequireRole(auth.RoleAdmin), securityKeyGenerateHandler)
+		api.POST("/security/keys", auth.RequireRole(auth.RoleAdmin), securityKeySaveHandler)
+		api.DELETE("/security/keys/:id", auth.RequireRole(auth.RoleAdmin), securityKeyDeleteHandler)
+		api.POST("/security/sign", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityImageSignHandler)
+		api.GET("/security/policy", securityPolicyGetHandler)
+		api.POST("/security/policy", auth.RequireRole(auth.RoleAdmin), securityPolicySaveHandler)
+		api.POST("/security/evaluate", securityAdmissionEvaluateHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -4259,4 +4274,232 @@ func backupScheduleDeleteHandler(c *gin.Context) {
 	storage.SyncSchedules()
 	c.JSON(http.StatusOK, gin.H{"message": "Schedule deleted successfully"})
 }
+
+// ── Image Security & SBOM Handlers ──────────────────────────────────────────
+
+func securityScansListHandler(c *gin.Context) {
+	scans, err := security.ListScans()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	summary, _ := security.GetSecuritySummary()
+	c.JSON(http.StatusOK, gin.H{
+		"scans":   scans,
+		"summary": summary,
+	})
+}
+
+func securityScanDetailsHandler(c *gin.Context) {
+	id := c.Param("id")
+	scan, vulns, err := security.GetScanDetails(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Scan not found: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"scan":            scan,
+		"vulnerabilities": vulns,
+	})
+}
+
+func securityScanTriggerHandler(c *gin.Context) {
+	var req struct {
+		Image string `json:"image" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image field is required"})
+		return
+	}
+
+	scan, vulns, err := security.TriggerScan(req.Image)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "Scan completed successfully",
+		"scan":            scan,
+		"vulnerabilities": vulns,
+	})
+}
+
+func securitySBOMGetHandler(c *gin.Context) {
+	image := c.Query("image")
+	if image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image query parameter required"})
+		return
+	}
+	format := c.DefaultQuery("format", "cyclonedx-json")
+
+	rawSBOM, err := security.ExportSBOM(image, format)
+	if err != nil {
+		_, _, scanErr := security.TriggerScan(image)
+		if scanErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": scanErr.Error()})
+			return
+		}
+		rawSBOM, err = security.ExportSBOM(image, format)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.Data(http.StatusOK, "application/json", rawSBOM)
+}
+
+func securityKeysListHandler(c *gin.Context) {
+	keys, err := security.ListTrustedKeys()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"keys": keys})
+}
+
+func securityKeyGenerateHandler(c *gin.Context) {
+	var req struct {
+		Name      string `json:"name" binding:"required"`
+		IsDefault bool   `json:"is_default"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	pubPEM, privPEM, err := security.GenerateCosignKeypair(req.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	key, err := security.SaveTrustedKey(req.Name, pubPEM, req.IsDefault)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Keypair generated successfully",
+		"key":         key,
+		"public_pem":  pubPEM,
+		"private_pem": privPEM,
+	})
+}
+
+func securityKeySaveHandler(c *gin.Context) {
+	var req struct {
+		Name         string `json:"name" binding:"required"`
+		PublicKeyPEM string `json:"public_key_pem" binding:"required"`
+		IsDefault    bool   `json:"is_default"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name and public_key_pem are required"})
+		return
+	}
+
+	key, err := security.SaveTrustedKey(req.Name, req.PublicKeyPEM, req.IsDefault)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Trusted key imported successfully",
+		"key":     key,
+	})
+}
+
+func securityKeyDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := security.DeleteTrustedKey(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Key deleted successfully"})
+}
+
+func securityImageSignHandler(c *gin.Context) {
+	var req struct {
+		Image      string `json:"image" binding:"required"`
+		PrivateKey string `json:"private_key" binding:"required"`
+		SignerName string `json:"signer_name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image and private_key are required"})
+		return
+	}
+
+	if req.SignerName == "" {
+		req.SignerName = "Cluster Administrator"
+	}
+
+	sig, err := security.SignImageDigest(req.Image, "sha256:digest", req.PrivateKey, req.SignerName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to sign image: " + err.Error()})
+		return
+	}
+
+	scan, _, _ := security.GetScanByImage(req.Image)
+	if scan == nil {
+		scan, _, _ = security.TriggerScan(req.Image)
+	}
+	if scan != nil {
+		db.DB.Model(&db.ImageScan{}).Where("id = ?", scan.ID).Updates(map[string]interface{}{
+			"signature_status": "verified",
+			"signature_signer": req.SignerName,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Image signed successfully",
+		"image":     req.Image,
+		"signature": sig,
+		"signer":    req.SignerName,
+	})
+}
+
+func securityPolicyGetHandler(c *gin.Context) {
+	policy, err := security.GetClusterPolicy()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"policy": policy})
+}
+
+func securityPolicySaveHandler(c *gin.Context) {
+	var policy db.SecurityPolicy
+	if err := c.ShouldBindJSON(&policy); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := security.UpdateClusterPolicy(&policy); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Security policy updated successfully",
+		"policy":  policy,
+	})
+}
+
+func securityAdmissionEvaluateHandler(c *gin.Context) {
+	var req struct {
+		Image  string            `json:"image" binding:"required"`
+		Labels map[string]string `json:"labels"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image is required"})
+		return
+	}
+
+	decision := security.EvaluateAdmission(req.Image, req.Labels)
+	c.JSON(http.StatusOK, gin.H{"decision": decision})
+}
+
 

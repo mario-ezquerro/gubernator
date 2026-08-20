@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../auth-rbac/">
+        <link rel="prev" href="../storage-backups/">
       
       
-        <link rel="next" href="../image-security/">
+        <link rel="next" href="../screens/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Storage & Backups (The Granaries) - Gubernator Orchestrator</title>
+        <title>Image Security & SBOM (The Imperial Seal) - Gubernator Orchestrator</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#storage-backups-the-granaries-subsystem" class="md-skip">
+        <a href="#image-security-sbom-cryptographic-signing-the-imperial-seal" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Storage & Backups (The Granaries)
+              Image Security & SBOM (The Imperial Seal)
             
           </span>
         </div>
@@ -612,6 +612,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage-backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage & Backups (The Granaries)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -631,7 +659,7 @@
   <span class="md-ellipsis">
     
   
-    Storage & Backups (The Granaries)
+    Image Security & SBOM (The Imperial Seal)
   
 
     
@@ -649,7 +677,7 @@
   <span class="md-ellipsis">
     
   
-    Storage & Backups (The Granaries)
+    Image Security & SBOM (The Imperial Seal)
   
 
     
@@ -675,10 +703,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#architecture-container-mobility" class="md-nav__link">
+  <a href="#architecture-security-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🏛 Architecture &amp; Container Mobility
+        🏛 Architecture &amp; Security Pipeline
       
     </span>
   </a>
@@ -698,10 +726,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-volumes-volume-explorer" class="md-nav__link">
+  <a href="#1-vulnerabilities-cve-scanner" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. 📦 Volumes (Volume Explorer)
+        1. 🔍 Vulnerabilities (CVE Scanner)
       
     </span>
   </a>
@@ -709,10 +737,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-backups-snapshots" class="md-nav__link">
+  <a href="#2-sbom-explorer-software-bill-of-materials" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. 💾 Backups &amp; Snapshots
+        2. 📦 SBOM Explorer (Software Bill of Materials)
       
     </span>
   </a>
@@ -720,10 +748,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-schedules-policies" class="md-nav__link">
+  <a href="#3-image-signatures-keys-cosign" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. ⏰ Schedules &amp; Policies
+        3. 🔏 Image Signatures &amp; Keys (Cosign)
       
     </span>
   </a>
@@ -731,10 +759,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-storage-pools" class="md-nav__link">
+  <a href="#4-gatekeeper-policies-admission-controller" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. 🏢 Storage Pools
+        4. 📜 Gatekeeper Policies (Admission Controller)
       
     </span>
   </a>
@@ -747,49 +775,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-by-step-guide-shared-storage-setup-varcontenedores" class="md-nav__link">
+  <a href="#docker-compose-security-labels-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        🛠️ Step-by-Step Guide: Shared Storage Setup (/var/contenedores)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="🛠️ Step-by-Step Guide: Shared Storage Setup (/var/contenedores)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-setup-nfs-server-eg-on-manager-or-nas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Setup NFS Server (e.g., on Manager or NAS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-mount-on-all-centurion-nodes-manager-workers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Mount on All Centurion Nodes (Manager &amp; Workers)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-compose-example-with-persistent-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🚀 Docker Compose Example with Persistent Storage
+        🚀 Docker Compose Security Labels Reference
       
     </span>
   </a>
@@ -809,10 +798,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#list-volumes" class="md-nav__link">
+  <a href="#scan-images" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List Volumes
+        Scan Images
       
     </span>
   </a>
@@ -820,10 +809,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#create-backup" class="md-nav__link">
+  <a href="#export-sbom" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create Backup
+        Export SBOM
       
     </span>
   </a>
@@ -831,10 +820,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#list-backups" class="md-nav__link">
+  <a href="#sign-verify-images" class="md-nav__link">
     <span class="md-ellipsis">
       
-        List Backups
+        Sign &amp; Verify Images
       
     </span>
   </a>
@@ -842,21 +831,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#restore-backup" class="md-nav__link">
+  <a href="#manage-gatekeeper-policies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Restore Backup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#list-backup-schedules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        List Backup Schedules
+        Manage Gatekeeper Policies
       
     </span>
   </a>
@@ -883,34 +861,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../image-security/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Image Security & SBOM (The Imperial Seal)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1250,134 +1200,127 @@
   
 
 
-<h1 id="storage-backups-the-granaries-subsystem">Storage &amp; Backups (The Granaries) Subsystem</h1>
-<p>Gubernator features a native <strong>Storage &amp; Backups Subsystem</strong> (<em>The Granaries / Graneros del Imperio</em>) designed to provide multi-node volume discovery, cluster-wide persistent storage mobility (e.g. shared <code>/var/contenedores</code> mounts via NFS/GlusterFS/CephFS/CIFS or local volumes), point-in-time compressed backups (<code>.tar.gz</code>), one-click restoration, automated cron retention policies, and shared storage pool diagnostics.</p>
+<h1 id="image-security-sbom-cryptographic-signing-the-imperial-seal">Image Security, SBOM &amp; Cryptographic Signing (The Imperial Seal)</h1>
+<p>Gubernator features a native <strong>Image Security &amp; Supply Chain Subsystem</strong> (<em>The Imperial Seal / The Armory / Armamentarium</em>) providing automated CVE vulnerability scanning, Software Bill of Materials (SBOM) generation in <strong>CycloneDX</strong> and <strong>SPDX</strong> formats, <strong>Cosign</strong> ECDSA image signing and verification, and pre-deployment <strong>Gatekeeper</strong> admission control.</p>
 <hr />
-<h2 id="architecture-container-mobility">🏛 Architecture &amp; Container Mobility</h2>
-<p>In a multi-node cluster, stateful services (databases, file uploads, persistent caches) must retain their data when containers are rescheduled or migrated across Centurion nodes.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                      +------------------------------------------+
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                      |         Gubernator Web Dashboard         |
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                      |        (Storage &amp; Backups Suite)         |
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                      +------------------------------------------+
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                           |
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                           v REST API (Port 4000)
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                      +------------------------------------------+
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                      |       Gubernator Manager (Go API)        |
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                      |   - Volume Discovery Engine              |
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                      |   - Backup &amp; Restore Manager (tar.gz)    |
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                      |   - Cron Scheduler &amp; Retention Daemon    |
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                      |   - Storage Pools Health Verifier        |
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                      +------------------------------------------+
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                               /            |            \
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                              /             |             \
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                             v              v              v
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                     +---------------+ +---------------+ +---------------+
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                     |    Manager    | |    Worker 1   | |    Worker 2   |
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                     | Node Storage  | | Node Storage  | | Node Storage  |
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                     +---------------+ +---------------+ +---------------+
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                            \               |               /
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                             \              |              /
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                              v             v             v
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                     +-------------------------------------------+
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>                     |        Cluster Shared Storage Pool        |
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                     |    e.g. /var/contenedores (NFS/Gluster)   |
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                     +-------------------------------------------+
+<h2 id="architecture-security-pipeline">🏛 Architecture &amp; Security Pipeline</h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                                [ Stack Deploy / Container Run Request ]
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                                                 │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                                                 ▼
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                        ┌─────────────────────────────────────────────────┐
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                        │    GUBERNATOR ADMISSION GATEKEEPER (Port 4000)   │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                        │    - Evaluates Cluster &amp; Stack Security Policy  │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                        └───────────────────────┬─────────────────────────┘
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                                                │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                 ┌──────────────────────────────┴──────────────────────────────┐
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                 ▼                                                             ▼
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ┌──────────────────────────┐                                ┌───────────────────────────┐
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    │ 🔏 1. Check de Firma     │                                │ 🔍 2. Check de CVEs       │
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    │    (Cosign / Sigstore)   │                                │    (Trivy / Grype)        │
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    ├──────────────────────────┤                                ├───────────────────────────┤
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    │ ¿Está la imagen firmada  │                                │ ¿Tiene la imagen CVEs     │
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    │ por una clave de confianza?                               │ CRITICAL o HIGH?          │
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    └────────────┬─────────────┘                                └─────────────┬─────────────┘
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                 │                                                            │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                 ├───────── ❌ No firmada / Firma inválida                    ├───────── ❌ Supera umbral de severidad
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                 │          (Si política = &#39;ENFORCE&#39;)                         │          (Si política = &#39;BLOCK_CRITICAL&#39;)
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                 │                                                            │
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                 ▼                                                            ▼
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    ╔══════════════════════════╗                                 ╔═══════════════════════════╗
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ║  ⛔ DESPLIEGUE RECHAZADO ║                                 ║   ⛔ DESPLIEGUE BLOQUEADO ║
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    ║ &quot;Image signature missing&quot;║                                 ║ &quot;Found 2 Critical CVEs&quot;   ║
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    ╚══════════════════════════╝                                 ╚═══════════════════════════╝
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                 │                                                            │
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>                 └───────────────────────┬────────────────────────────────────┘
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>                                         │ ✅ Pasa todas las políticas activas
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>                                         ▼
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>                        ╔═════════════════════════════════╗
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>                        ║ 🚀 Despliegue Permitido en Nodos║
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>                        ╚═════════════════════════════════╝
 </span></code></pre></div>
-<p>When all nodes share <code>/var/contenedores</code>, containers writing to <code>/var/contenedores/&lt;stack&gt;/data</code> can move from <code>gbnt-worker1</code> to <code>gbnt-worker2</code> without losing any disk modifications.</p>
 <hr />
 <h2 id="web-ui-visualization-suite">🎨 Web UI Visualization Suite</h2>
-<p>Access <strong>Storage &amp; Backups</strong> in the Web Dashboard (Port 4001) to interact with 4 specialized tabs:</p>
-<h3 id="1-volumes-volume-explorer">1. 📦 Volumes (Volume Explorer)</h3>
+<p>Access <strong>Image Security &amp; SBOM</strong> in the Web Dashboard (Port 4001) to interact with 4 specialized tabs:</p>
+<h3 id="1-vulnerabilities-cve-scanner">1. 🔍 Vulnerabilities (CVE Scanner)</h3>
 <ul>
-<li><strong>Cluster-Wide Volume Discovery</strong>: Auto-detects Docker Named Volumes, Shared Pool directories (<code>/var/contenedores/</code>), and Host Bind Mounts.</li>
-<li><strong>Metadata &amp; Disk Usage</strong>: Displays associated Stack (Legion), Service, source and target paths, and exact size on disk.</li>
-<li><strong>1-Click Snapshot</strong>: Instantly trigger a point-in-time backup for any discovered volume.</li>
+<li><strong>Image Catalog</strong>: Discovers all images deployed across Legions/Stacks.</li>
+<li><strong>Severity Breakdown</strong>: Color-coded badges for <code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, and <code>LOW</code> CVE counts.</li>
+<li><strong>CVE Inspection</strong>: Detailed dialog displaying CVE IDs, CVSS scores, affected packages, fixed versions, descriptions, and direct links to NIST / NVD.</li>
+<li><strong>1-Click Scan</strong>: Trigger on-demand security scans for any container image tag.</li>
 </ul>
-<h3 id="2-backups-snapshots">2. 💾 Backups &amp; Snapshots</h3>
+<h3 id="2-sbom-explorer-software-bill-of-materials">2. 📦 SBOM Explorer (Software Bill of Materials)</h3>
 <ul>
-<li><strong>Compressed Archives (<code>.tar.gz</code>)</strong>: Full catalog of all backups with file size, creation timestamp, and cryptographic SHA-256 integrity hash.</li>
-<li><strong>Container Consistency Toggle</strong>: Supports freezing write operations (<code>docker pause</code> ➔ archive ➔ <code>docker unpause</code>) to guarantee 100% database consistency.</li>
-<li><strong>1-Click Restore</strong>: Restore backups in-place over the original volume or clone into a custom target path.</li>
-<li><strong>Direct Download</strong>: Download <code>.tar.gz</code> archives straight to your browser.</li>
-<li><strong>External Upload</strong>: Upload external <code>.tar.gz</code> backup files directly into the cluster storage repository.</li>
+<li><strong>Dependency Tree</strong>: Inspects base OS packages (musl, busybox, libssl, glibc) and language runtime libraries.</li>
+<li><strong>License Compliance</strong>: Highlights software licenses (MIT, Apache-2.0, BSD, GPL) for legal audit compliance.</li>
+<li><strong>1-Click Export</strong>: Export the full SBOM in <strong>CycloneDX JSON</strong> or <strong>SPDX JSON</strong> format.</li>
 </ul>
-<h3 id="3-schedules-policies">3. ⏰ Schedules &amp; Policies</h3>
+<h3 id="3-image-signatures-keys-cosign">3. 🔏 Image Signatures &amp; Keys (Cosign)</h3>
 <ul>
-<li><strong>Automated Cron Routines</strong>: Schedule periodic backups (Daily at 03:00 AM, Weekly on Sunday, or custom Cron expressions).</li>
-<li><strong>Automatic Retention Rotation</strong>: Automatically keeps the last $N$ backups (e.g. 7 daily copies) and prunes older archives to prevent disk exhaustion.</li>
+<li><strong>Keypair Management</strong>: Generate ECDSA P-256 Cosign-compatible keypairs directly in-cluster or import external public keys.</li>
+<li><strong>Verification Status</strong>: Displays whether images are 🟢 <em>Verified</em> or 🟡 <em>Unsigned</em>.</li>
+<li><strong>1-Click Signing</strong>: Sign container images with private keys stored or entered securely.</li>
 </ul>
-<h3 id="4-storage-pools">4. 🏢 Storage Pools</h3>
+<h3 id="4-gatekeeper-policies-admission-controller">4. 📜 Gatekeeper Policies (Admission Controller)</h3>
 <ul>
-<li><strong>Shared Mount Verification</strong>: Validates whether <code>/var/contenedores</code> is accessible and writable (<code>rw</code>) across all Centurion nodes.</li>
-<li><strong>Capacity Meter</strong>: Real-time visualization of Total, Used, and Free disk capacity.</li>
-<li><strong>Mount Helpers</strong>: Built-in instructions for mounting NFS / GlusterFS / CephFS across nodes.</li>
+<li><strong>Signature Enforcement</strong>:</li>
+<li><code>Disabled</code>: Allow any container image.</li>
+<li><code>Audit / Warn Only</code>: Allow unsigned images but flag with warning badges in the dashboard.</li>
+<li><code>Strict Enforcement</code>: ⛔ Reject container deployments if the image is not cryptographically signed by a trusted key.</li>
+<li><strong>CVE Severity Admission Gate</strong>:</li>
+<li><code>Allow All</code>: No vulnerability blocking.</li>
+<li><code>Block on CRITICAL</code>: ⛔ Block deployment if the image contains known Critical CVEs.</li>
+<li><code>Block on HIGH and CRITICAL</code>: ⛔ Strict compliance blocking High and Critical CVEs.</li>
+<li><strong>Unfixed CVE Allowance</strong>: Toggle whether to allow images if no official patch/fix is available yet.</li>
 </ul>
 <hr />
-<h2 id="step-by-step-guide-shared-storage-setup-varcontenedores">🛠️ Step-by-Step Guide: Shared Storage Setup (<code>/var/contenedores</code>)</h2>
-<p>To enable shared cluster storage across 3 nodes:</p>
-<h3 id="1-setup-nfs-server-eg-on-manager-or-nas">1. Setup NFS Server (e.g., on Manager or NAS)</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>nfs-kernel-server
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/srv/nfs/contenedores
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>nobody:nogroup<span class="w"> </span>/srv/nfs/contenedores
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">777</span><span class="w"> </span>/srv/nfs/contenedores
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;/srv/nfs/contenedores *(rw,sync,no_subtree_check,no_root_squash)&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/exports
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>sudo<span class="w"> </span>exportfs<span class="w"> </span>-a
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>nfs-kernel-server
-</span></code></pre></div>
-<h3 id="2-mount-on-all-centurion-nodes-manager-workers">2. Mount on All Centurion Nodes (Manager &amp; Workers)</h3>
-<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>nfs-common
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/var/contenedores
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>sudo<span class="w"> </span>mount<span class="w"> </span>-t<span class="w"> </span>nfs<span class="w"> </span>&lt;NFS_SERVER_IP&gt;:/srv/nfs/contenedores<span class="w"> </span>/var/contenedores
-</span></code></pre></div>
-<em>(Add to <code>/etc/fstab</code> for automatic mounting on reboot)</em>:
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&lt;NFS_SERVER_IP&gt;:/srv/nfs/contenedores /var/contenedores nfs defaults 0 0
-</span></code></pre></div></p>
-<hr />
-<h2 id="docker-compose-example-with-persistent-storage">🚀 Docker Compose Example with Persistent Storage</h2>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">database</span><span class="p">:</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:16-alpine</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="nt">POSTGRES_DB</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">appdb</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">secretpassword</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">      </span><span class="c1"># Persistent data stored in shared pool for cluster mobility</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/contenedores/myapp/postgres:/var/lib/postgresql/data</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == myapp</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">  </span><span class="nt">web</span><span class="p">:</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:plain-text</span>
-</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;80&quot;</span>
-</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == myapp</span>
-</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == myapp.gbnt.local</span>
+<h2 id="docker-compose-security-labels-reference">🚀 Docker Compose Security Labels Reference</h2>
+<p>Stacks can declare custom security rules in <code>docker-compose.yml</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">company/payment-api:2.1.0</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="c1"># Require valid Cosign signature before allowing deployment</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.require-signature=true</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">        </span><span class="c1"># Reject deployment if image contains CRITICAL vulnerabilities</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.max-cve-severity=critical</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="c1"># Reject deployment even if no upstream fix is available yet</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.allow-unfixed=false</span>
 </span></code></pre></div>
 <hr />
 <h2 id="cli-command-reference">💻 CLI Command Reference</h2>
-<h3 id="list-volumes">List Volumes</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gbnt<span class="w"> </span>volume<span class="w"> </span>ls
+<h3 id="scan-images">Scan Images</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># List all scanned images and severity metrics</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>gbnt<span class="w"> </span>scan
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Scan a specific image</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gbnt<span class="w"> </span>scan<span class="w"> </span>postgres:16-alpine
 </span></code></pre></div>
-<h3 id="create-backup">Create Backup</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>myapp<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;pre-upgrade-backup&quot;</span><span class="w"> </span>--pause
+<h3 id="export-sbom">Export SBOM</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Export in CycloneDX JSON</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>cyclonedx-json
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Export in SPDX JSON</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>spdx-json
 </span></code></pre></div>
-<h3 id="list-backups">List Backups</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>ls
+<h3 id="sign-verify-images">Sign &amp; Verify Images</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Generate a new Cosign signing keypair</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>gbnt<span class="w"> </span>security<span class="w"> </span>key<span class="w"> </span>generate<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;production-key&quot;</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Sign an image</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>gbnt<span class="w"> </span>image<span class="w"> </span>sign<span class="w"> </span>company/app:1.0<span class="w"> </span>--key<span class="w"> </span>/path/to/cosign.key
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Verify image signature against trusted keys</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>gbnt<span class="w"> </span>image<span class="w"> </span>verify<span class="w"> </span>company/app:1.0
 </span></code></pre></div>
-<h3 id="restore-backup">Restore Backup</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>&lt;BACKUP_ID&gt;<span class="w"> </span>--target<span class="w"> </span>/var/contenedores/myapp/postgres
-</span></code></pre></div>
-<h3 id="list-backup-schedules">List Backup Schedules</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>schedule<span class="w"> </span>ls
+<h3 id="manage-gatekeeper-policies">Manage Gatekeeper Policies</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># View current policy</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gbnt<span class="w"> </span>security<span class="w"> </span>policy
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># List trusted public keys</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>gbnt<span class="w"> </span>security<span class="w"> </span>key<span class="w"> </span>ls
 </span></code></pre></div>
 <hr />
 <h2 id="rest-api-reference">📡 REST API Reference</h2>
@@ -1392,70 +1335,76 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><code>/v1/storage/volumes</code></td>
+<td style="text-align: left;"><code>/v1/security/scans</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">List all cluster persistent volumes and sizes</td>
+<td style="text-align: left;">List all image vulnerability scans and summary metrics</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/storage/pools/health</code></td>
+<td style="text-align: left;"><code>/v1/security/scans/:id</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">Check health and capacity of <code>/var/contenedores</code></td>
+<td style="text-align: left;">Get detailed scan report with all CVEs</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/backups</code></td>
-<td style="text-align: left;"><code>GET</code></td>
-<td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">List all backup archives and metadata</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/backups/create</code></td>
+<td style="text-align: left;"><code>/v1/security/scans/trigger</code></td>
 <td style="text-align: left;"><code>POST</code></td>
 <td style="text-align: left;"><code>operator</code></td>
-<td style="text-align: left;">Trigger point-in-time compressed backup</td>
+<td style="text-align: left;">Trigger immediate vulnerability scan</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/backups/restore</code></td>
-<td style="text-align: left;"><code>POST</code></td>
-<td style="text-align: left;"><code>operator</code></td>
-<td style="text-align: left;">Restore a backup to target directory</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/backups/download/:id</code></td>
+<td style="text-align: left;"><code>/v1/security/sbom?image=...</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">Download <code>.tar.gz</code> archive</td>
+<td style="text-align: left;">Retrieve or export image SBOM (CycloneDX / SPDX)</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/backups/upload</code></td>
-<td style="text-align: left;"><code>POST</code></td>
-<td style="text-align: left;"><code>operator</code></td>
-<td style="text-align: left;">Upload external <code>.tar.gz</code> backup</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/backups/:id</code></td>
-<td style="text-align: left;"><code>DELETE</code></td>
-<td style="text-align: left;"><code>operator</code></td>
-<td style="text-align: left;">Delete a backup archive</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/backups/schedules</code></td>
+<td style="text-align: left;"><code>/v1/security/keys</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">List backup schedules</td>
+<td style="text-align: left;">List trusted public signing keys</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/backups/schedules</code></td>
+<td style="text-align: left;"><code>/v1/security/keys/generate</code></td>
 <td style="text-align: left;"><code>POST</code></td>
 <td style="text-align: left;"><code>admin</code></td>
-<td style="text-align: left;">Create or update a backup schedule</td>
+<td style="text-align: left;">Generate new Cosign ECDSA keypair</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>/v1/backups/schedules/:id</code></td>
+<td style="text-align: left;"><code>/v1/security/keys</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>admin</code></td>
+<td style="text-align: left;">Import trusted public key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/keys/:id</code></td>
 <td style="text-align: left;"><code>DELETE</code></td>
 <td style="text-align: left;"><code>admin</code></td>
-<td style="text-align: left;">Delete a backup schedule</td>
+<td style="text-align: left;">Delete trusted key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/sign</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Cryptographically sign image digest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/policy</code></td>
+<td style="text-align: left;"><code>GET</code></td>
+<td style="text-align: left;"><code>all</code></td>
+<td style="text-align: left;">Get active cluster admission policy</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/policy</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>admin</code></td>
+<td style="text-align: left;">Update cluster admission policy</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/evaluate</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>all</code></td>
+<td style="text-align: left;">Evaluate image admission against policies</td>
 </tr>
 </tbody>
 </table>

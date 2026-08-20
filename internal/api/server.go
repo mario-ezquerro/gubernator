@@ -238,6 +238,22 @@ func Start(ctx context.Context) error {
 			backupRoute.POST("/schedules", BackupScheduleSaveHandler)
 			backupRoute.DELETE("/schedules/:id", BackupScheduleDeleteHandler)
 		}
+
+		securityRoute := v1.Group("/security", authMiddleware)
+		{
+			securityRoute.GET("/scans", SecurityScansListHandler)
+			securityRoute.GET("/scans/:id", SecurityScanDetailsHandler)
+			securityRoute.POST("/scans/trigger", SecurityScanTriggerHandler)
+			securityRoute.GET("/sbom", SecuritySBOMGetHandler)
+			securityRoute.GET("/keys", SecurityKeysListHandler)
+			securityRoute.POST("/keys/generate", SecurityKeyGenerateHandler)
+			securityRoute.POST("/keys", SecurityKeySaveHandler)
+			securityRoute.DELETE("/keys/:id", SecurityKeyDeleteHandler)
+			securityRoute.POST("/sign", SecurityImageSignHandler)
+			securityRoute.GET("/policy", SecurityPolicyGetHandler)
+			securityRoute.POST("/policy", SecurityPolicySaveHandler)
+			securityRoute.POST("/evaluate", SecurityAdmissionEvaluateHandler)
+		}
 	}
 
 	srv := &http.Server{Addr: ":4000", Handler: r}

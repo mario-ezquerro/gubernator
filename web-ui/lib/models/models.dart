@@ -1193,3 +1193,199 @@ class PoolHealthModel {
   }
 }
 
+// ── Image Security & SBOM Models ─────────────────────────────────────────────
+
+class ImageScanModel {
+  final String id;
+  final String imageName;
+  final String imageDigest;
+  final String scannedAt;
+  final int criticalCount;
+  final int highCount;
+  final int mediumCount;
+  final int lowCount;
+  final int totalCount;
+  final String signatureStatus;
+  final String? signatureSigner;
+
+  ImageScanModel({
+    required this.id,
+    required this.imageName,
+    this.imageDigest = '',
+    required this.scannedAt,
+    this.criticalCount = 0,
+    this.highCount = 0,
+    this.mediumCount = 0,
+    this.lowCount = 0,
+    this.totalCount = 0,
+    this.signatureStatus = 'unsigned',
+    this.signatureSigner,
+  });
+
+  factory ImageScanModel.fromJson(Map<String, dynamic> json) {
+    return ImageScanModel(
+      id: json['id'] ?? '',
+      imageName: json['image_name'] ?? '',
+      imageDigest: json['image_digest'] ?? '',
+      scannedAt: json['scanned_at'] != null ? json['scanned_at'].toString().split('T')[0] : '',
+      criticalCount: (json['critical_count'] as num?)?.toInt() ?? 0,
+      highCount: (json['high_count'] as num?)?.toInt() ?? 0,
+      mediumCount: (json['medium_count'] as num?)?.toInt() ?? 0,
+      lowCount: (json['low_count'] as num?)?.toInt() ?? 0,
+      totalCount: (json['total_count'] as num?)?.toInt() ?? 0,
+      signatureStatus: json['signature_status'] ?? 'unsigned',
+      signatureSigner: json['signature_signer'],
+    );
+  }
+}
+
+class ImageVulnerabilityModel {
+  final String id;
+  final String scanId;
+  final String cveId;
+  final String packageName;
+  final String installedVersion;
+  final String? fixedVersion;
+  final String severity;
+  final double cvssScore;
+  final String title;
+  final String description;
+  final String primaryUrl;
+
+  ImageVulnerabilityModel({
+    required this.id,
+    required this.scanId,
+    required this.cveId,
+    required this.packageName,
+    required this.installedVersion,
+    this.fixedVersion,
+    required this.severity,
+    this.cvssScore = 0.0,
+    this.title = '',
+    this.description = '',
+    this.primaryUrl = '',
+  });
+
+  factory ImageVulnerabilityModel.fromJson(Map<String, dynamic> json) {
+    return ImageVulnerabilityModel(
+      id: json['id'] ?? '',
+      scanId: json['scan_id'] ?? '',
+      cveId: json['cve_id'] ?? '',
+      packageName: json['package_name'] ?? '',
+      installedVersion: json['installed_version'] ?? '',
+      fixedVersion: json['fixed_version'],
+      severity: json['severity'] ?? 'LOW',
+      cvssScore: (json['cvss_score'] as num?)?.toDouble() ?? 0.0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      primaryUrl: json['primary_url'] ?? '',
+    );
+  }
+}
+
+class TrustedKeyModel {
+  final String id;
+  final String name;
+  final String publicKeyPem;
+  final String keyType;
+  final bool isDefault;
+  final String createdAt;
+
+  TrustedKeyModel({
+    required this.id,
+    required this.name,
+    required this.publicKeyPem,
+    this.keyType = 'cosign-ecdsa',
+    this.isDefault = false,
+    required this.createdAt,
+  });
+
+  factory TrustedKeyModel.fromJson(Map<String, dynamic> json) {
+    return TrustedKeyModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      publicKeyPem: json['public_key_pem'] ?? '',
+      keyType: json['key_type'] ?? 'cosign-ecdsa',
+      isDefault: json['is_default'] ?? false,
+      createdAt: json['created_at'] != null ? json['created_at'].toString().split('T')[0] : '',
+    );
+  }
+}
+
+class SecurityPolicyModel {
+  final String id;
+  final String name;
+  final String enforceSignatures;
+  final String blockCveSeverity;
+  final bool allowUnfixedCve;
+  final String trustedRegistries;
+  final String updatedAt;
+
+  SecurityPolicyModel({
+    required this.id,
+    required this.name,
+    this.enforceSignatures = 'audit',
+    this.blockCveSeverity = 'none',
+    this.allowUnfixedCve = true,
+    this.trustedRegistries = '["docker.io","ghcr.io","quay.io"]',
+    required this.updatedAt,
+  });
+
+  factory SecurityPolicyModel.fromJson(Map<String, dynamic> json) {
+    return SecurityPolicyModel(
+      id: json['id'] ?? 'default',
+      name: json['name'] ?? 'Cluster Security Policy',
+      enforceSignatures: json['enforce_signatures'] ?? 'audit',
+      blockCveSeverity: json['block_cve_severity'] ?? 'none',
+      allowUnfixedCve: json['allow_unfixed_cve'] ?? true,
+      trustedRegistries: json['trusted_registries'] ?? '["docker.io","ghcr.io","quay.io"]',
+      updatedAt: json['updated_at'] != null ? json['updated_at'].toString().split('T')[0] : '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'enforce_signatures': enforceSignatures,
+        'block_cve_severity': blockCveSeverity,
+        'allow_unfixed_cve': allowUnfixedCve,
+        'trusted_registries': trustedRegistries,
+      };
+}
+
+class SecuritySummaryModel {
+  final int totalImages;
+  final int totalScanned;
+  final int criticalCount;
+  final int highCount;
+  final int mediumCount;
+  final int lowCount;
+  final int verifiedSigned;
+  final int unsignedCount;
+
+  SecuritySummaryModel({
+    this.totalImages = 0,
+    this.totalScanned = 0,
+    this.criticalCount = 0,
+    this.highCount = 0,
+    this.mediumCount = 0,
+    this.lowCount = 0,
+    this.verifiedSigned = 0,
+    this.unsignedCount = 0,
+  });
+
+  factory SecuritySummaryModel.fromJson(Map<String, dynamic> json) {
+    return SecuritySummaryModel(
+      totalImages: (json['total_images'] as num?)?.toInt() ?? 0,
+      totalScanned: (json['total_scanned'] as num?)?.toInt() ?? 0,
+      criticalCount: (json['critical_count'] as num?)?.toInt() ?? 0,
+      highCount: (json['high_count'] as num?)?.toInt() ?? 0,
+      mediumCount: (json['medium_count'] as num?)?.toInt() ?? 0,
+      lowCount: (json['low_count'] as num?)?.toInt() ?? 0,
+      verifiedSigned: (json['verified_signed'] as num?)?.toInt() ?? 0,
+      unsignedCount: (json['unsigned_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+
