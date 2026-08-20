@@ -16,16 +16,6 @@ var (
 
 // StartBackupScheduler starts the background cron engine for automated backup policies.
 func StartBackupScheduler() {
-	cronMutex.Lock()
-	defer cronMutex.Unlock()
-
-	if cronRunner != nil {
-		cronRunner.Stop()
-	}
-
-	cronRunner = cron.New(cron.WithSeconds())
-	cronRunner.Start()
-
 	// Initial sync of all enabled schedules
 	SyncSchedules()
 
