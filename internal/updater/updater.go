@@ -155,7 +155,7 @@ func ApplyClusterUpdate(targetVersion string) error {
 
 	if targetVersion != "" {
 		written := false
-		for _, path := range []string{"/app/VERSION", "VERSION", "../VERSION"} {
+		for _, path := range []string{"/data/VERSION", "/app/VERSION", "VERSION", "../VERSION"} {
 			if err := os.WriteFile(path, []byte(targetVersion), 0644); err == nil {
 				written = true
 			}
