@@ -21,6 +21,7 @@ import 'pages/slo_page.dart';
 import 'pages/security_page.dart';
 import 'pages/storage_page.dart';
 import 'pages/image_security_page.dart';
+import 'pages/compose_studio_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -213,6 +214,11 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.shield,
         label: 'Security & Directory',
       ),
+      const SidebarItem(
+        icon: Icons.code_outlined,
+        activeIcon: Icons.code,
+        label: 'Compose Studio',
+      ),
     ];
     return items;
   }
@@ -234,6 +240,7 @@ class _AppShellState extends State<AppShell> {
     'Jaeger',
     'Network Topology',
     'Security & Directory',
+    'Compose Studio',
   ];
 
   Widget _buildCurrentPage() {
@@ -274,6 +281,8 @@ class _AppShellState extends State<AppShell> {
         return const ScopePage();
       case 14:
         return SecurityPage(state: _state, onRefresh: _fetchData);
+      case 15:
+        return ComposeStudioPage(state: _state, onRefresh: _fetchData);
       default:
         return OverviewPage(
           state: _state,

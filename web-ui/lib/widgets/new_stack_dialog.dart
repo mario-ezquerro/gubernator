@@ -4,6 +4,7 @@ import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
+import 'compose_autocomplete.dart';
 import '../models/models.dart' as models;
 
 /// A dialog to define and deploy a new Docker Compose stack, featuring the Gubernator Copilot.
@@ -407,6 +408,7 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                   ),
                                 ),
                                 const Divider(height: 1),
+                                ComposeSuggestionBar(controller: _yamlController),
                                 Expanded(
                                   child: CodeTheme(
                                     data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),

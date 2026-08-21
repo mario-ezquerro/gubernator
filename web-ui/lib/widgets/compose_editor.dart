@@ -4,6 +4,8 @@ import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 
+import 'compose_autocomplete.dart';
+
 import '../models/models.dart';
 
 class ComposeEditorDialog extends StatefulWidget {
@@ -282,14 +284,21 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                 children: [
                   // Editor
                   Expanded(
-                    child: CodeTheme(
-                      data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                      child: SingleChildScrollView(
-                        child: CodeField(
-                          controller: _controller,
-                          textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                    child: Column(
+                      children: [
+                        ComposeSuggestionBar(controller: _controller),
+                        Expanded(
+                          child: CodeTheme(
+                            data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                            child: SingleChildScrollView(
+                              child: CodeField(
+                                controller: _controller,
+                                textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   // Copilot Panel

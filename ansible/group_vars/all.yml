@@ -4,7 +4,7 @@
 # ==============================================================================
 
 # Version & Binary Source
-gbnt_version: "v2.21.3"
+gbnt_version: "v2.27.0"
 gbnt_download_url: "https://github.com/mario-ezquerro/gubernator/releases/download/{{ gbnt_version }}/gbnt-linux-{{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'amd64' }}"
 gbnt_install_path: "/usr/local/bin/gbnt"
 gbnt_data_dir: "/var/lib/gubernator"

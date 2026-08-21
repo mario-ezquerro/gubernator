@@ -159,4 +159,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Security Gatekeeper (Admission Controller)**: Pre-deployment policy engine capable of blocking unverified/unsigned images or containers containing unpatched critical CVEs.
 * **Full CLI Parity**: Dedicated commands for `gbnt scan`, `gbnt sbom`, `gbnt image sign`, `gbnt image verify`, `gbnt security policy`, and `gbnt security key`.
 
+### 19. Dedicated Compose Studio & Gubernator Copilot Subsystem (`v2.27.0`)
+* **Dedicated Navigation Entry:** Full-screen IDE workspace accessible directly below **Security & Directory** in the dashboard sidebar.
+* **Stack & Template Management:** Instant switching between existing cluster stacks or authoring new stacks from production blueprints (Web Ingress, Postgres Storage, SRE Microservice, Gatekeeper Signed App, GPU AI Task).
+* **Smart Autocompletion & Suggestion Bar:** Contextual keyword chips (`ingress.host`, `gbnt.caddy.port`, `gbnt.slo.*`, `gbnt.security.*`, `deploy.placement`, `/var/contenedores/`) that filter as you type and insert snippets with correct YAML indent.
+* **Gubernator Copilot Side Panel:** 6-tab visual wizard for Caddy Ingress, Sloth SLOs, Security Gatekeeper, live Centurion Node hardware affinity, and Storage Granaries.
+* **Full Stack Lifecycle:** One-click Save Compose, Save & Deploy / Redeploy, Reset, Import from `.yml`, and Export `.yml` archive.
+* **Ansible Multi-Distro Automation:** Complete cluster bootstrap playbooks in `ansible/` (and `ansible-playbooks/`) for Debian/Ubuntu and RHEL/CentOS/Rocky/AlmaLinux/Fedora with SSH, Docker CE, Weave Scope, and Gubernator services.
+
+
+
 
