@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -137,10 +136,7 @@ func CheckStoragePoolHealth(poolPath string) PoolHealthResponse {
 		}
 
 		// Query disk space
-		var stat syscall.Statfs_t
-		if err := syscall.Statfs(poolPath, &stat); err == nil {
-			total := stat.Blocks * uint64(stat.Bsize)
-			free := stat.Bavail * uint64(stat.Bsize)
+		if total, free, err := getDiskSpace(poolPath); err == nil {
 			used := total - free
 			mgrStatus.TotalBytes = total
 			mgrStatus.FreeBytes = free
