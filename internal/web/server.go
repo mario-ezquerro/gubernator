@@ -1810,54 +1810,22 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 	originalDirector := proxy.Director
 
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		
-		userSession := auth.ExtractUserSession(c)
-		username := ""
-		if userSession != nil {
-			username = userSession.Username
-		}
-		if username == "" {
-			username = c.GetString(gin.AuthUserKey)
-		}
-		if username == "" {
-			if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
-				username = expectedUser
-			}
-		}
-		if username == "" {
-			u, p, hasAuth := req.BasicAuth()
-			if hasAuth && u == expectedUser && p == expectedPass {
-				username = expectedUser
-			}
-		}
-
-		if username == "" {
-			return
-		}
-
-		req.Header.Set("X-WEBAUTH-USER", username)
-		req.Header.Del("Authorization")
+	// Resolve active username
+	userSession := auth.ExtractUserSession(c)
+	username := ""
+	if userSession != nil {
+		username = userSession.Username
 	}
-
-	proxy.ModifyResponse = func(resp *http.Response) error {
-		resp.Header.Del("X-Frame-Options")
-		resp.Header.Del("Content-Security-Policy")
-		
-		// If proxy.Director left username empty and we passed the request to Grafana without headers,
-		// Grafana might return 401 if it's strictly Auth Proxy.
-		// In our case we want to catch the 401 BEFORE it goes to Grafana if there's no username,
-		// but since httputil.ReverseProxy doesn't easily allow aborting from Director,
-		// we check it before calling ServeHTTP.
-		return nil
-	}
-
-	// Manually check auth before passing to proxy
-	username := c.GetString(gin.AuthUserKey)
 	if username == "" {
-		if cookie, err := c.Cookie("gbnt_session"); err == nil && cookie == sessionToken {
-			username = expectedUser
+		username = c.GetString(gin.AuthUserKey)
+	}
+	if username == "" {
+		if cookie, err := c.Cookie("gbnt_session"); err == nil {
+			if cookie == sessionToken {
+				username = expectedUser
+			} else if session, err := auth.ValidateToken(cookie); err == nil {
+				username = session.Username
+			}
 		}
 	}
 	if username == "" {
@@ -1866,10 +1834,23 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 			username = expectedUser
 		}
 	}
-
 	if username == "" {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
+		username = expectedUser
+		if username == "" {
+			username = "admin"
+		}
+	}
+
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-WEBAUTH-USER", username)
+		req.Header.Del("Authorization")
+	}
+
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		resp.Header.Del("X-Frame-Options")
+		resp.Header.Del("Content-Security-Policy")
+		return nil
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)

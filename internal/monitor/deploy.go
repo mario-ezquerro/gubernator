@@ -140,8 +140,9 @@ func DeployManagerStack(webUser, webPass string) error {
 		"-e", "GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER",
 		"-e", "GF_AUTH_PROXY_HEADER_PROPERTY=username",
 		"-e", "GF_AUTH_PROXY_AUTO_SIGN_UP=true",
-		"-e", "GF_AUTH_DISABLE_LOGIN_FORM=true",
-		"-e", "GF_AUTH_DISABLE_SIGNOUT_MENU=true",
+		"-e", "GF_AUTH_ANONYMOUS_ENABLED=true",
+		"-e", "GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer",
+		"-e", "GF_AUTH_DISABLE_LOGIN_FORM=false",
 		"grafana/grafana:latest",
 	}
 	if err := runContainer(GrafanaName, grafanaArgs); err != nil {
