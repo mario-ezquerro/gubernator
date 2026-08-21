@@ -1188,7 +1188,101 @@ class PoolHealthModel {
       nodes: (json['nodes'] as List<dynamic>?)
               ?.map((e) => NodePoolHealthModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
-          [],
+          const [],
+    );
+  }
+}
+
+class StorageMountModel {
+  final String id;
+  final String name;
+  final String device;
+  final String mountPoint;
+  final String fsType;
+  final String options;
+  final int dump;
+  final int pass;
+  final String targetNode;
+  final String? credentialsFile;
+  final bool autoMount;
+  final String status;
+  final bool isActive;
+  final String? errorMessage;
+  final String description;
+  final String createdAt;
+  final String updatedAt;
+
+  StorageMountModel({
+    required this.id,
+    required this.name,
+    required this.device,
+    required this.mountPoint,
+    required this.fsType,
+    this.options = '',
+    this.dump = 0,
+    this.pass = 0,
+    this.targetNode = 'all',
+    this.credentialsFile,
+    this.autoMount = true,
+    this.status = 'unmounted',
+    this.isActive = true,
+    this.errorMessage,
+    this.description = '',
+    this.createdAt = '',
+    this.updatedAt = '',
+  });
+
+  factory StorageMountModel.fromJson(Map<String, dynamic> json) {
+    return StorageMountModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      device: json['device'] ?? '',
+      mountPoint: json['mount_point'] ?? '',
+      fsType: json['fs_type'] ?? 'nfs',
+      options: json['options'] ?? '',
+      dump: (json['dump'] as num?)?.toInt() ?? 0,
+      pass: (json['pass'] as num?)?.toInt() ?? 0,
+      targetNode: json['target_node'] ?? 'all',
+      credentialsFile: json['credentials_file'],
+      autoMount: json['auto_mount'] != false,
+      status: json['status'] ?? 'unmounted',
+      isActive: json['is_active'] != false,
+      errorMessage: json['error_message'],
+      description: json['description'] ?? '',
+      createdAt: json['created_at'] ?? '',
+      updatedAt: json['updated_at'] ?? '',
+    );
+  }
+}
+
+class TestMountResultModel {
+  final bool success;
+  final int latencyMs;
+  final bool isWritable;
+  final int totalBytes;
+  final int freeBytes;
+  final String? errorMessage;
+  final String? output;
+
+  TestMountResultModel({
+    required this.success,
+    this.latencyMs = 0,
+    this.isWritable = false,
+    this.totalBytes = 0,
+    this.freeBytes = 0,
+    this.errorMessage,
+    this.output,
+  });
+
+  factory TestMountResultModel.fromJson(Map<String, dynamic> json) {
+    return TestMountResultModel(
+      success: json['success'] == true,
+      latencyMs: (json['latency_ms'] as num?)?.toInt() ?? 0,
+      isWritable: json['is_writable'] == true,
+      totalBytes: (json['total_bytes'] as num?)?.toInt() ?? 0,
+      freeBytes: (json['free_bytes'] as num?)?.toInt() ?? 0,
+      errorMessage: json['error_message'],
+      output: json['output'],
     );
   }
 }

@@ -1056,6 +1056,89 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Fetches all network storage mounts (NFS, S3, Samba, /etc/fstab).
+  static Future<List<StorageMountModel>> fetchStorageMounts() async {
+    final response = await http.get(Uri.parse('/api/storage/mounts'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['mounts'] as List? ?? [])
+          .map((e) => StorageMountModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    throw Exception('Failed to fetch mounts: ${response.statusCode}');
+  }
+
+  /// Creates and mounts a new network storage entry.
+  static Future<StorageMountModel> createStorageMount(Map<String, dynamic> req) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/mounts'),
+      headers: authHeaders,
+      body: jsonEncode(req),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return StorageMountModel.fromJson(data['mount']);
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to configure mount');
+  }
+
+  /// Tests connectivity and R/W access for a remote mount.
+  static Future<TestMountResultModel> testStorageMount(Map<String, dynamic> req) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/mounts/test'),
+      headers: authHeaders,
+      body: jsonEncode(req),
+    );
+    if (response.statusCode == 200) {
+      return TestMountResultModel.fromJson(jsonDecode(response.body));
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to test mount');
+  }
+
+  /// Mounts an existing configured entry.
+  static Future<bool> mountStorageEntry(String id) async {
+    final response = await http.post(Uri.parse('/api/storage/mounts/$id/mount'), headers: authHeaders);
+    if (response.statusCode == 200) return true;
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Mount failed');
+  }
+
+  /// Unmounts an existing entry.
+  static Future<bool> unmountStorageEntry(String id) async {
+    final response = await http.post(Uri.parse('/api/storage/mounts/$id/unmount'), headers: authHeaders);
+    if (response.statusCode == 200) return true;
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Unmount failed');
+  }
+
+  /// Deletes a mount and cleans up /etc/fstab.
+  static Future<bool> deleteStorageMount(String id) async {
+    final response = await http.delete(Uri.parse('/api/storage/mounts/$id'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Executes mount -a on host.
+  static Future<String> mountAllStorageEntries() async {
+    final response = await http.post(Uri.parse('/api/storage/mounts/mount-all'), headers: authHeaders);
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data['output'] ?? 'OK';
+    }
+    throw Exception(data['error'] ?? 'mount -a failed');
+  }
+
+  /// Fetches raw /etc/fstab contents from the host.
+  static Future<Map<String, dynamic>> fetchRawFstab() async {
+    final response = await http.get(Uri.parse('/api/storage/fstab/raw'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to read fstab: ${response.statusCode}');
+  }
+
   // ── Image Security & SBOM API Methods ──────────────────────────────────────
 
   /// Fetches all image vulnerability scans and cluster security summary.

@@ -27,6 +27,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   List<StorageVolumeModel> _volumes = [];
   List<BackupModel> _backups = [];
   List<BackupScheduleModel> _schedules = [];
+  List<StorageMountModel> _mounts = [];
   PoolHealthModel? _poolHealth;
   bool _loading = false;
 
@@ -34,12 +35,14 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   String _volumeSearch = '';
   String _volumeTypeFilter = 'ALL';
   String _backupSearch = '';
+  String _mountSearch = '';
+  String _mountTypeFilter = 'ALL';
   String _poolPath = '/var/contenedores';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadAllData();
   }
 
@@ -56,12 +59,14 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       final backupsFuture = ApiService.fetchBackups();
       final schedulesFuture = ApiService.fetchBackupSchedules();
       final healthFuture = ApiService.fetchStoragePoolHealth(path: _poolPath);
+      final mountsFuture = ApiService.fetchStorageMounts();
 
       final results = await Future.wait([
         volsFuture.catchError((_) => <StorageVolumeModel>[]),
         backupsFuture.catchError((_) => <BackupModel>[]),
         schedulesFuture.catchError((_) => <BackupScheduleModel>[]),
         healthFuture.catchError((_) => PoolHealthModel(poolPath: _poolPath, status: 'error')),
+        mountsFuture.catchError((_) => <StorageMountModel>[]),
       ]);
 
       if (mounted) {
@@ -70,6 +75,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
           _backups = results[1] as List<BackupModel>;
           _schedules = results[2] as List<BackupScheduleModel>;
           _poolHealth = results[3] as PoolHealthModel;
+          _mounts = results[4] as List<StorageMountModel>;
           _loading = false;
         });
       }
@@ -584,6 +590,16 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                       ],
                     ),
                   ),
+                  Tab(
+                    icon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.dns_outlined, size: 18),
+                        const SizedBox(width: 6),
+                        Text('Network Mounts & fstab (${_mounts.length})'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -600,6 +616,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                         _buildBackupsTab(isDark),
                         _buildSchedulesTab(isDark),
                         _buildPoolsTab(isDark),
+                        _buildMountsTab(isDark),
                       ],
                     ),
             ),
@@ -1262,4 +1279,866 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       ),
     );
   }
+
+  Widget _buildMetricCard(
+    bool isDark,
+    String title,
+    String value,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 0,
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Tab 5: Network Mounts & /etc/fstab ─────────────────────────────
+
+  Widget _buildMountsTab(bool isDark) {
+    final filtered = _mounts.where((m) {
+      final matchesSearch = _mountSearch.isEmpty ||
+          m.name.toLowerCase().contains(_mountSearch.toLowerCase()) ||
+          m.device.toLowerCase().contains(_mountSearch.toLowerCase()) ||
+          m.mountPoint.toLowerCase().contains(_mountSearch.toLowerCase()) ||
+          m.description.toLowerCase().contains(_mountSearch.toLowerCase());
+      final matchesType = _mountTypeFilter == 'ALL' ||
+          m.fsType.toLowerCase().contains(_mountTypeFilter.toLowerCase());
+      return matchesSearch && matchesType;
+    }).toList();
+
+    final mountedCount = _mounts.where((m) => m.status == 'mounted').length;
+    final fstabCount = _mounts.where((m) => m.autoMount).length;
+    final isMobilityActive = _mounts.any((m) => m.mountPoint == '/var/contenedores' && m.status == 'mounted');
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Metric Cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricCard(
+                  isDark,
+                  'Active Mounts',
+                  '$mountedCount / ${_mounts.length}',
+                  mountedCount > 0 ? '🟢 All connected' : '⚪ No active network shares',
+                  Icons.dns_outlined,
+                  const Color(0xFF3B82F6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  isDark,
+                  '/var/contenedores Mobility',
+                  isMobilityActive ? 'SHARED NETWORK' : 'LOCAL ATTACHED',
+                  isMobilityActive ? '🟢 Multi-node mobility active' : '🟡 Data bound to single host',
+                  Icons.folder_special_outlined,
+                  isMobilityActive ? const Color(0xFF10B981) : Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  isDark,
+                  '/etc/fstab Managed Entries',
+                  '$fstabCount Entries',
+                  'Persistence on reboot enabled',
+                  Icons.save_outlined,
+                  const Color(0xFF8B5CF6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Action & Filter Toolbar
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search mounts by device, path, or name...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onChanged: (val) => setState(() => _mountSearch = val),
+                ),
+              ),
+              const SizedBox(width: 12),
+              DropdownButton<String>(
+                value: _mountTypeFilter,
+                underline: const SizedBox(),
+                items: const [
+                  DropdownMenuItem(value: 'ALL', child: Text('All Protocols')),
+                  DropdownMenuItem(value: 'nfs', child: Text('NFS (v3/v4)')),
+                  DropdownMenuItem(value: 'cifs', child: Text('Samba / CIFS')),
+                  DropdownMenuItem(value: 's3', child: Text('S3 Object Storage')),
+                  DropdownMenuItem(value: 'ext', child: Text('Local / POSIX')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _mountTypeFilter = val);
+                },
+              ),
+              const Spacer(),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.code, size: 16),
+                label: const Text('View /etc/fstab'),
+                onPressed: _showFstabViewerDialog,
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.sync, size: 16),
+                label: const Text('Mount All (mount -a)'),
+                onPressed: () async {
+                  try {
+                    _showSnackBar('Executing mount -a on host...');
+                    await ApiService.mountAllStorageEntries();
+                    _showSnackBar('✅ mount -a executed successfully');
+                    _loadAllData();
+                  } catch (e) {
+                    _showSnackBar('❌ mount -a failed: $e', isError: true);
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Network Mount'),
+                onPressed: () => _showAddMountDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Mounts Table
+          if (filtered.isEmpty)
+            Card(
+              elevation: 0,
+              color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.dns_outlined, size: 48, color: Colors.grey[500]),
+                      const SizedBox(height: 12),
+                      Text(
+                        _mounts.isEmpty
+                            ? 'No network mounts configured yet.'
+                            : 'No mounts match your search filter.',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Mount remote NFS shares, Windows Samba folders, or S3 buckets to /var/contenedores for container data mobility.',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Configure First Mount (NFS / S3 / Samba)'),
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                        onPressed: () => _showAddMountDialog(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                columnSpacing: 16,
+                columns: const [
+                  DataColumn(label: Text('PROTOCOL')),
+                  DataColumn(label: Text('NAME & DESCRIPTION')),
+                  DataColumn(label: Text('REMOTE DEVICE / SHARE')),
+                  DataColumn(label: Text('LOCAL MOUNT POINT')),
+                  DataColumn(label: Text('AUTO-BOOT')),
+                  DataColumn(label: Text('STATUS')),
+                  DataColumn(label: Text('ACTIONS')),
+                ],
+                rows: filtered.map((m) {
+                  Color typeColor = const Color(0xFF3B82F6);
+                  String typeLabel = m.fsType.toUpperCase();
+                  if (m.fsType.contains('cifs')) {
+                    typeColor = const Color(0xFFF59E0B);
+                    typeLabel = 'SAMBA / CIFS';
+                  } else if (m.fsType.contains('s3')) {
+                    typeColor = const Color(0xFF10B981);
+                    typeLabel = 'S3 BUCKET';
+                  } else if (m.fsType.contains('nfs')) {
+                    typeColor = const Color(0xFF3B82F6);
+                    typeLabel = 'NFS';
+                  }
+
+                  Color statusColor = Colors.orange;
+                  if (m.status == 'mounted') {
+                    statusColor = const Color(0xFF10B981);
+                  } else if (m.status == 'error') {
+                    statusColor = Colors.redAccent;
+                  }
+
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: typeColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: typeColor.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            typeLabel,
+                            style: TextStyle(color: typeColor, fontWeight: FontWeight.bold, fontSize: 11),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (m.description.isNotEmpty)
+                              Text(m.description, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                          ],
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              m.device.length > 32 ? '${m.device.substring(0, 32)}...' : m.device,
+                              style: const TextStyle(fontFamily: 'Courier New', fontSize: 12),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 14),
+                              tooltip: 'Copy device path: ${m.device}',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: m.device));
+                                _showSnackBar('Copied remote device path to clipboard');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: m.mountPoint == '/var/contenedores'
+                                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                    : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                m.mountPoint,
+                                style: TextStyle(
+                                  fontFamily: 'Courier New',
+                                  fontSize: 12,
+                                  fontWeight: m.mountPoint == '/var/contenedores' ? FontWeight.bold : FontWeight.normal,
+                                  color: m.mountPoint == '/var/contenedores' ? const Color(0xFF10B981) : null,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 14),
+                              tooltip: 'Copy mount point',
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: m.mountPoint));
+                                _showSnackBar('Copied mount point');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              m.autoMount ? Icons.check_circle : Icons.cancel_outlined,
+                              size: 16,
+                              color: m.autoMount ? const Color(0xFF10B981) : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(m.autoMount ? '/etc/fstab' : 'Manual', style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      DataCell(
+                        Tooltip(
+                          message: m.errorMessage ?? (m.status == 'mounted' ? 'Filesystem is live and mounted' : 'Unmounted'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  m.status.toUpperCase(),
+                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (m.status == 'mounted')
+                              IconButton(
+                                icon: const Icon(Icons.eject_outlined, size: 18, color: Colors.orange),
+                                tooltip: 'Unmount (${m.mountPoint})',
+                                onPressed: () async {
+                                  try {
+                                    _showSnackBar('Unmounting ${m.mountPoint}...');
+                                    await ApiService.unmountStorageEntry(m.id);
+                                    _showSnackBar('Unmounted successfully');
+                                    _loadAllData();
+                                  } catch (e) {
+                                    _showSnackBar('Failed to unmount: $e', isError: true);
+                                  }
+                                },
+                              )
+                            else
+                              IconButton(
+                                icon: const Icon(Icons.play_arrow, size: 18, color: Color(0xFF10B981)),
+                                tooltip: 'Mount (${m.mountPoint})',
+                                onPressed: () async {
+                                  try {
+                                    _showSnackBar('Mounting ${m.mountPoint}...');
+                                    await ApiService.mountStorageEntry(m.id);
+                                    _showSnackBar('Mounted successfully');
+                                    _loadAllData();
+                                  } catch (e) {
+                                    _showSnackBar('Failed to mount: $e', isError: true);
+                                  }
+                                },
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.speed, size: 18, color: Color(0xFF3B82F6)),
+                              tooltip: 'Test Connection & Latency',
+                              onPressed: () async {
+                                try {
+                                  _showSnackBar('Testing remote share connectivity...');
+                                  final res = await ApiService.testStorageMount({
+                                    'name': m.name,
+                                    'device': m.device,
+                                    'mount_point': m.mountPoint,
+                                    'fs_type': m.fsType,
+                                    'options': m.options,
+                                  });
+                                  if (res.success) {
+                                    _showSnackBar('✅ Connected! Latency: ${res.latencyMs}ms | Writable: ${res.isWritable ? "Yes" : "Read-Only"}');
+                                  } else {
+                                    _showSnackBar('❌ Test Failed: ${res.errorMessage}', isError: true);
+                                  }
+                                } catch (e) {
+                                  _showSnackBar('Test error: $e', isError: true);
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                              tooltip: 'Delete Mount & Clean /etc/fstab',
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Delete Mount Entry'),
+                                    content: Text('Are you sure you want to delete mount "${m.name}" (${m.mountPoint})?\n\nThis will unmount the filesystem and remove its entry from /etc/fstab.'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  try {
+                                    await ApiService.deleteStorageMount(m.id);
+                                    _showSnackBar('Mount deleted successfully');
+                                    _loadAllData();
+                                  } catch (e) {
+                                    _showSnackBar('Failed to delete mount: $e', isError: true);
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Dialogs: Mount Wizard & fstab Inspector ────────────────────────
+
+  void _showAddMountDialog() {
+    String protocol = 'nfs'; // nfs, cifs, s3, custom
+    final nameCtrl = TextEditingController(text: 'nfs-var-contenedores');
+    final deviceCtrl = TextEditingController(text: '192.168.1.50:/volume1/contenedores');
+    final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    final optionsCtrl = TextEditingController(text: 'rw,hard,intr,noatime,rsize=1048576,wsize=1048576,_netdev');
+    final descCtrl = TextEditingController(text: 'Primary shared NFS pool for multi-node container mobility');
+    bool autoMount = true;
+
+    // Protocol specifics
+    final userCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    final domainCtrl = TextEditingController();
+    final s3EndpointCtrl = TextEditingController(text: 'https://s3.amazonaws.com');
+    final s3AccessKeyCtrl = TextEditingController();
+    final s3SecretKeyCtrl = TextEditingController();
+
+    TestMountResultModel? testResult;
+    bool isTesting = false;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.dns, color: Color(0xFF10B981)),
+                  SizedBox(width: 8),
+                  Text('Add Network Filesystem / Mount'),
+                ],
+              ),
+              content: SizedBox(
+                width: 580,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Protocol Selector
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'nfs', label: Text('NFS v3/v4'), icon: Icon(Icons.storage, size: 16)),
+                          ButtonSegment(value: 'cifs', label: Text('Samba / CIFS'), icon: Icon(Icons.folder_shared, size: 16)),
+                          ButtonSegment(value: 's3', label: Text('S3 Object'), icon: Icon(Icons.cloud_queue, size: 16)),
+                          ButtonSegment(value: 'custom', label: Text('Custom / POSIX'), icon: Icon(Icons.settings, size: 16)),
+                        ],
+                        selected: {protocol},
+                        onSelectionChanged: (newSet) {
+                          final selected = newSet.first;
+                          setDlgState(() {
+                            protocol = selected;
+                            if (protocol == 'nfs') {
+                              nameCtrl.text = 'nfs-var-contenedores';
+                              deviceCtrl.text = '192.168.1.50:/volume1/contenedores';
+                              mountPointCtrl.text = '/var/contenedores';
+                              optionsCtrl.text = 'rw,hard,intr,noatime,rsize=1048576,wsize=1048576,_netdev';
+                              descCtrl.text = 'Shared NFS volume for container mobility';
+                            } else if (protocol == 'cifs') {
+                              nameCtrl.text = 'samba-shared-data';
+                              deviceCtrl.text = '//192.168.1.50/docker_share';
+                              mountPointCtrl.text = '/var/contenedores';
+                              optionsCtrl.text = 'rw,_netdev,uid=1000,gid=1000';
+                              descCtrl.text = 'Windows / TrueNAS Samba network share';
+                            } else if (protocol == 's3') {
+                              nameCtrl.text = 's3-bucket-data';
+                              deviceCtrl.text = 's3fs#my-gubernator-bucket';
+                              mountPointCtrl.text = '/var/contenedores/s3-data';
+                              optionsCtrl.text = '_netdev,allow_other,use_cache=/tmp,uid=1000,gid=1000';
+                              descCtrl.text = 'S3 FUSE object storage bucket mount';
+                            } else {
+                              nameCtrl.text = 'block-device-mount';
+                              deviceCtrl.text = '/dev/sdb1';
+                              mountPointCtrl.text = '/var/contenedores';
+                              optionsCtrl.text = 'defaults,_netdev';
+                              descCtrl.text = 'Direct block device mount';
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Common Fields
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(labelText: 'Mount Identifier / Name', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: deviceCtrl,
+                        decoration: InputDecoration(
+                          labelText: protocol == 'nfs'
+                              ? 'NFS Server & Export Path'
+                              : (protocol == 'cifs' ? 'Samba Share Path' : (protocol == 's3' ? 'S3 Bucket Name (e.g. s3fs#my-bucket)' : 'Device / Source Path')),
+                          hintText: protocol == 'nfs' ? '192.168.1.50:/volume1/contenedores' : (protocol == 'cifs' ? '//192.168.1.50/share' : 'my-bucket'),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: mountPointCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Destination Mount Point',
+                          hintText: '/var/contenedores',
+                          helperText: 'Default /var/contenedores enables instant multi-node container mobility.',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Protocol Specific Credentials
+                      if (protocol == 'cifs') ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: userCtrl,
+                                decoration: const InputDecoration(labelText: 'Samba Username', border: OutlineInputBorder()),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: passCtrl,
+                                obscureText: true,
+                                decoration: const InputDecoration(labelText: 'Samba Password', border: OutlineInputBorder()),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: domainCtrl,
+                          decoration: const InputDecoration(labelText: 'Workgroup / Domain (optional)', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                      ] else if (protocol == 's3') ...[
+                        TextField(
+                          controller: s3EndpointCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'S3 API Endpoint (AWS, MinIO, Wasabi, Cloudflare R2)',
+                            hintText: 'https://s3.amazonaws.com or https://minio.internal.lan:9000',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: s3AccessKeyCtrl,
+                                decoration: const InputDecoration(labelText: 'Access Key ID', border: OutlineInputBorder()),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: s3SecretKeyCtrl,
+                                obscureText: true,
+                                decoration: const InputDecoration(labelText: 'Secret Access Key', border: OutlineInputBorder()),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      TextField(
+                        controller: optionsCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Mount Options String',
+                          hintText: 'rw,_netdev,rsize=1048576',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: descCtrl,
+                        decoration: const InputDecoration(labelText: 'Description / Notes', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+
+                      SwitchListTile(
+                        title: const Text('Persist in /etc/fstab'),
+                        subtitle: const Text('Automatically mount on Centurion boot'),
+                        value: autoMount,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) => setDlgState(() => autoMount = val),
+                      ),
+
+                      if (testResult != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: testResult!.success ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: testResult!.success ? Colors.green : Colors.redAccent),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(testResult!.success ? Icons.check_circle : Icons.error, color: testResult!.success ? Colors.green : Colors.redAccent, size: 18),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    testResult!.success ? 'Test Successful (Latency: ${testResult!.latencyMs}ms)' : 'Mount Test Failed',
+                                    style: TextStyle(fontWeight: FontWeight.bold, color: testResult!.success ? Colors.green : Colors.redAccent),
+                                  ),
+                                ],
+                              ),
+                              if (testResult!.success) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  '• Writable: ${testResult!.isWritable ? "Yes (R/W Verified)" : "Read-Only"}\n• Available Capacity: ${(testResult!.freeBytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ] else ...[
+                                const SizedBox(height: 4),
+                                Text(testResult!.errorMessage ?? 'Unknown error', style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                OutlinedButton.icon(
+                  icon: isTesting ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.speed, size: 16),
+                  label: const Text('Test Connection'),
+                  onPressed: isTesting
+                      ? null
+                      : () async {
+                          setDlgState(() => isTesting = true);
+                          try {
+                            String fst = protocol;
+                            if (protocol == 's3') fst = 'fuse.s3fs';
+                            final res = await ApiService.testStorageMount({
+                              'name': nameCtrl.text.trim(),
+                              'device': deviceCtrl.text.trim(),
+                              'mount_point': mountPointCtrl.text.trim(),
+                              'fs_type': fst,
+                              'options': optionsCtrl.text.trim(),
+                              'username': userCtrl.text.trim(),
+                              'password': passCtrl.text.trim(),
+                              'domain': domainCtrl.text.trim(),
+                              's3_endpoint': s3EndpointCtrl.text.trim(),
+                              's3_access_key': s3AccessKeyCtrl.text.trim(),
+                              's3_secret_key': s3SecretKeyCtrl.text.trim(),
+                            });
+                            setDlgState(() {
+                              testResult = res;
+                              isTesting = false;
+                            });
+                          } catch (e) {
+                            setDlgState(() {
+                              testResult = TestMountResultModel(success: false, errorMessage: e.toString());
+                              isTesting = false;
+                            });
+                          }
+                        },
+                ),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: isSaving ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save, size: 16),
+                  label: const Text('Save & Mount'),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setDlgState(() => isSaving = true);
+                          try {
+                            String fst = protocol;
+                            if (protocol == 's3') fst = 'fuse.s3fs';
+                            await ApiService.createStorageMount({
+                              'name': nameCtrl.text.trim(),
+                              'device': deviceCtrl.text.trim(),
+                              'mount_point': mountPointCtrl.text.trim(),
+                              'fs_type': fst,
+                              'options': optionsCtrl.text.trim(),
+                              'auto_mount': autoMount,
+                              'description': descCtrl.text.trim(),
+                              'username': userCtrl.text.trim(),
+                              'password': passCtrl.text.trim(),
+                              'domain': domainCtrl.text.trim(),
+                              's3_endpoint': s3EndpointCtrl.text.trim(),
+                              's3_access_key': s3AccessKeyCtrl.text.trim(),
+                              's3_secret_key': s3SecretKeyCtrl.text.trim(),
+                            });
+                            Navigator.pop(ctx);
+                            _showSnackBar('✅ Network mount created and mounted successfully!');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isSaving = false);
+                            _showSnackBar('❌ Failed to create mount: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFstabViewerDialog() async {
+    try {
+      final fstabData = await ApiService.fetchRawFstab();
+      final path = fstabData['path'] ?? '/etc/fstab';
+      final rawContent = fstabData['raw'] ?? '';
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.code, color: Color(0xFF3B82F6)),
+                const SizedBox(width: 8),
+                Text('Host Configuration: $path'),
+              ],
+            ),
+            content: SizedBox(
+              width: 650,
+              height: 400,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    rawContent,
+                    style: TextStyle(
+                      fontFamily: 'Courier New',
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            actions: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Copy to Clipboard'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: rawContent));
+                  _showSnackBar('Copied /etc/fstab content to clipboard');
+                },
+              ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      _showSnackBar('Failed to read /etc/fstab: $e', isError: true);
+    }
+  }
 }
+

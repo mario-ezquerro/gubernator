@@ -38,7 +38,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "slo:period_error_budget_remaining:ratio{gbnt_service_id=\"95dd9bf1-247c-4066-a5d8-a05f0a8f4be2\"} * 100",
+          "expr": "slo:period_error_budget_remaining:ratio{gbnt_service_id=\"b2fd0185-a4e5-4edf-8b05-b9f50d1f14c5\"} * 100",
           "legendFormat": "Budget Remaining %"
         }
       ],
@@ -60,11 +60,11 @@
       "id": 2,
       "targets": [
         {
-          "expr": "slo:current_burn_rate:ratio{gbnt_service_id=\"95dd9bf1-247c-4066-a5d8-a05f0a8f4be2\"}",
+          "expr": "slo:current_burn_rate:ratio{gbnt_service_id=\"b2fd0185-a4e5-4edf-8b05-b9f50d1f14c5\"}",
           "legendFormat": "Current Burn Rate (5m)"
         },
         {
-          "expr": "slo:period_burn_rate:ratio{gbnt_service_id=\"95dd9bf1-247c-4066-a5d8-a05f0a8f4be2\"}",
+          "expr": "slo:period_burn_rate:ratio{gbnt_service_id=\"b2fd0185-a4e5-4edf-8b05-b9f50d1f14c5\"}",
           "legendFormat": "Period Burn Rate (30d)"
         }
       ],

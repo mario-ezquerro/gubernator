@@ -226,6 +226,14 @@ func Start(ctx context.Context) error {
 		{
 			storageRoute.GET("/volumes", StorageVolumesHandler)
 			storageRoute.GET("/pools/health", StoragePoolsHealthHandler)
+			storageRoute.GET("/mounts", StorageMountsListHandler)
+			storageRoute.POST("/mounts", StorageMountCreateHandler)
+			storageRoute.POST("/mounts/test", StorageMountTestHandler)
+			storageRoute.POST("/mounts/mount-all", StorageMountAllHandler)
+			storageRoute.POST("/mounts/:id/mount", StorageMountActionHandler)
+			storageRoute.POST("/mounts/:id/unmount", StorageUnmountActionHandler)
+			storageRoute.DELETE("/mounts/:id", StorageMountDeleteHandler)
+			storageRoute.GET("/fstab/raw", StorageFstabRawHandler)
 		}
 
 		backupRoute := v1.Group("/backup", authMiddleware)

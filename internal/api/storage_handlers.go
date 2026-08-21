@@ -128,3 +128,101 @@ func BackupScheduleDeleteHandler(c *gin.Context) {
 	storage.SyncSchedules()
 	c.JSON(http.StatusOK, gin.H{"message": "Schedule deleted successfully"})
 }
+
+// StorageMountsListHandler returns all configured and detected fstab mounts.
+func StorageMountsListHandler(c *gin.Context) {
+	mounts, err := storage.ListStorageMounts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"mounts": mounts,
+		"total":  len(mounts),
+	})
+}
+
+// StorageMountCreateHandler creates and mounts a network storage entry.
+func StorageMountCreateHandler(c *gin.Context) {
+	var req storage.CreateMountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	m, err := storage.CreateStorageMount(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Mount created successfully",
+		"mount":   m,
+	})
+}
+
+// StorageMountTestHandler tests network connection and R/W access for a mount.
+func StorageMountTestHandler(c *gin.Context) {
+	var req storage.CreateMountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res := storage.TestMountConnection(req)
+	c.JSON(http.StatusOK, res)
+}
+
+// StorageMountActionHandler mounts an existing entry.
+func StorageMountActionHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.MountStorageEntry(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mounted successfully"})
+}
+
+// StorageUnmountActionHandler unmounts an existing entry.
+func StorageUnmountActionHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.UnmountStorageEntry(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Unmounted successfully"})
+}
+
+// StorageMountDeleteHandler deletes a mount and cleans up fstab.
+func StorageMountDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.DeleteStorageMount(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mount deleted successfully"})
+}
+
+// StorageMountAllHandler executes mount -a.
+func StorageMountAllHandler(c *gin.Context) {
+	out, err := storage.MountAllStorageEntries()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": out})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "mount -a executed successfully", "output": out})
+}
+
+// StorageFstabRawHandler returns raw /etc/fstab contents.
+func StorageFstabRawHandler(c *gin.Context) {
+	raw, err := storage.GetRawFstab()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"path": storage.FstabPath(),
+		"raw":  raw,
+	})
+}

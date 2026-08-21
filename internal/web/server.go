@@ -47,7 +47,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.27.0"
+var Version = "v2.28.0"
 
 func GetVersion() string {
 	for _, p := range []string{"/app/VERSION", "/data/VERSION", "VERSION", "../VERSION"} {
@@ -351,6 +351,14 @@ func StartDashboard() {
 		// Storage & Backups Subsystem (The Granaries)
 		api.GET("/storage/volumes", storageVolumesHandler)
 		api.GET("/storage/pools/health", storagePoolsHealthHandler)
+		api.GET("/storage/mounts", storageMountsListHandler)
+		api.POST("/storage/mounts", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountCreateHandler)
+		api.POST("/storage/mounts/test", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountTestHandler)
+		api.POST("/storage/mounts/mount-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountAllHandler)
+		api.POST("/storage/mounts/:id/mount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountActionHandler)
+		api.POST("/storage/mounts/:id/unmount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageUnmountActionHandler)
+		api.DELETE("/storage/mounts/:id", auth.RequireRole(auth.RoleAdmin), storageMountDeleteHandler)
+		api.GET("/storage/fstab/raw", storageFstabRawHandler)
 		api.GET("/backups", backupsListHandler)
 		api.GET("/backups/download/:id", backupDownloadHandler)
 		api.GET("/backups/schedules", backupSchedulesListHandler)
@@ -4068,6 +4076,96 @@ func storagePoolsHealthHandler(c *gin.Context) {
 	poolPath := c.DefaultQuery("path", storage.DefaultSharedPoolPath)
 	res := storage.CheckStoragePoolHealth(poolPath)
 	c.JSON(http.StatusOK, res)
+}
+
+func storageMountsListHandler(c *gin.Context) {
+	mounts, err := storage.ListStorageMounts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"mounts": mounts,
+		"total":  len(mounts),
+	})
+}
+
+func storageMountCreateHandler(c *gin.Context) {
+	var req storage.CreateMountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	m, err := storage.CreateStorageMount(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Mount configured successfully",
+		"mount":   m,
+	})
+}
+
+func storageMountTestHandler(c *gin.Context) {
+	var req storage.CreateMountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res := storage.TestMountConnection(req)
+	c.JSON(http.StatusOK, res)
+}
+
+func storageMountActionHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.MountStorageEntry(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mounted successfully"})
+}
+
+func storageUnmountActionHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.UnmountStorageEntry(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Unmounted successfully"})
+}
+
+func storageMountDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := storage.DeleteStorageMount(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mount removed successfully"})
+}
+
+func storageMountAllHandler(c *gin.Context) {
+	output, err := storage.MountAllStorageEntries()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": output})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "mount -a executed successfully", "output": output})
+}
+
+func storageFstabRawHandler(c *gin.Context) {
+	raw, err := storage.GetRawFstab()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"path": storage.FstabPath(),
+		"raw":  raw,
+	})
 }
 
 func backupsListHandler(c *gin.Context) {

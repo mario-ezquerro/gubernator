@@ -167,6 +167,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Full Stack Lifecycle:** One-click Save Compose, Save & Deploy / Redeploy, Reset, Import from `.yml`, and Export `.yml` archive.
 * **Ansible Multi-Distro Automation:** Complete cluster bootstrap playbooks in `ansible/` (and `ansible-playbooks/`) for Debian/Ubuntu and RHEL/CentOS/Rocky/AlmaLinux/Fedora with SSH, Docker CE, Weave Scope, and Gubernator services.
 
+### 20. Network Mounts & `/etc/fstab` Management Subsystem (`v2.28.0`)
+* **Multi-Protocol Network Storage:** Full management and auto-mounting of **NFS (v3/v4)**, **Windows / NAS Samba (CIFS)**, **S3 Object Storage (FUSE / s3fs)** for AWS/MinIO/Wasabi/Cloudflare R2, **GlusterFS**, and local POSIX block devices.
+* **Granaries `/var/contenedores` Mobility Root:** Seamlessly links remote storage shares to `/var/contenedores`, enabling multi-node container data mobility and zero-data-loss task rescheduling.
+* **Safe `/etc/fstab` Synchronization:** Automated discovery and safe editing of host `/etc/fstab` with tagged block delimiters (`# BEGIN GBNT MOUNT`) and timestamped backup archives (`/etc/fstab.bak.<ts>`).
+* **Interactive Protocol Wizard & Live Diagnostics:** 4-protocol creation wizard with latency probes, read/write verification (`.gbnt-rw-probe`), disk capacity calculation, and raw `/etc/fstab` syntax inspector.
+* **Full CLI Parity:** Dedicated commands for `gbnt mount ls`, `gbnt mount add`, `gbnt mount rm`, `gbnt mount mount <id>`, `gbnt mount unmount <id>`, and `gbnt mount fstab`.
+
 
 
 

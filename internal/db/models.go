@@ -287,6 +287,27 @@ type StoragePool struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// StorageMount represents a managed /etc/fstab filesystem mount (NFS, S3, Samba, GlusterFS, etc.).
+type StorageMount struct {
+	ID              string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name            string    `gorm:"type:varchar(255);not null" json:"name"`
+	Device          string    `gorm:"type:text;not null" json:"device"`         // e.g. "192.168.1.50:/share", "//nas/samba", "s3fs#my-bucket"
+	MountPoint      string    `gorm:"type:text;not null" json:"mount_point"`    // e.g. "/var/contenedores", "/mnt/s3-models"
+	FSType          string    `gorm:"type:varchar(50);not null" json:"fs_type"` // "nfs", "nfs4", "cifs", "fuse.s3fs", "rclone", "ext4", "glusterfs"
+	Options         string    `gorm:"type:text" json:"options"`                 // e.g. "rw,_netdev,rsize=1048576"
+	Dump            int       `gorm:"default:0" json:"dump"`
+	Pass            int       `gorm:"default:0" json:"pass"`
+	TargetNode      string    `gorm:"type:varchar(255);default:'all'" json:"target_node"` // "all" or specific NodeID
+	CredentialsFile string    `gorm:"type:text" json:"credentials_file,omitempty"`
+	AutoMount       bool      `gorm:"default:true" json:"auto_mount"`
+	Status          string    `gorm:"type:varchar(50);default:'unmounted'" json:"status"` // "mounted", "unmounted", "error"
+	IsActive        bool      `gorm:"default:true" json:"is_active"`
+	ErrorMessage    string    `gorm:"type:text" json:"error_message,omitempty"`
+	Description     string    `gorm:"type:text" json:"description"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 // SecurityPolicy defines the cluster admission gatekeeper rules.
 type SecurityPolicy struct {
 	ID                string    `gorm:"primaryKey;type:varchar(50)" json:"id"`

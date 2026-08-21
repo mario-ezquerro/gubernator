@@ -40,7 +40,7 @@ func Init(dbPath string) error {
 	err = DB.AutoMigrate(
 		&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{},
 		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &LocalUser{}, &AuditLog{},
-		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{},
+		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{}, &StorageMount{},
 		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{},
 	)
 	if err != nil {
