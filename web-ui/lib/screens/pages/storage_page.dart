@@ -1516,6 +1516,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 columns: const [
                   DataColumn(label: Text('PROTOCOL')),
                   DataColumn(label: Text('NAME & DESCRIPTION')),
+                  DataColumn(label: Text('TARGET HOST')),
                   DataColumn(label: Text('REMOTE DEVICE / SHARE')),
                   DataColumn(label: Text('LOCAL MOUNT POINT')),
                   DataColumn(label: Text('AUTO-BOOT')),
@@ -1568,6 +1569,43 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                             if (m.description.isNotEmpty)
                               Text(m.description, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
                           ],
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: m.targetNode == 'all'
+                                ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: m.targetNode == 'all'
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                                  : Colors.transparent,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                m.targetNode == 'all' ? Icons.public : Icons.computer,
+                                size: 13,
+                                color: m.targetNode == 'all' ? const Color(0xFF10B981) : (isDark ? Colors.grey[300] : Colors.grey[700]),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                m.targetNode == 'all'
+                                    ? 'All Nodes (Cluster)'
+                                    : (widget.state.nodes.firstWhere((n) => n.id == m.targetNode, orElse: () => Node(id: m.targetNode, ip: m.targetNode, role: 'node', status: 'active')).ip),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: m.targetNode == 'all' ? const Color(0xFF10B981) : null,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       DataCell(
@@ -1773,6 +1811,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
     final optionsCtrl = TextEditingController(text: 'rw,hard,intr,noatime,rsize=1048576,wsize=1048576,_netdev');
     final descCtrl = TextEditingController(text: 'Primary shared NFS pool for multi-node container mobility');
     bool autoMount = true;
+    String selectedTargetNode = 'all';
 
     // Protocol specifics
     final userCtrl = TextEditingController();
@@ -1853,6 +1892,32 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                       TextField(
                         controller: nameCtrl,
                         decoration: const InputDecoration(labelText: 'Mount Identifier / Name', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+
+                      DropdownButtonFormField<String>(
+                        value: selectedTargetNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Centurion Host',
+                          helperText: 'Select "All Centurions" for cluster-wide container mobility, or target a specific node.',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.computer, size: 20),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'all',
+                            child: Text('🌐 All Centurions (Cluster-Wide Swarm Mobility)'),
+                          ),
+                          ...widget.state.nodes.map(
+                            (node) => DropdownMenuItem(
+                              value: node.id,
+                              child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDlgState(() => selectedTargetNode = val);
+                        },
                       ),
                       const SizedBox(height: 12),
 
@@ -2054,6 +2119,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                               'mount_point': mountPointCtrl.text.trim(),
                               'fs_type': fst,
                               'options': optionsCtrl.text.trim(),
+                              'target_node': selectedTargetNode,
                               'auto_mount': autoMount,
                               'description': descCtrl.text.trim(),
                               'username': userCtrl.text.trim(),
