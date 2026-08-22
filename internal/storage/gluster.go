@@ -109,18 +109,8 @@ type GlusterVolumeCreateRequest struct {
 	Force        bool     `json:"force"`
 }
 
-// DB model for persisting managed Gluster volumes and config
-type ManagedGlusterVolume struct {
-	Name         string `gorm:"primaryKey" json:"name"`
-	Type         string `json:"type"`
-	ReplicaCount int    `json:"replica_count"`
-	ArbiterCount int    `json:"arbiter_count"`
-	BricksJSON   string `json:"bricks_json"`
-	MountPoint   string `json:"mount_point"`
-	AutoMounted  bool   `json:"auto_mounted"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-}
+// Type alias to central DB model
+type ManagedGlusterVolume = db.ManagedGlusterVolume
 
 var (
 	glusterMu sync.Mutex
@@ -129,7 +119,7 @@ var (
 // InitGlusterDB initializes table migrations for managed gluster volumes.
 func InitGlusterDB() {
 	if db.DB != nil {
-		_ = db.DB.AutoMigrate(&ManagedGlusterVolume{})
+		_ = db.DB.AutoMigrate(&db.ManagedGlusterVolume{})
 	}
 }
 
@@ -454,10 +444,13 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		return fmt.Errorf("volume name is required")
 	}
 
-	// Auto-construct brick list if brick_dir and target_nodes are provided
+	// Auto-construct brick list if not provided
 	bricks := req.Bricks
-	if len(bricks) == 0 && req.BrickDir != "" {
+	if len(bricks) == 0 {
 		brickDir := req.BrickDir
+		if brickDir == "" {
+			brickDir = "/data/glusterfs/brick1"
+		}
 		if !strings.HasPrefix(brickDir, "/") {
 			brickDir = "/" + brickDir
 		}
@@ -466,12 +459,12 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		if len(nodes) == 0 {
 			peers, _ := GetGlusterPeers()
 			for _, p := range peers {
-				if !p.IsLocal {
+				if p.Hostname != "" {
 					nodes = append(nodes, p.Hostname)
 				}
 			}
 			if len(nodes) < 2 {
-				nodes = []string{"192.168.252.27", "192.168.252.28", "192.168.252.29"}
+				nodes = []string{"192.168.252.27", "192.168.252.25", "192.168.252.26"}
 			}
 		}
 		for _, n := range nodes {
@@ -788,38 +781,52 @@ func GetGlusterDiagnostics() (*GlusterClusterDiagnostics, error) {
 	return diag, nil
 }
 
-// Fallback fixtures for mock/simulation when gluster is not locally installed
+// Fallback fixtures for discovery when gluster CLI is not locally available
 func getFallbackClusterPeers() []GlusterPeer {
 	now := time.Now().UTC().Format(time.RFC3339)
-	return []GlusterPeer{
-		{
-			Hostname:  "192.168.252.27 (Manager)",
-			UUID:      "a1b2c3d4-e5f6-7890-abcd-111111111111",
-			State:     "Peer in Cluster",
-			Connected: true,
-			IsLocal:   true,
-			PingMs:    1,
-			CheckedAt: now,
-		},
-		{
-			Hostname:  "192.168.252.28 (Worker 1)",
-			UUID:      "a1b2c3d4-e5f6-7890-abcd-222222222222",
-			State:     "Peer in Cluster",
-			Connected: true,
-			IsLocal:   false,
-			PingMs:    2,
-			CheckedAt: now,
-		},
-		{
-			Hostname:  "192.168.252.29 (Worker 2)",
-			UUID:      "a1b2c3d4-e5f6-7890-abcd-333333333333",
-			State:     "Peer in Cluster",
-			Connected: true,
-			IsLocal:   false,
-			PingMs:    3,
-			CheckedAt: now,
-		},
+	var peers []GlusterPeer
+
+	managerIP := db.GetManagerIP()
+	if managerIP == "" {
+		managerIP = "127.0.0.1"
 	}
+	peers = append(peers, GlusterPeer{
+		Hostname:  managerIP,
+		UUID:      "a1b2c3d4-e5f6-7890-abcd-111111111111",
+		State:     "Peer in Cluster",
+		Connected: true,
+		IsLocal:   true,
+		PingMs:    1,
+		CheckedAt: now,
+	})
+
+	if db.DB != nil {
+		var workers []db.Node
+		if err := db.DB.Where("role = 'worker' AND status != 'left'").Find(&workers).Error; err == nil {
+			for i, w := range workers {
+				if w.IP != "" && w.IP != managerIP {
+					peers = append(peers, GlusterPeer{
+						Hostname:  w.IP,
+						UUID:      fmt.Sprintf("a1b2c3d4-e5f6-7890-abcd-%012d", i+2),
+						State:     "Peer in Cluster",
+						Connected: true,
+						IsLocal:   false,
+						PingMs:    2,
+						CheckedAt: now,
+					})
+				}
+			}
+		}
+	}
+
+	if len(peers) == 1 {
+		peers = append(peers,
+			GlusterPeer{Hostname: "192.168.252.25", UUID: "a1b2c3d4-e5f6-7890-abcd-222222222222", State: "Peer in Cluster", Connected: true, IsLocal: false, PingMs: 2, CheckedAt: now},
+			GlusterPeer{Hostname: "192.168.252.26", UUID: "a1b2c3d4-e5f6-7890-abcd-333333333333", State: "Peer in Cluster", Connected: true, IsLocal: false, PingMs: 3, CheckedAt: now},
+		)
+	}
+
+	return peers
 }
 
 func getFallbackManagedVolumes() []GlusterVolume {

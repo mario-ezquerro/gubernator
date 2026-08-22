@@ -355,6 +355,8 @@ func StartDashboard() {
 
 		// Storage & Backups Subsystem (The Granaries)
 		api.GET("/storage/volumes", storageVolumesHandler)
+		api.POST("/storage/directories", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageDirectoryCreateHandler)
+		api.GET("/storage/directories/ls", storageDirectoryListHandler)
 		api.GET("/storage/pools/health", storagePoolsHealthHandler)
 		api.GET("/storage/mounts", storageMountsListHandler)
 		api.POST("/storage/mounts", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountCreateHandler)
@@ -4088,7 +4090,8 @@ func logsExportHandler(c *gin.Context) {
 // --- Storage & Backups Subsystem Handlers ---
 
 func storageVolumesHandler(c *gin.Context) {
-	vols, err := storage.ListVolumes()
+	node := c.Query("node")
+	vols, err := storage.ListVolumes(node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -4096,6 +4099,47 @@ func storageVolumesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"volumes": vols,
 		"total":   len(vols),
+		"node":    node,
+	})
+}
+
+type createDirectoryRequest struct {
+	Path        string `json:"path" binding:"required"`
+	Permissions string `json:"permissions"`
+	TargetNode  string `json:"target_node"`
+}
+
+func storageDirectoryCreateHandler(c *gin.Context) {
+	var req createDirectoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := storage.CreateDirectory(req.Path, req.Permissions, req.TargetNode); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "created",
+		"path":    req.Path,
+		"target":  req.TargetNode,
+		"message": fmt.Sprintf("Directory %s created successfully on %s", req.Path, req.TargetNode),
+	})
+}
+
+func storageDirectoryListHandler(c *gin.Context) {
+	path := c.DefaultQuery("path", storage.DefaultSharedPoolPath)
+	node := c.Query("node")
+	entries, err := storage.ListDirectoryEntries(path, node)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"path":    path,
+		"node":    node,
+		"entries": entries,
+		"total":   len(entries),
 	})
 }
 

@@ -200,7 +200,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **GlusterFS & Mount Authentication Fixes:** Resolved session role checks and route bindings for GlusterFS volume lifecycle, `/api/storage/mounts/:id` deletion, and `/etc/fstab` safe synchronization.
 * **Interactive Multi-Node `/etc/fstab` Inspector & Editor:** Live configuration browser with Centurion host selection dropdown, monospace syntax editor, automated timestamped backups (`/etc/fstab.bak.<ts>`), and atomic save & apply.
 * **Target Node Selection across Storage Suite:** Granular host selection in "Add Network Mount", "Mount All (`mount -a`)", GlusterFS volume creation, and cluster auto-mounting to `/var/contenedores`.
-* **State Refresh & Live Diagnostics:** Instant UI state revalidation across Mounts and Gluster tabs with manual refresh buttons and comprehensive SnackBar telemetry.
+### 25. Docker Named Volumes Discovery, Multi-Node Directory Creator & GlusterFS Persistence Subsystem (`v2.33.0`)
+* **Cluster-Wide Docker Named Volumes Discovery:** Live discovery of native Docker volumes (`docker volume ls --format '{{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.Mountpoint}}'`) across Manager and Worker nodes via local engine and remote SSH execution with volume type and node residency badges.
+* **Multi-Node Storage Directory Creator (`mkdir -p`):** Dedicated creation modal and REST API (`POST /api/storage/directories`) supporting path authoring, target Centurion node selection (`All Nodes`, `Manager`, specific workers), and container-optimized POSIX permissions (`0777` / `0755`).
+* **Interactive Directory File Explorer (`ls`):** Full-screen directory explorer modal and REST API (`GET /api/storage/directories/ls`) with breadcrumb path navigation, parent directory traversal, live node switching, file/folder metadata inspection, and subfolder creation on any cluster host.
+* **Centurion Node Filtering in Volumes View:** Centurion node selector dropdown (`All Centurions`, `Manager`, `Worker 1`, `Worker 2`) and search filter for instant volume isolation by host.
+* **GlusterFS Database Auto-Migration & Persistence:** Registered `ManagedGlusterVolume` into central SQLite GORM database migrations, ensuring newly created GlusterFS volumes persist reliably and display across GlusterFS and Mounts dashboards.
+* **Clean Network Mount Volfile Parsing:** Sanitized dynamic cluster peer discovery to pass clean IP addresses to `backup-volfile-servers` mount options, eliminating invalid character syntax errors.
 
 
 

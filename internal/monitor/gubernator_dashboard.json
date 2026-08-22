@@ -1237,8 +1237,8 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 8,
+        "w": 6,
+        "x": 6,
         "y": 61
       },
       "id": 45,
@@ -1309,7 +1309,7 @@
             }
           },
           "mappings": [],
-          "max": null,
+          "max": 100,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
@@ -1324,7 +1324,102 @@
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 85
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 61
+      },
+      "id": 47,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 - (sum by (instance) (node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"}) / sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"}) * 100)",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Host Disk Usage %",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 10485760
+              },
+              {
+                "color": "red",
+                "value": 52428800
               }
             ]
           },
@@ -1334,8 +1429,8 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 18,
         "y": 61
       },
       "id": 46,
@@ -1769,6 +1864,42 @@
                 "value": "Bps"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Host Disk %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Host Disk Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Host Disk Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
           }
         ]
       },
@@ -1857,6 +1988,39 @@
           "instant": true,
           "legendFormat": "Net Tx",
           "refId": "NetTx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 - (sum by (instance) (node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"}) / sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"}) * 100)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Host Disk %",
+          "refId": "DiskPct"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"} - node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Host Disk Used",
+          "refId": "DiskUsed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Host Disk Total",
+          "refId": "DiskTotal"
         }
       ],
       "transformations": [
@@ -1875,7 +2039,10 @@
               "Time 2": true,
               "Time 3": true,
               "Time 4": true,
-              "Time 5": true
+              "Time 5": true,
+              "Time 6": true,
+              "Time 7": true,
+              "Time 8": true
             },
             "indexByName": {
               "instance": 0,
@@ -1884,7 +2051,10 @@
               "Value #MemUsed": 3,
               "Value #MemTotal": 4,
               "Value #NetRx": 5,
-              "Value #NetTx": 6
+              "Value #NetTx": 6,
+              "Value #DiskPct": 7,
+              "Value #DiskUsed": 8,
+              "Value #DiskTotal": 9
             },
             "renameByName": {
               "Value #CPU": "CPU Usage %",
@@ -1893,12 +2063,15 @@
               "Value #MemTotal": "Memory Total",
               "Value #NetRx": "Net Rx",
               "Value #NetTx": "Net Tx",
+              "Value #DiskPct": "Host Disk %",
+              "Value #DiskUsed": "Host Disk Used",
+              "Value #DiskTotal": "Host Disk Total",
               "instance": "Centurion Host"
             }
           }
         }
       ],
-      "title": "Centurions \u2014 Tabla Detallada por Host (Memoria Usada / Total, CPU y Red)",
+      "title": "Centurions \u2014 Tabla Detallada por Host (Memoria Usada / Total, CPU, Red y Disco)",
       "type": "table"
     }
   ],

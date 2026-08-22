@@ -37,6 +37,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   // Filters
   String _volumeSearch = '';
   String _volumeTypeFilter = 'ALL';
+  String _volumeNodeFilter = 'ALL';
   String _backupSearch = '';
   String _mountSearch = '';
   String _mountTypeFilter = 'ALL';
@@ -58,7 +59,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   Future<void> _loadAllData() async {
     setState(() => _loading = true);
     try {
-      final volsFuture = ApiService.fetchStorageVolumes();
+      final volsFuture = ApiService.fetchStorageVolumes(
+        targetNode: _volumeNodeFilter != 'ALL' ? _volumeNodeFilter : null,
+      );
       final backupsFuture = ApiService.fetchBackups();
       final schedulesFuture = ApiService.fetchBackupSchedules();
       final healthFuture = ApiService.fetchStoragePoolHealth(path: _poolPath);
@@ -143,6 +146,399 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
         _showSnackBar('Failed to delete backup: $e', isError: true);
       }
     }
+  }
+
+  void _showCreateDirectoryDialog({String? initialPath, String? initialNode}) {
+    final pathCtrl = TextEditingController(text: initialPath ?? '/var/contenedores/');
+    String selectedTargetNode = initialNode ?? 'all';
+    String selectedPerm = '0777';
+    bool isCreating = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.create_new_folder, color: Color(0xFF10B981)),
+                  SizedBox(width: 8),
+                  Text('Create Storage Directory'),
+                ],
+              ),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Create a mountpoint directory on the local Manager or across Centurion Worker nodes with permissions suitable for container volume mobility.',
+                      style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: pathCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Directory Path',
+                        hintText: 'e.g. /var/contenedores/myapp_data or /mnt/nfs/shared',
+                        prefixIcon: Icon(Icons.folder_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedTargetNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Centurion Node(s)',
+                        prefixIcon: Icon(Icons.hub_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('🌐 All Nodes in Cluster (Manager + Workers)'),
+                        ),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedTargetNode = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedPerm,
+                      decoration: const InputDecoration(
+                        labelText: 'Filesystem Permissions (POSIX)',
+                        prefixIcon: Icon(Icons.lock_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: '0777',
+                          child: Text('0777 — Full Read/Write (Docker Container Recommended)'),
+                        ),
+                        DropdownMenuItem(
+                          value: '0755',
+                          child: Text('0755 — Standard (Owner R/W, Others Read-Only)'),
+                        ),
+                        DropdownMenuItem(
+                          value: '0700',
+                          child: Text('0700 — Private (Owner Only)'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedPerm = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: isCreating
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.add, size: 16),
+                  label: const Text('Create Directory'),
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          final path = pathCtrl.text.trim();
+                          if (path.isEmpty) {
+                            _showSnackBar('Please specify a directory path', isError: true);
+                            return;
+                          }
+                          setDlgState(() => isCreating = true);
+                          try {
+                            final ok = await ApiService.createStorageDirectory(
+                              path: path,
+                              targetNode: selectedTargetNode,
+                              permissions: selectedPerm,
+                            );
+                            if (ok) {
+                              Navigator.pop(ctx);
+                              _showSnackBar('Directory created successfully on $selectedTargetNode');
+                              _loadAllData();
+                            } else {
+                              setDlgState(() => isCreating = false);
+                              _showSnackBar('Failed to create directory', isError: true);
+                            }
+                          } catch (e) {
+                            setDlgState(() => isCreating = false);
+                            _showSnackBar('Error: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDirectoryExplorerDialog(String initialPath, {String? initialNode}) {
+    String currentPath = initialPath.isNotEmpty ? initialPath : '/var/contenedores';
+    String currentNode = (initialNode != null && initialNode.isNotEmpty && initialNode != 'cluster') ? initialNode : 'all';
+    List<DirectoryEntryModel> entries = [];
+    bool isLoading = true;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            void loadEntries() async {
+              setDlgState(() {
+                isLoading = true;
+                errorMessage = null;
+              });
+              try {
+                final list = await ApiService.listDirectoryContents(path: currentPath, targetNode: currentNode);
+                setDlgState(() {
+                  entries = list;
+                  isLoading = false;
+                });
+              } catch (e) {
+                setDlgState(() {
+                  errorMessage = e.toString();
+                  isLoading = false;
+                });
+              }
+            }
+
+            // Load on first build
+            if (isLoading && errorMessage == null && entries.isEmpty) {
+              loadEntries();
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.folder_shared, color: Color(0xFF10B981), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Directory File Explorer (ls)', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  // Target Node dropdown inside header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: currentNode,
+                      underline: const SizedBox(),
+                      isDense: true,
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white : Colors.black87),
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('🌐 Manager / First Available')),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip}'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDlgState(() {
+                            currentNode = val;
+                            loadEntries();
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 750,
+                height: 480,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Path Navigation Bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_upward, size: 18),
+                            tooltip: 'Up to parent directory',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              final parent = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                              if (parent.isNotEmpty) {
+                                currentPath = parent;
+                                loadEntries();
+                              } else if (currentPath != '/') {
+                                currentPath = '/';
+                                loadEntries();
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              currentPath,
+                              style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 18),
+                            tooltip: 'Refresh listing',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: loadEntries,
+                          ),
+                          const SizedBox(width: 4),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.create_new_folder, size: 14),
+                            label: const Text('New Folder', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                            onPressed: () {
+                              _showCreateDirectoryDialog(initialPath: '$currentPath/new_folder', initialNode: currentNode);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // File List Content
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : errorMessage != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 36),
+                                      const SizedBox(height: 8),
+                                      Text(errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13), textAlign: TextAlign.center),
+                                      const SizedBox(height: 12),
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.refresh, size: 16),
+                                        label: const Text('Retry'),
+                                        onPressed: loadEntries,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : entries.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.folder_open, size: 40, color: Colors.grey[500]),
+                                          const SizedBox(height: 8),
+                                          const Text('Directory is empty', style: TextStyle(color: Colors.grey)),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      itemCount: entries.length,
+                                      separatorBuilder: (_, __) => const Divider(height: 1),
+                                      itemBuilder: (context, idx) {
+                                        final item = entries[idx];
+                                        return ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          leading: Icon(
+                                            item.isDir ? Icons.folder : Icons.insert_drive_file,
+                                            color: item.isDir ? Colors.amber : const Color(0xFF38BDF8),
+                                            size: 22,
+                                          ),
+                                          title: Text(
+                                            item.name,
+                                            style: TextStyle(
+                                              fontWeight: item.isDir ? FontWeight.bold : FontWeight.normal,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            'Permissions: ${item.permissions}',
+                                            style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.grey[400]),
+                                          ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  item.sizeFormatted,
+                                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                ),
+                                              ),
+                                              if (item.isDir) ...[
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                                                  tooltip: 'Open folder',
+                                                  onPressed: () {
+                                                    currentPath = item.path;
+                                                    loadEntries();
+                                                  },
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          onTap: item.isDir
+                                              ? () {
+                                                  currentPath = item.path;
+                                                  loadEntries();
+                                                }
+                                              : null,
+                                        );
+                                      },
+                                    ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showCreateBackupDialog({String? initialStackId, String? initialVolumeName, String? initialSourcePath}) {
@@ -656,9 +1052,13 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       final matchesSearch = _volumeSearch.isEmpty ||
           v.name.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
           v.stackName.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
-          v.sourcePath.toLowerCase().contains(_volumeSearch.toLowerCase());
+          v.sourcePath.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
+          v.nodeId.toLowerCase().contains(_volumeSearch.toLowerCase());
       final matchesType = _volumeTypeFilter == 'ALL' || v.type == _volumeTypeFilter;
-      return matchesSearch && matchesType;
+      final matchesNode = _volumeNodeFilter == 'ALL' ||
+          v.nodeId == _volumeNodeFilter ||
+          (v.nodeId == 'cluster' && _volumeNodeFilter == 'ALL');
+      return matchesSearch && matchesType && matchesNode;
     }).toList();
 
     return Column(
@@ -668,7 +1068,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search volumes by name, stack, or source path...',
+                  hintText: 'Search volumes by name, stack, source path, or node...',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   isDense: true,
                   filled: true,
@@ -678,18 +1078,53 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 onChanged: (val) => setState(() => _volumeSearch = val),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
+            // Volume Type Dropdown
             DropdownButton<String>(
               value: _volumeTypeFilter,
               items: const [
                 DropdownMenuItem(value: 'ALL', child: Text('All Types')),
-                DropdownMenuItem(value: 'shared_pool', child: Text('Shared Pool (/var/contenedores)')),
                 DropdownMenuItem(value: 'docker_named', child: Text('Docker Named Volumes')),
+                DropdownMenuItem(value: 'shared_pool', child: Text('Shared Pool (/var/contenedores)')),
                 DropdownMenuItem(value: 'host_bind', child: Text('Host Bind Mounts')),
               ],
               onChanged: (val) {
                 if (val != null) setState(() => _volumeTypeFilter = val);
               },
+            ),
+            const SizedBox(width: 10),
+            // Node Filter Dropdown
+            DropdownButton<String>(
+              value: _volumeNodeFilter,
+              items: [
+                const DropdownMenuItem(value: 'ALL', child: Text('🌐 All Centurions')),
+                const DropdownMenuItem(value: 'node-local-manager', child: Text('👑 Manager (Local)')),
+                ...widget.state.nodes.map(
+                  (n) => DropdownMenuItem(
+                    value: n.id,
+                    child: Text('💻 ${n.role.toUpperCase()}: ${n.ip}'),
+                  ),
+                ),
+              ],
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _volumeNodeFilter = val);
+                  _loadAllData();
+                }
+              },
+            ),
+            const SizedBox(width: 10),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.folder_open, size: 16),
+              label: const Text('Explore (ls)'),
+              onPressed: () => _showDirectoryExplorerDialog('/var/contenedores', initialNode: _volumeNodeFilter),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+              icon: const Icon(Icons.create_new_folder, size: 16),
+              label: const Text('New Directory'),
+              onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
             ),
           ],
         ),
@@ -697,9 +1132,22 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
         Expanded(
           child: filtered.isEmpty
               ? Center(
-                  child: Text(
-                    'No volumes found matching the criteria.',
-                    style: TextStyle(color: Colors.grey[500]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey[600]),
+                      const SizedBox(height: 10),
+                      Text(
+                        'No volumes found matching the filter criteria.',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.create_new_folder, size: 16),
+                        label: const Text('Create Storage Directory'),
+                        onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
+                      ),
+                    ],
                   ),
                 )
               : ListView.separated(
@@ -707,6 +1155,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (ctx, i) {
                     final v = filtered[i];
+                    final isDockerVol = v.type == 'docker_named';
+
                     return Card(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -719,12 +1169,22 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                               decoration: BoxDecoration(
                                 color: v.isShared
                                     ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                                    : Colors.blueAccent.withValues(alpha: 0.15),
+                                    : isDockerVol
+                                        ? Colors.cyanAccent.withValues(alpha: 0.15)
+                                        : Colors.blueAccent.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                v.isShared ? Icons.cloud_done : Icons.storage,
-                                color: v.isShared ? const Color(0xFF10B981) : Colors.blueAccent,
+                                v.isShared
+                                    ? Icons.cloud_done
+                                    : isDockerVol
+                                        ? Icons.dns
+                                        : Icons.storage,
+                                color: v.isShared
+                                    ? const Color(0xFF10B981)
+                                    : isDockerVol
+                                        ? Colors.cyanAccent
+                                        : Colors.blueAccent,
                                 size: 24,
                               ),
                             ),
@@ -737,12 +1197,15 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                     children: [
                                       Text(v.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                       const SizedBox(width: 8),
+                                      // Type chip
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: v.isShared
                                               ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                                              : Colors.grey.withValues(alpha: 0.2),
+                                              : isDockerVol
+                                                  ? Colors.cyan.withValues(alpha: 0.2)
+                                                  : Colors.grey.withValues(alpha: 0.2),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
@@ -750,7 +1213,11 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: v.isShared ? const Color(0xFF10B981) : Colors.grey[400],
+                                            color: v.isShared
+                                                ? const Color(0xFF10B981)
+                                                : isDockerVol
+                                                    ? Colors.cyanAccent
+                                                    : Colors.grey[400],
                                           ),
                                         ),
                                       ),
@@ -768,11 +1235,31 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                           ),
                                         ),
                                       ],
+                                      const SizedBox(width: 6),
+                                      // Node residency chip
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.indigo.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.computer, size: 10, color: Colors.indigoAccent),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              v.nodeId.isNotEmpty ? v.nodeId : 'cluster',
+                                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigoAccent),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Stack: ${v.stackName.isNotEmpty ? v.stackName : "Standalone"} | Source: ${v.sourcePath} ➔ Target: ${v.targetPath.isNotEmpty ? v.targetPath : v.sourcePath}',
+                                    'Origin: ${v.stackName.isNotEmpty ? v.stackName : "System Volume"} | Source: ${v.sourcePath}${v.targetPath.isNotEmpty && v.targetPath != v.sourcePath ? " ➔ Target: ${v.targetPath}" : ""}',
                                     style: TextStyle(fontSize: 12, color: Colors.grey[400]),
                                   ),
                                 ],
@@ -789,9 +1276,23 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purpleAccent, fontSize: 13),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.folder_open, size: 15),
+                              label: const Text('Files (ls)'),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () {
+                                _showDirectoryExplorerDialog(
+                                  v.sourcePath,
+                                  initialNode: v.nodeId,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
                             FilledButton.icon(
-                              icon: const Icon(Icons.camera_alt, size: 16),
+                              icon: const Icon(Icons.camera_alt, size: 15),
                               label: const Text('Snapshot'),
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF10B981),

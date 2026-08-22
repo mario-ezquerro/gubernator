@@ -10,9 +10,9 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/storage"
 )
 
-// StorageVolumesHandler returns all persistent volumes and bind mounts in the cluster.
 func StorageVolumesHandler(c *gin.Context) {
-	vols, err := storage.ListVolumes()
+	node := c.Query("node")
+	vols, err := storage.ListVolumes(node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

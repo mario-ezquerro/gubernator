@@ -5,7 +5,9 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -181,83 +183,200 @@ func CheckStoragePoolHealth(poolPath string) PoolHealthResponse {
 	return res
 }
 
-// ListVolumes scans all stacks and services to discover persistent volumes and bind mounts.
-func ListVolumes() ([]db.StorageVolume, error) {
-	var services []db.Service
-	if err := db.DB.Find(&services).Error; err != nil {
-		return nil, err
-	}
-
-	// Fetch stack names
-	var stacks []db.Stack
-	db.DB.Find(&stacks)
-	stackMap := make(map[string]string)
-	for _, s := range stacks {
-		stackMap[s.ID] = s.Name
-	}
-
+// ListVolumes scans all nodes for Docker named volumes, shared storage pools (/var/contenedores), and Compose bind mounts.
+func ListVolumes(targetNode string) ([]db.StorageVolume, error) {
+	targetNode = strings.TrimSpace(strings.ToLower(targetNode))
 	var volumes []db.StorageVolume
 	seenVolumes := make(map[string]bool)
 
-	for _, svc := range services {
-		stackName := stackMap[svc.StackID]
-		if stackName == "" {
-			stackName = svc.StackID
-		}
-
-		for _, volStr := range svc.Volumes {
-			parts := strings.Split(volStr, ":")
-			if len(parts) < 2 {
-				continue
-			}
-			src := strings.TrimSpace(parts[0])
-			tgt := strings.TrimSpace(parts[1])
-
-			volKey := fmt.Sprintf("%s:%s", svc.StackID, src)
-			if seenVolumes[volKey] {
-				continue
-			}
-			seenVolumes[volKey] = true
-
-			volType := "host_bind"
-			isShared := false
-
-			if strings.HasPrefix(src, DefaultSharedPoolPath) || strings.HasPrefix(src, "/var/contenedores") {
-				volType = "shared_pool"
-				isShared = true
-			} else if !strings.HasPrefix(src, "/") && !strings.HasPrefix(src, ".") {
-				volType = "docker_named"
-			}
-
-			// Measure size if host directory exists
-			var sizeBytes int64
-			if info, err := os.Stat(src); err == nil && info.IsDir() {
-				sizeBytes, _ = GetDirectorySize(src)
-			}
-
-			sv := db.StorageVolume{
-				ID:            fmt.Sprintf("vol-%s-%s", svc.StackID, filepath.Base(src)),
-				Name:          filepath.Base(src),
-				Type:          volType,
-				SourcePath:    src,
-				TargetPath:    tgt,
-				StackID:       svc.StackID,
-				StackName:     stackName,
-				ServiceName:   svc.Name,
-				NodeID:        "cluster",
-				SizeBytes:     sizeBytes,
-				SizeFormatted: FormatBytes(sizeBytes),
-				IsShared:      isShared,
-				LastScannedAt: time.Now(),
-				CreatedAt:     time.Now(),
-				UpdatedAt:     time.Now(),
-			}
-
-			volumes = append(volumes, sv)
+	// 1. Fetch stack names mapping from DB
+	stackMap := make(map[string]string)
+	if db.DB != nil {
+		var stacks []db.Stack
+		db.DB.Find(&stacks)
+		for _, s := range stacks {
+			stackMap[s.ID] = s.Name
 		}
 	}
 
-	// Also check if any standalone folders exist in /var/contenedores
+	// 2. Discover Docker Named Volumes locally on Manager host
+	if targetNode == "" || targetNode == "all" || targetNode == "cluster" || targetNode == "node-local-manager" || targetNode == "manager" || targetNode == "127.0.0.1" {
+		cmd := exec.Command("docker", "volume", "ls", "--format", "{{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.Mountpoint}}")
+		if out, err := cmd.CombinedOutput(); err == nil {
+			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+			for _, l := range lines {
+				l = strings.TrimSpace(l)
+				if l == "" {
+					continue
+				}
+				parts := strings.Split(l, "\t")
+				if len(parts) < 2 {
+					continue
+				}
+				vName := parts[0]
+				mountpoint := ""
+				if len(parts) >= 4 {
+					mountpoint = parts[3]
+				}
+				if mountpoint == "" {
+					mountpoint = fmt.Sprintf("/var/lib/docker/volumes/%s/_data", vName)
+				}
+
+				volKey := fmt.Sprintf("docker:node-local-manager:%s", vName)
+				if seenVolumes[volKey] {
+					continue
+				}
+				seenVolumes[volKey] = true
+
+				var sizeBytes int64
+				if info, err := os.Stat(mountpoint); err == nil && info.IsDir() {
+					sizeBytes, _ = GetDirectorySize(mountpoint)
+				}
+
+				sv := db.StorageVolume{
+					ID:            fmt.Sprintf("vol-docker-mgr-%s", vName),
+					Name:          vName,
+					Type:          "docker_named",
+					SourcePath:    mountpoint,
+					TargetPath:    mountpoint,
+					StackID:       "",
+					StackName:     "Docker Engine",
+					ServiceName:   "",
+					NodeID:        "node-local-manager",
+					SizeBytes:     sizeBytes,
+					SizeFormatted: FormatBytes(sizeBytes),
+					IsShared:      false,
+					LastScannedAt: time.Now(),
+					CreatedAt:     time.Now(),
+					UpdatedAt:     time.Now(),
+				}
+				volumes = append(volumes, sv)
+			}
+		}
+	}
+
+	// 3. Discover Docker Named Volumes remotely across Worker nodes
+	if db.DB != nil {
+		var workerNodes []db.Node
+		db.DB.Where("role = ? AND status != ?", "worker", "left").Find(&workerNodes)
+		for _, w := range workerNodes {
+			if targetNode != "" && targetNode != "all" && targetNode != "cluster" && targetNode != w.ID && targetNode != w.IP {
+				continue
+			}
+			script := `sudo docker volume ls --format '{{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.Mountpoint}}'`
+			out, err := ExecuteRemoteScript(w.IP, script)
+			if err == nil && out != "" {
+				lines := strings.Split(strings.TrimSpace(out), "\n")
+				for _, l := range lines {
+					l = strings.TrimSpace(l)
+					if l == "" {
+						continue
+					}
+					parts := strings.Split(l, "\t")
+					if len(parts) < 2 {
+						continue
+					}
+					vName := parts[0]
+					mountpoint := ""
+					if len(parts) >= 4 {
+						mountpoint = parts[3]
+					}
+					if mountpoint == "" {
+						mountpoint = fmt.Sprintf("/var/lib/docker/volumes/%s/_data", vName)
+					}
+
+					volKey := fmt.Sprintf("docker:%s:%s", w.ID, vName)
+					if seenVolumes[volKey] {
+						continue
+					}
+					seenVolumes[volKey] = true
+
+					sv := db.StorageVolume{
+						ID:            fmt.Sprintf("vol-docker-%s-%s", w.ID, vName),
+						Name:          vName,
+						Type:          "docker_named",
+						SourcePath:    mountpoint,
+						TargetPath:    mountpoint,
+						StackID:       "",
+						StackName:     fmt.Sprintf("Docker Engine (%s)", w.ID),
+						ServiceName:   "",
+						NodeID:        w.ID,
+						SizeBytes:     0,
+						SizeFormatted: "-",
+						IsShared:      false,
+						LastScannedAt: time.Now(),
+						CreatedAt:     time.Now(),
+						UpdatedAt:     time.Now(),
+					}
+					volumes = append(volumes, sv)
+				}
+			}
+		}
+	}
+
+	// 4. Scan Compose service volumes defined in DB
+	if db.DB != nil {
+		var services []db.Service
+		if err := db.DB.Find(&services).Error; err == nil {
+			for _, svc := range services {
+				stackName := stackMap[svc.StackID]
+				if stackName == "" {
+					stackName = svc.StackID
+				}
+
+				for _, volStr := range svc.Volumes {
+					parts := strings.Split(volStr, ":")
+					if len(parts) < 2 {
+						continue
+					}
+					src := strings.TrimSpace(parts[0])
+					tgt := strings.TrimSpace(parts[1])
+
+					volKey := fmt.Sprintf("%s:%s", svc.StackID, src)
+					if seenVolumes[volKey] {
+						continue
+					}
+					seenVolumes[volKey] = true
+
+					volType := "host_bind"
+					isShared := false
+
+					if strings.HasPrefix(src, DefaultSharedPoolPath) || strings.HasPrefix(src, "/var/contenedores") {
+						volType = "shared_pool"
+						isShared = true
+					} else if !strings.HasPrefix(src, "/") && !strings.HasPrefix(src, ".") {
+						volType = "docker_named"
+					}
+
+					var sizeBytes int64
+					if info, err := os.Stat(src); err == nil && info.IsDir() {
+						sizeBytes, _ = GetDirectorySize(src)
+					}
+
+					sv := db.StorageVolume{
+						ID:            fmt.Sprintf("vol-%s-%s", svc.StackID, filepath.Base(src)),
+						Name:          filepath.Base(src),
+						Type:          volType,
+						SourcePath:    src,
+						TargetPath:    tgt,
+						StackID:       svc.StackID,
+						StackName:     stackName,
+						ServiceName:   svc.Name,
+						NodeID:        "cluster",
+						SizeBytes:     sizeBytes,
+						SizeFormatted: FormatBytes(sizeBytes),
+						IsShared:      isShared,
+						LastScannedAt: time.Now(),
+						CreatedAt:     time.Now(),
+						UpdatedAt:     time.Now(),
+					}
+					volumes = append(volumes, sv)
+				}
+			}
+		}
+	}
+
+	// 5. Scan standalone directories in /var/contenedores (Shared Pool)
 	if info, err := os.Stat(DefaultSharedPoolPath); err == nil && info.IsDir() {
 		entries, _ := os.ReadDir(DefaultSharedPoolPath)
 		for _, e := range entries {
@@ -293,6 +412,162 @@ func ListVolumes() ([]db.StorageVolume, error) {
 		}
 	}
 
-	slog.Info("storage: discovered volumes", "count", len(volumes))
+	slog.Info("storage: discovered persistent & docker volumes", "count", len(volumes), "target_node", targetNode)
 	return volumes, nil
+}
+
+// CreateDirectory creates a new storage directory on the specified target node(s) with given permissions.
+func CreateDirectory(dirPath, permissions, targetNode string) error {
+	dirPath = strings.TrimSpace(dirPath)
+	if dirPath == "" {
+		return fmt.Errorf("directory path cannot be empty")
+	}
+	if !strings.HasPrefix(dirPath, "/") {
+		dirPath = "/" + dirPath
+	}
+	if permissions == "" {
+		permissions = "0777"
+	}
+
+	ips := GetTargetHostIPs(targetNode)
+	if len(ips) == 0 {
+		ips = []string{"127.0.0.1"}
+	}
+
+	var errors []string
+	for _, ip := range ips {
+		if IsLocalHost(ip) {
+			mode := os.FileMode(0777)
+			if m, err := strconv.ParseUint(permissions, 8, 32); err == nil {
+				mode = os.FileMode(m)
+			}
+			if err := os.MkdirAll(dirPath, mode); err != nil {
+				errors = append(errors, fmt.Sprintf("%s: failed to mkdir: %v", ip, err))
+				continue
+			}
+			_ = os.Chmod(dirPath, mode)
+			slog.Info("created local directory", "path", dirPath, "perm", permissions)
+		} else {
+			script := fmt.Sprintf("sudo mkdir -p %s && sudo chmod %s %s", dirPath, permissions, dirPath)
+			if out, err := ExecuteRemoteScript(ip, script); err != nil {
+				errors = append(errors, fmt.Sprintf("%s: failed to mkdir: %v (%s)", ip, err, out))
+			} else {
+				slog.Info("created remote directory on worker", "node_ip", ip, "path", dirPath)
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("directory creation failed on one or more hosts:\n%s", strings.Join(errors, "\n"))
+	}
+	return nil
+}
+
+// ListDirectoryEntries lists files and subdirectories within a given path on a specific node.
+func ListDirectoryEntries(dirPath, targetNode string) ([]db.DirectoryEntry, error) {
+	dirPath = strings.TrimSpace(dirPath)
+	if dirPath == "" {
+		dirPath = DefaultSharedPoolPath
+	}
+
+	ips := GetTargetHostIPs(targetNode)
+	targetIP := "127.0.0.1"
+	if len(ips) > 0 {
+		targetIP = ips[0]
+	}
+
+	var entries []db.DirectoryEntry
+
+	if IsLocalHost(targetIP) {
+		info, err := os.Stat(dirPath)
+		if err != nil {
+			return nil, fmt.Errorf("path does not exist on local host: %w", err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("path is not a directory")
+		}
+
+		dirEntries, err := os.ReadDir(dirPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read directory: %w", err)
+		}
+
+		for _, de := range dirEntries {
+			fInfo, _ := de.Info()
+			var size int64
+			var modTime time.Time
+			perm := "rw-r--r--"
+			if fInfo != nil {
+				size = fInfo.Size()
+				modTime = fInfo.ModTime()
+				perm = fInfo.Mode().String()
+			}
+			fullPath := filepath.Join(dirPath, de.Name())
+			if de.IsDir() {
+				size, _ = GetDirectorySize(fullPath)
+			}
+
+			entries = append(entries, db.DirectoryEntry{
+				Name:          de.Name(),
+				Path:          fullPath,
+				IsDir:         de.IsDir(),
+				SizeBytes:     size,
+				SizeFormatted: FormatBytes(size),
+				Permissions:   perm,
+				ModTime:       modTime,
+				NodeID:        "node-local-manager",
+			})
+		}
+		return entries, nil
+	}
+
+	// Remote execution on worker node
+	script := fmt.Sprintf(`
+if [ -d "%s" ]; then
+	ls -la --time-style=+%%s "%s" 2>/dev/null || ls -la "%s"
+else
+	echo "__DIR_NOT_FOUND__"
+fi
+`, dirPath, dirPath, dirPath)
+
+	out, err := ExecuteRemoteScript(targetIP, script)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect directory on node %s: %w", targetIP, err)
+	}
+
+	if strings.Contains(out, "__DIR_NOT_FOUND__") {
+		return nil, fmt.Errorf("directory %s does not exist on node %s", dirPath, targetIP)
+	}
+
+	lines := strings.Split(out, "\n")
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "total ") {
+			continue
+		}
+		fields := strings.Fields(l)
+		if len(fields) < 7 {
+			continue
+		}
+		name := fields[len(fields)-1]
+		if name == "." || name == ".." {
+			continue
+		}
+		perm := fields[0]
+		isDir := strings.HasPrefix(perm, "d")
+		size, _ := strconv.ParseInt(fields[4], 10, 64)
+
+		entries = append(entries, db.DirectoryEntry{
+			Name:          name,
+			Path:          filepath.Join(dirPath, name),
+			IsDir:         isDir,
+			SizeBytes:     size,
+			SizeFormatted: FormatBytes(size),
+			Permissions:   perm,
+			ModTime:       time.Now(),
+			NodeID:        targetNode,
+		})
+	}
+
+	return entries, nil
 }

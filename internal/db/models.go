@@ -312,6 +312,31 @@ type StorageMount struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// ManagedGlusterVolume persists cluster GlusterFS configuration.
+type ManagedGlusterVolume struct {
+	Name         string    `gorm:"primaryKey;type:varchar(100)" json:"name"`
+	Type         string    `gorm:"type:varchar(50);default:'Replicate'" json:"type"`
+	ReplicaCount int       `gorm:"default:3" json:"replica_count"`
+	ArbiterCount int       `gorm:"default:0" json:"arbiter_count"`
+	BricksJSON   string    `gorm:"type:text" json:"bricks_json"`
+	MountPoint   string    `gorm:"type:text" json:"mount_point"`
+	AutoMounted  bool      `gorm:"default:true" json:"auto_mounted"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// DirectoryEntry represents a file or folder discovered in a storage directory.
+type DirectoryEntry struct {
+	Name          string    `json:"name"`
+	Path          string    `json:"path"`
+	IsDir         bool      `json:"is_dir"`
+	SizeBytes     int64     `json:"size_bytes"`
+	SizeFormatted string    `json:"size_formatted"`
+	Permissions   string    `json:"permissions"`
+	ModTime       time.Time `json:"mod_time"`
+	NodeID        string    `json:"node_id,omitempty"`
+}
+
 // SecurityPolicy defines the cluster admission gatekeeper rules.
 type SecurityPolicy struct {
 	ID                string    `gorm:"primaryKey;type:varchar(50)" json:"id"`

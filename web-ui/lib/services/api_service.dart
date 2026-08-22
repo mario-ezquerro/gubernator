@@ -931,9 +931,12 @@ class ApiService {
 
   // ── Storage & Backups API Methods ─────────────────────────────────
 
-  /// Fetches all cluster persistent volumes and bind mounts.
-  static Future<List<StorageVolumeModel>> fetchStorageVolumes() async {
-    final response = await http.get(Uri.parse('/api/storage/volumes'), headers: authHeaders);
+  /// Fetches all cluster persistent volumes, docker volumes, and bind mounts.
+  static Future<List<StorageVolumeModel>> fetchStorageVolumes({String? targetNode}) async {
+    final url = (targetNode != null && targetNode.isNotEmpty && targetNode != 'all')
+        ? '/api/storage/volumes?node=${Uri.encodeQueryComponent(targetNode)}'
+        : '/api/storage/volumes';
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final list = (data['volumes'] as List? ?? [])
@@ -942,6 +945,44 @@ class ApiService {
       return list;
     }
     throw Exception('Failed to fetch storage volumes: ${response.statusCode}');
+  }
+
+  /// Creates a new storage directory on target nodes.
+  static Future<bool> createStorageDirectory({
+    required String path,
+    required String targetNode,
+    String permissions = '0777',
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/directories'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'path': path,
+        'target_node': targetNode,
+        'permissions': permissions,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Lists files and subdirectories within a given path on a specific node.
+  static Future<List<DirectoryEntryModel>> listDirectoryContents({
+    required String path,
+    String? targetNode,
+  }) async {
+    final queryParams = <String, String>{'path': path};
+    if (targetNode != null && targetNode.isNotEmpty) {
+      queryParams['node'] = targetNode;
+    }
+    final uri = Uri.parse('/api/storage/directories/ls').replace(queryParameters: queryParams);
+    final response = await http.get(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['entries'] as List? ?? [])
+          .map((e) => DirectoryEntryModel.fromJson(e))
+          .toList();
+    }
+    throw Exception('Failed to list directory contents: ${response.statusCode}');
   }
 
   /// Fetches shared storage pool health and capacity diagnostics.

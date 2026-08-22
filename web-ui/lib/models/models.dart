@@ -1003,6 +1003,41 @@ class StorageVolumeModel {
   }
 }
 
+class DirectoryEntryModel {
+  final String name;
+  final String path;
+  final bool isDir;
+  final int sizeBytes;
+  final String sizeFormatted;
+  final String permissions;
+  final String modTime;
+  final String nodeId;
+
+  DirectoryEntryModel({
+    required this.name,
+    required this.path,
+    required this.isDir,
+    this.sizeBytes = 0,
+    this.sizeFormatted = '0 B',
+    this.permissions = '',
+    this.modTime = '',
+    this.nodeId = '',
+  });
+
+  factory DirectoryEntryModel.fromJson(Map<String, dynamic> json) {
+    return DirectoryEntryModel(
+      name: json['name'] ?? '',
+      path: json['path'] ?? '',
+      isDir: json['is_dir'] == true,
+      sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
+      sizeFormatted: json['size_formatted'] ?? '0 B',
+      permissions: json['permissions'] ?? '',
+      modTime: json['mod_time'] ?? '',
+      nodeId: json['node_id'] ?? '',
+    );
+  }
+}
+
 class BackupModel {
   final String id;
   final String name;
