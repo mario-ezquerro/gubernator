@@ -1098,31 +1098,46 @@ class ApiService {
     throw Exception(errData['error'] ?? 'Failed to test mount');
   }
 
-  /// Mounts an existing configured entry.
-  static Future<bool> mountStorageEntry(String id) async {
-    final response = await http.post(Uri.parse('/api/storage/mounts/$id/mount'), headers: authHeaders);
+  /// Mounts an existing configured entry on target node(s).
+  static Future<bool> mountStorageEntry(String id, {String? targetNode}) async {
+    final body = targetNode != null && targetNode.isNotEmpty ? jsonEncode({'target_node': targetNode}) : null;
+    final response = await http.post(
+      Uri.parse('/api/storage/mounts/$id/mount'),
+      headers: authHeaders,
+      body: body,
+    );
     if (response.statusCode == 200) return true;
     final errData = jsonDecode(response.body);
     throw Exception(errData['error'] ?? 'Mount failed');
   }
 
-  /// Unmounts an existing entry.
-  static Future<bool> unmountStorageEntry(String id) async {
-    final response = await http.post(Uri.parse('/api/storage/mounts/$id/unmount'), headers: authHeaders);
+  /// Unmounts an existing entry from target node(s).
+  static Future<bool> unmountStorageEntry(String id, {String? targetNode}) async {
+    final body = targetNode != null && targetNode.isNotEmpty ? jsonEncode({'target_node': targetNode}) : null;
+    final response = await http.post(
+      Uri.parse('/api/storage/mounts/$id/unmount'),
+      headers: authHeaders,
+      body: body,
+    );
     if (response.statusCode == 200) return true;
     final errData = jsonDecode(response.body);
     throw Exception(errData['error'] ?? 'Unmount failed');
   }
 
-  /// Deletes a mount and cleans up /etc/fstab.
+  /// Deletes a mount and cleans up /etc/fstab across target nodes.
   static Future<bool> deleteStorageMount(String id) async {
     final response = await http.delete(Uri.parse('/api/storage/mounts/$id'), headers: authHeaders);
     return response.statusCode == 200;
   }
 
-  /// Executes mount -a on host.
-  static Future<String> mountAllStorageEntries() async {
-    final response = await http.post(Uri.parse('/api/storage/mounts/mount-all'), headers: authHeaders);
+  /// Executes mount -a on host or all cluster nodes.
+  static Future<String> mountAllStorageEntries({String? targetNode}) async {
+    final body = targetNode != null && targetNode.isNotEmpty ? jsonEncode({'target_node': targetNode}) : null;
+    final response = await http.post(
+      Uri.parse('/api/storage/mounts/mount-all'),
+      headers: authHeaders,
+      body: body,
+    );
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return data['output'] ?? 'OK';
@@ -1130,13 +1145,31 @@ class ApiService {
     throw Exception(data['error'] ?? 'mount -a failed');
   }
 
-  /// Fetches raw /etc/fstab contents from the host.
-  static Future<Map<String, dynamic>> fetchRawFstab() async {
-    final response = await http.get(Uri.parse('/api/storage/fstab/raw'), headers: authHeaders);
+  /// Fetches raw /etc/fstab contents from a specific host or local manager.
+  static Future<Map<String, dynamic>> fetchRawFstab({String? node}) async {
+    final query = (node != null && node.isNotEmpty) ? '?node=$node' : '';
+    final response = await http.get(Uri.parse('/api/storage/fstab/raw$query'), headers: authHeaders);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
     throw Exception('Failed to read fstab: ${response.statusCode}');
+  }
+
+  /// Saves and safely writes raw /etc/fstab on target node(s) with automated backup.
+  static Future<String> saveRawFstab(String content, {String? node}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/fstab/raw'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'node': node ?? 'all',
+        'content': content,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data['message'] ?? 'fstab saved successfully';
+    }
+    throw Exception(data['error'] ?? 'Failed to save /etc/fstab');
   }
 
   // ── Image Security & SBOM API Methods ──────────────────────────────────────
@@ -1429,12 +1462,16 @@ class ApiService {
     }
   }
 
-  /// Auto-mounts volume to /var/contenedores across cluster hosts.
-  static Future<void> mountGlusterCluster(String name, {String mountPoint = '/var/contenedores'}) async {
+  /// Auto-mounts volume to /var/contenedores across cluster hosts or specific target nodes.
+  static Future<void> mountGlusterCluster(String name, {String mountPoint = '/var/contenedores', List<String>? targetNodes}) async {
+    final payload = <String, dynamic>{'mount_point': mountPoint};
+    if (targetNodes != null && targetNodes.isNotEmpty) {
+      payload['target_nodes'] = targetNodes;
+    }
     final response = await http.post(
       Uri.parse('/api/storage/gluster/volumes/$name/mount-cluster'),
       headers: authHeaders,
-      body: jsonEncode({'mount_point': mountPoint}),
+      body: jsonEncode(payload),
     );
     if (response.statusCode != 200) {
       final err = jsonDecode(response.body);

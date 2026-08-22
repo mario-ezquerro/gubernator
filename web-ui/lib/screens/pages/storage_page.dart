@@ -1458,25 +1458,22 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 },
               ),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: 'Refresh Mounts Data',
+                onPressed: _loadAllData,
+              ),
+              const SizedBox(width: 4),
               OutlinedButton.icon(
-                icon: const Icon(Icons.code, size: 16),
-                label: const Text('View /etc/fstab'),
+                icon: const Icon(Icons.edit_note, size: 16),
+                label: const Text('Edit /etc/fstab'),
                 onPressed: _showFstabViewerDialog,
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
                 icon: const Icon(Icons.sync, size: 16),
                 label: const Text('Mount All (mount -a)'),
-                onPressed: () async {
-                  try {
-                    _showSnackBar('Executing mount -a on host...');
-                    await ApiService.mountAllStorageEntries();
-                    _showSnackBar('✅ mount -a executed successfully');
-                    _loadAllData();
-                  } catch (e) {
-                    _showSnackBar('❌ mount -a failed: $e', isError: true);
-                  }
-                },
+                onPressed: _showMountAllDialog,
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -2169,65 +2166,293 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
     );
   }
 
-  void _showFstabViewerDialog() async {
-    try {
-      final fstabData = await ApiService.fetchRawFstab();
-      final path = fstabData['path'] ?? '/etc/fstab';
-      final rawContent = fstabData['raw'] ?? '';
+  void _showMountAllDialog() {
+    String selectedNode = 'all';
+    bool isExecuting = false;
 
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (ctx) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.code, color: Color(0xFF3B82F6)),
-                const SizedBox(width: 8),
-                Text('Host Configuration: $path'),
-              ],
-            ),
-            content: SizedBox(
-              width: 650,
-              height: 400,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.sync, color: Color(0xFF3B82F6)),
+                  SizedBox(width: 8),
+                  Text('Execute mount -a (Mount All Entries)'),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select target Centurion host(s) on which to execute "mount -a":'),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Centurion Host',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.computer, size: 20),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('🌐 All Centurions (Execute across whole cluster)'),
+                        ),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedNode = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'This executes "mount -a" to reload and mount all filesystems described in /etc/fstab on the selected host(s).',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    rawContent,
-                    style: TextStyle(
-                      fontFamily: 'Courier New',
-                      fontSize: 12.5,
-                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+                  icon: isExecuting
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.play_arrow, size: 16),
+                  label: const Text('Execute mount -a'),
+                  onPressed: isExecuting
+                      ? null
+                      : () async {
+                          setDlgState(() => isExecuting = true);
+                          try {
+                            final out = await ApiService.mountAllStorageEntries(targetNode: selectedNode);
+                            Navigator.pop(ctx);
+                            _showMountAllResultDialog(out);
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isExecuting = false);
+                            _showSnackBar('Failed to execute mount -a: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMountAllResultDialog(String output) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Color(0xFF10B981)),
+              SizedBox(width: 8),
+              Text('mount -a Execution Results'),
+            ],
+          ),
+          content: SizedBox(
+            width: 550,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                output,
+                style: const TextStyle(fontFamily: 'Courier New', fontSize: 12),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showFstabViewerDialog() {
+    String selectedNode = 'all';
+    final contentCtrl = TextEditingController();
+    bool isLoading = true;
+    bool isSaving = false;
+    String filePath = '/etc/fstab';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            void loadFstabForNode(String node) async {
+              setDlgState(() => isLoading = true);
+              try {
+                final fstabData = await ApiService.fetchRawFstab(node: node);
+                filePath = fstabData['path'] ?? '/etc/fstab';
+                contentCtrl.text = fstabData['raw'] ?? '';
+                setDlgState(() => isLoading = false);
+              } catch (e) {
+                setDlgState(() => isLoading = false);
+                _showSnackBar('Failed to read /etc/fstab from $node: $e', isError: true);
+              }
+            }
+
+            // Initial load
+            if (isLoading && contentCtrl.text.isEmpty) {
+              loadFstabForNode(selectedNode);
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.tune, color: Color(0xFF3B82F6)),
+                  const SizedBox(width: 8),
+                  const Text('Host Configuration Editor: /etc/fstab'),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      'Target: $selectedNode',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6)),
                     ),
                   ),
+                ],
+              ),
+              content: SizedBox(
+                width: 750,
+                height: 520,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Node selector bar
+                    Row(
+                      children: [
+                        const Text('Centurion Node:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedNode,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: 'all',
+                                child: Text('🌐 All Centurions (Sync across all cluster nodes)'),
+                              ),
+                              ...widget.state.nodes.map(
+                                (node) => DropdownMenuItem(
+                                  value: node.id,
+                                  child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                selectedNode = val;
+                                loadFstabForNode(val);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 20),
+                          tooltip: 'Reload from host',
+                          onPressed: () => loadFstabForNode(selectedNode),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Live configuration file path: $filePath (Automatic timestamped backups generated on save)',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+                              ),
+                              child: TextField(
+                                controller: contentCtrl,
+                                maxLines: null,
+                                expands: true,
+                                style: TextStyle(
+                                  fontFamily: 'Courier New',
+                                  fontSize: 12.5,
+                                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.all(4),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            actions: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.copy, size: 16),
-                label: const Text('Copy to Clipboard'),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: rawContent));
-                  _showSnackBar('Copied /etc/fstab content to clipboard');
-                },
-              ),
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      _showSnackBar('Failed to read /etc/fstab: $e', isError: true);
-    }
+              actions: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy Content'),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: contentCtrl.text));
+                    _showSnackBar('Copied /etc/fstab content to clipboard');
+                  },
+                ),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: isSaving
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.save, size: 16),
+                  label: Text('Save & Apply to ${selectedNode == "all" ? "All Nodes" : selectedNode}'),
+                  onPressed: isSaving || isLoading
+                      ? null
+                      : () async {
+                          setDlgState(() => isSaving = true);
+                          try {
+                            final msg = await ApiService.saveRawFstab(contentCtrl.text, node: selectedNode);
+                            Navigator.pop(ctx);
+                            _showSnackBar('✅ $msg');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isSaving = false);
+                            _showSnackBar('❌ Failed to save /etc/fstab: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2308,6 +2533,12 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                       ],
                     ),
                     const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      tooltip: 'Refresh GlusterFS Storage Mesh',
+                      onPressed: _loadAllData,
+                    ),
+                    const SizedBox(width: 4),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.person_add_outlined, size: 16),
                       label: const Text('Probe Peer'),
@@ -2618,8 +2849,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 if (!isMounted)
                   IconButton(
                     icon: const Icon(Icons.link, size: 18, color: Color(0xFF3B82F6)),
-                    tooltip: 'Auto-Mount to /var/contenedores across cluster',
-                    onPressed: () => _mountGlusterCluster(vol.name),
+                    tooltip: 'Auto-Mount to /var/contenedores across cluster or selected host',
+                    onPressed: () => _showMountClusterDialog(vol.name),
                   ),
                 if (isStarted)
                   IconButton(
@@ -2769,6 +3000,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
     final mountPointCtrl = TextEditingController(text: '/var/contenedores');
     int replicaCount = 3;
     bool autoMount = true;
+    String targetScope = 'all';
 
     showDialog(
       context: context,
@@ -2784,7 +3016,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 ],
               ),
               content: SizedBox(
-                width: 520,
+                width: 540,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -2814,6 +3046,31 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                         },
                       ),
                       const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: targetScope,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Centurion Nodes Scope',
+                          helperText: 'Select All Centurions for whole cluster pool or choose a specific node.',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.computer, size: 20),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'all',
+                            child: Text('🌐 All Centurions (Full Cluster Mesh)'),
+                          ),
+                          ...widget.state.nodes.map(
+                            (node) => DropdownMenuItem(
+                              value: node.id,
+                              child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDlgState(() => targetScope = val);
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: brickDirCtrl,
                         decoration: const InputDecoration(
@@ -2834,7 +3091,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                       const SizedBox(height: 12),
                       SwitchListTile(
                         title: const Text('Auto-Mount to Cluster Nodes'),
-                        subtitle: const Text('Automatically writes /etc/fstab and mounts on all 3 nodes on creation'),
+                        subtitle: const Text('Automatically writes /etc/fstab and mounts on selected nodes on creation'),
                         value: autoMount,
                         activeColor: const Color(0xFF10B981),
                         onChanged: (val) => setDlgState(() => autoMount = val),
@@ -2850,12 +3107,17 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                   onPressed: () async {
                     Navigator.pop(ctx);
                     try {
+                      List<String>? targetNodes;
+                      if (targetScope != 'all') {
+                        targetNodes = [targetScope];
+                      }
                       await ApiService.createGlusterVolume({
                         'name': nameCtrl.text.trim(),
                         'replica_count': replicaCount,
                         'brick_dir': brickDirCtrl.text.trim(),
                         'mount_point': mountPointCtrl.text.trim(),
                         'auto_mount': autoMount,
+                        'target_nodes': targetNodes,
                         'force': true,
                       });
                       _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
@@ -2865,6 +3127,109 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                     }
                   },
                   child: const Text('Create & Optimize Volume'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMountClusterDialog(String volumeName) {
+    String selectedTarget = 'all';
+    final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    bool isMounting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.folder_shared_outlined, color: Color(0xFF10B981)),
+                  const SizedBox(width: 8),
+                  Text('Mount $volumeName to Cluster'),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: mountPointCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Mount Directory Point',
+                        hintText: '/var/contenedores',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedTarget,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Centurion Node(s)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.computer, size: 20),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('🌐 All Centurions (Whole Cluster Mobility)'),
+                        ),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedTarget = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Writes /etc/fstab entry and mounts volume to enable zero-downtime container mobility.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: isMounting
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.link, size: 16),
+                  label: const Text('Mount Volume'),
+                  onPressed: isMounting
+                      ? null
+                      : () async {
+                          setDlgState(() => isMounting = true);
+                          try {
+                            List<String>? targetNodes;
+                            if (selectedTarget != 'all') {
+                              targetNodes = [selectedTarget];
+                            }
+                            await ApiService.mountGlusterCluster(
+                              volumeName,
+                              mountPoint: mountPointCtrl.text.trim(),
+                              targetNodes: targetNodes,
+                            );
+                            Navigator.pop(ctx);
+                            _showSnackBar('✅ Volume $volumeName mounted successfully on target: $selectedTarget');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isMounting = false);
+                            _showSnackBar('❌ Failed to mount volume: $e', isError: true);
+                          }
+                        },
                 ),
               ],
             );

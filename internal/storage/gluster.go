@@ -637,6 +637,13 @@ func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) 
 		options = fmt.Sprintf("defaults,_netdev,backup-volfile-servers=%s", strings.Join(backupServers, ":"))
 	}
 
+	targetNodeScope := "all"
+	if len(targetNodes) == 1 {
+		targetNodeScope = targetNodes[0]
+	} else if len(targetNodes) > 1 {
+		targetNodeScope = strings.Join(targetNodes, ",")
+	}
+
 	req := CreateMountRequest{
 		Name:        fmt.Sprintf("gluster-%s", volumeName),
 		FSType:      "glusterfs",
@@ -644,7 +651,7 @@ func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) 
 		MountPoint:  mountPoint,
 		Options:     options,
 		AutoMount:   true,
-		TargetNode:  "all",
+		TargetNode:  targetNodeScope,
 		Description: fmt.Sprintf("GlusterFS cluster storage volume %s", volumeName),
 	}
 

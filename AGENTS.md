@@ -195,7 +195,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Centurions DataTable & Node Details:** Dedicated `HOST DISK (USED / TOTAL)` column and hardware capacity breakdown with free GB indicators and low-space warning badges.
 * **Google SRE Sloth SLO Engine Disk Templates:** Native `host-disk` (`Node Disk Capacity < 15%`) and `gluster-storage` (`GlusterFS Cluster Pool`) SLO templates and multi-window burn rate alert rules (`HostDiskFillingFast`, `HostDiskSpaceCritical`).
 * **Grafana SRE Dashboard Panels:** Dedicated `Centurions — Host Disk Space Usage %` LCD bar gauge in `gubernator_dashboard.json`.
-* **Full CLI Parity:** Enhanced `gbnt node ls` displaying live CPU, Memory, and Host Disk usage (`% (used / total)`) across all Centurion nodes.
+### 24. Multi-Host Storage Orchestration, GlusterFS Auth & Interactive `/etc/fstab` Subsystem (`v2.32.0`)
+* **Multi-Host Remote Orchestration Engine:** Full cluster-wide storage operations enabling actions on **All Hosts** or targeted to **Specific Centurion Nodes** (Manager local execution and Worker automated SSH bridge).
+* **GlusterFS & Mount Authentication Fixes:** Resolved session role checks and route bindings for GlusterFS volume lifecycle, `/api/storage/mounts/:id` deletion, and `/etc/fstab` safe synchronization.
+* **Interactive Multi-Node `/etc/fstab` Inspector & Editor:** Live configuration browser with Centurion host selection dropdown, monospace syntax editor, automated timestamped backups (`/etc/fstab.bak.<ts>`), and atomic save & apply.
+* **Target Node Selection across Storage Suite:** Granular host selection in "Add Network Mount", "Mount All (`mount -a`)", GlusterFS volume creation, and cluster auto-mounting to `/var/contenedores`.
+* **State Refresh & Live Diagnostics:** Instant UI state revalidation across Mounts and Gluster tabs with manual refresh buttons and comprehensive SnackBar telemetry.
+
 
 
 

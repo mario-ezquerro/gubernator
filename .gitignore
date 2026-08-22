@@ -42,6 +42,7 @@ test_output.txt
 /gbnt-linux-arm64
 /gbnt-mac
 bin/
+build/
 monitor/
 *.tar.gz
 *.tar

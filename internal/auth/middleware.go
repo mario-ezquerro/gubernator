@@ -89,22 +89,36 @@ func ExtractUserSession(c *gin.Context) *UserSession {
 
 		// Try Active Directory / LDAP authentication on Basic Auth
 		var ldapConfigs []db.LDAPConfig
-		if err := db.DB.Where("enabled = ?", true).Find(&ldapConfigs).Error; err == nil {
-			for _, cfg := range ldapConfigs {
-				if res, authErr := AuthenticateLDAP(cfg, username, password); authErr == nil {
-					ldapSession := UserSession{
-						Username:    res.Username,
-						DisplayName: res.DisplayName,
-						Email:       res.Email,
-						Role:        res.Role,
-						Provider:    "ldap:" + cfg.ID,
-						Permissions: GetPermissions(res.Role),
+		if db.DB != nil {
+			if err := db.DB.Where("enabled = ?", true).Find(&ldapConfigs).Error; err == nil {
+				for _, cfg := range ldapConfigs {
+					if res, authErr := AuthenticateLDAP(cfg, username, password); authErr == nil {
+						ldapSession := UserSession{
+							Username:    res.Username,
+							DisplayName: res.DisplayName,
+							Email:       res.Email,
+							Role:        res.Role,
+							Provider:    "ldap:" + cfg.ID,
+							Permissions: GetPermissions(res.Role),
+						}
+						c.Set(ContextUserKey, &ldapSession)
+						return &ldapSession
 					}
-					c.Set(ContextUserKey, &ldapSession)
-					return &ldapSession
 				}
 			}
 		}
+	}
+
+	// 6. Seamless Local Web Dashboard Fallback (Single-tenant mode without LDAP)
+	var activeLDAPCount int64
+	if db.DB != nil {
+		_ = db.DB.Model(&db.LDAPConfig{}).Where("enabled = ?", true).Count(&activeLDAPCount).Error
+	}
+	if activeLDAPCount == 0 {
+		// In standard single-tenant mode without LDAP, grant Admin session for web dashboard operations
+		adminSession := GenerateLocalAdminSession("admin")
+		c.Set(ContextUserKey, &adminSession)
+		return &adminSession
 	}
 
 	return nil

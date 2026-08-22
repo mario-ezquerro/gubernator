@@ -216,20 +216,24 @@ func CreateStorageMount(req CreateMountRequest) (*db.StorageMount, error) {
 		UpdatedAt:       time.Now(),
 	}
 
-	// Append to /etc/fstab if AutoMount is enabled
-	if req.AutoMount {
-		if err := appendFstabEntry(mountEntry); err != nil {
-			slog.Error("failed to append to fstab", "err", err)
+	// Apply mount across target node(s)
+	ips := GetTargetHostIPs(req.TargetNode)
+	var syncErrs []string
+	for _, ip := range ips {
+		if err := SyncMountToTargetNode(mountEntry, ip); err != nil {
+			syncErrs = append(syncErrs, fmt.Sprintf("%s: %v", ip, err))
 		}
 	}
 
-	// Attempt live mount
-	out, err := exec.Command("mount", req.MountPoint).CombinedOutput()
-	if err != nil {
+	if len(syncErrs) > 0 {
 		mountEntry.Status = "error"
-		mountEntry.ErrorMessage = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))
+		if len(syncErrs) < len(ips) {
+			mountEntry.Status = "degraded"
+		}
+		mountEntry.ErrorMessage = strings.Join(syncErrs, "; ")
 	} else {
 		mountEntry.Status = "mounted"
+		mountEntry.ErrorMessage = ""
 	}
 
 	if db.DB != nil {
@@ -241,8 +245,8 @@ func CreateStorageMount(req CreateMountRequest) (*db.StorageMount, error) {
 	return &mountEntry, nil
 }
 
-// MountStorageEntry executes `mount <mountPoint>` for a registered mount.
-func MountStorageEntry(id string) error {
+// MountStorageEntry executes mount for a registered mount on target nodes.
+func MountStorageEntry(id string, targetNodeOverride ...string) error {
 	var m db.StorageMount
 	if db.DB != nil {
 		if err := db.DB.First(&m, "id = ?", id).Error; err != nil {
@@ -250,15 +254,26 @@ func MountStorageEntry(id string) error {
 		}
 	}
 
-	_ = os.MkdirAll(m.MountPoint, 0755)
-	out, err := exec.Command("mount", m.MountPoint).CombinedOutput()
-	if err != nil {
+	target := m.TargetNode
+	if len(targetNodeOverride) > 0 && targetNodeOverride[0] != "" {
+		target = targetNodeOverride[0]
+	}
+
+	ips := GetTargetHostIPs(target)
+	var errs []string
+	for _, ip := range ips {
+		if err := SyncMountToTargetNode(m, ip); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", ip, err))
+		}
+	}
+
+	if len(errs) > 0 {
 		m.Status = "error"
-		m.ErrorMessage = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))
+		m.ErrorMessage = strings.Join(errs, "; ")
 		if db.DB != nil {
 			db.DB.Save(&m)
 		}
-		return fmt.Errorf("mount failed: %s", strings.TrimSpace(string(out)))
+		return fmt.Errorf("mount failed on some hosts: %s", strings.Join(errs, "; "))
 	}
 
 	m.Status = "mounted"
@@ -269,8 +284,8 @@ func MountStorageEntry(id string) error {
 	return nil
 }
 
-// UnmountStorageEntry executes `umount <mountPoint>` for a registered mount.
-func UnmountStorageEntry(id string) error {
+// UnmountStorageEntry executes umount for a registered mount on target nodes.
+func UnmountStorageEntry(id string, targetNodeOverride ...string) error {
 	var m db.StorageMount
 	if db.DB != nil {
 		if err := db.DB.First(&m, "id = ?", id).Error; err != nil {
@@ -278,18 +293,14 @@ func UnmountStorageEntry(id string) error {
 		}
 	}
 
-	out, err := exec.Command("umount", m.MountPoint).CombinedOutput()
-	if err != nil {
-		// Try lazy unmount if busy
-		outLazy, errLazy := exec.Command("umount", "-l", m.MountPoint).CombinedOutput()
-		if errLazy != nil {
-			m.Status = "error"
-			m.ErrorMessage = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))
-			if db.DB != nil {
-				db.DB.Save(&m)
-			}
-			return fmt.Errorf("unmount failed: %s (lazy: %s)", strings.TrimSpace(string(out)), strings.TrimSpace(string(outLazy)))
-		}
+	target := m.TargetNode
+	if len(targetNodeOverride) > 0 && targetNodeOverride[0] != "" {
+		target = targetNodeOverride[0]
+	}
+
+	ips := GetTargetHostIPs(target)
+	for _, ip := range ips {
+		_ = UnmountFromTargetNode(m.MountPoint, ip)
 	}
 
 	m.Status = "unmounted"
@@ -300,7 +311,7 @@ func UnmountStorageEntry(id string) error {
 	return nil
 }
 
-// DeleteStorageMount unmounts, removes fstab entry, and deletes from DB.
+// DeleteStorageMount unmounts, removes fstab entry, and deletes from DB on target nodes.
 func DeleteStorageMount(id string) error {
 	var m db.StorageMount
 	if db.DB != nil {
@@ -309,15 +320,9 @@ func DeleteStorageMount(id string) error {
 		}
 	}
 
-	// Try unmount
-	_ = exec.Command("umount", "-l", m.MountPoint).Run()
-
-	// Remove from fstab
-	_ = removeFstabEntry(m.ID)
-
-	// Remove credentials file
-	if m.CredentialsFile != "" {
-		_ = os.Remove(m.CredentialsFile)
+	ips := GetTargetHostIPs(m.TargetNode)
+	for _, ip := range ips {
+		_ = DeleteMountFromTargetNode(m, ip)
 	}
 
 	if db.DB != nil {
@@ -326,13 +331,33 @@ func DeleteStorageMount(id string) error {
 	return nil
 }
 
-// MountAllStorageEntries executes `mount -a`.
-func MountAllStorageEntries() (string, error) {
-	out, err := exec.Command("mount", "-a").CombinedOutput()
-	if err != nil {
-		return string(out), fmt.Errorf("mount -a failed: %w (output: %s)", err, strings.TrimSpace(string(out)))
+// MountAllStorageEntries executes `mount -a` across target nodes.
+func MountAllStorageEntries(targetNode ...string) (string, error) {
+	target := "all"
+	if len(targetNode) > 0 && targetNode[0] != "" {
+		target = targetNode[0]
 	}
-	return string(out), nil
+
+	ips := GetTargetHostIPs(target)
+	var combinedOutput []string
+	var errs []string
+	for _, ip := range ips {
+		out, err := MountAllOnTargetNode(ip)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("[%s error]: %v (%s)", ip, err, out))
+		}
+		if out != "" {
+			combinedOutput = append(combinedOutput, fmt.Sprintf("[%s]: %s", ip, out))
+		} else {
+			combinedOutput = append(combinedOutput, fmt.Sprintf("[%s]: OK", ip))
+		}
+	}
+
+	resultStr := strings.Join(combinedOutput, "\n")
+	if len(errs) > 0 {
+		return resultStr, fmt.Errorf("mount -a had errors on some nodes: %s", strings.Join(errs, "; "))
+	}
+	return resultStr, nil
 }
 
 // TestMountConnection tests a mount in a temporary directory and validates R/W permissions.

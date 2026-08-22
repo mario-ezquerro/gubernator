@@ -358,20 +358,22 @@ func StartDashboard() {
 		api.GET("/storage/pools/health", storagePoolsHealthHandler)
 		api.GET("/storage/mounts", storageMountsListHandler)
 		api.POST("/storage/mounts", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountCreateHandler)
+		api.DELETE("/storage/mounts/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountDeleteHandler)
 		api.POST("/storage/mounts/test", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountTestHandler)
 		api.POST("/storage/mounts/mount-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountAllHandler)
 		api.POST("/storage/mounts/:id/mount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountActionHandler)
 		api.POST("/storage/mounts/:id/unmount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageUnmountActionHandler)
 		api.GET("/storage/fstab/raw", storageFstabRawHandler)
+		api.POST("/storage/fstab/raw", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageFstabSaveRawHandler)
 
 		// GlusterFS Cluster Storage Subsystem
 		api.GET("/storage/gluster/status", glusterStatusHandler)
 		api.GET("/storage/gluster/peers", glusterPeersHandler)
-		api.POST("/storage/gluster/peers/probe", auth.RequireRole(auth.RoleAdmin), glusterPeerProbeHandler)
-		api.DELETE("/storage/gluster/peers/:peer", auth.RequireRole(auth.RoleAdmin), glusterPeerDetachHandler)
+		api.POST("/storage/gluster/peers/probe", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterPeerProbeHandler)
+		api.DELETE("/storage/gluster/peers/:peer", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterPeerDetachHandler)
 		api.GET("/storage/gluster/volumes", glusterVolumesHandler)
-		api.POST("/storage/gluster/volumes", auth.RequireRole(auth.RoleAdmin), glusterVolumeCreateHandler)
-		api.DELETE("/storage/gluster/volumes/:name", auth.RequireRole(auth.RoleAdmin), glusterVolumeDeleteHandler)
+		api.POST("/storage/gluster/volumes", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeCreateHandler)
+		api.DELETE("/storage/gluster/volumes/:name", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeDeleteHandler)
 		api.POST("/storage/gluster/volumes/:name/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStartHandler)
 		api.POST("/storage/gluster/volumes/:name/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStopHandler)
 		api.GET("/storage/gluster/volumes/:name/heal", glusterVolumeHealHandler)
@@ -4147,7 +4149,15 @@ func storageMountTestHandler(c *gin.Context) {
 
 func storageMountActionHandler(c *gin.Context) {
 	id := c.Param("id")
-	if err := storage.MountStorageEntry(id); err != nil {
+	var req struct {
+		TargetNode string `json:"target_node"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.TargetNode == "" {
+		req.TargetNode = c.Query("target_node")
+	}
+
+	if err := storage.MountStorageEntry(id, req.TargetNode); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -4156,7 +4166,15 @@ func storageMountActionHandler(c *gin.Context) {
 
 func storageUnmountActionHandler(c *gin.Context) {
 	id := c.Param("id")
-	if err := storage.UnmountStorageEntry(id); err != nil {
+	var req struct {
+		TargetNode string `json:"target_node"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.TargetNode == "" {
+		req.TargetNode = c.Query("target_node")
+	}
+
+	if err := storage.UnmountStorageEntry(id, req.TargetNode); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -4173,7 +4191,15 @@ func storageMountDeleteHandler(c *gin.Context) {
 }
 
 func storageMountAllHandler(c *gin.Context) {
-	output, err := storage.MountAllStorageEntries()
+	var req struct {
+		TargetNode string `json:"target_node"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.TargetNode == "" {
+		req.TargetNode = c.Query("target_node")
+	}
+
+	output, err := storage.MountAllStorageEntries(req.TargetNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": output})
 		return
@@ -4182,14 +4208,40 @@ func storageMountAllHandler(c *gin.Context) {
 }
 
 func storageFstabRawHandler(c *gin.Context) {
-	raw, err := storage.GetRawFstab()
+	node := c.DefaultQuery("node", "all")
+	path, raw, err := storage.GetHostFstab(node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"path": storage.FstabPath(),
+		"path": path,
 		"raw":  raw,
+		"node": node,
+	})
+}
+
+func storageFstabSaveRawHandler(c *gin.Context) {
+	var req struct {
+		Node    string `json:"node"`
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "content field is required"})
+		return
+	}
+	if req.Node == "" {
+		req.Node = "all"
+	}
+
+	if err := storage.SaveHostFstab(req.Node, req.Content); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Configuration /etc/fstab successfully updated and backed up on target: %s", req.Node),
+		"node":    req.Node,
 	})
 }
 
