@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/mario-ezquerro/gubernator/internal/api"
+	"github.com/mario-ezquerro/gubernator/internal/telemetry"
 	"github.com/spf13/cobra"
 )
 
@@ -48,15 +49,32 @@ var serveCmd = &cobra.Command{
 	},
 }
 
+var showMetrics bool
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the Gubernator version",
+	Short: "Print the Gubernator version and adoption metrics",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Gubernator %s\n", Version)
+		if showMetrics {
+			stats := telemetry.GetAdoptionStats(false)
+			fmt.Println("\n📊 Community Adoption & Release Metrics:")
+			fmt.Printf("  • Total Releases:     %d\n", stats.TotalReleases)
+			fmt.Printf("  • Total Downloads:    %d\n", stats.TotalDownloads)
+			fmt.Printf("    - Linux:            %d\n", stats.DownloadsByOS["linux"])
+			fmt.Printf("    - macOS:            %d\n", stats.DownloadsByOS["darwin"])
+			fmt.Printf("    - Windows:          %d\n", stats.DownloadsByOS["windows"])
+			fmt.Printf("  • GitHub Stars:       %d ⭐\n", stats.GitHubStars)
+			fmt.Printf("  • GitHub Forks:       %d 🍴\n", stats.GitHubForks)
+			fmt.Println("\n🛡️ Data Transparency & Privacy:")
+			fmt.Printf("  • Data Source:        %s\n", stats.DataSource)
+			fmt.Printf("  • Privacy Policy:     %s\n", stats.PrivacyPolicy)
+		}
 	},
 }
 
 func init() {
+	versionCmd.Flags().BoolVarP(&showMetrics, "metrics", "m", false, "Display public adoption and GitHub release download metrics")
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(versionCmd)
 }

@@ -1488,4 +1488,98 @@ class SecuritySummaryModel {
   }
 }
 
+class AdoptionStatsModel {
+  final int totalDownloads;
+  final Map<String, int> downloadsByOs;
+  final int totalReleases;
+  final String latestReleaseTag;
+  final String latestReleaseDate;
+  final int githubStars;
+  final int githubForks;
+  final int githubWatchers;
+  final int githubOpenIssues;
+  final List<ReleaseStatsModel> recentReleases;
+  final String dataSource;
+  final String privacyPolicy;
+  final bool telemetryEnabled;
+  final String documentationUrl;
+  final String checkedAt;
+
+  AdoptionStatsModel({
+    this.totalDownloads = 0,
+    this.downloadsByOs = const {},
+    this.totalReleases = 0,
+    this.latestReleaseTag = '',
+    this.latestReleaseDate = '',
+    this.githubStars = 0,
+    this.githubForks = 0,
+    this.githubWatchers = 0,
+    this.githubOpenIssues = 0,
+    this.recentReleases = const [],
+    this.dataSource = '',
+    this.privacyPolicy = '',
+    this.telemetryEnabled = true,
+    this.documentationUrl = '',
+    this.checkedAt = '',
+  });
+
+  factory AdoptionStatsModel.fromJson(Map<String, dynamic> json) {
+    Map<String, int> osMap = {};
+    if (json['downloads_by_os'] is Map) {
+      json['downloads_by_os'].forEach((k, v) {
+        osMap[k.toString()] = (v as num?)?.toInt() ?? 0;
+      });
+    }
+
+    List<ReleaseStatsModel> releases = [];
+    if (json['recent_releases'] is List) {
+      releases = (json['recent_releases'] as List)
+          .map((r) => ReleaseStatsModel.fromJson(r as Map<String, dynamic>))
+          .toList();
+    }
+
+    return AdoptionStatsModel(
+      totalDownloads: (json['total_downloads'] as num?)?.toInt() ?? 0,
+      downloadsByOs: osMap,
+      totalReleases: (json['total_releases'] as num?)?.toInt() ?? 0,
+      latestReleaseTag: json['latest_release_tag'] ?? '',
+      latestReleaseDate: json['latest_release_date'] ?? '',
+      githubStars: (json['github_stars'] as num?)?.toInt() ?? 0,
+      githubForks: (json['github_forks'] as num?)?.toInt() ?? 0,
+      githubWatchers: (json['github_watchers'] as num?)?.toInt() ?? 0,
+      githubOpenIssues: (json['github_open_issues'] as num?)?.toInt() ?? 0,
+      recentReleases: releases,
+      dataSource: json['data_source'] ?? '',
+      privacyPolicy: json['privacy_policy'] ?? '',
+      telemetryEnabled: json['telemetry_enabled'] != false,
+      documentationUrl: json['documentation_url'] ?? '',
+      checkedAt: json['checked_at'] ?? '',
+    );
+  }
+}
+
+class ReleaseStatsModel {
+  final String tagName;
+  final String publishedAt;
+  final int downloads;
+  final String htmlUrl;
+
+  ReleaseStatsModel({
+    required this.tagName,
+    this.publishedAt = '',
+    this.downloads = 0,
+    this.htmlUrl = '',
+  });
+
+  factory ReleaseStatsModel.fromJson(Map<String, dynamic> json) {
+    return ReleaseStatsModel(
+      tagName: json['tag_name'] ?? '',
+      publishedAt: json['published_at'] ?? '',
+      downloads: (json['downloads'] as num?)?.toInt() ?? 0,
+      htmlUrl: json['html_url'] ?? '',
+    );
+  }
+}
+
+
 

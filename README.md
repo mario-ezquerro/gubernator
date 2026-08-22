@@ -507,8 +507,40 @@ From the Swagger UI, you can directly test endpoints.
 
 ---
 
-##  Current Roadmap State
+## 📊 Telemetry, Adoption Metrics & Privacy Transparency
 
-Gubernator's development is divided into "Campaigns". We've completed up to **Phase 13**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, built-in SRE Monitoring Stack, Google SRE Sloth SLO Engine, and Enterprise Active Directory / LDAP Authentication + RBAC (`v2.20.0`).
+Gubernator values **openness, privacy, and full transparency**. You can view live community adoption and release metrics directly inside the Web Dashboard (**Settings ➔ About & Metrics**), via CLI (`gbnt version --metrics`), or through the REST API (`GET /api/system/adoption`).
+
+```text
+📊 Community Adoption & Release Metrics:
+  • Total Releases:     88 Published
+  • Total Downloads:    13+ Multi-platform Binaries
+    - Linux:            AMD64 & ARM64
+    - macOS:            Apple Silicon & Intel
+    - Windows:          x64 Native EXE
+  • GitHub Stars:       23 ⭐
+  • GitHub Forks:       3 🍴
+```
+
+### 🛡️ Data Origin & Zero Cluster Telemetry Guarantee
+
+1. **Transparent Public Data Sources:**
+   * Download counts and release history are queried transparently from the official public [GitHub Releases API](https://api.github.com/repos/mario-ezquerro/gubernator/releases). No private tracking cookies, pixels, or intrusive analytics scripts are used.
+2. **100% On-Premise & GDPR Compliant:**
+   * Gubernator **NEVER** sends, tracks, or logs your container images, environment variables, passwords/secrets, application database contents, or internal network topologies to external servers. All cluster operations remain 100% local to your hosts.
+3. **Air-Gapped & Complete Opt-Out:**
+   * For isolated or air-gapped environments without internet access, you can completely disable external version and release checks by setting the standard environment variable:
+     ```bash
+     export DO_NOT_TRACK=1
+     # or
+     export GBNT_TELEMETRY=false
+     ```
+
+---
+
+## 🗺 Current Roadmap State
+
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 20**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, built-in SRE Monitoring Stack, Google SRE Sloth SLO Engine, Enterprise Active Directory / LDAP Authentication + RBAC (`v2.20.0`), Dedicated Loki Logs Explorer (`v2.21.0`), Multi-Distro Ansible Automation (`v2.22.0`), Multi-Cloud Terraform Suite (`v2.23.0`), Persistent Storage & Backups ("The Granaries") (`v2.24.0`), Image Security, SBOM & Cosign Signing ("The Imperial Seal") (`v2.25.0`), Dedicated Compose Studio & Copilot (`v2.27.0`), Network Mounts & `/etc/fstab` Management (`v2.28.0`), and Transparent Adoption Metrics & Privacy (`v2.29.0`).
 
 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
+

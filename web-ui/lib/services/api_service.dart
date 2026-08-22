@@ -1306,6 +1306,17 @@ class ApiService {
     final err = jsonDecode(response.body);
     throw Exception(err['error'] ?? 'Failed to update policy');
   }
+
+  /// Fetches transparent GitHub adoption stats & release metrics.
+  static Future<AdoptionStatsModel> fetchAdoptionStats({bool force = false}) async {
+    final url = force ? '/api/system/adoption?force=true' : '/api/system/adoption';
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return AdoptionStatsModel.fromJson(data);
+    }
+    throw Exception('Failed to fetch adoption stats: ${response.statusCode}');
+  }
 }
 
 

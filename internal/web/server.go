@@ -38,6 +38,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/security"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/storage"
+	"github.com/mario-ezquerro/gubernator/internal/telemetry"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -47,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.28.0"
+var Version = "v2.29.0"
 
 func GetVersion() string {
 	for _, p := range []string{"/app/VERSION", "/data/VERSION", "VERSION", "../VERSION"} {
@@ -286,6 +287,7 @@ func StartDashboard() {
 		api.GET("/coredns/custom-records", getCustomDNSRecordsHandler)
 		api.GET("/scope/status", scopeStatusHandler)
 		api.GET("/update/check", updateCheckHandler)
+		api.GET("/system/adoption", systemAdoptionHandler)
 		api.GET("/slo", sloListHandler)
 		api.GET("/slo/journeys", sloJourneysHandler)
 		api.GET("/slo/correlation", sloCorrelationHandler)
@@ -583,6 +585,12 @@ func updateCheckHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, info)
+}
+
+func systemAdoptionHandler(c *gin.Context) {
+	force := c.Query("force") == "true"
+	stats := telemetry.GetAdoptionStats(force)
+	c.JSON(http.StatusOK, stats)
 }
 
 type updateApplyPayload struct {

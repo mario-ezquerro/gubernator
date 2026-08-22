@@ -263,6 +263,11 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/policy", SecurityPolicySaveHandler)
 			securityRoute.POST("/evaluate", SecurityAdmissionEvaluateHandler)
 		}
+
+		systemRoute := v1.Group("/system")
+		{
+			systemRoute.GET("/adoption", SystemAdoptionHandler)
+		}
 	}
 
 	srv := &http.Server{Addr: ":4000", Handler: r}
