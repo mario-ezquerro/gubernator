@@ -49,3 +49,8 @@
   roles:
     - role: sre_monitoring
   when: enable_sre_monitoring | bool
+
+- name: 7. GlusterFS Distributed Cluster Storage (Replica 3)
+  import_playbook: glusterfs.yml
+  tags: [glusterfs, storage]
+  when: enable_glusterfs | default(false) | bool

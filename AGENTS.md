@@ -181,6 +181,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Air-Gapped & Privacy Overrides:** Full support for `DO_NOT_TRACK=1` and `GBNT_TELEMETRY=false` to completely disable external release and update checks.
 * **Full CLI Parity:** Dedicated CLI flag `gbnt version --metrics` and REST endpoint `GET /api/system/adoption`.
 
+### 22. GlusterFS Multi-Node Cluster Storage Subsystem (`v2.30.0`)
+* **3-Way Mirrored Volumes (Replica 3 & Arbiter):** Native distributed volume creation, starting, stopping, and container write-behind cache optimizations (`performance.write-behind`, `flush-behind`, `stat-prefetch`).
+* **Trusted Storage Pool Peer Mesh:** Live peer discovery, health probing, latency checks, and quorum diagnostics across Centurion worker hosts.
+* **Granaries `/var/contenedores` Auto-Mount:** One-click automated mounting across all cluster nodes directly syncing with Gubernator's `/etc/fstab` management.
+* **Self-Healing & Split-Brain Diagnostics:** Real-time heal entry queues, brick health inspection, and manual self-heal triggers.
+* **Ansible Automated Provisioning:** Multi-distro automation in `ansible/glusterfs.yml` configuring `glusterfs-server`, firewall ports (`24007`, `24008`, `49152:49251`), brick directories, and default `gv_contenedores` volume.
+* **Full CLI Parity:** Dedicated commands for `gbnt gluster status`, `gbnt gluster peer [ls|probe|detach]`, `gbnt gluster volume [ls|create|start|stop|rm|heal]`, and `gbnt gluster mount`.
+
 
 
 

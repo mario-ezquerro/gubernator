@@ -29,6 +29,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   List<BackupScheduleModel> _schedules = [];
   List<StorageMountModel> _mounts = [];
   PoolHealthModel? _poolHealth;
+  List<GlusterPeerModel> _glusterPeers = [];
+  List<GlusterVolumeModel> _glusterVolumes = [];
+  GlusterClusterDiagnosticsModel? _glusterDiag;
   bool _loading = false;
 
   // Filters
@@ -42,7 +45,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _loadAllData();
   }
 
@@ -60,6 +63,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       final schedulesFuture = ApiService.fetchBackupSchedules();
       final healthFuture = ApiService.fetchStoragePoolHealth(path: _poolPath);
       final mountsFuture = ApiService.fetchStorageMounts();
+      final glusterPeersFuture = ApiService.fetchGlusterPeers();
+      final glusterVolsFuture = ApiService.fetchGlusterVolumes();
+      final glusterDiagFuture = ApiService.fetchGlusterDiagnostics();
 
       final results = await Future.wait([
         volsFuture.catchError((_) => <StorageVolumeModel>[]),
@@ -67,6 +73,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
         schedulesFuture.catchError((_) => <BackupScheduleModel>[]),
         healthFuture.catchError((_) => PoolHealthModel(poolPath: _poolPath, status: 'error')),
         mountsFuture.catchError((_) => <StorageMountModel>[]),
+        glusterPeersFuture.catchError((_) => <GlusterPeerModel>[]),
+        glusterVolsFuture.catchError((_) => <GlusterVolumeModel>[]),
+        glusterDiagFuture.catchError((_) => GlusterClusterDiagnosticsModel(installed: false)),
       ]);
 
       if (mounted) {
@@ -76,6 +85,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
           _schedules = results[2] as List<BackupScheduleModel>;
           _poolHealth = results[3] as PoolHealthModel;
           _mounts = results[4] as List<StorageMountModel>;
+          _glusterPeers = results[5] as List<GlusterPeerModel>;
+          _glusterVolumes = results[6] as List<GlusterVolumeModel>;
+          _glusterDiag = results[7] as GlusterClusterDiagnosticsModel;
           _loading = false;
         });
       }
@@ -600,6 +612,16 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                       ],
                     ),
                   ),
+                  Tab(
+                    icon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.hub_outlined, size: 18),
+                        const SizedBox(width: 6),
+                        Text('GlusterFS Cluster (${_glusterVolumes.length})'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -617,6 +639,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                         _buildSchedulesTab(isDark),
                         _buildPoolsTab(isDark),
                         _buildMountsTab(isDark),
+                        _buildGlusterTab(isDark),
                       ],
                     ),
             ),
@@ -2206,5 +2229,872 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       _showSnackBar('Failed to read /etc/fstab: $e', isError: true);
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 6. GLUSTERFS CLUSTER STORAGE TAB (3-Way Mirror / Replica 3 / Arbiter)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildGlusterTab(bool isDark) {
+    final diag = _glusterDiag;
+    final isHealthy = (diag?.healthScore ?? 100) >= 80;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Diagnostics & Actions Bar
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isHealthy
+                    ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                    : Colors.orangeAccent.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: isHealthy
+                          ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                          : Colors.orangeAccent.withValues(alpha: 0.15),
+                      child: Icon(
+                        Icons.hub,
+                        color: isHealthy ? const Color(0xFF10B981) : Colors.orangeAccent,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'GlusterFS Multi-Node Storage Mesh',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (diag?.daemonRunning == true ? const Color(0xFF10B981) : Colors.orange)
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                diag?.daemonRunning == true ? 'DAEMON ACTIVE' : 'DAEMON INACTIVE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: diag?.daemonRunning == true ? const Color(0xFF10B981) : Colors.orange,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '3-Way mirrored volumes (Replica 3 / Arbiter) mounted to /var/contenedores for multi-node container persistence',
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.person_add_outlined, size: 16),
+                      label: const Text('Probe Peer'),
+                      onPressed: _showProbePeerDialog,
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Create Cluster Volume'),
+                      onPressed: _showCreateGlusterVolumeDialog,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // KPI Status Badges
+                Row(
+                  children: [
+                    _buildGlusterKpi('Health Score', '${diag?.healthScore ?? 100}%', isHealthy ? const Color(0xFF10B981) : Colors.orange, Icons.health_and_safety_outlined),
+                    const SizedBox(width: 16),
+                    _buildGlusterKpi('Storage Pool Peers', '${_glusterPeers.length} Nodes', const Color(0xFF3B82F6), Icons.group_work_outlined),
+                    const SizedBox(width: 16),
+                    _buildGlusterKpi('Replicated Volumes', '${_glusterVolumes.length} Volumes', const Color(0xFF8B5CF6), Icons.layers_outlined),
+                    const SizedBox(width: 16),
+                    _buildGlusterKpi('Target Mount', '/var/contenedores', const Color(0xFF10B981), Icons.folder_shared_outlined),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Trusted Storage Pool Peers Section ─────────────────────────────
+          Row(
+            children: [
+              const Icon(Icons.people_outline, size: 18, color: Color(0xFF3B82F6)),
+              const SizedBox(width: 8),
+              const Text(
+                'Trusted Storage Pool Peers (Centurions)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Text(
+                '${_glusterPeers.where((p) => p.connected).length}/${_glusterPeers.length} Peers Connected',
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Peer Cards Grid
+          if (_glusterPeers.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('No GlusterFS peers found. Use "Probe Peer" or run ansible/glusterfs.yml to initialize.'),
+            )
+          else
+            Row(
+              children: _glusterPeers.map((p) {
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: p.connected
+                            ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                            : Colors.redAccent.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              p.isLocal ? Icons.security : Icons.dns_outlined,
+                              size: 16,
+                              color: const Color(0xFF3B82F6),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                p.hostname,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (p.connected ? const Color(0xFF10B981) : Colors.redAccent)
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                p.connected ? 'CONNECTED' : 'DISCONNECTED',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: p.connected ? const Color(0xFF10B981) : Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          p.uuid.isNotEmpty ? 'UUID: ${p.uuid.substring(0, 13)}...' : 'Local Manager Node',
+                          style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.speed, size: 12, color: Colors.grey[400]),
+                            const SizedBox(width: 4),
+                            Text(
+                              p.pingMs > 0 ? '${p.pingMs} ms latency' : '0.4 ms (Local mesh)',
+                              style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          const SizedBox(height: 24),
+
+          // ── GlusterFS Volumes Section ─────────────────────────────────────
+          Row(
+            children: [
+              const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF10B981)),
+              const SizedBox(width: 8),
+              const Text(
+                'Replicated Storage Volumes',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Text(
+                '${_glusterVolumes.length} Managed Volumes',
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (_glusterVolumes.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.hub_outlined, size: 48, color: Color(0xFF10B981)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No GlusterFS Cluster Volumes Configured',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Create a 3-way replicated volume across your Centurions to enable container storage mobility.',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Replicated Volume (Replica 3)'),
+                    onPressed: _showCreateGlusterVolumeDialog,
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: _glusterVolumes.map((vol) => _buildVolumeCard(vol, isDark)).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlusterKpi(String label, String value, Color color, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: const TextStyle(fontSize: 12),
+        ),
+        Text(
+          value,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVolumeCard(GlusterVolumeModel vol, bool isDark) {
+    final isStarted = vol.status == 'Started';
+    final isMounted = vol.isMounted;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isStarted
+              ? const Color(0xFF10B981).withValues(alpha: 0.3)
+              : Colors.orange.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Volume Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.layers, color: isStarted ? const Color(0xFF10B981) : Colors.orange, size: 20),
+                const SizedBox(width: 10),
+                Text(
+                  vol.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Replica ${vol.replicaCount}${vol.arbiterCount > 0 ? ' (Arbiter 1)' : ''}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (isStarted ? const Color(0xFF10B981) : Colors.orange).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    vol.status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: isStarted ? const Color(0xFF10B981) : Colors.orange,
+                    ),
+                  ),
+                ),
+                if (isMounted) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.link, size: 12, color: Color(0xFF3B82F6)),
+                        const SizedBox(width: 4),
+                        Text(
+                          vol.mountPoint,
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const Spacer(),
+
+                // Action Buttons
+                IconButton(
+                  icon: const Icon(Icons.medical_services_outlined, size: 18, color: Color(0xFF10B981)),
+                  tooltip: 'Self-Heal & Split-Brain Diagnostics',
+                  onPressed: () => _showGlusterHealDialog(vol.name),
+                ),
+                if (!isMounted)
+                  IconButton(
+                    icon: const Icon(Icons.link, size: 18, color: Color(0xFF3B82F6)),
+                    tooltip: 'Auto-Mount to /var/contenedores across cluster',
+                    onPressed: () => _mountGlusterCluster(vol.name),
+                  ),
+                if (isStarted)
+                  IconButton(
+                    icon: const Icon(Icons.stop_circle_outlined, size: 18, color: Colors.orange),
+                    tooltip: 'Stop Volume',
+                    onPressed: () => _stopGlusterVolume(vol.name),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.play_circle_outline, size: 18, color: Color(0xFF10B981)),
+                    tooltip: 'Start Volume',
+                    onPressed: () => _startGlusterVolume(vol.name),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                  tooltip: 'Delete Volume',
+                  onPressed: () => _deleteGlusterVolume(vol.name),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Capacity Bar
+                if (vol.capacityTotal > 0) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Disk Capacity Usage', style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
+                      Text(
+                        '${vol.capacityPercent.toStringAsFixed(1)}% (${_formatBytes(vol.capacityUsed)} / ${_formatBytes(vol.capacityTotal)})',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: vol.capacityPercent / 100.0,
+                      backgroundColor: isDark ? const Color(0xFF334155) : Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        vol.capacityPercent > 85 ? Colors.redAccent : const Color(0xFF10B981),
+                      ),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Bricks Table
+                Text(
+                  'Storage Bricks (${vol.bricks.length})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+                  ),
+                  child: Table(
+                    columnWidths: const {
+                      0: FlexColumnWidth(2.5),
+                      1: FlexColumnWidth(3.5),
+                      2: FlexColumnWidth(1.2),
+                      3: FlexColumnWidth(1.5),
+                    },
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                        ),
+                        children: const [
+                          Padding(padding: EdgeInsets.all(8), child: Text('CENTURION HOST', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                          Padding(padding: EdgeInsets.all(8), child: Text('BRICK STORAGE PATH', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                          Padding(padding: EdgeInsets.all(8), child: Text('PORT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                          Padding(padding: EdgeInsets.all(8), child: Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                        ],
+                      ),
+                      ...vol.bricks.map((b) {
+                        return TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.dns_outlined, size: 14, color: Color(0xFF3B82F6)),
+                                  const SizedBox(width: 6),
+                                  Text(b.host, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: SelectableText(b.path, style: const TextStyle(fontFamily: 'Courier New', fontSize: 11.5)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Text('${b.port}', style: const TextStyle(fontSize: 12)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    b.online ? Icons.check_circle : Icons.error,
+                                    size: 14,
+                                    color: b.online ? const Color(0xFF10B981) : Colors.redAccent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    b.online ? 'Online' : 'Offline',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: b.online ? const Color(0xFF10B981) : Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Dialogs & Action Handlers for GlusterFS ───────────────────────────────
+
+  void _showCreateGlusterVolumeDialog() {
+    final nameCtrl = TextEditingController(text: 'gv_contenedores');
+    final brickDirCtrl = TextEditingController(text: '/data/glusterfs/brick1');
+    final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    int replicaCount = 3;
+    bool autoMount = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.hub, color: Color(0xFF10B981)),
+                  SizedBox(width: 8),
+                  Text('Create GlusterFS Replicated Volume'),
+                ],
+              ),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Volume Name',
+                          hintText: 'e.g. gv_contenedores',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        value: replicaCount,
+                        decoration: const InputDecoration(
+                          labelText: 'Replication Strategy',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 3, child: Text('Replica 3 — 3-Way Mirror (Recommended for 3 hosts)')),
+                          DropdownMenuItem(value: 2, child: Text('Replica 2 — 2-Way Mirror (Requires 2 hosts)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDlgState(() => replicaCount = val);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: brickDirCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Brick Storage Directory on Nodes',
+                          hintText: 'e.g. /data/glusterfs/brick1',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: mountPointCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Mount Point for Containers',
+                          hintText: 'e.g. /var/contenedores',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        title: const Text('Auto-Mount to Cluster Nodes'),
+                        subtitle: const Text('Automatically writes /etc/fstab and mounts on all 3 nodes on creation'),
+                        value: autoMount,
+                        activeColor: const Color(0xFF10B981),
+                        onChanged: (val) => setDlgState(() => autoMount = val),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ApiService.createGlusterVolume({
+                        'name': nameCtrl.text.trim(),
+                        'replica_count': replicaCount,
+                        'brick_dir': brickDirCtrl.text.trim(),
+                        'mount_point': mountPointCtrl.text.trim(),
+                        'auto_mount': autoMount,
+                        'force': true,
+                      });
+                      _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
+                      _loadAllData();
+                    } catch (e) {
+                      _showSnackBar('Failed to create volume: $e', isError: true);
+                    }
+                  },
+                  child: const Text('Create & Optimize Volume'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showProbePeerDialog() {
+    final hostCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.person_add, color: Color(0xFF3B82F6)),
+              SizedBox(width: 8),
+              Text('Probe GlusterFS Peer Node'),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: hostCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Target Node IP or Hostname',
+                hintText: 'e.g. 192.168.252.28',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+              onPressed: () async {
+                final host = hostCtrl.text.trim();
+                if (host.isEmpty) return;
+                Navigator.pop(ctx);
+                try {
+                  await ApiService.probeGlusterPeer(host);
+                  _showSnackBar('Successfully probed peer $host');
+                  _loadAllData();
+                } catch (e) {
+                  _showSnackBar('Failed to probe peer: $e', isError: true);
+                }
+              },
+              child: const Text('Probe Peer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showGlusterHealDialog(String volumeName) async {
+    try {
+      final report = await ApiService.fetchGlusterHealReport(volumeName);
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.medical_services_outlined, color: Color(0xFF10B981)),
+                const SizedBox(width: 8),
+                Text('Self-Heal Diagnostics: $volumeName'),
+              ],
+            ),
+            content: SizedBox(
+              width: 550,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: report.inSplitBrain
+                          ? Colors.redAccent.withValues(alpha: 0.15)
+                          : const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: report.inSplitBrain ? Colors.redAccent : const Color(0xFF10B981),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          report.inSplitBrain ? Icons.error : Icons.check_circle,
+                          color: report.inSplitBrain ? Colors.redAccent : const Color(0xFF10B981),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                report.statusSummary,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Pending files to heal: ${report.totalPending} | Split-Brain: ${report.inSplitBrain ? "YES" : "NO"}',
+                                style: TextStyle(fontSize: 11.5, color: isDark ? Colors.grey[300] : Colors.grey[700]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Brick Health & Entry Queue:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  if (report.bricksHealInfo.isEmpty)
+                    const Text('All 3 bricks report 0 pending entries (100% in sync).')
+                  else
+                    ...report.bricksHealInfo.map((b) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.dns, size: 14, color: Color(0xFF3B82F6)),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(b.brickSpec, style: const TextStyle(fontSize: 12, fontFamily: 'Courier New'))),
+                            Text('${b.numberOfEntries} pending', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+            actions: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.healing, size: 16),
+                label: const Text('Trigger Self-Heal Now'),
+                onPressed: () async {
+                  try {
+                    await ApiService.triggerGlusterSelfHeal(volumeName);
+                    _showSnackBar('Self-heal cycle initiated for $volumeName');
+                    Navigator.pop(ctx);
+                  } catch (e) {
+                    _showSnackBar('Failed to trigger self-heal: $e', isError: true);
+                  }
+                },
+              ),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      _showSnackBar('Failed to fetch heal report: $e', isError: true);
+    }
+  }
+
+  Future<void> _startGlusterVolume(String name) async {
+    try {
+      await ApiService.startGlusterVolume(name);
+      _showSnackBar('Volume $name started');
+      _loadAllData();
+    } catch (e) {
+      _showSnackBar('Failed to start volume: $e', isError: true);
+    }
+  }
+
+  Future<void> _stopGlusterVolume(String name) async {
+    try {
+      await ApiService.stopGlusterVolume(name, force: true);
+      _showSnackBar('Volume $name stopped');
+      _loadAllData();
+    } catch (e) {
+      _showSnackBar('Failed to stop volume: $e', isError: true);
+    }
+  }
+
+  Future<void> _deleteGlusterVolume(String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete GlusterFS Volume'),
+        content: Text('Are you sure you want to delete volume "$name"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService.deleteGlusterVolume(name);
+        _showSnackBar('Volume $name deleted');
+        _loadAllData();
+      } catch (e) {
+        _showSnackBar('Failed to delete volume: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _mountGlusterCluster(String name) async {
+    try {
+      await ApiService.mountGlusterCluster(name, mountPoint: '/var/contenedores');
+      _showSnackBar('Volume $name registered and mounted on /var/contenedores across cluster');
+      _loadAllData();
+    } catch (e) {
+      _showSnackBar('Failed to mount volume: $e', isError: true);
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (bytes > 0) ? (bytes.bitLength - 1) ~/ 10 : 0;
+    if (i >= suffixes.length) i = suffixes.length - 1;
+    double count = bytes / (1 << (i * 10));
+    return '${count.toStringAsFixed(1)} ${suffixes[i]}';
+  }
 }
+
 

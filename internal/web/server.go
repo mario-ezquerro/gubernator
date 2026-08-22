@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.29.0"
+var Version = "v2.30.0"
 
 func GetVersion() string {
 	for _, p := range []string{"/app/VERSION", "/data/VERSION", "VERSION", "../VERSION"} {
@@ -359,8 +359,22 @@ func StartDashboard() {
 		api.POST("/storage/mounts/mount-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountAllHandler)
 		api.POST("/storage/mounts/:id/mount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageMountActionHandler)
 		api.POST("/storage/mounts/:id/unmount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageUnmountActionHandler)
-		api.DELETE("/storage/mounts/:id", auth.RequireRole(auth.RoleAdmin), storageMountDeleteHandler)
 		api.GET("/storage/fstab/raw", storageFstabRawHandler)
+
+		// GlusterFS Cluster Storage Subsystem
+		api.GET("/storage/gluster/status", glusterStatusHandler)
+		api.GET("/storage/gluster/peers", glusterPeersHandler)
+		api.POST("/storage/gluster/peers/probe", auth.RequireRole(auth.RoleAdmin), glusterPeerProbeHandler)
+		api.DELETE("/storage/gluster/peers/:peer", auth.RequireRole(auth.RoleAdmin), glusterPeerDetachHandler)
+		api.GET("/storage/gluster/volumes", glusterVolumesHandler)
+		api.POST("/storage/gluster/volumes", auth.RequireRole(auth.RoleAdmin), glusterVolumeCreateHandler)
+		api.DELETE("/storage/gluster/volumes/:name", auth.RequireRole(auth.RoleAdmin), glusterVolumeDeleteHandler)
+		api.POST("/storage/gluster/volumes/:name/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStartHandler)
+		api.POST("/storage/gluster/volumes/:name/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStopHandler)
+		api.GET("/storage/gluster/volumes/:name/heal", glusterVolumeHealHandler)
+		api.POST("/storage/gluster/volumes/:name/heal", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeTriggerHealHandler)
+		api.POST("/storage/gluster/volumes/:name/mount-cluster", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeMountClusterHandler)
+		api.GET("/storage/gluster/diagnostics", glusterDiagnosticsHandler)
 		api.GET("/backups", backupsListHandler)
 		api.GET("/backups/download/:id", backupDownloadHandler)
 		api.GET("/backups/schedules", backupSchedulesListHandler)
@@ -4599,5 +4613,163 @@ func securityAdmissionEvaluateHandler(c *gin.Context) {
 	decision := security.EvaluateAdmission(req.Image, req.Labels)
 	c.JSON(http.StatusOK, gin.H{"decision": decision})
 }
+
+// ─── GlusterFS Cluster Storage Handlers ─────────────────────────────────────
+
+func glusterStatusHandler(c *gin.Context) {
+	installed, running, version := storage.CheckGlusterInstalled()
+	peers, _ := storage.GetGlusterPeers()
+	vols, _ := storage.GetGlusterVolumes()
+
+	c.JSON(http.StatusOK, gin.H{
+		"installed":      installed,
+		"running":        running,
+		"version":        version,
+		"peers_count":    len(peers),
+		"volumes_count":  len(vols),
+	})
+}
+
+func glusterPeersHandler(c *gin.Context) {
+	peers, err := storage.GetGlusterPeers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"peers": peers})
+}
+
+func glusterPeerProbeHandler(c *gin.Context) {
+	var req struct {
+		Hostname string `json:"hostname" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "hostname is required"})
+		return
+	}
+
+	if err := storage.ProbeGlusterPeer(req.Hostname); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully probed peer %s", req.Hostname)})
+}
+
+func glusterPeerDetachHandler(c *gin.Context) {
+	peer := c.Param("peer")
+	force := c.Query("force") == "true"
+	if err := storage.DetachGlusterPeer(peer, force); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Successfully detached peer %s", peer)})
+}
+
+func glusterVolumesHandler(c *gin.Context) {
+	vols, err := storage.GetGlusterVolumes()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"volumes": vols})
+}
+
+func glusterVolumeCreateHandler(c *gin.Context) {
+	var req storage.GlusterVolumeCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := storage.CreateGlusterVolume(req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": fmt.Sprintf("GlusterFS volume '%s' created and tuned successfully", req.Name),
+		"volume":  req.Name,
+	})
+}
+
+func glusterVolumeDeleteHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.DeleteGlusterVolume(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("GlusterFS volume '%s' deleted", name)})
+}
+
+func glusterVolumeStartHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.StartGlusterVolume(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("GlusterFS volume '%s' started", name)})
+}
+
+func glusterVolumeStopHandler(c *gin.Context) {
+	name := c.Param("name")
+	force := c.Query("force") == "true"
+	if err := storage.StopGlusterVolume(name, force); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("GlusterFS volume '%s' stopped", name)})
+}
+
+func glusterVolumeHealHandler(c *gin.Context) {
+	name := c.Param("name")
+	report, err := storage.GetGlusterHealReport(name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"heal_report": report})
+}
+
+func glusterVolumeTriggerHealHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.TriggerGlusterSelfHeal(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Self-heal triggered for volume '%s'", name)})
+}
+
+func glusterVolumeMountClusterHandler(c *gin.Context) {
+	name := c.Param("name")
+	var req struct {
+		MountPoint  string   `json:"mount_point"`
+		TargetNodes []string `json:"target_nodes"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	if req.MountPoint == "" {
+		req.MountPoint = "/var/contenedores"
+	}
+
+	if err := storage.MountGlusterToCluster(name, req.MountPoint, req.TargetNodes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     fmt.Sprintf("Volume '%s' registered and mounted on %s across cluster", name, req.MountPoint),
+		"mount_point": req.MountPoint,
+	})
+}
+
+func glusterDiagnosticsHandler(c *gin.Context) {
+	diag, err := storage.GetGlusterDiagnostics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"diagnostics": diag})
+}
+
 
 

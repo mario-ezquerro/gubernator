@@ -1317,6 +1317,140 @@ class ApiService {
     }
     throw Exception('Failed to fetch adoption stats: ${response.statusCode}');
   }
+
+  // ─── GlusterFS Cluster Storage Services ───────────────────────────────────
+
+  /// Fetches all peers in the GlusterFS trusted storage pool.
+  static Future<List<GlusterPeerModel>> fetchGlusterPeers() async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/peers'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['peers'] is List) {
+        return (data['peers'] as List).map((p) => GlusterPeerModel.fromJson(p)).toList();
+      }
+      return [];
+    }
+    throw Exception('Failed to fetch GlusterFS peers: ${response.statusCode}');
+  }
+
+  /// Probes a new node into the trusted storage pool.
+  static Future<void> probeGlusterPeer(String hostname) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/peers/probe'),
+      headers: authHeaders,
+      body: jsonEncode({'hostname': hostname}),
+    );
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to probe peer $hostname');
+    }
+  }
+
+  /// Detaches a peer from the trusted storage pool.
+  static Future<void> detachGlusterPeer(String hostname, {bool force = false}) async {
+    final url = force ? '/api/storage/gluster/peers/$hostname?force=true' : '/api/storage/gluster/peers/$hostname';
+    final response = await http.delete(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to detach peer $hostname');
+    }
+  }
+
+  /// Fetches all GlusterFS volumes.
+  static Future<List<GlusterVolumeModel>> fetchGlusterVolumes() async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/volumes'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['volumes'] is List) {
+        return (data['volumes'] as List).map((v) => GlusterVolumeModel.fromJson(v)).toList();
+      }
+      return [];
+    }
+    throw Exception('Failed to fetch GlusterFS volumes: ${response.statusCode}');
+  }
+
+  /// Creates and tunes a new GlusterFS volume.
+  static Future<void> createGlusterVolume(Map<String, dynamic> payload) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/volumes'),
+      headers: authHeaders,
+      body: jsonEncode(payload),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create GlusterFS volume');
+    }
+  }
+
+  /// Deletes a GlusterFS volume.
+  static Future<void> deleteGlusterVolume(String name) async {
+    final response = await http.delete(Uri.parse('/api/storage/gluster/volumes/$name'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete volume $name');
+    }
+  }
+
+  /// Starts a GlusterFS volume.
+  static Future<void> startGlusterVolume(String name) async {
+    final response = await http.post(Uri.parse('/api/storage/gluster/volumes/$name/start'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to start volume $name');
+    }
+  }
+
+  /// Stops a GlusterFS volume.
+  static Future<void> stopGlusterVolume(String name, {bool force = false}) async {
+    final url = force ? '/api/storage/gluster/volumes/$name/stop?force=true' : '/api/storage/gluster/volumes/$name/stop';
+    final response = await http.post(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to stop volume $name');
+    }
+  }
+
+  /// Fetches self-healing & split-brain diagnostics for a volume.
+  static Future<GlusterHealModel> fetchGlusterHealReport(String name) async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/volumes/$name/heal'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return GlusterHealModel.fromJson(data['heal_report']);
+    }
+    throw Exception('Failed to fetch heal report: ${response.statusCode}');
+  }
+
+  /// Triggers a manual self-heal cycle.
+  static Future<void> triggerGlusterSelfHeal(String name) async {
+    final response = await http.post(Uri.parse('/api/storage/gluster/volumes/$name/heal'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to trigger self-heal for $name');
+    }
+  }
+
+  /// Auto-mounts volume to /var/contenedores across cluster hosts.
+  static Future<void> mountGlusterCluster(String name, {String mountPoint = '/var/contenedores'}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/volumes/$name/mount-cluster'),
+      headers: authHeaders,
+      body: jsonEncode({'mount_point': mountPoint}),
+    );
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to mount volume $name across cluster');
+    }
+  }
+
+  /// Fetches cluster diagnostics for GlusterFS.
+  static Future<GlusterClusterDiagnosticsModel> fetchGlusterDiagnostics() async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/diagnostics'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return GlusterClusterDiagnosticsModel.fromJson(data['diagnostics']);
+    }
+    throw Exception('Failed to fetch Gluster diagnostics: ${response.statusCode}');
+  }
 }
 
 

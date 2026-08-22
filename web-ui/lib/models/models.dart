@@ -1581,5 +1581,273 @@ class ReleaseStatsModel {
   }
 }
 
+class GlusterPeerModel {
+  final String hostname;
+  final String uuid;
+  final String state;
+  final bool connected;
+  final bool isLocal;
+  final int pingMs;
+  final String checkedAt;
+
+  GlusterPeerModel({
+    required this.hostname,
+    this.uuid = '',
+    this.state = 'Peer in Cluster',
+    this.connected = true,
+    this.isLocal = false,
+    this.pingMs = 0,
+    this.checkedAt = '',
+  });
+
+  factory GlusterPeerModel.fromJson(Map<String, dynamic> json) {
+    return GlusterPeerModel(
+      hostname: json['hostname'] ?? '',
+      uuid: json['uuid'] ?? '',
+      state: json['state'] ?? 'Peer in Cluster',
+      connected: json['connected'] != false,
+      isLocal: json['is_local'] == true,
+      pingMs: (json['ping_ms'] as num?)?.toInt() ?? 0,
+      checkedAt: json['checked_at'] ?? '',
+    );
+  }
+}
+
+class GlusterBrickModel {
+  final String path;
+  final String host;
+  final String fullSpec;
+  final int port;
+  final bool online;
+  final int pid;
+  final int sizeTotal;
+  final int sizeFree;
+  final bool isArbiter;
+
+  GlusterBrickModel({
+    required this.path,
+    required this.host,
+    required this.fullSpec,
+    this.port = 49152,
+    this.online = true,
+    this.pid = 0,
+    this.sizeTotal = 0,
+    this.sizeFree = 0,
+    this.isArbiter = false,
+  });
+
+  factory GlusterBrickModel.fromJson(Map<String, dynamic> json) {
+    return GlusterBrickModel(
+      path: json['path'] ?? '',
+      host: json['host'] ?? '',
+      fullSpec: json['full_spec'] ?? '',
+      port: (json['port'] as num?)?.toInt() ?? 49152,
+      online: json['online'] != false,
+      pid: (json['pid'] as num?)?.toInt() ?? 0,
+      sizeTotal: (json['size_total'] as num?)?.toInt() ?? 0,
+      sizeFree: (json['size_free'] as num?)?.toInt() ?? 0,
+      isArbiter: json['is_arbiter'] == true,
+    );
+  }
+}
+
+class GlusterVolumeModel {
+  final String name;
+  final String uuid;
+  final String type;
+  final String status;
+  final int replicaCount;
+  final int arbiterCount;
+  final int numBricks;
+  final String transport;
+  final List<GlusterBrickModel> bricks;
+  final Map<String, String> options;
+  final bool isMounted;
+  final String mountPoint;
+  final int capacityTotal;
+  final int capacityUsed;
+  final int capacityFree;
+  final double capacityPercent;
+  final int pendingHeals;
+  final String createdAt;
+
+  GlusterVolumeModel({
+    required this.name,
+    this.uuid = '',
+    this.type = 'Replicate',
+    this.status = 'Started',
+    this.replicaCount = 3,
+    this.arbiterCount = 0,
+    this.numBricks = 3,
+    this.transport = 'tcp',
+    this.bricks = const [],
+    this.options = const {},
+    this.isMounted = true,
+    this.mountPoint = '/var/contenedores',
+    this.capacityTotal = 0,
+    this.capacityUsed = 0,
+    this.capacityFree = 0,
+    this.capacityPercent = 0.0,
+    this.pendingHeals = 0,
+    this.createdAt = '',
+  });
+
+  factory GlusterVolumeModel.fromJson(Map<String, dynamic> json) {
+    List<GlusterBrickModel> brickList = [];
+    if (json['bricks'] is List) {
+      brickList = (json['bricks'] as List)
+          .map((b) => GlusterBrickModel.fromJson(b as Map<String, dynamic>))
+          .toList();
+    }
+
+    Map<String, String> opts = {};
+    if (json['options'] is Map) {
+      json['options'].forEach((k, v) => opts[k.toString()] = v.toString());
+    }
+
+    return GlusterVolumeModel(
+      name: json['name'] ?? '',
+      uuid: json['uuid'] ?? '',
+      type: json['type'] ?? 'Replicate',
+      status: json['status'] ?? 'Started',
+      replicaCount: (json['replica_count'] as num?)?.toInt() ?? 3,
+      arbiterCount: (json['arbiter_count'] as num?)?.toInt() ?? 0,
+      numBricks: (json['num_bricks'] as num?)?.toInt() ?? brickList.length,
+      transport: json['transport'] ?? 'tcp',
+      bricks: brickList,
+      options: opts,
+      isMounted: json['is_mounted'] == true,
+      mountPoint: json['mount_point'] ?? '/var/contenedores',
+      capacityTotal: (json['capacity_total'] as num?)?.toInt() ?? 0,
+      capacityUsed: (json['capacity_used'] as num?)?.toInt() ?? 0,
+      capacityFree: (json['capacity_free'] as num?)?.toInt() ?? 0,
+      capacityPercent: (json['capacity_percent'] as num?)?.toDouble() ?? 0.0,
+      pendingHeals: (json['pending_heals'] as num?)?.toInt() ?? 0,
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
+class GlusterHealModel {
+  final String volumeName;
+  final int totalPending;
+  final bool inSplitBrain;
+  final int splitBrainCount;
+  final List<GlusterBrickHealModel> bricksHealInfo;
+  final String lastHealCheck;
+  final String statusSummary;
+
+  GlusterHealModel({
+    required this.volumeName,
+    this.totalPending = 0,
+    this.inSplitBrain = false,
+    this.splitBrainCount = 0,
+    this.bricksHealInfo = const [],
+    this.lastHealCheck = '',
+    this.statusSummary = 'Healthy — 0 pending entries',
+  });
+
+  factory GlusterHealModel.fromJson(Map<String, dynamic> json) {
+    List<GlusterBrickHealModel> bricks = [];
+    if (json['bricks_heal_info'] is List) {
+      bricks = (json['bricks_heal_info'] as List)
+          .map((b) => GlusterBrickHealModel.fromJson(b as Map<String, dynamic>))
+          .toList();
+    }
+
+    return GlusterHealModel(
+      volumeName: json['volume_name'] ?? '',
+      totalPending: (json['total_pending'] as num?)?.toInt() ?? 0,
+      inSplitBrain: json['in_split_brain'] == true,
+      splitBrainCount: (json['split_brain_count'] as num?)?.toInt() ?? 0,
+      bricksHealInfo: bricks,
+      lastHealCheck: json['last_heal_check'] ?? '',
+      statusSummary: json['status_summary'] ?? '',
+    );
+  }
+}
+
+class GlusterBrickHealModel {
+  final String brickSpec;
+  final String status;
+  final int numberOfEntries;
+  final List<String> pendingFiles;
+
+  GlusterBrickHealModel({
+    required this.brickSpec,
+    this.status = 'Connected',
+    this.numberOfEntries = 0,
+    this.pendingFiles = const [],
+  });
+
+  factory GlusterBrickHealModel.fromJson(Map<String, dynamic> json) {
+    List<String> files = [];
+    if (json['pending_files'] is List) {
+      files = (json['pending_files'] as List).map((f) => f.toString()).toList();
+    }
+    return GlusterBrickHealModel(
+      brickSpec: json['brick_spec'] ?? '',
+      status: json['status'] ?? 'Connected',
+      numberOfEntries: (json['number_of_entries'] as num?)?.toInt() ?? 0,
+      pendingFiles: files,
+    );
+  }
+}
+
+class GlusterClusterDiagnosticsModel {
+  final bool installed;
+  final bool daemonRunning;
+  final String version;
+  final int peersCount;
+  final int volumesCount;
+  final int onlineVolumes;
+  final bool quorumHealthy;
+  final int healthScore;
+  final List<String> issues;
+  final List<GlusterPeerModel> peers;
+  final String checkedAt;
+
+  GlusterClusterDiagnosticsModel({
+    this.installed = true,
+    this.daemonRunning = true,
+    this.version = '',
+    this.peersCount = 3,
+    this.volumesCount = 1,
+    this.onlineVolumes = 1,
+    this.quorumHealthy = true,
+    this.healthScore = 100,
+    this.issues = const [],
+    this.peers = const [],
+    this.checkedAt = '',
+  });
+
+  factory GlusterClusterDiagnosticsModel.fromJson(Map<String, dynamic> json) {
+    List<String> issueList = [];
+    if (json['issues'] is List) {
+      issueList = (json['issues'] as List).map((i) => i.toString()).toList();
+    }
+    List<GlusterPeerModel> peerList = [];
+    if (json['peers'] is List) {
+      peerList = (json['peers'] as List)
+          .map((p) => GlusterPeerModel.fromJson(p as Map<String, dynamic>))
+          .toList();
+    }
+    return GlusterClusterDiagnosticsModel(
+      installed: json['installed'] != false,
+      daemonRunning: json['daemon_running'] != false,
+      version: json['version'] ?? '',
+      peersCount: (json['peers_count'] as num?)?.toInt() ?? 0,
+      volumesCount: (json['volumes_count'] as num?)?.toInt() ?? 0,
+      onlineVolumes: (json['online_volumes'] as num?)?.toInt() ?? 0,
+      quorumHealthy: json['quorum_healthy'] != false,
+      healthScore: (json['health_score'] as num?)?.toInt() ?? 100,
+      issues: issueList,
+      peers: peerList,
+      checkedAt: json['checked_at'] ?? '',
+    );
+  }
+}
+
+
 
 

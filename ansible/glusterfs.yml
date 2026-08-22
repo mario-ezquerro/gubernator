@@ -1,0 +1,163 @@
+---
+# ==============================================================================
+# Gubernator GlusterFS Cluster Storage Provisioning Playbook
+# ==============================================================================
+# Installs GlusterFS Server & Client on all cluster nodes (Ubuntu/Debian/RHEL/Rocky/Fedora),
+# opens firewall ports, creates brick directories (/data/glusterfs/brick1), probes peers,
+# and deploys a 3-way replicated volume (Replica 3) mounted to /var/contenedores.
+#
+# Usage:
+#   ansible-playbook -i inventory.ini glusterfs.yml
+# ==============================================================================
+
+- name: 1. Install and Configure GlusterFS Server across Cluster
+  hosts: cluster
+  become: yes
+  tags: [glusterfs, storage]
+  vars:
+    gluster_brick_dir: "/data/glusterfs/brick1"
+    gluster_volume_name: "gv_contenedores"
+    gluster_mount_point: "/var/contenedores"
+  tasks:
+    - name: Install GlusterFS packages (Debian/Ubuntu)
+      apt:
+        name:
+          - glusterfs-server
+          - glusterfs-client
+          - attr
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install GlusterFS packages (RHEL/Rocky/AlmaLinux/Fedora)
+      dnf:
+        name:
+          - centos-release-gluster
+          - glusterfs-server
+          - glusterfs-fuse
+          - attr
+        state: present
+      when: ansible_os_family == "RedHat"
+      ignore_errors: yes
+
+    - name: Open GlusterFS Firewall Ports (UFW)
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "24007"
+        - "24008"
+        - "49152:49251"
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+
+    - name: Open GlusterFS Firewall Ports (Firewalld)
+      firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - "24007"
+        - "24008"
+        - "49152-49251"
+      when: ansible_os_family == "RedHat"
+      ignore_errors: yes
+
+    - name: Enable and start glusterd service
+      systemd:
+        name: glusterd
+        state: started
+        enabled: yes
+
+    - name: Create GlusterFS Brick Storage Directory
+      file:
+        path: "{{ gluster_brick_dir }}/{{ gluster_volume_name }}"
+        state: directory
+        mode: '0755'
+        recurse: yes
+
+    - name: Create Container Mobility Root Directory (/var/contenedores)
+      file:
+        path: "{{ gluster_mount_point }}"
+        state: directory
+        mode: '0755'
+
+- name: 2. Peer Discovery and Volume Creation from Manager
+  hosts: manager
+  become: yes
+  tags: [glusterfs, manager]
+  vars:
+    gluster_brick_dir: "/data/glusterfs/brick1"
+    gluster_volume_name: "gv_contenedores"
+    gluster_mount_point: "/var/contenedores"
+  tasks:
+    - name: Probe all Worker Centurions into Trusted Storage Pool
+      command: "gluster peer probe {{ hostvars[item]['ansible_host'] | default(item) }}"
+      loop: "{{ groups['workers'] }}"
+      register: peer_probe_res
+      changed_when: "'already in peer list' not in peer_probe_res.stdout"
+      failed_when: false
+
+    - name: Wait for peers to establish quorum
+      pause:
+        seconds: 5
+
+    - name: Check existing GlusterFS volumes
+      command: gluster volume list
+      register: vol_list
+      changed_when: false
+
+    - name: Build brick list for Replica 3
+      set_fact:
+        all_bricks: >-
+          {% set b_list = [] %}
+          {% for h in groups['cluster'] %}
+            {% set ip = hostvars[h]['ansible_host'] | default(h) %}
+            {% set _ = b_list.append(ip ~ ':' ~ gluster_brick_dir ~ '/' ~ gluster_volume_name) %}
+          {% endfor %}
+          {{ b_list }}
+
+    - name: Create Replicated Volume (Replica 3 / Arbiter)
+      command: >
+        gluster volume create {{ gluster_volume_name }}
+        replica {{ all_bricks | length }}
+        {{ all_bricks | join(' ') }}
+        force
+      when: gluster_volume_name not in vol_list.stdout_lines
+      register: vol_create_res
+      ignore_errors: yes
+
+    - name: Tune GlusterFS Performance Options for Containers
+      command: "gluster volume set {{ gluster_volume_name }} {{ item.key }} {{ item.val }}"
+      loop:
+        - { key: "performance.write-behind", val: "on" }
+        - { key: "performance.flush-behind", val: "on" }
+        - { key: "performance.stat-prefetch", val: "on" }
+        - { key: "network.ping-timeout", val: "10" }
+        - { key: "cluster.favorite-child-policy", val: "mtime" }
+      ignore_errors: yes
+
+    - name: Start GlusterFS Volume
+      command: "gluster volume start {{ gluster_volume_name }} force"
+      register: vol_start_res
+      changed_when: "'already started' not in vol_start_res.stderr"
+      ignore_errors: yes
+
+- name: 3. Auto-Mount GlusterFS Volume to /var/contenedores on all hosts
+  hosts: cluster
+  become: yes
+  tags: [glusterfs, mount]
+  vars:
+    gluster_volume_name: "gv_contenedores"
+    gluster_mount_point: "/var/contenedores"
+  tasks:
+    - name: Mount GlusterFS in /etc/fstab for zero-data-loss container persistence
+      mount:
+        path: "{{ gluster_mount_point }}"
+        src: "localhost:/{{ gluster_volume_name }}"
+        fstype: glusterfs
+        opts: "defaults,_netdev,backup-volfile-servers={{ groups['cluster'] | map('extract', hostvars, ['ansible_host']) | join(':') }}"
+        state: mounted
+      ignore_errors: yes

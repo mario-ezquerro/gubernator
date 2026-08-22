@@ -77,6 +77,7 @@ func init() {
 	versionCmd.Flags().BoolVarP(&showMetrics, "metrics", "m", false, "Display public adoption and GitHub release download metrics")
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(glusterCmd)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
