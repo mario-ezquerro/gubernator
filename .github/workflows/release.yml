@@ -15,6 +15,10 @@ jobs:
             goos: linux
             goarch: amd64
             ext: ''
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: ''
           - os: macos-latest
             goos: darwin
             goarch: amd64

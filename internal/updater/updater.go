@@ -3,10 +3,12 @@ package updater
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +147,7 @@ func parseTime(tStr string) time.Time {
 	return t
 }
 
-// ApplyClusterUpdate triggers image pulling, version updating, cache invalidation and node updates across the cluster.
+// ApplyClusterUpdate triggers binary downloading, container pulling, version updating, and node upgrades across the cluster.
 func ApplyClusterUpdate(targetVersion string) error {
 	slog.Info("🚀 Initiating cluster-wide update", "target_version", targetVersion)
 
@@ -173,20 +175,98 @@ func ApplyClusterUpdate(targetVersion string) error {
 		}
 	}
 
-	img := fmt.Sprintf("marioezquerro/gubernator:%s", targetVersion)
-	if targetVersion == "" || targetVersion == "latest" {
-		img = "marioezquerro/gubernator:latest"
-	}
-
-	slog.Info("pulling Docker image for update", "image", img)
-	exec.Command("docker", "pull", img).Run()
-
-	// Trigger asynchronous container restart so HTTP response completes cleanly before restart
+	// Trigger asynchronous cluster upgrade so HTTP response returns cleanly first
 	go func() {
-		time.Sleep(1500 * time.Millisecond)
-		slog.Info("restarting gbnt-manager container to complete auto-update...")
-		exec.Command("docker", "restart", "gbnt-manager").Run()
+		time.Sleep(1000 * time.Millisecond)
+
+		// 1. Download and replace binary on Manager host if running natively / systemd
+		goos := runtime.GOOS
+		goarch := runtime.GOARCH
+		binURL := fmt.Sprintf("https://github.com/mario-ezquerro/gubernator/releases/download/%s/gbnt-%s-%s", targetVersion, goos, goarch)
+		if goos == "windows" {
+			binURL += ".exe"
+		}
+
+		slog.Info("downloading release binary for host update", "url", binURL)
+		tmpPath := fmt.Sprintf("/tmp/gbnt-update-%d", time.Now().Unix())
+		if err := downloadFile(binURL, tmpPath); err == nil {
+			_ = os.Chmod(tmpPath, 0755)
+
+			// Target paths to overwrite
+			installPaths := []string{"/usr/local/bin/gbnt", "/app/gbnt"}
+			if execPath, err := os.Executable(); err == nil && execPath != "" {
+				installPaths = append([]string{execPath}, installPaths...)
+			}
+
+			for _, dst := range installPaths {
+				if _, err := os.Stat(dst); err == nil {
+					// Use atomic move/copy
+					_ = exec.Command("mv", "-f", tmpPath, dst).Run()
+					_ = os.Chmod(dst, 0755)
+					slog.Info("successfully replaced binary", "path", dst)
+					break
+				}
+			}
+			_ = os.Remove(tmpPath)
+		} else {
+			slog.Warn("could not direct-download binary, proceeding with Docker pull fallback", "err", err)
+		}
+
+		// 2. Upgrade worker Centurion nodes via remote execution
+		if db.DB != nil {
+			var workers []db.Node
+			if err := db.DB.Where("role = 'worker' AND status != 'left'").Find(&workers).Error; err == nil {
+				for _, w := range workers {
+					if w.IP != "" {
+						workerIP := w.IP
+						slog.Info("triggering remote update on worker node", "node_id", w.ID, "ip", workerIP)
+						go func(ip string) {
+							workerScript := fmt.Sprintf(
+								`curl -fsSL -o /tmp/gbnt-new "%s" && chmod +x /tmp/gbnt-new && mv -f /tmp/gbnt-new /usr/local/bin/gbnt && (systemctl restart gbnt-worker || true)`,
+								binURL,
+							)
+							_, _ = exec.Command("ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5", fmt.Sprintf("ubuntu@%s", ip), "sudo", "sh", "-c", workerScript).CombinedOutput()
+						}(workerIP)
+					}
+				}
+			}
+		}
+
+		// 3. If running in Docker container, pull new image and restart container
+		img := fmt.Sprintf("marioezquerro/gubernator:%s", targetVersion)
+		if targetVersion == "" || targetVersion == "latest" {
+			img = "marioezquerro/gubernator:latest"
+		}
+		_ = exec.Command("docker", "pull", img).Run()
+		_ = exec.Command("docker", "restart", "gbnt-manager").Run()
+
+		// 4. If running under systemd, restart the systemd service
+		time.Sleep(1000 * time.Millisecond)
+		slog.Info("restarting gbnt-manager service...")
+		_ = exec.Command("systemctl", "restart", "gbnt-manager").Run()
 	}()
 
 	return nil
+}
+
+func downloadFile(url, destPath string) error {
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad HTTP status: %s", resp.Status)
+	}
+
+	out, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }

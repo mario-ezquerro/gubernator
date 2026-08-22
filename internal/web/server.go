@@ -48,12 +48,9 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.31.0"
+var Version = "v2.32.0"
 
 func GetVersion() string {
-	if Version != "" && Version != "dev" && Version != "unknown" {
-		return Version
-	}
 	for _, p := range []string{"/data/VERSION", "/app/VERSION", "VERSION", "../VERSION"} {
 		if data, err := os.ReadFile(p); err == nil {
 			v := strings.TrimSpace(string(data))
@@ -62,7 +59,10 @@ func GetVersion() string {
 			}
 		}
 	}
-	return Version
+	if Version != "" && Version != "dev" && Version != "unknown" {
+		return Version
+	}
+	return "v2.32.0"
 }
 
 
