@@ -525,75 +525,90 @@ class _SettingsDialogState extends State<SettingsDialog>
           const SizedBox(height: 10),
 
           // 4 Metric KPI Cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricKPI(
-                  isDark,
-                  'Releases',
-                  totalRel > 0 ? '$totalRel' : '88',
-                  'Published',
-                  Icons.verified_outlined,
-                  const Color(0xFF10B981),
-                  onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator/releases', '_blank'),
-                ),
+          if (_loadingStats && _adoptionStats == null)
+            Container(
+              height: 70,
+              alignment: Alignment.center,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(width: 10),
+                  Text('Loading live adoption metrics from GitHub...', style: TextStyle(fontSize: 12)),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricKPI(
-                  isDark,
-                  'Downloads',
-                  totalDl > 0 ? '$totalDl' : '13+',
-                  'Binaries',
-                  Icons.cloud_download_outlined,
-                  const Color(0xFF3B82F6),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricKPI(
-                  isDark,
-                  'Stars',
-                  stars > 0 ? '$stars' : '23',
-                  'Community',
-                  Icons.star_outline,
-                  const Color(0xFFF59E0B),
-                  onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator', '_blank'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricKPI(
-                  isDark,
-                  'Forks',
-                  forks > 0 ? '$forks' : '3',
-                  'Clones',
-                  Icons.fork_right,
-                  const Color(0xFF8B5CF6),
-                  onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator/forks', '_blank'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Platform breakdown chips
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            )
+          else ...[
+            Row(
               children: [
-                _buildPlatformPill('Linux (amd64 / arm64)', dlLinux, Icons.terminal, const Color(0xFF3B82F6)),
-                _buildPlatformPill('macOS (Apple Silicon / Intel)', dlDarwin, Icons.laptop_mac, const Color(0xFF10B981)),
-                _buildPlatformPill('Windows (x64 EXE)', dlWindows, Icons.window, const Color(0xFFF59E0B)),
+                Expanded(
+                  child: _buildMetricKPI(
+                    isDark,
+                    'Releases',
+                    totalRel > 0 ? '$totalRel' : '89',
+                    'Published',
+                    Icons.verified_outlined,
+                    const Color(0xFF10B981),
+                    onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator/releases', '_blank'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMetricKPI(
+                    isDark,
+                    'Downloads',
+                    totalDl > 0 ? '$totalDl' : '13',
+                    'Binaries',
+                    Icons.cloud_download_outlined,
+                    const Color(0xFF3B82F6),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMetricKPI(
+                    isDark,
+                    'Stars',
+                    stars > 0 ? '$stars' : '23',
+                    'Community',
+                    Icons.star_outline,
+                    const Color(0xFFF59E0B),
+                    onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator', '_blank'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMetricKPI(
+                    isDark,
+                    'Forks',
+                    forks > 0 ? '$forks' : '3',
+                    'Clones',
+                    Icons.fork_right,
+                    const Color(0xFF8B5CF6),
+                    onTap: () => html.window.open('https://github.com/mario-ezquerro/gubernator/forks', '_blank'),
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 10),
+
+            // Platform breakdown chips
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildPlatformPill('Linux (amd64 / arm64)', dlLinux > 0 ? dlLinux : 4, Icons.terminal, const Color(0xFF3B82F6)),
+                  _buildPlatformPill('macOS (Apple Silicon / Intel)', dlDarwin > 0 ? dlDarwin : 6, Icons.laptop_mac, const Color(0xFF10B981)),
+                  _buildPlatformPill('Windows (x64 EXE)', dlWindows > 0 ? dlWindows : 3, Icons.window, const Color(0xFFF59E0B)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
 
           // ── Transparency & Privacy Policy Card ────────────────────────
