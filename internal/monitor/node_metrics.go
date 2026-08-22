@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/storage"
 )
 
 type prometheusQueryResponse struct {
@@ -75,6 +76,8 @@ func PopulateNodeMetrics(nodes []db.Node) {
 	memTotalMap := queryPrometheus("node_memory_MemTotal_bytes")
 	memAvailMap := queryPrometheus("node_memory_MemAvailable_bytes")
 	netMap := queryPrometheus("sum by (instance) (rate(node_network_receive_bytes_total[5m]) + rate(node_network_transmit_bytes_total[5m]))")
+	diskTotalMap := queryPrometheus("sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"})")
+	diskAvailMap := queryPrometheus("sum by (instance) (node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"})")
 
 	for i := range nodes {
 		n := &nodes[i]
@@ -108,6 +111,31 @@ func PopulateNodeMetrics(nodes []db.Node) {
 				n.MemPercent = (float64(n.MemUsedBytes) / float64(memTotal)) * 100
 			}
 		}
+
+		// Populate Host Disk space metrics
+		diskTotal := uint64(findVal(diskTotalMap))
+		diskAvail := uint64(findVal(diskAvailMap))
+
+		if diskTotal == 0 && (n.Role == "manager" || len(nodes) == 1) {
+			// Query local host filesystem directly
+			for _, checkPath := range []string{"/data", "/var/contenedores", "/", "."} {
+				if t, f, err := storage.GetDiskSpace(checkPath); err == nil && t > 0 {
+					diskTotal = t
+					diskAvail = f
+					break
+				}
+			}
+		}
+
+		if diskTotal > 0 {
+			n.DiskTotalBytes = diskTotal
+			n.DiskFreeBytes = diskAvail
+			if diskTotal >= diskAvail {
+				n.DiskUsedBytes = diskTotal - diskAvail
+				n.DiskPercent = (float64(n.DiskUsedBytes) / float64(diskTotal)) * 100
+			}
+		}
+
 		n.NetBps = findVal(netMap)
 	}
 }

@@ -334,6 +334,8 @@ func NodeListHandler(c *gin.Context) {
 		return
 	}
 
+	monitor.PopulateNodeMetrics(nodes)
+
 	c.JSON(http.StatusOK, NodeListResponse{
 		Nodes: nodes,
 	})

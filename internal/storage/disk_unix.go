@@ -13,3 +13,8 @@ func getDiskSpace(path string) (total uint64, free uint64, err error) {
 	free = stat.Bavail * uint64(stat.Bsize)
 	return total, free, nil
 }
+
+// GetDiskSpace returns total and free space in bytes for the specified path.
+func GetDiskSpace(path string) (total uint64, free uint64, err error) {
+	return getDiskSpace(path)
+}

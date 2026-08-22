@@ -15,6 +15,10 @@ class Node {
   final int memUsedBytes;
   final int memTotalBytes;
   final double memPercent;
+  final int diskUsedBytes;
+  final int diskTotalBytes;
+  final int diskFreeBytes;
+  final double diskPercent;
   final double netBps;
 
   final bool authMismatch;
@@ -34,6 +38,10 @@ class Node {
     this.memUsedBytes = 0,
     this.memTotalBytes = 0,
     this.memPercent = 0.0,
+    this.diskUsedBytes = 0,
+    this.diskTotalBytes = 0,
+    this.diskFreeBytes = 0,
+    this.diskPercent = 0.0,
     this.netBps = 0.0,
   });
 
@@ -53,6 +61,10 @@ class Node {
       memUsedBytes: (json['mem_used_bytes'] as num?)?.toInt() ?? 0,
       memTotalBytes: (json['mem_total_bytes'] as num?)?.toInt() ?? 0,
       memPercent: (json['mem_percent'] as num?)?.toDouble() ?? 0.0,
+      diskUsedBytes: (json['disk_used_bytes'] as num?)?.toInt() ?? 0,
+      diskTotalBytes: (json['disk_total_bytes'] as num?)?.toInt() ?? 0,
+      diskFreeBytes: (json['disk_free_bytes'] as num?)?.toInt() ?? 0,
+      diskPercent: (json['disk_percent'] as num?)?.toDouble() ?? 0.0,
       netBps: (json['net_bps'] as num?)?.toDouble() ?? 0.0,
     );
   }

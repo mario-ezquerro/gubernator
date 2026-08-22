@@ -73,6 +73,12 @@ func ExpandSLITemplate(tmpl, serviceName string) (errQuery, totalQuery string) {
 	case "grpc":
 		return `sum(rate(grpc_server_handled_total{grpc_code=~"Unknown|Internal|Unavailable|DataLoss"}[{{.window}}]))`,
 			`sum(rate(grpc_server_handled_total[{{.window}}]))`
+	case "host-disk", "disk-space":
+		return `sum(rate(node_filesystem_avail_bytes{mountpoint="/"}[{{.window}}]) < bool 0.15 * node_filesystem_size_bytes{mountpoint="/"})`,
+			`count(node_filesystem_size_bytes{mountpoint="/"})`
+	case "gluster-storage":
+		return `sum(rate(gbnt_gluster_volume_capacity_bytes{kind="free"}[{{.window}}]) < bool 0.15 * gbnt_gluster_volume_capacity_bytes{kind="total"})`,
+			`count(gbnt_gluster_volume_status)`
 	default:
 		return "", ""
 	}

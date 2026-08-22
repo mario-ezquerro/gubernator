@@ -19,6 +19,10 @@ type Node struct {
 	MemUsedBytes  uint64             `gorm:"-" json:"mem_used_bytes"`
 	MemTotalBytes uint64             `gorm:"-" json:"mem_total_bytes"`
 	MemPercent    float64            `gorm:"-" json:"mem_percent"`
+	DiskUsedBytes uint64             `gorm:"-" json:"disk_used_bytes"`
+	DiskTotalBytes uint64            `gorm:"-" json:"disk_total_bytes"`
+	DiskFreeBytes uint64             `gorm:"-" json:"disk_free_bytes"`
+	DiskPercent   float64            `gorm:"-" json:"disk_percent"`
 	NetBps        float64            `gorm:"-" json:"net_bps"`
 	CaddyStatus   string             `gorm:"type:text" json:"caddy_status"`
 	Caddyfile     string             `gorm:"type:text" json:"caddyfile"`

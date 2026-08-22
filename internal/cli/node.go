@@ -45,10 +45,17 @@ var nodeLsCmd = &cobra.Command{
 		// Basic JSON parsing
 		var data struct {
 			Nodes []struct {
-				ID     string `json:"id"`
-				IP     string `json:"ip"`
-				Role   string `json:"role"`
-				Status string `json:"status"`
+				ID            string  `json:"id"`
+				IP            string  `json:"ip"`
+				Role          string  `json:"role"`
+				Status        string  `json:"status"`
+				CpuPercent    float64 `json:"cpu_percent"`
+				MemUsedBytes  uint64  `json:"mem_used_bytes"`
+				MemTotalBytes uint64  `json:"mem_total_bytes"`
+				MemPercent    float64 `json:"mem_percent"`
+				DiskUsedBytes uint64  `json:"disk_used_bytes"`
+				DiskTotalBytes uint64 `json:"disk_total_bytes"`
+				DiskPercent   float64 `json:"disk_percent"`
 			} `json:"nodes"`
 		}
 
@@ -57,11 +64,36 @@ var nodeLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		formatBytes := func(b uint64) string {
+			if b == 0 {
+				return "0 B"
+			}
+			const unit = 1024
+			if b < unit {
+				return fmt.Sprintf("%d B", b)
+			}
+			div, exp := uint64(unit), 0
+			for n := b / unit; n >= unit; n /= unit {
+				div *= unit
+				exp++
+			}
+			return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+		}
+
 		// Print nicely formatted table
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tIP\tROLE\tSTATUS\t")
+		fmt.Fprintln(w, "ID\tIP\tROLE\tSTATUS\tCPU\tMEMORY\tHOST DISK\t")
 		for _, n := range data.Nodes {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", n.ID, n.IP, n.Role, n.Status)
+			cpuStr := fmt.Sprintf("%.1f%%", n.CpuPercent)
+			memStr := "-"
+			if n.MemTotalBytes > 0 {
+				memStr = fmt.Sprintf("%.0f%% (%s)", n.MemPercent, formatBytes(n.MemUsedBytes))
+			}
+			diskStr := "-"
+			if n.DiskTotalBytes > 0 {
+				diskStr = fmt.Sprintf("%.0f%% (%s / %s)", n.DiskPercent, formatBytes(n.DiskUsedBytes), formatBytes(n.DiskTotalBytes))
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", n.ID, n.IP, n.Role, n.Status, cpuStr, memStr, diskStr)
 		}
 		w.Flush()
 	},

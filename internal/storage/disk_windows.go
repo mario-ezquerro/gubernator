@@ -29,3 +29,8 @@ func getDiskSpace(path string) (total uint64, free uint64, err error) {
 	}
 	return totalNumberOfBytes, totalNumberOfFreeBytes, nil
 }
+
+// GetDiskSpace returns total and free space in bytes for the specified path on Windows.
+func GetDiskSpace(path string) (total uint64, free uint64, err error) {
+	return getDiskSpace(path)
+}

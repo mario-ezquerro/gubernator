@@ -775,6 +775,22 @@ services:
         'total': 'sum(rate(grpc_server_handled_total[{{.window}}]))',
         'label': 'gbnt.slo.template: "grpc"',
       },
+      {
+        'id': 'host-disk',
+        'title': 'Host Disk & Filesystem Capacity',
+        'desc': 'Triggers when Centurion node filesystem drops below 15% free capacity.',
+        'error': 'sum(rate(node_filesystem_avail_bytes{mountpoint="/"}[{{.window}}]) < bool 0.15 * node_filesystem_size_bytes{mountpoint="/"})',
+        'total': 'count(node_filesystem_size_bytes{mountpoint="/"})',
+        'label': 'gbnt.slo.template: "host-disk"',
+      },
+      {
+        'id': 'gluster-storage',
+        'title': 'GlusterFS Distributed Cluster Storage',
+        'desc': 'Tracks replicated cluster storage pools and alerts on low volume capacity.',
+        'error': 'sum(rate(gbnt_gluster_volume_capacity_bytes{kind="free"}[{{.window}}]) < bool 0.15 * gbnt_gluster_volume_capacity_bytes{kind="total"})',
+        'total': 'count(gbnt_gluster_volume_status)',
+        'label': 'gbnt.slo.template: "gluster-storage"',
+      },
     ];
 
     return ListView.separated(
@@ -1515,6 +1531,8 @@ class _SLOFormDialogState extends State<_SLOFormDialog> {
                             DropdownMenuItem(value: 'http-status', child: Text('http-status (HTTP 5xx Rate)')),
                             DropdownMenuItem(value: 'latency-p99', child: Text('latency-p99 (P99 Duration)')),
                             DropdownMenuItem(value: 'grpc', child: Text('grpc (gRPC Error Codes)')),
+                            DropdownMenuItem(value: 'host-disk', child: Text('host-disk (Node Disk Capacity < 15%)')),
+                            DropdownMenuItem(value: 'gluster-storage', child: Text('gluster-storage (GlusterFS Cluster Pool)')),
                             DropdownMenuItem(value: '', child: Text('Custom PromQL Queries')),
                           ],
                           onChanged: (val) {

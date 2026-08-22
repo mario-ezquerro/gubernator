@@ -189,6 +189,16 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Ansible Automated Provisioning:** Multi-distro automation in `ansible/glusterfs.yml` configuring `glusterfs-server`, firewall ports (`24007`, `24008`, `49152:49251`), brick directories, and default `gv_contenedores` volume.
 * **Full CLI Parity:** Dedicated commands for `gbnt gluster status`, `gbnt gluster peer [ls|probe|detach]`, `gbnt gluster volume [ls|create|start|stop|rm|heal]`, and `gbnt gluster mount`.
 
+### 23. Host Disk Monitoring, SLO Alerting & Storage Capacity Dashboarding (`v2.31.0`)
+* **Centurion Host Disk Space Telemetry:** Live cluster-wide discovery and metric collection for host root filesystems and container mountpoints (`DiskTotalBytes`, `DiskUsedBytes`, `DiskFreeBytes`, `DiskPercent`) querying Prometheus node-exporter with direct POSIX filesystem stat fallbacks.
+* **Overview & Dashboard Storage Cards:** Real-time Cluster Host Storage capacity KPI card and per-node inline disk usage thermometers (color-coded green < 70%, warning amber 70-85%, critical red > 85%) on Overview and Centurions views.
+* **Centurions DataTable & Node Details:** Dedicated `HOST DISK (USED / TOTAL)` column and hardware capacity breakdown with free GB indicators and low-space warning badges.
+* **Google SRE Sloth SLO Engine Disk Templates:** Native `host-disk` (`Node Disk Capacity < 15%`) and `gluster-storage` (`GlusterFS Cluster Pool`) SLO templates and multi-window burn rate alert rules (`HostDiskFillingFast`, `HostDiskSpaceCritical`).
+* **Grafana SRE Dashboard Panels:** Dedicated `Centurions — Host Disk Space Usage %` LCD bar gauge in `gubernator_dashboard.json`.
+* **Full CLI Parity:** Enhanced `gbnt node ls` displaying live CPU, Memory, and Host Disk usage (`% (used / total)`) across all Centurion nodes.
+
+
+
 
 
 

@@ -82,6 +82,10 @@ class OverviewPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 800;
+        final totalClusterDisk = state.nodes.fold<int>(0, (acc, n) => acc + n.diskTotalBytes);
+        final usedClusterDisk = state.nodes.fold<int>(0, (acc, n) => acc + n.diskUsedBytes);
+        final diskUsagePercent = totalClusterDisk > 0 ? (usedClusterDisk / totalClusterDisk * 100) : 0.0;
+
         final cards = [
           _AnimatedStatCard(
             label: 'Nodes',
@@ -101,6 +105,13 @@ class OverviewPage extends StatelessWidget {
             value: '${state.services.length}',
             icon: Icons.miscellaneous_services,
             color: const Color(0xFF06B6D4),
+          ),
+          _AnimatedStatCard(
+            label: 'Host Storage',
+            value: totalClusterDisk > 0 ? _formatBytes(usedClusterDisk) : 'Healthy',
+            subtitle: totalClusterDisk > 0 ? '/ ${_formatBytes(totalClusterDisk)} (${diskUsagePercent.toStringAsFixed(0)}%)' : 'Cluster Pool',
+            icon: Icons.storage_outlined,
+            color: diskUsagePercent > 85 ? const Color(0xFFEF4444) : const Color(0xFF0EA5E9),
           ),
           _AnimatedStatCard(
             label: 'Tasks',
@@ -396,6 +407,19 @@ class OverviewPage extends StatelessWidget {
                         Expanded(
                           flex: 2,
                           child: _buildInlineThermometer('RAM', '${_formatBytes(n.memUsedBytes)}/${_formatBytes(n.memTotalBytes)} (${n.memPercent.toStringAsFixed(0)}%)', n.memPercent, const Color(0xFF10B981), theme),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Inline Host Disk Thermometer Bar
+                        Expanded(
+                          flex: 2,
+                          child: _buildInlineThermometer(
+                            'DISK',
+                            n.diskTotalBytes > 0 ? '${_formatBytes(n.diskUsedBytes)}/${_formatBytes(n.diskTotalBytes)} (${n.diskPercent.toStringAsFixed(0)}%)' : '0 B',
+                            n.diskPercent,
+                            n.diskPercent > 85 ? const Color(0xFFEF4444) : (n.diskPercent > 70 ? const Color(0xFFF59E0B) : const Color(0xFF0EA5E9)),
+                            theme,
+                          ),
                         ),
                         const SizedBox(width: 10),
 
