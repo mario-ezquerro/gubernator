@@ -947,6 +947,89 @@ class ApiService {
     throw Exception('Failed to fetch storage volumes: ${response.statusCode}');
   }
 
+  /// Creates a new Docker named volume on target nodes.
+  static Future<String> createDockerVolume({
+    required String name,
+    required String targetNode,
+    String driver = 'local',
+    Map<String, String>? driverOpts,
+    Map<String, String>? labels,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/volumes/docker'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'name': name,
+        'driver': driver,
+        'target_node': targetNode,
+        if (driverOpts != null && driverOpts.isNotEmpty) 'driver_opts': driverOpts,
+        if (labels != null && labels.isNotEmpty) 'labels': labels,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['message'] ?? 'Volume created successfully';
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to create volume (${response.statusCode})');
+  }
+
+  /// Deletes a Docker volume from target node(s).
+  static Future<String> deleteDockerVolume({
+    required String name,
+    String? targetNode,
+    bool force = false,
+  }) async {
+    final queryParams = <String, String>{
+      'name': name,
+      if (targetNode != null && targetNode.isNotEmpty) 'node': targetNode,
+      if (force) 'force': 'true',
+    };
+    final uri = Uri.parse('/api/storage/volumes/docker').replace(queryParameters: queryParams);
+    final response = await http.delete(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['message'] ?? 'Volume deleted successfully';
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to delete volume (${response.statusCode})');
+  }
+
+  /// Prunes unused / dangling Docker volumes on target node(s).
+  static Future<String> pruneDockerVolumes({String? targetNode}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/volumes/docker/prune'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'target_node': targetNode ?? 'all',
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['report'] ?? data['message'] ?? 'Pruned successfully';
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to prune volumes (${response.statusCode})');
+  }
+
+  /// Inspects a Docker volume and returns JSON metadata.
+  static Future<Map<String, dynamic>> inspectDockerVolume({
+    required String name,
+    String? targetNode,
+  }) async {
+    final queryParams = <String, String>{
+      'name': name,
+      if (targetNode != null && targetNode.isNotEmpty) 'node': targetNode,
+    };
+    final uri = Uri.parse('/api/storage/volumes/docker/inspect').replace(queryParameters: queryParams);
+    final response = await http.get(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    final errData = jsonDecode(response.body);
+    throw Exception(errData['error'] ?? 'Failed to inspect volume (${response.statusCode})');
+  }
+
   /// Creates a new storage directory on target nodes.
   static Future<bool> createStorageDirectory({
     required String path,

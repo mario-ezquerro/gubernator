@@ -229,12 +229,16 @@ type StorageVolume struct {
 	ID            string    `gorm:"primaryKey;type:varchar(100)" json:"id"`
 	Name          string    `gorm:"type:varchar(255);not null" json:"name"`
 	Type          string    `gorm:"type:varchar(50);not null" json:"type"` // "shared_pool", "docker_named", "host_bind"
+	Driver        string    `gorm:"type:varchar(50);default:'local'" json:"driver"`
 	SourcePath    string    `gorm:"type:text;not null" json:"source_path"`
 	TargetPath    string    `gorm:"type:text" json:"target_path"`
 	StackID       string    `gorm:"type:varchar(255);index" json:"stack_id"`
 	StackName     string    `gorm:"type:varchar(255)" json:"stack_name"`
 	ServiceName   string    `gorm:"type:varchar(255)" json:"service_name"`
 	NodeID        string    `gorm:"type:varchar(255);default:'all'" json:"node_id"`
+	NodeIP        string    `gorm:"type:varchar(50)" json:"node_ip"`
+	NodeHostname  string    `gorm:"type:varchar(100)" json:"node_hostname"`
+	NodeRole      string    `gorm:"type:varchar(50)" json:"node_role"`
 	SizeBytes     int64     `json:"size_bytes"`
 	SizeFormatted string    `gorm:"-" json:"size_formatted"`
 	IsShared      bool      `json:"is_shared"`

@@ -957,12 +957,16 @@ class StorageVolumeModel {
   final String id;
   final String name;
   final String type; // "shared_pool", "docker_named", "host_bind"
+  final String driver;
   final String sourcePath;
   final String targetPath;
   final String stackId;
   final String stackName;
   final String serviceName;
   final String nodeId;
+  final String nodeIp;
+  final String nodeHostname;
+  final String nodeRole;
   final int sizeBytes;
   final String sizeFormatted;
   final bool isShared;
@@ -972,12 +976,16 @@ class StorageVolumeModel {
     required this.id,
     required this.name,
     required this.type,
+    this.driver = 'local',
     required this.sourcePath,
     required this.targetPath,
     this.stackId = '',
     this.stackName = '',
     this.serviceName = '',
     this.nodeId = 'cluster',
+    this.nodeIp = '',
+    this.nodeHostname = '',
+    this.nodeRole = '',
     this.sizeBytes = 0,
     this.sizeFormatted = '0 B',
     this.isShared = false,
@@ -989,12 +997,16 @@ class StorageVolumeModel {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       type: json['type'] ?? 'host_bind',
+      driver: json['driver'] ?? 'local',
       sourcePath: json['source_path'] ?? '',
       targetPath: json['target_path'] ?? '',
       stackId: json['stack_id'] ?? '',
       stackName: json['stack_name'] ?? '',
       serviceName: json['service_name'] ?? '',
       nodeId: json['node_id'] ?? 'cluster',
+      nodeIp: json['node_ip'] ?? '',
+      nodeHostname: json['node_hostname'] ?? '',
+      nodeRole: json['node_role'] ?? '',
       sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
       sizeFormatted: json['size_formatted'] ?? '0 B',
       isShared: json['is_shared'] == true,

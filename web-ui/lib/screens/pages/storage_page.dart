@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -541,6 +542,456 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
     );
   }
 
+  void _showCreateDockerVolumeDialog({String? initialNode}) {
+    final nameCtrl = TextEditingController();
+    String selectedDriver = 'local';
+    String selectedTargetNode = (initialNode != null && initialNode != 'ALL') ? initialNode : 'all';
+    bool isCreating = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.layers, color: Color(0xFF10B981)),
+                  SizedBox(width: 8),
+                  Text('Create Docker Named Volume'),
+                ],
+              ),
+              content: SizedBox(
+                width: 540,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Create a native Docker volume on a specific Centurion host or replicated across all cluster nodes for use in Docker Compose stacks.',
+                      style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Volume Name *',
+                        hintText: 'e.g. postgres_data, redis_cache, app_uploads',
+                        prefixIcon: Icon(Icons.dns_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedDriver,
+                      decoration: const InputDecoration(
+                        labelText: 'Volume Driver',
+                        prefixIcon: Icon(Icons.settings_suggest_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'local', child: Text('local — Default POSIX Docker driver')),
+                        DropdownMenuItem(value: 'glusterfs', child: Text('glusterfs — Multi-node distributed storage driver')),
+                        DropdownMenuItem(value: 'nfs', child: Text('nfs — Remote network filesystem driver')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedDriver = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedTargetNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Centurion Host(s)',
+                        prefixIcon: Icon(Icons.hub_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('🌐 All Nodes in Cluster (Cluster-Wide Creation)'),
+                        ),
+                        const DropdownMenuItem(
+                          value: 'node-local-manager',
+                          child: Text('👑 Manager (Local Host)'),
+                        ),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedTargetNode = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: isCreating
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.add, size: 18),
+                  label: const Text('Create Volume'),
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) {
+                            _showSnackBar('Volume name is required', isError: true);
+                            return;
+                          }
+                          setDlgState(() => isCreating = true);
+                          try {
+                            final msg = await ApiService.createDockerVolume(
+                              name: name,
+                              targetNode: selectedTargetNode,
+                              driver: selectedDriver,
+                            );
+                            Navigator.pop(ctx);
+                            _showSnackBar('✅ $msg');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isCreating = false);
+                            _showSnackBar('❌ Failed to create volume: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPruneDockerVolumesDialog() {
+    String selectedTargetNode = 'all';
+    bool isPruning = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.cleaning_services_outlined, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Prune Unused Docker Volumes'),
+                ],
+              ),
+              content: SizedBox(
+                width: 500,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 22),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Warning: This action will permanently remove all unused and dangling Docker volumes on the chosen host(s). Active volumes in running containers will not be deleted.',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedTargetNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Centurion Host(s)',
+                        prefixIcon: Icon(Icons.hub_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('🌐 All Nodes in Cluster (Manager + Workers)'),
+                        ),
+                        const DropdownMenuItem(
+                          value: 'node-local-manager',
+                          child: Text('👑 Manager (Local Host)'),
+                        ),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDlgState(() => selectedTargetNode = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.deepOrange),
+                  icon: isPruning
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.delete_sweep, size: 18),
+                  label: const Text('Prune Volumes'),
+                  onPressed: isPruning
+                      ? null
+                      : () async {
+                          setDlgState(() => isPruning = true);
+                          try {
+                            final report = await ApiService.pruneDockerVolumes(targetNode: selectedTargetNode);
+                            Navigator.pop(ctx);
+                            _showSnackBar('🧹 $report');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isPruning = false);
+                            _showSnackBar('❌ Failed to prune volumes: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showComposeSnippetDialog(StorageVolumeModel v) {
+    final snippet = '''# Docker Compose Blueprint for Volume: ${v.name}
+# Centurion Residency: ${v.nodeHostname.isNotEmpty ? v.nodeHostname : v.nodeId} (${v.nodeIp.isNotEmpty ? v.nodeIp : "Cluster"})
+
+services:
+  app_service:
+    image: nginx:alpine
+    volumes:
+      - ${v.name}:/app/data
+
+volumes:
+  ${v.name}:
+    external: true
+''';
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.code, color: Color(0xFF38BDF8)),
+              const SizedBox(width: 8),
+              Text('Compose Snippet: ${v.name}'),
+            ],
+          ),
+          content: SizedBox(
+            width: 540,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Copy this YAML definition into your stack docker-compose.yml to bind this volume to any container service:',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: SelectableText(
+                    snippet,
+                    style: const TextStyle(
+                      fontFamily: 'Courier New',
+                      fontSize: 12.5,
+                      color: Color(0xFF38BDF8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy Snippet'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: snippet));
+                Navigator.pop(ctx);
+                _showSnackBar('📋 Docker Compose snippet copied to clipboard');
+              },
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showInspectDockerVolumeDialog(StorageVolumeModel v) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return FutureBuilder<Map<String, dynamic>>(
+          future: ApiService.inspectDockerVolume(name: v.name, targetNode: v.nodeId),
+          builder: (context, snapshot) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFF38BDF8)),
+                  const SizedBox(width: 8),
+                  Text('Inspect Volume: ${v.name}'),
+                ],
+              ),
+              content: SizedBox(
+                width: 560,
+                height: 380,
+                child: snapshot.connectionState == ConnectionState.waiting
+                    ? const Center(child: CircularProgressIndicator())
+                    : snapshot.hasError
+                        ? Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.redAccent)))
+                        : SingleChildScrollView(
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F172A),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF334155)),
+                              ),
+                              child: SelectableText(
+                                JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}),
+                                style: const TextStyle(
+                                  fontFamily: 'Courier New',
+                                  fontSize: 12,
+                                  color: Color(0xFF38BDF8),
+                                ),
+                              ),
+                            ),
+                          ),
+              ),
+              actions: [
+                if (snapshot.hasData)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('Copy JSON'),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(
+                        text: JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}),
+                      ));
+                      _showSnackBar('📋 Volume inspection copied to clipboard');
+                    },
+                  ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _deleteDockerVolumeConfirm(StorageVolumeModel v) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.delete_forever, color: Colors.redAccent),
+                  SizedBox(width: 8),
+                  Text('Delete Docker Volume'),
+                ],
+              ),
+              content: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Are you sure you want to permanently delete Docker volume "${v.name}"?'),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• Host: ${v.nodeHostname.isNotEmpty ? v.nodeHostname : v.nodeId} (${v.nodeIp})', style: const TextStyle(fontSize: 12)),
+                          Text('• Mountpoint: ${v.sourcePath}', style: const TextStyle(fontSize: 12)),
+                          Text('• Size: ${v.sizeFormatted}', style: const TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  icon: isDeleting
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.delete, size: 16),
+                  label: const Text('Delete Volume'),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDlgState(() => isDeleting = true);
+                          try {
+                            final msg = await ApiService.deleteDockerVolume(name: v.name, targetNode: v.nodeId);
+                            Navigator.pop(ctx);
+                            _showSnackBar('🗑️ $msg');
+                            _loadAllData();
+                          } catch (e) {
+                            setDlgState(() => isDeleting = false);
+                            _showSnackBar('❌ Failed to delete volume: $e', isError: true);
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showCreateBackupDialog({String? initialStackId, String? initialVolumeName, String? initialSourcePath}) {
     final nameCtrl = TextEditingController(text: initialVolumeName != null ? 'backup-$initialVolumeName' : '');
     final sourcePathCtrl = TextEditingController(text: initialSourcePath ?? '');
@@ -1053,10 +1504,13 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
           v.name.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
           v.stackName.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
           v.sourcePath.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
-          v.nodeId.toLowerCase().contains(_volumeSearch.toLowerCase());
+          v.nodeId.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
+          v.nodeHostname.toLowerCase().contains(_volumeSearch.toLowerCase()) ||
+          v.nodeIp.toLowerCase().contains(_volumeSearch.toLowerCase());
       final matchesType = _volumeTypeFilter == 'ALL' || v.type == _volumeTypeFilter;
       final matchesNode = _volumeNodeFilter == 'ALL' ||
           v.nodeId == _volumeNodeFilter ||
+          v.nodeIp == _volumeNodeFilter ||
           (v.nodeId == 'cluster' && _volumeNodeFilter == 'ALL');
       return matchesSearch && matchesType && matchesNode;
     }).toList();
@@ -1068,7 +1522,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search volumes by name, stack, source path, or node...',
+                  hintText: 'Search volumes by name, host IP, stack, or path...',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   isDense: true,
                   filled: true,
@@ -1078,7 +1532,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 onChanged: (val) => setState(() => _volumeSearch = val),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             // Volume Type Dropdown
             DropdownButton<String>(
               value: _volumeTypeFilter,
@@ -1092,7 +1546,7 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 if (val != null) setState(() => _volumeTypeFilter = val);
               },
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             // Node Filter Dropdown
             DropdownButton<String>(
               value: _volumeNodeFilter,
@@ -1113,18 +1567,30 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                 }
               },
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.cleaning_services_outlined, size: 16, color: Colors.orange),
+              label: const Text('Prune Unused', style: TextStyle(color: Colors.orange)),
+              onPressed: _showPruneDockerVolumesDialog,
+            ),
+            const SizedBox(width: 6),
             OutlinedButton.icon(
               icon: const Icon(Icons.folder_open, size: 16),
               label: const Text('Explore (ls)'),
               onPressed: () => _showDirectoryExplorerDialog('/var/contenedores', initialNode: _volumeNodeFilter),
             ),
+            const SizedBox(width: 6),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.create_new_folder, size: 16),
+              label: const Text('New Dir'),
+              onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
+            ),
             const SizedBox(width: 8),
             FilledButton.icon(
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-              icon: const Icon(Icons.create_new_folder, size: 16),
-              label: const Text('New Directory'),
-              onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
+              icon: const Icon(Icons.add_box, size: 16),
+              label: const Text('Create Docker Volume'),
+              onPressed: () => _showCreateDockerVolumeDialog(initialNode: _volumeNodeFilter),
             ),
           ],
         ),
@@ -1141,11 +1607,23 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                         'No volumes found matching the filter criteria.',
                         style: TextStyle(color: Colors.grey[400], fontSize: 14),
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.create_new_folder, size: 16),
-                        label: const Text('Create Storage Directory'),
-                        onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                            icon: const Icon(Icons.add_box, size: 16),
+                            label: const Text('Create Docker Volume'),
+                            onPressed: () => _showCreateDockerVolumeDialog(initialNode: _volumeNodeFilter),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.create_new_folder, size: 16),
+                            label: const Text('Create Storage Directory'),
+                            onPressed: () => _showCreateDirectoryDialog(initialNode: _volumeNodeFilter),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1156,6 +1634,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                   itemBuilder: (ctx, i) {
                     final v = filtered[i];
                     final isDockerVol = v.type == 'docker_named';
+                    final isManager = v.nodeRole == 'MANAGER' || v.nodeId == 'node-local-manager';
+                    final isWorker = v.nodeRole == 'WORKER' || v.nodeId.startsWith('node-');
 
                     return Card(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1170,8 +1650,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 color: v.isShared
                                     ? const Color(0xFF10B981).withValues(alpha: 0.15)
                                     : isDockerVol
-                                        ? Colors.cyanAccent.withValues(alpha: 0.15)
-                                        : Colors.blueAccent.withValues(alpha: 0.15),
+                                        ? Colors.blue.withValues(alpha: 0.15)
+                                        : Colors.grey.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -1183,8 +1663,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 color: v.isShared
                                     ? const Color(0xFF10B981)
                                     : isDockerVol
-                                        ? Colors.cyanAccent
-                                        : Colors.blueAccent,
+                                        ? Colors.lightBlueAccent
+                                        : Colors.grey,
                                 size: 24,
                               ),
                             ),
@@ -1197,6 +1677,61 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                     children: [
                                       Text(v.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                       const SizedBox(width: 8),
+                                      // Centurion Host Chip
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: isManager
+                                              ? Colors.purple.withValues(alpha: 0.2)
+                                              : isWorker
+                                                  ? Colors.cyan.withValues(alpha: 0.2)
+                                                  : const Color(0xFF10B981).withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: isManager
+                                                ? Colors.purpleAccent.withValues(alpha: 0.4)
+                                                : isWorker
+                                                    ? Colors.cyanAccent.withValues(alpha: 0.4)
+                                                    : const Color(0xFF10B981).withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              isManager
+                                                  ? Icons.military_tech
+                                                  : isWorker
+                                                      ? Icons.computer
+                                                      : Icons.hub,
+                                              size: 13,
+                                              color: isManager
+                                                  ? Colors.purpleAccent
+                                                  : isWorker
+                                                      ? Colors.cyanAccent
+                                                      : const Color(0xFF10B981),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              isManager
+                                                  ? '👑 MANAGER: ${v.nodeHostname.isNotEmpty ? v.nodeHostname : "Local"} (${v.nodeIp.isNotEmpty ? v.nodeIp : "127.0.0.1"})'
+                                                  : isWorker
+                                                      ? '💻 CENTURION: ${v.nodeHostname.isNotEmpty ? v.nodeHostname : v.nodeId} (${v.nodeIp})'
+                                                      : '🌐 ALL CENTURIONS (Shared)',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: isManager
+                                                    ? Colors.purpleAccent
+                                                    : isWorker
+                                                        ? Colors.cyanAccent
+                                                        : const Color(0xFF10B981),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
                                       // Type chip
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1204,57 +1739,37 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                           color: v.isShared
                                               ? const Color(0xFF10B981).withValues(alpha: 0.2)
                                               : isDockerVol
-                                                  ? Colors.cyan.withValues(alpha: 0.2)
+                                                  ? Colors.blue.withValues(alpha: 0.2)
                                                   : Colors.grey.withValues(alpha: 0.2),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
                                           v.type.toUpperCase().replaceAll('_', ' '),
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.bold,
                                             color: v.isShared
                                                 ? const Color(0xFF10B981)
                                                 : isDockerVol
-                                                    ? Colors.cyanAccent
+                                                    ? Colors.lightBlueAccent
                                                     : Colors.grey[400],
                                           ),
                                         ),
                                       ),
-                                      if (v.isShared) ...[
+                                      if (v.driver.isNotEmpty) ...[
                                         const SizedBox(width: 6),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.amber.withValues(alpha: 0.2),
+                                            color: Colors.blueGrey.withValues(alpha: 0.2),
                                             borderRadius: BorderRadius.circular(6),
                                           ),
-                                          child: const Text(
-                                            'SHARED POOL',
-                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                                          child: Text(
+                                            'driver: ${v.driver}',
+                                            style: TextStyle(fontSize: 9.5, color: isDark ? Colors.blueGrey[200] : Colors.blueGrey[800]),
                                           ),
                                         ),
                                       ],
-                                      const SizedBox(width: 6),
-                                      // Node residency chip
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.indigo.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.computer, size: 10, color: Colors.indigoAccent),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              v.nodeId.isNotEmpty ? v.nodeId : 'cluster',
-                                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigoAccent),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
@@ -1276,13 +1791,11 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purpleAccent, fontSize: 13),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
-                              icon: const Icon(Icons.folder_open, size: 15),
+                              icon: const Icon(Icons.folder_open, size: 14),
                               label: const Text('Files (ls)'),
-                              style: OutlinedButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                              ),
+                              style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
                               onPressed: () {
                                 _showDirectoryExplorerDialog(
                                   v.sourcePath,
@@ -1290,9 +1803,25 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 );
                               },
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.code, size: 14, color: Color(0xFF38BDF8)),
+                              label: const Text('Compose', style: TextStyle(color: Color(0xFF38BDF8))),
+                              style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                              onPressed: () => _showComposeSnippetDialog(v),
+                            ),
+                            if (isDockerVol) ...[
+                              const SizedBox(width: 6),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.info_outline, size: 14),
+                                label: const Text('Inspect'),
+                                style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                                onPressed: () => _showInspectDockerVolumeDialog(v),
+                              ),
+                            ],
+                            const SizedBox(width: 6),
                             FilledButton.icon(
-                              icon: const Icon(Icons.camera_alt, size: 15),
+                              icon: const Icon(Icons.camera_alt, size: 14),
                               label: const Text('Snapshot'),
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF10B981),
@@ -1306,6 +1835,15 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                                 );
                               },
                             ),
+                            if (isDockerVol) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                                tooltip: 'Delete Docker Volume',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => _deleteDockerVolumeConfirm(v),
+                              ),
+                            ],
                           ],
                         ),
                       ),

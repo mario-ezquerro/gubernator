@@ -208,6 +208,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **GlusterFS Database Auto-Migration & Persistence:** Registered `ManagedGlusterVolume` into central SQLite GORM database migrations, ensuring newly created GlusterFS volumes persist reliably and display across GlusterFS and Mounts dashboards.
 * **Clean Network Mount Volfile Parsing:** Sanitized dynamic cluster peer discovery to pass clean IP addresses to `backup-volfile-servers` mount options, eliminating invalid character syntax errors.
 
+### 26. Storage Volumes Centurion Host Residency, Docker Volume Lifecycle & Compose Snippets (`v2.34.0`)
+* **Prominent Centurion Host Badges:** Every volume card prominently renders its physical Centurion residency host badge with node icon, role, hostname, and IP (`👑 MANAGER: gbnt-manager (192.168.252.27)`, `💻 CENTURION: gbnt-worker1 (192.168.252.25)`, `🌐 ALL CENTURIONS (Shared Mesh)`).
+* **Multi-Node Docker Volume Creator (`docker volume create`):** Dedicated creation modal and REST API (`POST /api/storage/volumes/docker`) supporting custom drivers (`local`, `glusterfs`, `nfs`), driver options, labels, and target Centurion host selection (`All Nodes (Cluster-Wide)`, `Manager`, specific workers).
+* **Cluster-Wide Volume Pruning (`docker volume prune -f`):** Dedicated toolbar action and REST API (`POST /api/storage/volumes/docker/prune`) to purge dangling/unused volumes across all cluster nodes or targeted hosts with reclaimed disk space reports.
+* **Volume Deletion & Inspection (`docker volume rm / inspect`):** Safe volume deletion modal (`DELETE /api/storage/volumes/docker`) and JSON inspection modal (`GET /api/storage/volumes/docker/inspect`) for Docker volumes.
+* **Interactive Docker Compose Blueprint Generator:** One-click "Compose" action generating copyable `docker-compose.yml` service volume binding and external volume blocks for instant integration into Compose Studio.
+
 
 
 

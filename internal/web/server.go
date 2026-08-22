@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.33.0"
+var Version = "v2.34.0"
 
 func GetVersion() string {
 	if Version != "" && Version != "dev" && Version != "unknown" {
@@ -62,7 +62,7 @@ func GetVersion() string {
 			}
 		}
 	}
-	return "v2.33.0"
+	return "v2.34.0"
 }
 
 
@@ -355,6 +355,10 @@ func StartDashboard() {
 
 		// Storage & Backups Subsystem (The Granaries)
 		api.GET("/storage/volumes", storageVolumesHandler)
+		api.POST("/storage/volumes/docker", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageDockerVolumeCreateHandler)
+		api.DELETE("/storage/volumes/docker", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageDockerVolumeDeleteHandler)
+		api.POST("/storage/volumes/docker/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageDockerVolumePruneHandler)
+		api.GET("/storage/volumes/docker/inspect", storageDockerVolumeInspectHandler)
 		api.POST("/storage/directories", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageDirectoryCreateHandler)
 		api.GET("/storage/directories/ls", storageDirectoryListHandler)
 		api.GET("/storage/pools/health", storagePoolsHealthHandler)
@@ -4101,6 +4105,75 @@ func storageVolumesHandler(c *gin.Context) {
 		"total":   len(vols),
 		"node":    node,
 	})
+}
+
+func storageDockerVolumeCreateHandler(c *gin.Context) {
+	var req storage.CreateDockerVolumeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	nodes, err := storage.CreateDockerVolume(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Docker volume '%s' created successfully on %s", req.Name, strings.Join(nodes, ", ")),
+		"volume":  req.Name,
+		"nodes":   nodes,
+	})
+}
+
+func storageDockerVolumeDeleteHandler(c *gin.Context) {
+	name := c.Query("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "volume name parameter is required"})
+		return
+	}
+	node := c.Query("node")
+	force := c.Query("force") == "true"
+	nodes, err := storage.DeleteDockerVolume(name, node, force)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Docker volume '%s' deleted successfully from %s", name, strings.Join(nodes, ", ")),
+		"volume":  name,
+		"nodes":   nodes,
+	})
+}
+
+func storageDockerVolumePruneHandler(c *gin.Context) {
+	var req struct {
+		TargetNode string `json:"target_node"`
+	}
+	c.ShouldBindJSON(&req)
+	report, err := storage.PruneDockerVolumes(req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Unused Docker volumes pruned successfully",
+		"report":  report,
+	})
+}
+
+func storageDockerVolumeInspectHandler(c *gin.Context) {
+	name := c.Query("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "volume name parameter is required"})
+		return
+	}
+	node := c.Query("node")
+	info, err := storage.InspectDockerVolume(name, node)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, info)
 }
 
 type createDirectoryRequest struct {
