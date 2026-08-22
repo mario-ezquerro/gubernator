@@ -51,7 +51,10 @@ var flutterFS embed.FS
 var Version = "v2.30.0"
 
 func GetVersion() string {
-	for _, p := range []string{"/app/VERSION", "/data/VERSION", "VERSION", "../VERSION"} {
+	if Version != "" && Version != "dev" && Version != "unknown" {
+		return Version
+	}
+	for _, p := range []string{"/data/VERSION", "/app/VERSION", "VERSION", "../VERSION"} {
 		if data, err := os.ReadFile(p); err == nil {
 			v := strings.TrimSpace(string(data))
 			if v != "" {

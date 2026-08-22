@@ -107,11 +107,15 @@ You can run specific parts of the provisioning using Ansible tags:
 | `workers` | Deploy only Worker systemd services and cluster join |
 | `wave_scope` | Deploy Wave Scope topology container |
 | `monitoring` / `sre` | Deploy Grafana, Loki, Prometheus, cAdvisor, and Jaeger |
+| `glusterfs` / `storage` | Deploy 3-way replicated GlusterFS cluster storage (Replica 3) and auto-mount to `/var/contenedores` |
 
 ### Examples:
 ```bash
 # Only prepare system prerequisites and Docker on all nodes:
 ansible-playbook -i inventory.ini site.yml --tags bootstrap,docker
+
+# Deploy GlusterFS 3-Way Replicated Cluster Storage:
+ansible-playbook -i inventory.ini glusterfs.yml
 
 # Only deploy Gubernator services and join the cluster:
 ansible-playbook -i inventory.ini site.yml --tags gubernator

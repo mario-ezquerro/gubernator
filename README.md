@@ -490,6 +490,19 @@ docker run -d \
 * `gbnt monitor status` - Show status of monitoring containers.
 * `gbnt monitor stop` - Stop and remove all monitoring containers.
 
+**GlusterFS Cluster Storage (The Granaries)**
+* `gbnt gluster status` - Cluster storage health score, peer mesh, and daemon state.
+* `gbnt gluster peer-ls` - List all nodes in the GlusterFS trusted storage pool.
+* `gbnt gluster probe [host]` - Add a new node to the trusted storage pool.
+* `gbnt gluster detach [host]` - Detach a node from the trusted storage pool.
+* `gbnt gluster ls` - List all replicated volumes, capacity usage, and mount points.
+* `gbnt gluster create [name]` - Create and tune a 3-way mirrored volume (`Replica 3`).
+* `gbnt gluster start [name]` - Start a GlusterFS volume.
+* `gbnt gluster stop [name]` - Stop a GlusterFS volume.
+* `gbnt gluster heal [name]` - Self-healing diagnostics, split-brain status, and manual sync.
+* `gbnt gluster mount [name]` - Auto-mount volume to `/var/contenedores` across all cluster nodes.
+* `gbnt gluster rm [name]` - Delete a GlusterFS volume.
+
 **System**
 * `gbnt serve` - Start the Manager daemon.
 * `gbnt health` - Check local process health (used as Docker HEALTHCHECK).
