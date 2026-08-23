@@ -4041,32 +4041,7 @@ volumes:
                             IconButton(
                               icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
                               tooltip: 'Delete Mount & Clean /etc/fstab',
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Delete Mount Entry'),
-                                    content: Text('Are you sure you want to delete mount "${m.name}" (${m.mountPoint})?\n\nThis will unmount the filesystem and remove its entry from /etc/fstab.'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                      FilledButton(
-                                        style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                                        onPressed: () => Navigator.pop(ctx, true),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  try {
-                                    await ApiService.deleteStorageMount(m.id);
-                                    _showSnackBar('Mount deleted successfully');
-                                    _loadAllData();
-                                  } catch (e) {
-                                    _showSnackBar('Failed to delete mount: $e', isError: true);
-                                  }
-                                }
-                              },
+                              onPressed: () => _showDeleteMountDialog(m),
                             ),
                           ],
                         ),
@@ -4956,6 +4931,31 @@ volumes:
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
+              if (_glusterVolumes.isNotEmpty) ...[
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                  label: const Text('Delete All Volumes'),
+                  onPressed: _showDeleteAllGlusterVolumesDialog,
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('New Volume', style: TextStyle(fontSize: 12)),
+                  onPressed: _showCreateGlusterVolumeDialog,
+                ),
+                const SizedBox(width: 12),
+              ],
               Text(
                 '${_glusterVolumes.length} Managed Volumes',
                 style: TextStyle(fontSize: 12, color: Colors.grey[400]),
@@ -5173,7 +5173,7 @@ volumes:
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
                   tooltip: 'Delete Volume',
-                  onPressed: () => _deleteGlusterVolume(vol.name),
+                  onPressed: () => _showDeleteGlusterVolumeDialog(vol),
                 ),
               ],
             ),
@@ -5444,7 +5444,12 @@ volumes:
 
   void _showMountClusterDialog(String volumeName) {
     String selectedTarget = 'all';
-    final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    final matchingMount = _mounts.firstWhere(
+      (m) => m.fsType == 'glusterfs' && (m.device.contains(volumeName) || m.name.contains(volumeName)),
+      orElse: () => StorageMountModel.empty(),
+    );
+    final initialPath = matchingMount.mountPoint.isNotEmpty ? matchingMount.mountPoint : '/var/contenedores';
+    final mountPointCtrl = TextEditingController(text: initialPath);
     bool isMounting = false;
 
     showDialog(
@@ -5457,22 +5462,63 @@ volumes:
                 children: [
                   const Icon(Icons.folder_shared_outlined, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
-                  Text('Mount $volumeName to Cluster'),
+                  Text('Mount / Recreate Mount Point: $volumeName'),
                 ],
               ),
               content: SizedBox(
-                width: 480,
+                width: 520,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (matchingMount.id.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline, size: 18, color: Color(0xFF10B981)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Currently mapped to: ${matchingMount.mountPoint} (Target: ${matchingMount.targetNode})',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     TextField(
                       controller: mountPointCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Mount Directory Point',
                         hintText: '/var/contenedores',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.folder_open, size: 20),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        const Text('Quick targets: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        ...['/var/contenedores', '/mnt/gluster', '/data/gluster', '/var/shared'].map((p) {
+                          return ActionChip(
+                            label: Text(p, style: const TextStyle(fontSize: 10.5)),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              setDlgState(() => mountPointCtrl.text = p);
+                            },
+                          );
+                        }),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -5500,7 +5546,7 @@ volumes:
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Writes /etc/fstab entry and mounts volume to enable zero-downtime container mobility.',
+                      'Automates directory creation (0777), updates /etc/fstab, executes mount -a, and syncs cluster storage.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -5513,7 +5559,7 @@ volumes:
                   icon: isMounting
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.link, size: 16),
-                  label: const Text('Mount Volume'),
+                  label: Text(matchingMount.id.isNotEmpty ? 'Remount / Update fstab' : 'Mount Volume to fstab'),
                   onPressed: isMounting
                       ? null
                       : () async {
@@ -5536,6 +5582,261 @@ volumes:
                             _showSnackBar('❌ Failed to mount volume: $e', isError: true);
                           }
                         },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteGlusterVolumeDialog(GlusterVolumeModel vol) {
+    bool unmountCluster = true;
+    final matchingMount = _mounts.firstWhere(
+      (m) => m.fsType == 'glusterfs' && (m.device.contains(vol.name) || m.name.contains(vol.name)),
+      orElse: () => StorageMountModel.empty(),
+    );
+    final isMounted = vol.isMounted || matchingMount.id.isNotEmpty;
+    final mountPoint = matchingMount.mountPoint.isNotEmpty ? matchingMount.mountPoint : (vol.mountPoint.isNotEmpty ? vol.mountPoint : '/var/contenedores');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.delete_forever, color: Colors.redAccent),
+                  const SizedBox(width: 8),
+                  Text('Delete GlusterFS Volume: ${vol.name}'),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you sure you want to delete GlusterFS volume "${vol.name}" (${vol.type}, ${vol.bricks.length} bricks)?',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    if (isMounted)
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.link, size: 18, color: Colors.amber),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Active Mount Point: $mountPoint across cluster hosts in /etc/fstab.',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: unmountCluster,
+                      activeColor: const Color(0xFF10B981),
+                      title: const Text(
+                        'Unmount and clean /etc/fstab across cluster nodes',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: const Text(
+                        'Safely unmounts filesystem and cleans mount entries on all Centurion hosts.',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      onChanged: (val) => setDlgState(() => unmountCluster = val ?? true),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ApiService.deleteGlusterVolume(vol.name, unmount: unmountCluster);
+                      _showSnackBar('Volume ${vol.name} deleted successfully');
+                      _loadAllData();
+                    } catch (e) {
+                      _showSnackBar('Failed to delete volume: $e', isError: true);
+                    }
+                  },
+                  child: const Text('Delete Volume'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteAllGlusterVolumesDialog() {
+    bool unmountAll = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                  SizedBox(width: 8),
+                  Text('Delete ALL GlusterFS Volumes'),
+                ],
+              ),
+              content: SizedBox(
+                width: 500,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you sure you want to delete ALL ${_glusterVolumes.length} GlusterFS cluster volumes (${_glusterVolumes.map((v) => v.name).join(', ')})?',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'This action will permanently stop and remove all GlusterFS distributed volumes across all Centurion nodes.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: unmountAll,
+                      activeColor: Colors.redAccent,
+                      title: const Text(
+                        'Unmount all GlusterFS filesystems and clean /etc/fstab across all hosts',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: const Text(
+                        'Safely unmounts and removes all GlusterFS mount records from cluster nodes.',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      onChanged: (val) => setDlgState(() => unmountAll = val ?? true),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ApiService.deleteAllGlusterVolumes(unmount: unmountAll);
+                      _showSnackBar('All GlusterFS volumes deleted successfully');
+                      _loadAllData();
+                    } catch (e) {
+                      _showSnackBar('Failed to delete all volumes: $e', isError: true);
+                    }
+                  },
+                  child: const Text('Delete All Volumes'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteMountDialog(StorageMountModel m) {
+    final isGluster = m.fsType == 'glusterfs' || m.name.contains('gluster') || m.device.contains('localhost:');
+    String glusterVolName = m.name.replaceFirst('gluster-', '');
+    if (m.device.startsWith('localhost:')) {
+      glusterVolName = m.device.replaceFirst('localhost:', '');
+    }
+    bool deleteUnderlyingGluster = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(isGluster ? Icons.warning_amber_rounded : Icons.delete_outline,
+                      color: isGluster ? Colors.orange : Colors.redAccent),
+                  const SizedBox(width: 8),
+                  Text(isGluster ? 'Delete GlusterFS Mount: ${m.name}' : 'Delete Mount Entry: ${m.name}'),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you sure you want to delete mount "${m.name}" (${m.mountPoint}) on target hosts (${m.targetNode})?\n\nThis will unmount the filesystem and remove its entry from /etc/fstab.',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    if (isGluster) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: deleteUnderlyingGluster,
+                          activeColor: Colors.redAccent,
+                          title: Text(
+                            'Also permanently STOP & DELETE underlying GlusterFS volume "$glusterVolName"',
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                          ),
+                          subtitle: const Text(
+                            'If unchecked, the volume stays intact in GlusterFS and only the fstab mount point is unmounted and removed.',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          onChanged: (val) => setDlgState(() => deleteUnderlyingGluster = val ?? false),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ApiService.deleteStorageMount(m.id, deleteGluster: deleteUnderlyingGluster);
+                      _showSnackBar(deleteUnderlyingGluster
+                          ? 'Mount and GlusterFS volume "$glusterVolName" deleted successfully'
+                          : 'Mount removed from fstab');
+                      _loadAllData();
+                    } catch (e) {
+                      _showSnackBar('Failed to delete mount: $e', isError: true);
+                    }
+                  },
+                  child: const Text('Delete'),
                 ),
               ],
             );
@@ -5717,34 +6018,6 @@ volumes:
       _loadAllData();
     } catch (e) {
       _showSnackBar('Failed to stop volume: $e', isError: true);
-    }
-  }
-
-  Future<void> _deleteGlusterVolume(String name) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete GlusterFS Volume'),
-        content: Text('Are you sure you want to delete volume "$name"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await ApiService.deleteGlusterVolume(name);
-        _showSnackBar('Volume $name deleted');
-        _loadAllData();
-      } catch (e) {
-        _showSnackBar('Failed to delete volume: $e', isError: true);
-      }
     }
   }
 

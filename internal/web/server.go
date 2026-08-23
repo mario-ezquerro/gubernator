@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.37.0"
+var Version = "v2.38.0"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -62,7 +62,7 @@ func GetVersion() string {
 			return v
 		}
 	}
-	return "v2.37.0"
+	return "v2.38.0"
 }
 
 
@@ -379,6 +379,8 @@ func StartDashboard() {
 		api.DELETE("/storage/gluster/peers/:peer", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterPeerDetachHandler)
 		api.GET("/storage/gluster/volumes", glusterVolumesHandler)
 		api.POST("/storage/gluster/volumes", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeCreateHandler)
+		api.DELETE("/storage/gluster/volumes", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeDeleteAllHandler)
+		api.POST("/storage/gluster/volumes/delete-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeDeleteAllHandler)
 		api.DELETE("/storage/gluster/volumes/:name", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeDeleteHandler)
 		api.POST("/storage/gluster/volumes/:name/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStartHandler)
 		api.POST("/storage/gluster/volumes/:name/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStopHandler)
@@ -4300,7 +4302,8 @@ func storageUnmountActionHandler(c *gin.Context) {
 
 func storageMountDeleteHandler(c *gin.Context) {
 	id := c.Param("id")
-	if err := storage.DeleteStorageMount(id); err != nil {
+	deleteGluster := c.Query("delete_gluster") == "true"
+	if err := storage.DeleteStorageMount(id, deleteGluster); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -4866,11 +4869,21 @@ func glusterVolumeCreateHandler(c *gin.Context) {
 
 func glusterVolumeDeleteHandler(c *gin.Context) {
 	name := c.Param("name")
-	if err := storage.DeleteGlusterVolume(name); err != nil {
+	unmount := c.DefaultQuery("unmount", "true") == "true"
+	if err := storage.DeleteGlusterVolume(name, unmount); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("GlusterFS volume '%s' deleted", name)})
+}
+
+func glusterVolumeDeleteAllHandler(c *gin.Context) {
+	unmount := c.DefaultQuery("unmount", "true") == "true"
+	if err := storage.DeleteAllGlusterVolumes(unmount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "All GlusterFS volumes deleted successfully"})
 }
 
 func glusterVolumeStartHandler(c *gin.Context) {

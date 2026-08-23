@@ -81,45 +81,6 @@ func ListStorageMounts() ([]db.StorageMount, error) {
 		if err := db.DB.Order("created_at desc").Find(&mounts).Error; err != nil {
 			return nil, err
 		}
-
-		// Ensure all GlusterFS cluster volumes are registered in Network Mounts
-		var managedGluster []db.ManagedGlusterVolume
-		if err := db.DB.Find(&managedGluster).Error; err == nil {
-			for _, gv := range managedGluster {
-				found := false
-				for _, m := range mounts {
-					if m.FSType == "glusterfs" && (strings.Contains(m.Device, gv.Name) || m.Name == fmt.Sprintf("gluster-%s", gv.Name)) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					mountPoint := gv.MountPoint
-					if mountPoint == "" {
-						mountPoint = "/var/contenedores"
-					}
-					newMount := db.StorageMount{
-						ID:          fmt.Sprintf("mount-gluster-%s", gv.Name),
-						Name:        fmt.Sprintf("gluster-%s", gv.Name),
-						Device:      fmt.Sprintf("localhost:%s", gv.Name),
-						MountPoint:  mountPoint,
-						FSType:      "glusterfs",
-						Options:     "defaults,_netdev",
-						Dump:        0,
-						Pass:        0,
-						TargetNode:  "all",
-						AutoMount:   gv.AutoMounted,
-						Status:      "mounted",
-						IsActive:    true,
-						Description: fmt.Sprintf("GlusterFS cluster storage volume %s", gv.Name),
-						CreatedAt:   gv.CreatedAt,
-						UpdatedAt:   time.Now(),
-					}
-					_ = db.DB.Save(&newMount)
-					mounts = append(mounts, newMount)
-				}
-			}
-		}
 	}
 
 	activeMounts := getActiveMountPoints()
@@ -276,7 +237,11 @@ func CreateStorageMount(req CreateMountRequest) (*db.StorageMount, error) {
 	}
 
 	if db.DB != nil {
-		if err := db.DB.Create(&mountEntry).Error; err != nil {
+		var existing db.StorageMount
+		if err := db.DB.First(&existing, "name = ? OR (device = ? AND mount_point = ?)", req.Name, req.Device, req.MountPoint).Error; err == nil {
+			mountEntry.ID = existing.ID
+		}
+		if err := db.DB.Save(&mountEntry).Error; err != nil {
 			return nil, fmt.Errorf("failed to save mount to database: %w", err)
 		}
 	}
@@ -351,17 +316,45 @@ func UnmountStorageEntry(id string, targetNodeOverride ...string) error {
 }
 
 // DeleteStorageMount unmounts, removes fstab entry, and deletes from DB on target nodes.
-func DeleteStorageMount(id string) error {
+// If the mount is a GlusterFS volume and deleteGlusterVol is true, it also deletes the underlying Gluster volume.
+func DeleteStorageMount(id string, deleteGlusterVol ...bool) error {
 	var m db.StorageMount
 	if db.DB != nil {
 		if err := db.DB.First(&m, "id = ?", id).Error; err != nil {
-			return fmt.Errorf("mount not found: %w", err)
+			if err := db.DB.First(&m, "name = ?", id).Error; err != nil {
+				return fmt.Errorf("mount not found: %w", err)
+			}
 		}
 	}
 
+	deleteGluster := false
+	if len(deleteGlusterVol) > 0 {
+		deleteGluster = deleteGlusterVol[0]
+	}
+
+	// 1. Unmount and delete fstab entries on target nodes
 	ips := GetTargetHostIPs(m.TargetNode)
 	for _, ip := range ips {
 		_ = DeleteMountFromTargetNode(m, ip)
+	}
+
+	// 2. Coordinated GlusterFS handling
+	if m.FSType == "glusterfs" || strings.HasPrefix(m.Name, "gluster-") || strings.HasPrefix(m.Device, "localhost:") {
+		volName := strings.TrimPrefix(m.Name, "gluster-")
+		if strings.HasPrefix(m.Device, "localhost:") {
+			volName = strings.TrimPrefix(m.Device, "localhost:")
+		}
+
+		if deleteGluster {
+			slog.Info("deleting underlying gluster volume from mount deletion", "volume", volName)
+			_ = DeleteGlusterVolume(volName, false)
+		} else if db.DB != nil {
+			// Update ManagedGlusterVolume to mark auto_mounted = false
+			db.DB.Model(&db.ManagedGlusterVolume{}).Where("name = ?", volName).Updates(map[string]interface{}{
+				"auto_mounted": false,
+				"updated_at":   time.Now().UTC(),
+			})
+		}
 	}
 
 	if db.DB != nil {

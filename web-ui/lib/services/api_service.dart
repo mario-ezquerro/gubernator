@@ -1251,8 +1251,10 @@ class ApiService {
   }
 
   /// Deletes a mount and cleans up /etc/fstab across target nodes.
-  static Future<bool> deleteStorageMount(String id) async {
-    final response = await http.delete(Uri.parse('/api/storage/mounts/$id'), headers: authHeaders);
+  /// If deleteGluster is true, also deletes the underlying GlusterFS volume.
+  static Future<bool> deleteStorageMount(String id, {bool deleteGluster = false}) async {
+    final url = deleteGluster ? '/api/storage/mounts/$id?delete_gluster=true' : '/api/storage/mounts/$id';
+    final response = await http.delete(Uri.parse(url), headers: authHeaders);
     return response.statusCode == 200;
   }
 
@@ -1541,12 +1543,23 @@ class ApiService {
     }
   }
 
-  /// Deletes a GlusterFS volume.
-  static Future<void> deleteGlusterVolume(String name) async {
-    final response = await http.delete(Uri.parse('/api/storage/gluster/volumes/$name'), headers: authHeaders);
+  /// Deletes a GlusterFS volume and optionally unmounts from /etc/fstab across cluster nodes.
+  static Future<void> deleteGlusterVolume(String name, {bool unmount = true}) async {
+    final url = unmount ? '/api/storage/gluster/volumes/$name?unmount=true' : '/api/storage/gluster/volumes/$name?unmount=false';
+    final response = await http.delete(Uri.parse(url), headers: authHeaders);
     if (response.statusCode != 200) {
       final err = jsonDecode(response.body);
       throw Exception(err['error'] ?? 'Failed to delete volume $name');
+    }
+  }
+
+  /// Deletes all GlusterFS volumes across the cluster.
+  static Future<void> deleteAllGlusterVolumes({bool unmount = true}) async {
+    final url = unmount ? '/api/storage/gluster/volumes/delete-all?unmount=true' : '/api/storage/gluster/volumes/delete-all?unmount=false';
+    final response = await http.post(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete all GlusterFS volumes');
     }
   }
 

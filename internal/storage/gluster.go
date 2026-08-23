@@ -590,7 +590,7 @@ func StartGlusterVolume(name string) error {
 	if !installed || !running {
 		return nil
 	}
-	cmd := exec.Command("gluster", "volume", "start", name, "force")
+	cmd := exec.Command("gluster", "--mode=script", "volume", "start", name, "force")
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "already started") {
 		return fmt.Errorf("gluster volume start failed: %s (%v)", string(out), err)
@@ -600,40 +600,109 @@ func StartGlusterVolume(name string) error {
 
 // StopGlusterVolume stops an active volume.
 func StopGlusterVolume(name string, force bool) error {
-	args := []string{"volume", "stop", name}
+	args := []string{"--mode=script", "volume", "stop", name}
 	if force {
 		args = append(args, "force")
 	}
 	cmd := exec.Command("gluster", args...)
 	out, err := cmd.CombinedOutput()
-	if err != nil {
+	if err != nil && !strings.Contains(string(out), "already stopped") && !strings.Contains(string(out), "does not exist") {
 		return fmt.Errorf("gluster volume stop failed: %s (%v)", string(out), err)
 	}
 	return nil
 }
 
-// DeleteGlusterVolume deletes a volume from GlusterFS and DB.
-func DeleteGlusterVolume(name string) error {
+// DeleteGlusterVolume deletes a volume from GlusterFS, unmounts associated fstab mounts, and removes it from DB.
+func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("volume name cannot be empty")
+	}
+
+	shouldUnmount := true
+	if len(unmountCluster) > 0 {
+		shouldUnmount = unmountCluster[0]
+	}
+
+	// 1. Unmount and delete matching Network Mounts / fstab entries across cluster
+	if shouldUnmount && db.DB != nil {
+		var mounts []db.StorageMount
+		db.DB.Find(&mounts)
+		for _, m := range mounts {
+			if m.FSType == "glusterfs" && (strings.Contains(m.Device, name) || m.Name == fmt.Sprintf("gluster-%s", name) || m.ID == fmt.Sprintf("mount-gluster-%s", name)) {
+				slog.Info("unmounting and removing associated gluster network mount", "mount_id", m.ID, "volume", name)
+				ips := GetTargetHostIPs(m.TargetNode)
+				for _, ip := range ips {
+					_ = DeleteMountFromTargetNode(m, ip)
+				}
+				_ = db.DB.Delete(&m)
+			}
+		}
+	}
+
+	// 2. Stop and delete volume from Gluster CLI using non-interactive script mode
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
 		_ = StopGlusterVolume(name, true)
-		cmd := exec.Command("gluster", "volume", "delete", name)
+		cmd := exec.Command("gluster", "--mode=script", "volume", "delete", name)
 		out, err := cmd.CombinedOutput()
 		if err != nil && !strings.Contains(string(out), "does not exist") {
-			return fmt.Errorf("gluster volume delete failed: %s (%v)", string(out), err)
+			slog.Warn("gluster volume delete warning", "name", name, "err", err, "out", string(out))
 		}
 	}
+
+	// 3. Delete from database records (ManagedGlusterVolume, StoragePool)
 	if db.DB != nil {
 		db.DB.Where("name = ?", name).Delete(&ManagedGlusterVolume{})
+		db.DB.Where("name = ?", name).Delete(&db.StoragePool{})
+		db.DB.Where("path LIKE ?", fmt.Sprintf("%%/var/contenedores/%s%%", name)).Delete(&db.StoragePool{})
 	}
+
+	return nil
+}
+
+// DeleteAllGlusterVolumes deletes all GlusterFS cluster volumes cleanly.
+func DeleteAllGlusterVolumes(unmountCluster ...bool) error {
+	shouldUnmount := true
+	if len(unmountCluster) > 0 {
+		shouldUnmount = unmountCluster[0]
+	}
+
+	vols, _ := GetGlusterVolumes()
+	for _, v := range vols {
+		_ = DeleteGlusterVolume(v.Name, shouldUnmount)
+	}
+
+	if db.DB != nil {
+		db.DB.Where("1 = 1").Delete(&ManagedGlusterVolume{})
+		if shouldUnmount {
+			var mounts []db.StorageMount
+			db.DB.Where("fs_type = 'glusterfs'").Find(&mounts)
+			for _, m := range mounts {
+				ips := GetTargetHostIPs(m.TargetNode)
+				for _, ip := range ips {
+					_ = DeleteMountFromTargetNode(m, ip)
+				}
+				_ = db.DB.Delete(&m)
+			}
+		}
+	}
+
 	return nil
 }
 
 // MountGlusterToCluster mounts the GlusterFS volume on /var/contenedores across cluster hosts.
 func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) error {
+	volumeName = strings.TrimSpace(volumeName)
+	if volumeName == "" {
+		return fmt.Errorf("volume name cannot be empty")
+	}
 	if mountPoint == "" {
 		mountPoint = "/var/contenedores"
 	}
+
+	// Ensure volume is started
+	_ = StartGlusterVolume(volumeName)
 
 	// Construct glusterfs fstab source: localhost:<volumeName>
 	src := fmt.Sprintf("localhost:%s", volumeName)
@@ -641,7 +710,7 @@ func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) 
 	peers, _ := GetGlusterPeers()
 	var backupServers []string
 	for _, p := range peers {
-		if !p.IsLocal && p.Hostname != "" {
+		if !p.IsLocal && p.Hostname != "" && p.Hostname != "localhost" && p.Hostname != "127.0.0.1" {
 			backupServers = append(backupServers, p.Hostname)
 		}
 	}
@@ -658,6 +727,9 @@ func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) 
 		targetNodeScope = strings.Join(targetNodes, ",")
 	}
 
+	// Pre-create destination directory across target nodes
+	_ = CreateDirectory(mountPoint, "0777", targetNodeScope)
+
 	req := CreateMountRequest{
 		Name:        fmt.Sprintf("gluster-%s", volumeName),
 		FSType:      "glusterfs",
@@ -671,6 +743,16 @@ func MountGlusterToCluster(volumeName, mountPoint string, targetNodes []string) 
 
 	// Register in Gubernator Mounts & /etc/fstab management subsystem
 	_, err := CreateStorageMount(req)
+
+	// Update ManagedGlusterVolume database record
+	if db.DB != nil {
+		db.DB.Model(&ManagedGlusterVolume{}).Where("name = ?", volumeName).Updates(map[string]interface{}{
+			"mount_point":  mountPoint,
+			"auto_mounted": true,
+			"updated_at":   time.Now().UTC(),
+		})
+	}
+
 	return err
 }
 
@@ -895,32 +977,5 @@ func getFallbackManagedVolumes() []GlusterVolume {
 		}
 	}
 
-	if len(vols) == 0 {
-		vols = append(vols, GlusterVolume{
-			Name:            "gv_contenedores",
-			Type:            "Replicate",
-			Status:          "Started",
-			ReplicaCount:    3,
-			ArbiterCount:    0,
-			NumBricks:       3,
-			Transport:       "tcp",
-			IsMounted:       true,
-			MountPoint:      "/var/contenedores",
-			CapacityTotal:   120 * 1024 * 1024 * 1024,
-			CapacityUsed:    18 * 1024 * 1024 * 1024,
-			CapacityFree:    102 * 1024 * 1024 * 1024,
-			CapacityPercent: 15.0,
-			Bricks: []GlusterBrick{
-				{Host: "192.168.252.27", Path: "/data/glusterfs/brick1/gv_contenedores", FullSpec: "192.168.252.27:/data/glusterfs/brick1/gv_contenedores", Online: true, Port: 49152},
-				{Host: "192.168.252.28", Path: "/data/glusterfs/brick1/gv_contenedores", FullSpec: "192.168.252.28:/data/glusterfs/brick1/gv_contenedores", Online: true, Port: 49152},
-				{Host: "192.168.252.29", Path: "/data/glusterfs/brick1/gv_contenedores", FullSpec: "192.168.252.29:/data/glusterfs/brick1/gv_contenedores", Online: true, Port: 49152},
-			},
-			Options: map[string]string{
-				"performance.write-behind": "on",
-				"performance.flush-behind": "on",
-				"network.ping-timeout":     "10",
-			},
-		})
-	}
 	return vols
 }
