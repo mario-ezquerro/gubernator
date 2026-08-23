@@ -248,6 +248,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Sub-Navigation 6-View Dashboard Architecture:**
   - Modern, responsive segmented view selector inside the GlusterFS panel: *Volumes & Peers*, *Performance & I/O (Cockpit)*, *Storage Network (Dual NIC)*, *Quotas & Directory Limits*, *Volume Snapshots*, and *Advanced Tuning Options*.
 
+### 32. Monitoring Dashboards Gauge Consolidation & Centurions Host Thermometers (`v2.39.1`)
+* **Consolidated Host Metrics Telemetry:** Removed redundant circular gauges (`Host System Consumption (Gauges)`) in the default Grafana Monitoring dashboard in favor of the unified **Centurions — Termómetros & Estado de Hosts** subsystem.
+* **Unified Centurions Visualization:** All host CPU, RAM, Network I/O, and Host Disk space are now represented cleanly via horizontal LCD bargauges and the comprehensive multi-metric Centurions host table starting seamlessly after runtime timeseries panels.
+
+
 
 
 
