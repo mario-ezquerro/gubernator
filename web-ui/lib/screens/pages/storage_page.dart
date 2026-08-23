@@ -44,6 +44,14 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   String _mountTypeFilter = 'ALL';
   String _poolPath = '/var/contenedores';
 
+  // Cockpit-Storaged & Storage Network State
+  StorageNetworkReportModel _storageNetworkReport = StorageNetworkReportModel.empty();
+  List<GlusterSnapshotModel> _glusterSnapshots = [];
+  GlusterProfileReportModel? _activeProfileReport;
+  GlusterQuotasReportModel? _activeQuotasReport;
+  String _selectedGlusterVolumeForProfile = '';
+  int _glusterSubTab = 0; // 0: Overview, 1: Performance (Cockpit), 2: Storage Network (Dual NIC), 3: Quotas, 4: Snapshots, 5: Options
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +78,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       final glusterPeersFuture = ApiService.fetchGlusterPeers();
       final glusterVolsFuture = ApiService.fetchGlusterVolumes();
       final glusterDiagFuture = ApiService.fetchGlusterDiagnostics();
+      final storageNetFuture = ApiService.fetchStorageNetworkReport();
+      final glusterSnapsFuture = ApiService.fetchGlusterSnapshots();
 
       final results = await Future.wait([
         volsFuture.catchError((_) => <StorageVolumeModel>[]),
@@ -80,6 +90,8 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
         glusterPeersFuture.catchError((_) => <GlusterPeerModel>[]),
         glusterVolsFuture.catchError((_) => <GlusterVolumeModel>[]),
         glusterDiagFuture.catchError((_) => GlusterClusterDiagnosticsModel(installed: false)),
+        storageNetFuture.catchError((_) => StorageNetworkReportModel.empty()),
+        glusterSnapsFuture.catchError((_) => <GlusterSnapshotModel>[]),
       ]);
 
       if (mounted) {
@@ -92,6 +104,11 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
           _glusterPeers = results[5] as List<GlusterPeerModel>;
           _glusterVolumes = results[6] as List<GlusterVolumeModel>;
           _glusterDiag = results[7] as GlusterClusterDiagnosticsModel;
+          _storageNetworkReport = results[8] as StorageNetworkReportModel;
+          _glusterSnapshots = results[9] as List<GlusterSnapshotModel>;
+          if (_glusterVolumes.isNotEmpty && _selectedGlusterVolumeForProfile.isEmpty) {
+            _selectedGlusterVolumeForProfile = _glusterVolumes.first.name;
+          }
           _loading = false;
         });
       }
@@ -4770,7 +4787,7 @@ volumes:
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '3-Way mirrored volumes (Replica 3 / Arbiter) mounted to /var/contenedores for multi-node container persistence',
+                          'Dedicated Storage Network (enp0s2: 10.10.100.0/24) • CoreDNS (*.storage.gbnt.local) • Cockpit Total Management Suite',
                           style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                         ),
                       ],
@@ -4809,198 +4826,969 @@ volumes:
                     const SizedBox(width: 16),
                     _buildGlusterKpi('Replicated Volumes', '${_glusterVolumes.length} Volumes', const Color(0xFF8B5CF6), Icons.layers_outlined),
                     const SizedBox(width: 16),
-                    _buildGlusterKpi('Target Mount', '/var/contenedores', const Color(0xFF10B981), Icons.folder_shared_outlined),
+                    _buildGlusterKpi('Storage Network', '10.10.100.0/24 (enp0s2)', const Color(0xFF10B981), Icons.settings_ethernet),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // ── Trusted Storage Pool Peers Section ─────────────────────────────
+          // ── Cockpit Sub-Navigation Bar ─────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildGlusterSubTabItem(0, 'Volumes & Peers', Icons.layers_outlined, isDark),
+                const SizedBox(width: 8),
+                _buildGlusterSubTabItem(1, 'Performance & I/O (Cockpit)', Icons.speed, isDark),
+                const SizedBox(width: 8),
+                _buildGlusterSubTabItem(2, 'Storage Network (Dual NIC)', Icons.settings_ethernet, isDark),
+                const SizedBox(width: 8),
+                _buildGlusterSubTabItem(3, 'Quotas & Directory Limits', Icons.data_usage_outlined, isDark),
+                const SizedBox(width: 8),
+                _buildGlusterSubTabItem(4, 'Volume Snapshots', Icons.camera_alt_outlined, isDark),
+                const SizedBox(width: 8),
+                _buildGlusterSubTabItem(5, 'Advanced Tuning Options', Icons.tune, isDark),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Render Selected Sub-View
+          if (_glusterSubTab == 0)
+            _buildGlusterOverviewSubTab(isDark)
+          else if (_glusterSubTab == 1)
+            _buildGlusterPerformanceSubTab(isDark)
+          else if (_glusterSubTab == 2)
+            _buildGlusterNetworkSubTab(isDark)
+          else if (_glusterSubTab == 3)
+            _buildGlusterQuotasSubTab(isDark)
+          else if (_glusterSubTab == 4)
+            _buildGlusterSnapshotsSubTab(isDark)
+          else
+            _buildGlusterOptionsSubTab(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlusterSubTabItem(int index, String label, IconData icon, bool isDark) {
+    final isSelected = _glusterSubTab == index;
+    return InkWell(
+      onTap: () {
+        setState(() => _glusterSubTab = index);
+        if (index == 1 && _selectedGlusterVolumeForProfile.isNotEmpty) {
+          _fetchProfileData(_selectedGlusterVolumeForProfile);
+        } else if (index == 3 && _selectedGlusterVolumeForProfile.isNotEmpty) {
+          _fetchQuotasData(_selectedGlusterVolumeForProfile);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+              : (isDark ? const Color(0xFF1E293B) : Colors.white),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF10B981)
+                : (isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? const Color(0xFF10B981) : (isDark ? Colors.grey[300] : Colors.grey[700])),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? const Color(0xFF10B981) : (isDark ? Colors.grey[300] : Colors.grey[800]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlusterOverviewSubTab(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Trusted Storage Pool Peers Section ─────────────────────────────
+        Row(
+          children: [
+            const Icon(Icons.people_outline, size: 18, color: Color(0xFF3B82F6)),
+            const SizedBox(width: 8),
+            const Text(
+              'Trusted Storage Pool Peers (Centurions)',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Text(
+              '${_glusterPeers.where((p) => p.connected).length}/${_glusterPeers.length} Peers Connected',
+              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Peer Cards Grid
+        if (_glusterPeers.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text('No GlusterFS peers found. Use "Probe Peer" or run ansible/glusterfs.yml to initialize.'),
+          )
+        else
+          Row(
+            children: _glusterPeers.map((p) {
+              return Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: p.connected
+                          ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                          : Colors.redAccent.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            p.isLocal ? Icons.security : Icons.dns_outlined,
+                            size: 16,
+                            color: const Color(0xFF3B82F6),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              p.hostname,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (p.connected ? const Color(0xFF10B981) : Colors.redAccent)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              p.connected ? 'CONNECTED' : 'DISCONNECTED',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: p.connected ? const Color(0xFF10B981) : Colors.redAccent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        p.uuid.isNotEmpty ? 'UUID: ${p.uuid.substring(0, 13)}...' : 'Local Manager Node',
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.speed, size: 12, color: Colors.grey[400]),
+                          const SizedBox(width: 4),
+                          Text(
+                            p.pingMs > 0 ? '${p.pingMs} ms latency' : '0.4 ms (Storage mesh)',
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 24),
+
+        // ── GlusterFS Volumes Section ─────────────────────────────────────
+        Row(
+          children: [
+            const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF10B981)),
+            const SizedBox(width: 8),
+            const Text(
+              'Replicated Storage Volumes',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            if (_glusterVolumes.isNotEmpty) ...[
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+                icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                label: const Text('Delete All Volumes'),
+                onPressed: _showDeleteAllGlusterVolumesDialog,
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('New Volume', style: TextStyle(fontSize: 12)),
+                onPressed: _showCreateGlusterVolumeDialog,
+              ),
+              const SizedBox(width: 12),
+            ],
+            Text(
+              '${_glusterVolumes.length} Managed Volumes',
+              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        if (_glusterVolumes.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.hub_outlined, size: 48, color: Color(0xFF10B981)),
+                const SizedBox(height: 12),
+                const Text(
+                  'No GlusterFS Cluster Volumes Configured',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Create a 3-way replicated volume across your Centurions over the dedicated storage network (10.10.100.0/24).',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create Replicated Volume (Replica 3)'),
+                  onPressed: _showCreateGlusterVolumeDialog,
+                ),
+              ],
+            ),
+          )
+        else
+          Column(
+            children: _glusterVolumes.map((vol) => _buildVolumeCard(vol, isDark)).toList(),
+          ),
+      ],
+    );
+  }
+
+  // ── Cockpit-Storaged I/O Performance & Profiling Sub-Tab ──────────────────
+  Widget _buildGlusterPerformanceSubTab(bool isDark) {
+    final report = _activeProfileReport;
+    final isProfiling = report?.isProfiling ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              const Icon(Icons.people_outline, size: 18, color: Color(0xFF3B82F6)),
+              const Icon(Icons.speed, color: Color(0xFF10B981), size: 20),
               const SizedBox(width: 8),
-              const Text(
-                'Trusted Storage Pool Peers (Centurions)',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
+              const Text('Volume I/O Profiling (Cockpit Storaged Engine)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const Spacer(),
-              Text(
-                '${_glusterPeers.where((p) => p.connected).length}/${_glusterPeers.length} Peers Connected',
-                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+              if (_glusterVolumes.isNotEmpty)
+                DropdownButton<String>(
+                  value: _selectedGlusterVolumeForProfile.isNotEmpty ? _selectedGlusterVolumeForProfile : _glusterVolumes.first.name,
+                  items: _glusterVolumes.map((v) => DropdownMenuItem(value: v.name, child: Text('Volume: ${v.name}'))).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedGlusterVolumeForProfile = val);
+                      _fetchProfileData(val);
+                    }
+                  },
+                ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                icon: Icon(isProfiling ? Icons.stop : Icons.play_arrow, size: 16, color: isProfiling ? Colors.redAccent : const Color(0xFF10B981)),
+                label: Text(isProfiling ? 'Stop Profiling' : 'Start Profiling', style: TextStyle(color: isProfiling ? Colors.redAccent : const Color(0xFF10B981))),
+                onPressed: () async {
+                  if (_selectedGlusterVolumeForProfile.isEmpty) return;
+                  try {
+                    if (isProfiling) {
+                      await ApiService.stopGlusterVolumeProfile(_selectedGlusterVolumeForProfile);
+                      _showSnackBar('Profiling stopped for $_selectedGlusterVolumeForProfile');
+                    } else {
+                      await ApiService.startGlusterVolumeProfile(_selectedGlusterVolumeForProfile);
+                      _showSnackBar('Profiling started for $_selectedGlusterVolumeForProfile');
+                    }
+                    _fetchProfileData(_selectedGlusterVolumeForProfile);
+                  } catch (e) {
+                    _showSnackBar('Failed to toggle profiling: $e', isError: true);
+                  }
+                },
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
 
-          // Peer Cards Grid
-          if (_glusterPeers.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('No GlusterFS peers found. Use "Probe Peer" or run ansible/glusterfs.yml to initialize.'),
+          // Speedometer KPIs
+          Row(
+            children: [
+              _buildGlusterMetricCard('Total IOPS', '${report?.totalIOPS ?? 0} IOPS', const Color(0xFF10B981), Icons.bolt, isDark),
+              const SizedBox(width: 12),
+              _buildGlusterMetricCard('Read Throughput', '${(report?.totalReadMBs ?? 0).toStringAsFixed(1)} MB/s', const Color(0xFF3B82F6), Icons.download, isDark),
+              const SizedBox(width: 12),
+              _buildGlusterMetricCard('Write Throughput', '${(report?.totalWriteMBs ?? 0).toStringAsFixed(1)} MB/s', const Color(0xFF8B5CF6), Icons.upload, isDark),
+              const SizedBox(width: 12),
+              _buildGlusterMetricCard('Average Latency', '${(report?.avgLatencyMs ?? 0).toStringAsFixed(2)} ms', Colors.amber, Icons.timer_outlined, isDark),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // FOP Operations Breakdown Table
+          const Text('File Operations (FOP) Breakdown:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+          const SizedBox(height: 8),
+          if (report == null || report.topOperations.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('No profiling data collected yet. Click "Start Profiling" to begin sampling block operations.', style: TextStyle(fontSize: 12, color: Colors.grey)),
             )
           else
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(2),
+                1: FlexColumnWidth(2),
+                2: FlexColumnWidth(2),
+                3: FlexColumnWidth(2),
+                4: FlexColumnWidth(2),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                  children: const [
+                    Padding(padding: EdgeInsets.all(8), child: Text('OPERATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('HITS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('% OF I/O', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('AVG LATENCY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('MAX LATENCY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                  ],
+                ),
+                ...report.topOperations.map((fop) {
+                  return TableRow(
+                    children: [
+                      Padding(padding: const EdgeInsets.all(8), child: Text(fop.operation, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                      Padding(padding: const EdgeInsets.all(8), child: Text('${fop.hits}', style: const TextStyle(fontSize: 12))),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: (fop.percentage / 100).clamp(0.0, 1.0),
+                                color: const Color(0xFF10B981),
+                                backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text('${fop.percentage.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Padding(padding: const EdgeInsets.all(8), child: Text('${fop.avgLatencyUs.toStringAsFixed(1)} μs', style: const TextStyle(fontSize: 12))),
+                      Padding(padding: const EdgeInsets.all(8), child: Text('${fop.maxLatencyUs.toStringAsFixed(1)} μs', style: const TextStyle(fontSize: 12))),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          const SizedBox(height: 20),
+
+          // Block Size Distribution
+          const Text('Block Size Distribution Histogram:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+          const SizedBox(height: 8),
+          if (report != null && report.blockSizeProfile.isNotEmpty)
             Row(
-              children: _glusterPeers.map((p) {
+              children: report.blockSizeProfile.map((b) {
                 return Expanded(
                   child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: p.connected
-                            ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                            : Colors.redAccent.withValues(alpha: 0.3),
-                      ),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              p.isLocal ? Icons.security : Icons.dns_outlined,
-                              size: 16,
-                              color: const Color(0xFF3B82F6),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                p.hostname,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: (p.connected ? const Color(0xFF10B981) : Colors.redAccent)
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                p.connected ? 'CONNECTED' : 'DISCONNECTED',
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: p.connected ? const Color(0xFF10B981) : Colors.redAccent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          p.uuid.isNotEmpty ? 'UUID: ${p.uuid.substring(0, 13)}...' : 'Local Manager Node',
-                          style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                        ),
+                        Text(b.range, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.speed, size: 12, color: Colors.grey[400]),
-                            const SizedBox(width: 4),
-                            Text(
-                              p.pingMs > 0 ? '${p.pingMs} ms latency' : '0.4 ms (Local mesh)',
-                              style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                            ),
-                          ],
-                        ),
+                        Text('Reads: ${b.readHits} | Writes: ${b.writeHits}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
                 );
               }).toList(),
             ),
-          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
-          // ── GlusterFS Volumes Section ─────────────────────────────────────
-          Row(
-            children: [
-              const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF10B981)),
-              const SizedBox(width: 8),
-              const Text(
-                'Replicated Storage Volumes',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              if (_glusterVolumes.isNotEmpty) ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  icon: const Icon(Icons.delete_sweep_outlined, size: 16),
-                  label: const Text('Delete All Volumes'),
-                  onPressed: _showDeleteAllGlusterVolumesDialog,
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('New Volume', style: TextStyle(fontSize: 12)),
-                  onPressed: _showCreateGlusterVolumeDialog,
-                ),
-                const SizedBox(width: 12),
-              ],
-              Text(
-                '${_glusterVolumes.length} Managed Volumes',
-                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-              ),
-            ],
+  // ── Dedicated Storage Network (Dual NIC & CoreDNS) Sub-Tab ────────────────
+  Widget _buildGlusterNetworkSubTab(bool isDark) {
+    final net = _storageNetworkReport;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Network Overview Banner
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
           ),
-          const SizedBox(height: 12),
-
-          if (_glusterVolumes.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
-              ),
-              child: Column(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  const Icon(Icons.hub_outlined, size: 48, color: Color(0xFF10B981)),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No GlusterFS Cluster Volumes Configured',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  const Icon(Icons.settings_ethernet, color: Color(0xFF10B981), size: 22),
+                  const SizedBox(width: 10),
+                  const Text('Dedicated Storage Network (Dual-NIC Architecture)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('SUBNET: ${net.dedicatedSubnet}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF10B981))),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Create a 3-way replicated volume across your Centurions to enable container storage mobility.',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create Replicated Volume (Replica 3)'),
-                    onPressed: _showCreateGlusterVolumeDialog,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('DNS: ${net.corednsSuffix}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF3B82F6))),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              const Text(
+                'Centurion nodes use a dedicated virtual network interface (enp0s2) exclusively for GlusterFS replication streams, brick communication, and FUSE mount transport to prevent interference with application traffic on enp0s1.',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _buildGlusterMetricCard('Cluster Storage Rx Rate', '${net.totalRxRateMBs.toStringAsFixed(2)} MB/s', const Color(0xFF10B981), Icons.arrow_downward, isDark),
+                  const SizedBox(width: 12),
+                  _buildGlusterMetricCard('Cluster Storage Tx Rate', '${net.totalTxRateMBs.toStringAsFixed(2)} MB/s', const Color(0xFF3B82F6), Icons.arrow_upward, isDark),
+                  const SizedBox(width: 12),
+                  _buildGlusterMetricCard('Dedicated NIC Status', 'enp0s2 (UP & Active)', const Color(0xFF8B5CF6), Icons.check_circle_outline, isDark),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Node Cards Grid
+        const Text('Centurion Storage Interfaces & Live Traffic:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 10),
+
+        ...net.nodes.map((node) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(node.nodeRole == 'manager' ? Icons.security : Icons.computer, size: 18, color: const Color(0xFF3B82F6)),
+                    const SizedBox(width: 8),
+                    Text('${node.nodeRole.toUpperCase()}: ${node.nodeId}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('STORAGE IP: ${node.storageIp.isNotEmpty ? node.storageIp : "10.10.100.x"}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('DNS: ${node.storageDns}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6))),
+                    ),
+                    const Spacer(),
+                    Text('Management IP: ${node.hostIp}', style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+
+                // Interface rows
+                ...node.interfaces.map((iface) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(iface.isStorage ? Icons.star : Icons.alt_route, size: 14, color: iface.isStorage ? const Color(0xFF10B981) : Colors.grey),
+                        const SizedBox(width: 6),
+                        Text(iface.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Courier New')),
+                        const SizedBox(width: 8),
+                        if (iface.isStorage)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                            child: const Text('DEDICATED STORAGE NIC', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                          ),
+                        const Spacer(),
+                        Text('Rx: ${iface.rxRateMBs.toStringAsFixed(2)} MB/s', style: const TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 14),
+                        Text('Tx: ${iface.txRateMBs.toStringAsFixed(2)} MB/s', style: const TextStyle(fontSize: 11.5, color: Color(0xFF3B82F6), fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 14),
+                        Text('Total: ${_formatBytes(iface.rxBytes + iface.txBytes)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  // ── Quotas & Directory Limits Sub-Tab ─────────────────────────────────────
+  Widget _buildGlusterQuotasSubTab(bool isDark) {
+    final quotasReport = _activeQuotasReport;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.data_usage_outlined, color: Color(0xFF10B981), size: 20),
+              const SizedBox(width: 8),
+              const Text('Volume Quotas & Path Limits', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Spacer(),
+              if (_glusterVolumes.isNotEmpty)
+                DropdownButton<String>(
+                  value: _selectedGlusterVolumeForProfile.isNotEmpty ? _selectedGlusterVolumeForProfile : _glusterVolumes.first.name,
+                  items: _glusterVolumes.map((v) => DropdownMenuItem(value: v.name, child: Text('Volume: ${v.name}'))).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedGlusterVolumeForProfile = val);
+                      _fetchQuotasData(val);
+                    }
+                  },
+                ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Set Path Quota'),
+                onPressed: () => _showSetQuotaDialog(_selectedGlusterVolumeForProfile),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (quotasReport == null || quotasReport.quotas.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('No path quotas configured for this volume. Click "Set Path Quota" to restrict directory disk consumption.', style: TextStyle(fontSize: 12.5, color: Colors.grey)),
             )
           else
             Column(
-              children: _glusterVolumes.map((vol) => _buildVolumeCard(vol, isDark)).toList(),
+              children: quotasReport.quotas.map((q) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder, size: 18, color: Color(0xFF3B82F6)),
+                      const SizedBox(width: 8),
+                      Text(q.path, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Courier New')),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                        child: Text('LIMIT: ${q.hardLimit}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                      ),
+                      const Spacer(),
+                      Text('${q.usedMB.toStringAsFixed(1)} MB used', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
+        ],
+      ),
+    );
+  }
+
+  // ── Snapshots & Rollback Sub-Tab ──────────────────────────────────────────
+  Widget _buildGlusterSnapshotsSubTab(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.camera_alt_outlined, color: Color(0xFF10B981), size: 20),
+              const SizedBox(width: 8),
+              const Text('Volume Point-in-Time Snapshots', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Spacer(),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                label: const Text('Create Snapshot'),
+                onPressed: () => _showCreateSnapshotDialog(_selectedGlusterVolumeForProfile.isNotEmpty ? _selectedGlusterVolumeForProfile : (_glusterVolumes.isNotEmpty ? _glusterVolumes.first.name : '')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (_glusterSnapshots.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('No volume snapshots found. Take a snapshot to enable instantaneous rollback and disaster recovery.', style: TextStyle(fontSize: 12.5, color: Colors.grey)),
+            )
+          else
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(2),
+                1: FlexColumnWidth(2),
+                2: FlexColumnWidth(2),
+                3: FlexColumnWidth(2),
+                4: FlexColumnWidth(2),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                  children: const [
+                    Padding(padding: EdgeInsets.all(8), child: Text('SNAPSHOT NAME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('VOLUME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('CREATED', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                    Padding(padding: EdgeInsets.all(8), child: Text('ACTIONS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5))),
+                  ],
+                ),
+                ..._glusterSnapshots.map((s) {
+                  return TableRow(
+                    children: [
+                      Padding(padding: const EdgeInsets.all(8), child: Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                      Padding(padding: const EdgeInsets.all(8), child: Text(s.volumeName, style: const TextStyle(fontSize: 12))),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(s.status, style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 11.5)),
+                      ),
+                      Padding(padding: const EdgeInsets.all(8), child: Text(s.createdAt, style: const TextStyle(fontSize: 11.5, color: Colors.grey))),
+                      Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.history, size: 16, color: Color(0xFF3B82F6)),
+                              tooltip: 'Rollback to Snapshot',
+                              onPressed: () async {
+                                try {
+                                  await ApiService.restoreGlusterSnapshot(s.name);
+                                  _showSnackBar('Snapshot ${s.name} restored successfully');
+                                  _loadAllData();
+                                } catch (e) {
+                                  _showSnackBar('Failed to restore snapshot: $e', isError: true);
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                              tooltip: 'Delete Snapshot',
+                              onPressed: () async {
+                                try {
+                                  await ApiService.deleteGlusterSnapshot(s.name);
+                                  _showSnackBar('Snapshot ${s.name} deleted');
+                                  _loadAllData();
+                                } catch (e) {
+                                  _showSnackBar('Failed to delete snapshot: $e', isError: true);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Advanced Tuning Options Sub-Tab ───────────────────────────────────────
+  Widget _buildGlusterOptionsSubTab(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tune, color: Color(0xFF10B981), size: 20),
+              const SizedBox(width: 8),
+              const Text('Container-Grade Performance Options', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Spacer(),
+              if (_glusterVolumes.isNotEmpty)
+                DropdownButton<String>(
+                  value: _selectedGlusterVolumeForProfile.isNotEmpty ? _selectedGlusterVolumeForProfile : _glusterVolumes.first.name,
+                  items: _glusterVolumes.map((v) => DropdownMenuItem(value: v.name, child: Text('Volume: ${v.name}'))).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedGlusterVolumeForProfile = val);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          _buildOptionToggleTile('performance.write-behind', 'Asynchronous write aggregation and flush for container workloads', 'on', true, isDark),
+          _buildOptionToggleTile('performance.stat-prefetch', 'Aggressive directory traversal and metadata caching', 'on', true, isDark),
+          _buildOptionToggleTile('performance.quick-read', 'Inlines small container file reads directly in lookups', 'on', true, isDark),
+          _buildOptionToggleTile('network.ping-timeout', 'Failover network timeout for fast node crash recovery', '10', false, isDark),
+          _buildOptionToggleTile('cluster.favorite-child-policy', 'Automatic conflict resolution based on modified timestamp (mtime)', 'mtime', false, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionToggleTile(String key, String description, String value, bool isToggle, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Courier New')),
+              const SizedBox(height: 2),
+              Text(description, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text('VALUE: $value', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF10B981))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlusterMetricCard(String label, String value, Color color, IconData icon, bool isDark) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                const SizedBox(height: 2),
+                Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fetchProfileData(String volumeName) async {
+    try {
+      final rep = await ApiService.fetchGlusterVolumeProfile(volumeName);
+      if (mounted) setState(() => _activeProfileReport = rep);
+    } catch (_) {}
+  }
+
+  Future<void> _fetchQuotasData(String volumeName) async {
+    try {
+      final rep = await ApiService.fetchGlusterQuotas(volumeName);
+      if (mounted) setState(() => _activeQuotasReport = rep);
+    } catch (_) {}
+  }
+
+  void _showSetQuotaDialog(String volumeName) {
+    final pathCtrl = TextEditingController(text: '/');
+    final limitCtrl = TextEditingController(text: '50GB');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Set Quota: $volumeName'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: pathCtrl, decoration: const InputDecoration(labelText: 'Directory Path', hintText: '/app-data', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: limitCtrl, decoration: const InputDecoration(labelText: 'Hard Limit', hintText: '50GB, 100GB, 1TB', border: OutlineInputBorder())),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiService.setGlusterQuota(volumeName, pathCtrl.text.trim(), limitCtrl.text.trim());
+                _showSnackBar('Quota configured successfully');
+                _fetchQuotasData(volumeName);
+              } catch (e) {
+                _showSnackBar('Failed to set quota: $e', isError: true);
+              }
+            },
+            child: const Text('Set Limit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateSnapshotDialog(String volumeName) {
+    final nameCtrl = TextEditingController(text: 'snap_${volumeName}_${DateTime.now().millisecondsSinceEpoch % 10000}');
+    final descCtrl = TextEditingController(text: 'Pre-deployment backup');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Create Snapshot: $volumeName'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Snapshot Name', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiService.createGlusterSnapshot(nameCtrl.text.trim(), volumeName, description: descCtrl.text.trim());
+                _showSnackBar('Snapshot created successfully');
+                _loadAllData();
+              } catch (e) {
+                _showSnackBar('Failed to create snapshot: $e', isError: true);
+              }
+            },
+            child: const Text('Create Snapshot'),
+          ),
         ],
       ),
     );

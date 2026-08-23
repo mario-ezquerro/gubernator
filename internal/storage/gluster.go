@@ -124,6 +124,14 @@ func InitGlusterDB() {
 	}
 }
 
+// ExecGlusterCmd builds an exec.Cmd for gluster, prepending sudo if running as non-root.
+func ExecGlusterCmd(args ...string) *exec.Cmd {
+	if os.Geteuid() == 0 {
+		return exec.Command("gluster", args...)
+	}
+	return exec.Command("sudo", append([]string{"gluster"}, args...)...)
+}
+
 // CheckGlusterInstalled checks if gluster CLI and glusterd daemon exist.
 func CheckGlusterInstalled() (bool, bool, string) {
 	_, err := exec.LookPath("gluster")
@@ -131,7 +139,7 @@ func CheckGlusterInstalled() (bool, bool, string) {
 		return false, false, ""
 	}
 
-	cmd := exec.Command("gluster", "--version")
+	cmd := ExecGlusterCmd("--version")
 	out, err := cmd.Output()
 	version := "unknown"
 	if err == nil {
@@ -143,7 +151,7 @@ func CheckGlusterInstalled() (bool, bool, string) {
 
 	// Check if glusterd is active
 	running := false
-	statusCmd := exec.Command("gluster", "peer", "status")
+	statusCmd := ExecGlusterCmd("peer", "status")
 	if err := statusCmd.Run(); err == nil {
 		running = true
 	}
@@ -162,7 +170,7 @@ func GetGlusterPeers() ([]GlusterPeer, error) {
 		return getFallbackClusterPeers(), nil
 	}
 
-	cmd := exec.Command("gluster", "peer", "status")
+	cmd := ExecGlusterCmd("peer", "status")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return getFallbackClusterPeers(), nil
@@ -229,7 +237,7 @@ func ProbeGlusterPeer(targetHost string) error {
 		return fmt.Errorf("gluster daemon (glusterd) is not running on this host")
 	}
 
-	cmd := exec.Command("gluster", "peer", "probe", targetHost)
+	cmd := ExecGlusterCmd("peer", "probe", targetHost)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("gluster peer probe failed: %s (%v)", string(out), err)
@@ -249,7 +257,7 @@ func DetachGlusterPeer(targetHost string, force bool) error {
 		args = append(args, "force")
 	}
 
-	cmd := exec.Command("gluster", args...)
+	cmd := ExecGlusterCmd(args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("gluster peer detach failed: %s (%v)", string(out), err)
@@ -267,7 +275,7 @@ func GetGlusterVolumes() ([]GlusterVolume, error) {
 		return getFallbackManagedVolumes(), nil
 	}
 
-	cmd := exec.Command("gluster", "volume", "info", "all")
+	cmd := ExecGlusterCmd("volume", "info", "all")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return getFallbackManagedVolumes(), nil
@@ -412,7 +420,7 @@ func checkVolumeMountStatus(vol *GlusterVolume) {
 func enrichVolumeMetrics(vol *GlusterVolume) {
 	// Query detail status if volume is started
 	if vol.Status == "Started" {
-		cmd := exec.Command("gluster", "volume", "status", vol.Name, "detail")
+		cmd := ExecGlusterCmd("volume", "status", vol.Name, "detail")
 		out, err := cmd.CombinedOutput()
 		if err == nil {
 			statusText := string(out)
@@ -521,7 +529,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
-		cmd := exec.Command("gluster", args...)
+		cmd := ExecGlusterCmd(args...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("gluster volume create failed: %s (%v)", string(out), err)
@@ -579,7 +587,7 @@ func tuneGlusterVolumeForContainers(volName string) {
 	}
 
 	for k, v := range opts {
-		cmd := exec.Command("gluster", "volume", "set", volName, k, v)
+		cmd := ExecGlusterCmd("volume", "set", volName, k, v)
 		_ = cmd.Run()
 	}
 }
@@ -590,7 +598,7 @@ func StartGlusterVolume(name string) error {
 	if !installed || !running {
 		return nil
 	}
-	cmd := exec.Command("gluster", "--mode=script", "volume", "start", name, "force")
+	cmd := ExecGlusterCmd("--mode=script", "volume", "start", name, "force")
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "already started") {
 		return fmt.Errorf("gluster volume start failed: %s (%v)", string(out), err)
@@ -604,7 +612,7 @@ func StopGlusterVolume(name string, force bool) error {
 	if force {
 		args = append(args, "force")
 	}
-	cmd := exec.Command("gluster", args...)
+	cmd := ExecGlusterCmd(args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "already stopped") && !strings.Contains(string(out), "does not exist") {
 		return fmt.Errorf("gluster volume stop failed: %s (%v)", string(out), err)
@@ -644,7 +652,7 @@ func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
 		_ = StopGlusterVolume(name, true)
-		cmd := exec.Command("gluster", "--mode=script", "volume", "delete", name)
+		cmd := ExecGlusterCmd("--mode=script", "volume", "delete", name)
 		out, err := cmd.CombinedOutput()
 		if err != nil && !strings.Contains(string(out), "does not exist") {
 			slog.Warn("gluster volume delete warning", "name", name, "err", err, "out", string(out))
@@ -771,7 +779,7 @@ func GetGlusterHealReport(volumeName string) (*GlusterHealReport, error) {
 		return report, nil
 	}
 
-	cmd := exec.Command("gluster", "volume", "heal", volumeName, "info")
+	cmd := ExecGlusterCmd("volume", "heal", volumeName, "info")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		report.StatusSummary = fmt.Sprintf("Heal query returned: %s", string(out))
@@ -829,7 +837,7 @@ func TriggerGlusterSelfHeal(volumeName string) error {
 	if !installed || !running {
 		return nil
 	}
-	cmd := exec.Command("gluster", "volume", "heal", volumeName)
+	cmd := ExecGlusterCmd("volume", "heal", volumeName)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("trigger self-heal failed: %s (%v)", string(out), err)
@@ -978,4 +986,21 @@ func getFallbackManagedVolumes() []GlusterVolume {
 	}
 
 	return vols
+}
+
+// SetGlusterVolumeOption configures a tuning parameter on a volume.
+func SetGlusterVolumeOption(volumeName, key, value string) error {
+	cmd := ExecGlusterCmd("--mode=script", "volume", "set", volumeName, key, value)
+	out, err := cmd.CombinedOutput()
+	if err != nil && !strings.Contains(string(out), "success") {
+		return fmt.Errorf("failed to set option %s=%s on %s: %w (%s)", key, value, volumeName, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// ResetGlusterVolumeOption resets an option to its default.
+func ResetGlusterVolumeOption(volumeName, key string) error {
+	cmd := ExecGlusterCmd("--mode=script", "volume", "reset", volumeName, key)
+	_, _ = cmd.CombinedOutput()
+	return nil
 }

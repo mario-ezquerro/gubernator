@@ -1627,7 +1627,477 @@ class ApiService {
     }
     throw Exception('Failed to fetch Gluster diagnostics: ${response.statusCode}');
   }
+
+  /// Fetches real-time dedicated storage network traffic and interface discovery.
+  static Future<StorageNetworkReportModel> fetchStorageNetworkReport() async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/network'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return StorageNetworkReportModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch storage network report: ${response.statusCode}');
+  }
+
+  /// Fetches real-time I/O performance and FOP profiling for a volume.
+  static Future<GlusterProfileReportModel> fetchGlusterVolumeProfile(String name) async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/volumes/$name/profile'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return GlusterProfileReportModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch profile for $name: ${response.statusCode}');
+  }
+
+  /// Starts volume profiling.
+  static Future<void> startGlusterVolumeProfile(String name) async {
+    final response = await http.post(Uri.parse('/api/storage/gluster/volumes/$name/profile/start'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to start profiling on $name');
+    }
+  }
+
+  /// Stops volume profiling.
+  static Future<void> stopGlusterVolumeProfile(String name) async {
+    final response = await http.post(Uri.parse('/api/storage/gluster/volumes/$name/profile/stop'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to stop profiling on $name');
+    }
+  }
+
+  /// Fetches directory path quotas for a volume.
+  static Future<GlusterQuotasReportModel> fetchGlusterQuotas(String name) async {
+    final response = await http.get(Uri.parse('/api/storage/gluster/volumes/$name/quotas'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return GlusterQuotasReportModel.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch quotas for $name: ${response.statusCode}');
+  }
+
+  /// Sets or updates a directory quota limit on a volume.
+  static Future<void> setGlusterQuota(String name, String path, String hardLimit) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/volumes/$name/quotas'),
+      headers: authHeaders,
+      body: jsonEncode({'path': path, 'hard_limit': hardLimit}),
+    );
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to set quota on $name');
+    }
+  }
+
+  /// Disables quotas on a volume.
+  static Future<void> disableGlusterQuota(String name) async {
+    final response = await http.delete(Uri.parse('/api/storage/gluster/volumes/$name/quotas'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to disable quotas on $name');
+    }
+  }
+
+  /// Fetches volume snapshots.
+  static Future<List<GlusterSnapshotModel>> fetchGlusterSnapshots({String? volumeName}) async {
+    final url = volumeName != null && volumeName.isNotEmpty
+        ? '/api/storage/gluster/snapshots?volume=$volumeName'
+        : '/api/storage/gluster/snapshots';
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['snapshots'] is List) {
+        return (data['snapshots'] as List).map((s) => GlusterSnapshotModel.fromJson(s)).toList();
+      }
+      return [];
+    }
+    throw Exception('Failed to fetch snapshots: ${response.statusCode}');
+  }
+
+  /// Creates a point-in-time snapshot.
+  static Future<void> createGlusterSnapshot(String name, String volumeName, {String description = ''}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/snapshots'),
+      headers: authHeaders,
+      body: jsonEncode({'name': name, 'volume_name': volumeName, 'description': description}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create snapshot');
+    }
+  }
+
+  /// Restores a snapshot (rollback).
+  static Future<void> restoreGlusterSnapshot(String name) async {
+    final response = await http.post(Uri.parse('/api/storage/gluster/snapshots/$name/restore'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to restore snapshot $name');
+    }
+  }
+
+  /// Deletes a snapshot.
+  static Future<void> deleteGlusterSnapshot(String name) async {
+    final response = await http.delete(Uri.parse('/api/storage/gluster/snapshots/$name'), headers: authHeaders);
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete snapshot $name');
+    }
+  }
+
+  /// Starts or stops volume rebalance.
+  static Future<Map<String, dynamic>> rebalanceGlusterVolume(String name, {String action = 'start'}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/volumes/$name/rebalance?action=$action'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to rebalance $name');
+  }
+
+  /// Sets or resets an advanced volume tuning option.
+  static Future<void> setGlusterVolumeOption(String name, String key, String value, {bool reset = false}) async {
+    final response = await http.post(
+      Uri.parse('/api/storage/gluster/volumes/$name/options'),
+      headers: authHeaders,
+      body: jsonEncode({'key': key, 'value': value, 'reset': reset}),
+    );
+    if (response.statusCode != 200) {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to configure option on $name');
+    }
+  }
 }
+
+// -----------------------------------------------------------------------------
+// Cockpit-Storaged & Storage Network Models
+// -----------------------------------------------------------------------------
+
+class StorageNetworkReportModel {
+  final String dedicatedSubnet;
+  final String corednsSuffix;
+  final List<NodeStorageNetworkModel> nodes;
+  final double totalRxRateMBs;
+  final double totalTxRateMBs;
+  final bool activeTraffic;
+
+  StorageNetworkReportModel({
+    required this.dedicatedSubnet,
+    required this.corednsSuffix,
+    required this.nodes,
+    required this.totalRxRateMBs,
+    required this.totalTxRateMBs,
+    required this.activeTraffic,
+  });
+
+  factory StorageNetworkReportModel.fromJson(Map<String, dynamic> json) {
+    var nodesList = <NodeStorageNetworkModel>[];
+    if (json['nodes'] is List) {
+      nodesList = (json['nodes'] as List).map((n) => NodeStorageNetworkModel.fromJson(n)).toList();
+    }
+    return StorageNetworkReportModel(
+      dedicatedSubnet: json['dedicated_subnet'] ?? '10.10.100.0/24',
+      corednsSuffix: json['coredns_suffix'] ?? '.storage.gbnt.local',
+      nodes: nodesList,
+      totalRxRateMBs: (json['total_rx_rate_mbs'] as num?)?.toDouble() ?? 0.0,
+      totalTxRateMBs: (json['total_tx_rate_mbs'] as num?)?.toDouble() ?? 0.0,
+      activeTraffic: json['active_traffic'] ?? false,
+    );
+  }
+
+  factory StorageNetworkReportModel.empty() {
+    return StorageNetworkReportModel(
+      dedicatedSubnet: '10.10.100.0/24',
+      corednsSuffix: '.storage.gbnt.local',
+      nodes: [],
+      totalRxRateMBs: 0.0,
+      totalTxRateMBs: 0.0,
+      activeTraffic: false,
+    );
+  }
+}
+
+class NodeStorageNetworkModel {
+  final String nodeId;
+  final String nodeRole;
+  final String hostIp;
+  final String storageIp;
+  final String storageDns;
+  final String storageNic;
+  final List<StorageNetworkInterfaceModel> interfaces;
+  final bool isOnline;
+
+  NodeStorageNetworkModel({
+    required this.nodeId,
+    required this.nodeRole,
+    required this.hostIp,
+    required this.storageIp,
+    required this.storageDns,
+    required this.storageNic,
+    required this.interfaces,
+    required this.isOnline,
+  });
+
+  factory NodeStorageNetworkModel.fromJson(Map<String, dynamic> json) {
+    var ifaces = <StorageNetworkInterfaceModel>[];
+    if (json['interfaces'] is List) {
+      ifaces = (json['interfaces'] as List).map((i) => StorageNetworkInterfaceModel.fromJson(i)).toList();
+    }
+    return NodeStorageNetworkModel(
+      nodeId: json['node_id'] ?? '',
+      nodeRole: json['node_role'] ?? 'worker',
+      hostIp: json['host_ip'] ?? '',
+      storageIp: json['storage_ip'] ?? '',
+      storageDns: json['storage_dns'] ?? '',
+      storageNic: json['storage_nic'] ?? 'enp0s2',
+      interfaces: ifaces,
+      isOnline: json['is_online'] ?? true,
+    );
+  }
+}
+
+class StorageNetworkInterfaceModel {
+  final String name;
+  final List<String> ipAddresses;
+  final String mac;
+  final int mtu;
+  final bool isUp;
+  final bool isStorage;
+  final double rxRateMBs;
+  final double txRateMBs;
+  final int rxBytes;
+  final int txBytes;
+
+  StorageNetworkInterfaceModel({
+    required this.name,
+    required this.ipAddresses,
+    required this.mac,
+    required this.mtu,
+    required this.isUp,
+    required this.isStorage,
+    required this.rxRateMBs,
+    required this.txRateMBs,
+    required this.rxBytes,
+    required this.txBytes,
+  });
+
+  factory StorageNetworkInterfaceModel.fromJson(Map<String, dynamic> json) {
+    var ips = <String>[];
+    if (json['ip_addresses'] is List) {
+      ips = (json['ip_addresses'] as List).map((e) => e.toString()).toList();
+    }
+    return StorageNetworkInterfaceModel(
+      name: json['name'] ?? '',
+      ipAddresses: ips,
+      mac: json['mac'] ?? '',
+      mtu: json['mtu'] ?? 1500,
+      isUp: json['is_up'] ?? false,
+      isStorage: json['is_storage'] ?? false,
+      rxRateMBs: (json['rx_rate_mbs'] as num?)?.toDouble() ?? 0.0,
+      txRateMBs: (json['tx_rate_mbs'] as num?)?.toDouble() ?? 0.0,
+      rxBytes: json['rx_bytes'] ?? 0,
+      txBytes: json['tx_bytes'] ?? 0,
+    );
+  }
+}
+
+class GlusterProfileReportModel {
+  final String volumeName;
+  final bool isProfiling;
+  final int totalIOPS;
+  final double totalReadMBs;
+  final double totalWriteMBs;
+  final double avgLatencyMs;
+  final List<ProfileFopModel> topOperations;
+  final List<BlockSizeModel> blockSizeProfile;
+
+  GlusterProfileReportModel({
+    required this.volumeName,
+    required this.isProfiling,
+    required this.totalIOPS,
+    required this.totalReadMBs,
+    required this.totalWriteMBs,
+    required this.avgLatencyMs,
+    required this.topOperations,
+    required this.blockSizeProfile,
+  });
+
+  factory GlusterProfileReportModel.fromJson(Map<String, dynamic> json) {
+    var fops = <ProfileFopModel>[];
+    if (json['top_operations'] is List) {
+      fops = (json['top_operations'] as List).map((f) => ProfileFopModel.fromJson(f)).toList();
+    }
+    var blocks = <BlockSizeModel>[];
+    if (json['block_size_profile'] is List) {
+      blocks = (json['block_size_profile'] as List).map((b) => BlockSizeModel.fromJson(b)).toList();
+    }
+    return GlusterProfileReportModel(
+      volumeName: json['volume_name'] ?? '',
+      isProfiling: json['is_profiling'] ?? false,
+      totalIOPS: json['total_iops'] ?? 0,
+      totalReadMBs: (json['total_read_mbs'] as num?)?.toDouble() ?? 0.0,
+      totalWriteMBs: (json['total_write_mbs'] as num?)?.toDouble() ?? 0.0,
+      avgLatencyMs: (json['avg_latency_ms'] as num?)?.toDouble() ?? 0.0,
+      topOperations: fops,
+      blockSizeProfile: blocks,
+    );
+  }
+
+  factory GlusterProfileReportModel.empty(String name) {
+    return GlusterProfileReportModel(
+      volumeName: name,
+      isProfiling: false,
+      totalIOPS: 0,
+      totalReadMBs: 0.0,
+      totalWriteMBs: 0.0,
+      avgLatencyMs: 0.0,
+      topOperations: [],
+      blockSizeProfile: [],
+    );
+  }
+}
+
+class ProfileFopModel {
+  final String operation;
+  final int hits;
+  final double percentage;
+  final double avgLatencyUs;
+  final double maxLatencyUs;
+
+  ProfileFopModel({
+    required this.operation,
+    required this.hits,
+    required this.percentage,
+    required this.avgLatencyUs,
+    required this.maxLatencyUs,
+  });
+
+  factory ProfileFopModel.fromJson(Map<String, dynamic> json) {
+    return ProfileFopModel(
+      operation: json['operation'] ?? '',
+      hits: json['hits'] ?? 0,
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+      avgLatencyUs: (json['avg_latency_us'] as num?)?.toDouble() ?? 0.0,
+      maxLatencyUs: (json['max_latency_us'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class BlockSizeModel {
+  final String range;
+  final int readHits;
+  final int writeHits;
+  final double percentage;
+
+  BlockSizeModel({
+    required this.range,
+    required this.readHits,
+    required this.writeHits,
+    required this.percentage,
+  });
+
+  factory BlockSizeModel.fromJson(Map<String, dynamic> json) {
+    return BlockSizeModel(
+      range: json['range'] ?? '',
+      readHits: json['read_hits'] ?? 0,
+      writeHits: json['write_hits'] ?? 0,
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class GlusterQuotasReportModel {
+  final String volumeName;
+  final bool quotaEnabled;
+  final List<GlusterQuotaModel> quotas;
+
+  GlusterQuotasReportModel({
+    required this.volumeName,
+    required this.quotaEnabled,
+    required this.quotas,
+  });
+
+  factory GlusterQuotasReportModel.fromJson(Map<String, dynamic> json) {
+    var list = <GlusterQuotaModel>[];
+    if (json['quotas'] is List) {
+      list = (json['quotas'] as List).map((q) => GlusterQuotaModel.fromJson(q)).toList();
+    }
+    return GlusterQuotasReportModel(
+      volumeName: json['volume_name'] ?? '',
+      quotaEnabled: json['quota_enabled'] ?? true,
+      quotas: list,
+    );
+  }
+
+  factory GlusterQuotasReportModel.empty(String name) {
+    return GlusterQuotasReportModel(volumeName: name, quotaEnabled: false, quotas: []);
+  }
+}
+
+class GlusterQuotaModel {
+  final String id;
+  final String volumeName;
+  final String path;
+  final String hardLimit;
+  final String softLimit;
+  final double usedMB;
+  final double totalMB;
+  final double percent;
+
+  GlusterQuotaModel({
+    required this.id,
+    required this.volumeName,
+    required this.path,
+    required this.hardLimit,
+    required this.softLimit,
+    required this.usedMB,
+    required this.totalMB,
+    required this.percent,
+  });
+
+  factory GlusterQuotaModel.fromJson(Map<String, dynamic> json) {
+    return GlusterQuotaModel(
+      id: json['id'] ?? '',
+      volumeName: json['volume_name'] ?? '',
+      path: json['path'] ?? '/',
+      hardLimit: json['hard_limit'] ?? 'Unlimited',
+      softLimit: json['soft_limit'] ?? '80%',
+      usedMB: (json['used_mb'] as num?)?.toDouble() ?? 0.0,
+      totalMB: (json['total_mb'] as num?)?.toDouble() ?? 0.0,
+      percent: (json['percent'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class GlusterSnapshotModel {
+  final String id;
+  final String name;
+  final String volumeName;
+  final String status;
+  final String description;
+  final String createdAt;
+
+  GlusterSnapshotModel({
+    required this.id,
+    required this.name,
+    required this.volumeName,
+    required this.status,
+    required this.description,
+    required this.createdAt,
+  });
+
+  factory GlusterSnapshotModel.fromJson(Map<String, dynamic> json) {
+    return GlusterSnapshotModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      volumeName: json['volume_name'] ?? '',
+      status: json['status'] ?? 'Active',
+      description: json['description'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
 
 
 

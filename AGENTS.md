@@ -229,15 +229,25 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Smart Path Auto-Detection & Self-Healing:** Backend source path resolution supporting Docker volume data directories (`/var/lib/docker/volumes/.../_data`), GlusterFS mountpoints, and auto-creation of missing shared storage folders during backup operations.
 * **Quick Directory Path Suggestion Chips:** Contextual path chips (`/var/contenedores/`, `/var/lib/docker/volumes/`, `/mnt/shared/`, `/data/`) for rapid path composition.
 
-### 30. GlusterFS & Network Mounts Bi-Directional Coordination, Mount Recreation & Cascade Cleanup (`v2.38.0`)
-* **GlusterFS & Network Mounts Full Coordination:** Synchronized lifecycle operations between GlusterFS cluster volumes (`db.ManagedGlusterVolume`) and Network Mounts (`db.StorageMount`). Creating, updating, or deleting a storage volume or mount point automatically updates and aligns both dashboards in real time.
-* **Elimination of Phantom Fallback Volume Bug:** Resolved the issue where deleting the last GlusterFS volume failed or resurrected a phantom `gv_contenedores` volume by removing hardcoded fallback fixtures in `getFallbackManagedVolumes()`, allowing clusters to have 0 volumes cleanly.
-* **Mount Point Recreation from GlusterFS (`_showMountClusterDialog`):** Added a dedicated "Mount / Recreate Mount Point" wizard on Gluster volume cards, allowing instant mounting or re-mounting to any directory (with quick chips `/var/contenedores`, `/mnt/gluster`, `/data/gluster`, `/var/shared`), node target selection (`All Centurions` or specific worker), and automatic `/etc/fstab` synchronization.
-* **Coordinated Cascade Deletion & Warnings:**
-  - **GlusterFS Volume Deletion:** Detects active `/etc/fstab` mount mappings, displays warning alerts, and provides a default-checked option to safely unmount and remove fstab entries across all cluster hosts.
-  - **Network Mount Deletion:** Detects if a mount point belongs to a GlusterFS volume and offers the choice to delete either only the mount point (preserving volume data) or permanently delete both the mount point and the underlying GlusterFS volume.
-* **Delete All GlusterFS Volumes Action:** Introduced a cluster-wide `Delete All Volumes` action in the UI and REST API (`DELETE /api/storage/gluster/volumes` & `POST /api/storage/gluster/volumes/delete-all`) with safe cluster unmounting and fstab cleanup.
-* **Non-Interactive Script Mode for Gluster CLI:** Added `--mode=script` to all Gluster CLI operations (`volume start`, `stop`, `delete`) to prevent interactive `(y/n)` prompt hangs during automated operations.
+### 31. Dual-NIC Dedicated Storage Network (GlusterFS), CoreDNS Storage Resolution & Cockpit-Storaged Management Subsystem (`v2.39.0`)
+* **Dedicated Dual-NIC Storage Network Architecture (`enp0s2` / `10.10.100.0/24`):**
+  - Physical/Virtual NIC isolation separating application, ingress, and management traffic (`enp0s1`: `192.168.252.0/24`) from GlusterFS replication streams, daemons (`24007/24008`), bricks (`49152:49251`), and FUSE mount traffic (`enp0s2`: `10.10.100.0/24`).
+  - Automated Multipass and Netplan dual-interface provisioning (`scripts/recreate-cluster-dual-nic.sh`) with persistent routing and peer discovery over `10.10.100.x`.
+* **CoreDNS Storage Resolution Subsystem (`*.storage.gbnt.local`):**
+  - Integrated CoreDNS storage host resolution dynamically binding `<hostname>.storage.gbnt.local` to each node's dedicated `10.10.100.x` IP address.
+  - Automatically updates `gubernator.hosts` in CoreDNS so containers and services can resolve internal storage nodes by domain or IP seamlessly.
+* **Live Storage Network Telemetry & Interface Monitor:**
+  - Real-time `/proc/net/dev` rate calculation producing per-interface and cluster-wide Rx/Tx throughput (MB/s), packet rates, and link states (`GET /api/storage/gluster/network`).
+  - Dedicated Flutter Storage Network dashboard rendering dual-NIC interface cards for all Centurions with live speedometers and traffic distribution badges.
+* **Cockpit-Storaged Inspired Management Suite (Total GlusterFS Control):**
+  - **Volume I/O Profiling & FOP Breakdown:** Real-time IOPS, read/write speedometers, latency metrics, file operation distribution (LOOKUP, READ, WRITE, STAT, OPENDIR, UNLINK), and block size histogram (`1B-4KB` to `>1MB`) via `gluster volume profile <name> start/info/stop`.
+  - **Directory Quotas & Path Limits:** Authoring and enforcing hard disk limits on subdirectories (`gluster volume quota <name> limit-usage <path> <size>`) with consumption progress bars.
+  - **Point-in-Time Volume Snapshots & Instant Rollback:** Snapshot creation, description tagging, instant rollback restore (`gluster snapshot restore <name>`), and lifecycle pruning with SQLite persistence (`GET /api/storage/gluster/snapshots`).
+  - **Volume Rebalance Engine:** Data migration and brick layout repair (`gluster volume rebalance <name> start/status/stop`).
+  - **Container Tuning Options Matrix:** Live configuration and toggling of container-critical Gluster options (`performance.write-behind`, `performance.stat-prefetch`, `performance.quick-read`, `network.ping-timeout`, `cluster.favorite-child-policy`).
+* **Sub-Navigation 6-View Dashboard Architecture:**
+  - Modern, responsive segmented view selector inside the GlusterFS panel: *Volumes & Peers*, *Performance & I/O (Cockpit)*, *Storage Network (Dual NIC)*, *Quotas & Directory Limits*, *Volume Snapshots*, and *Advanced Tuning Options*.
+
 
 
 

@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.38.0"
+var Version = "v2.39.0"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -62,7 +62,7 @@ func GetVersion() string {
 			return v
 		}
 	}
-	return "v2.38.0"
+	return "v2.39.0"
 }
 
 
@@ -385,9 +385,20 @@ func StartDashboard() {
 		api.POST("/storage/gluster/volumes/:name/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStartHandler)
 		api.POST("/storage/gluster/volumes/:name/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStopHandler)
 		api.GET("/storage/gluster/volumes/:name/heal", glusterVolumeHealHandler)
-		api.POST("/storage/gluster/volumes/:name/heal", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeTriggerHealHandler)
-		api.POST("/storage/gluster/volumes/:name/mount-cluster", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeMountClusterHandler)
 		api.GET("/storage/gluster/diagnostics", glusterDiagnosticsHandler)
+		api.GET("/storage/gluster/network", glusterNetworkReportHandler)
+		api.GET("/storage/gluster/volumes/:name/profile", glusterVolumeProfileHandler)
+		api.POST("/storage/gluster/volumes/:name/profile/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeProfileStartHandler)
+		api.POST("/storage/gluster/volumes/:name/profile/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeProfileStopHandler)
+		api.GET("/storage/gluster/volumes/:name/quotas", glusterVolumeQuotasHandler)
+		api.POST("/storage/gluster/volumes/:name/quotas", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeQuotaSetHandler)
+		api.DELETE("/storage/gluster/volumes/:name/quotas", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeQuotaDisableHandler)
+		api.GET("/storage/gluster/snapshots", glusterSnapshotsListHandler)
+		api.POST("/storage/gluster/snapshots", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterSnapshotCreateHandler)
+		api.POST("/storage/gluster/snapshots/:name/restore", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterSnapshotRestoreHandler)
+		api.DELETE("/storage/gluster/snapshots/:name", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterSnapshotDeleteHandler)
+		api.POST("/storage/gluster/volumes/:name/rebalance", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeRebalanceHandler)
+		api.POST("/storage/gluster/volumes/:name/options", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeSetOptionHandler)
 		api.GET("/backups", backupsListHandler)
 		api.GET("/backups/download/:id", backupDownloadHandler)
 		api.GET("/backups/schedules", backupSchedulesListHandler)
@@ -4955,6 +4966,183 @@ func glusterDiagnosticsHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"diagnostics": diag})
 }
+
+func glusterNetworkReportHandler(c *gin.Context) {
+	report, err := storage.GetClusterStorageNetworkReport()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
+func glusterVolumeProfileHandler(c *gin.Context) {
+	name := c.Param("name")
+	report, err := storage.GetGlusterVolumeProfile(name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
+func glusterVolumeProfileStartHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.StartGlusterVolumeProfile(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Profiling started for volume '%s'", name)})
+}
+
+func glusterVolumeProfileStopHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.StopGlusterVolumeProfile(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Profiling stopped for volume '%s'", name)})
+}
+
+func glusterVolumeQuotasHandler(c *gin.Context) {
+	name := c.Param("name")
+	report, err := storage.GetGlusterQuotas(name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, report)
+}
+
+func glusterVolumeQuotaSetHandler(c *gin.Context) {
+	name := c.Param("name")
+	var req struct {
+		Path      string `json:"path"`
+		HardLimit string `json:"hard_limit"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	quota, err := storage.SetGlusterQuotaLimit(name, req.Path, req.HardLimit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Quota set for path '%s' on volume '%s'", req.Path, name),
+		"quota":   quota,
+	})
+}
+
+func glusterVolumeQuotaDisableHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.DisableGlusterQuota(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Quotas disabled for volume '%s'", name)})
+}
+
+func glusterSnapshotsListHandler(c *gin.Context) {
+	volName := c.Query("volume")
+	snaps, err := storage.ListGlusterSnapshots(volName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"snapshots": snaps})
+}
+
+func glusterSnapshotCreateHandler(c *gin.Context) {
+	var req struct {
+		Name        string `json:"name"`
+		VolumeName  string `json:"volume_name"`
+		Description string `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	snap, err := storage.CreateGlusterSnapshot(req.Name, req.VolumeName, req.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  fmt.Sprintf("Snapshot '%s' created successfully for volume '%s'", snap.Name, req.VolumeName),
+		"snapshot": snap,
+	})
+}
+
+func glusterSnapshotRestoreHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.RestoreGlusterSnapshot(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Snapshot '%s' restored successfully", name)})
+}
+
+func glusterSnapshotDeleteHandler(c *gin.Context) {
+	name := c.Param("name")
+	if err := storage.DeleteGlusterSnapshot(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Snapshot '%s' deleted", name)})
+}
+
+func glusterVolumeRebalanceHandler(c *gin.Context) {
+	name := c.Param("name")
+	action := c.DefaultQuery("action", "start")
+	if action == "stop" {
+		_ = storage.StopGlusterVolumeRebalance(name)
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Rebalance stopped for volume '%s'", name)})
+		return
+	}
+
+	status, err := storage.StartGlusterVolumeRebalance(name, action == "fix-layout")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Rebalance initiated for volume '%s'", name),
+		"status":  status,
+	})
+}
+
+func glusterVolumeSetOptionHandler(c *gin.Context) {
+	name := c.Param("name")
+	var req struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+		Reset bool   `json:"reset"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Reset {
+		if err := storage.ResetGlusterVolumeOption(name, req.Key); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Option '%s' reset on volume '%s'", req.Key, name)})
+		return
+	}
+
+	if err := storage.SetGlusterVolumeOption(name, req.Key, req.Value); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Option '%s=%s' set on volume '%s'", req.Key, req.Value, name)})
+}
+
 
 
 
