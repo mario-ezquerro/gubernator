@@ -229,6 +229,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Smart Path Auto-Detection & Self-Healing:** Backend source path resolution supporting Docker volume data directories (`/var/lib/docker/volumes/.../_data`), GlusterFS mountpoints, and auto-creation of missing shared storage folders during backup operations.
 * **Quick Directory Path Suggestion Chips:** Contextual path chips (`/var/contenedores/`, `/var/lib/docker/volumes/`, `/mnt/shared/`, `/data/`) for rapid path composition.
 
+### 29. Storage & Backups — Name, Source & Destination Architecture, Interactive Directory Navigator & Persistent Pool Registration (`v2.37.0`)
+* **Structured 3-Section Backup Architecture (Nombre, Origen, Destino):** Completely restructured backup creation and scheduling dialogs into clear, numbered operational sections: **1. Nombre del Backup / Política**, **2. Origen de Datos (Source)**, **3. Destino del Backup (Destination Directory)**, and **4. Opciones / Programación & Retención**.
+* **Interactive Directory Navigator & Picker (`_showDirectoryPickerDialog`):** Interactive modal filesystem browser with breadcrumb navigation, parent directory traversal, live Centurion node selector, inline subfolder creation (`New Folder` with `0777` permissions and instant refresh), bookmark chips, and one-click directory selection.
+* **Custom Destination Routing & SQLite Persistence (`destination_path`):** Added `DestinationPath` field to `db.BackupSchedule` and `CreateBackupRequest`. The backup engine automatically creates and routes `.tar.gz` archives to custom destination directories (`req.DestinationPath` or fallback `/var/backups/gbnt`) on demand and during background scheduled executions.
+* **Automatic StoragePool Registration for Created Directories:** Fixed the issue where newly created directories disappeared in subsequent backups by automatically registering created folder paths in `db.StoragePool`, ensuring permanent persistence and immediate discovery across all cluster volume scans.
+* **Enhanced Restore Target Selector:** Integrated directory navigation and inline directory creation into the backup archive restoration flow.
+
+
 
 
 

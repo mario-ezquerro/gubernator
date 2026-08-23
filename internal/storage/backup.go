@@ -24,6 +24,7 @@ type CreateBackupRequest struct {
 	StackID         string `json:"stack_id"`
 	VolumeName      string `json:"volume_name"`
 	SourcePath      string `json:"source_path"`
+	DestinationPath string `json:"destination_path"`
 	PauseContainers bool   `json:"pause_containers"`
 	IsScheduled     bool   `json:"is_scheduled"`
 	ScheduleID      string `json:"schedule_id"`
@@ -101,6 +102,15 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		}
 	}
 
+	// Determine target destination directory
+	destDir := strings.TrimSpace(req.DestinationPath)
+	if destDir == "" {
+		destDir = BackupDir()
+	}
+	if err := os.MkdirAll(destDir, 0777); err != nil {
+		return nil, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+	}
+
 	// Generate filename and destination path
 	backupID := uuid.New().String()
 	timestamp := time.Now().Format("20060102-150405")
@@ -109,7 +119,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		cleanName = fmt.Sprintf("backup-%s-%s", filepath.Base(sourcePath), timestamp)
 	}
 	fileName := fmt.Sprintf("%s.tar.gz", cleanName)
-	destFilePath := filepath.Join(BackupDir(), fileName)
+	destFilePath := filepath.Join(destDir, fileName)
 
 	// Collect containers associated with the stack to pause if requested
 	var pausedContainerIDs []string

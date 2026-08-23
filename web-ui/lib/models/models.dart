@@ -1110,6 +1110,7 @@ class BackupScheduleModel {
   final String targetType;
   final String targetId;
   final String targetName;
+  final String destinationPath;
   final int retentionCount;
   final bool pauseContainers;
   final bool enabled;
@@ -1123,6 +1124,7 @@ class BackupScheduleModel {
     this.targetType = 'stack',
     this.targetId = '',
     this.targetName = '',
+    this.destinationPath = '',
     this.retentionCount = 7,
     this.pauseContainers = true,
     this.enabled = true,
@@ -1138,6 +1140,7 @@ class BackupScheduleModel {
       targetType: json['target_type'] ?? 'stack',
       targetId: json['target_id'] ?? '',
       targetName: json['target_name'] ?? '',
+      destinationPath: json['destination_path'] ?? '',
       retentionCount: (json['retention_count'] as num?)?.toInt() ?? 7,
       pauseContainers: json['pause_containers'] != false,
       enabled: json['enabled'] != false,
@@ -1154,6 +1157,7 @@ class BackupScheduleModel {
       'target_type': targetType,
       'target_id': targetId,
       'target_name': targetName,
+      'destination_path': destinationPath,
       'retention_count': retentionCount,
       'pause_containers': pauseContainers,
       'enabled': enabled,

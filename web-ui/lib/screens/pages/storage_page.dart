@@ -542,6 +542,373 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
     );
   }
 
+  Future<String?> _showDirectoryPickerDialog({String? initialPath, String? initialNode, String title = 'Select Directory'}) async {
+    String currentPath = initialPath != null && initialPath.isNotEmpty ? initialPath : '/var/contenedores';
+    String currentNode = (initialNode != null && initialNode.isNotEmpty && initialNode != 'cluster') ? initialNode : 'all';
+    List<DirectoryEntryModel> entries = [];
+    bool isLoading = true;
+    String? errorMessage;
+
+    return await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            void loadEntries() async {
+              setDlgState(() {
+                isLoading = true;
+                errorMessage = null;
+              });
+              try {
+                final list = await ApiService.listDirectoryContents(path: currentPath, targetNode: currentNode);
+                setDlgState(() {
+                  entries = list;
+                  isLoading = false;
+                });
+              } catch (e) {
+                setDlgState(() {
+                  errorMessage = e.toString();
+                  isLoading = false;
+                });
+              }
+            }
+
+            // Load on first build
+            if (isLoading && errorMessage == null && entries.isEmpty) {
+              loadEntries();
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.folder_open, color: Color(0xFF10B981), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: currentNode,
+                      underline: const SizedBox(),
+                      isDense: true,
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white : Colors.black87),
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('🌐 Manager / First Available')),
+                        ...widget.state.nodes.map(
+                          (node) => DropdownMenuItem(
+                            value: node.id,
+                            child: Text('💻 ${node.role.toUpperCase()}: ${node.ip}'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDlgState(() {
+                            currentNode = val;
+                            loadEntries();
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 750,
+                height: 500,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Navigation Bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_upward, size: 18),
+                            tooltip: 'Up to parent directory',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              final parent = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                              if (parent.isNotEmpty) {
+                                currentPath = parent;
+                                loadEntries();
+                              } else if (currentPath != '/') {
+                                currentPath = '/';
+                                loadEntries();
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              currentPath,
+                              style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 18),
+                            tooltip: 'Refresh listing',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: loadEntries,
+                          ),
+                          const SizedBox(width: 4),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.create_new_folder, size: 14, color: Color(0xFF10B981)),
+                            label: const Text('New Folder', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFF10B981),
+                            ),
+                            onPressed: () {
+                              final folderNameCtrl = TextEditingController();
+                              showDialog(
+                                context: context,
+                                builder: (fctx) {
+                                  return AlertDialog(
+                                    title: const Row(
+                                      children: [
+                                        Icon(Icons.create_new_folder, color: Color(0xFF10B981), size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Create New Subfolder'),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Create subfolder inside: $currentPath', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                        const SizedBox(height: 12),
+                                        TextField(
+                                          controller: folderNameCtrl,
+                                          autofocus: true,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Folder Name',
+                                            hintText: 'e.g. database_backups or myapp',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(fctx), child: const Text('Cancel')),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                                        onPressed: () async {
+                                          final fName = folderNameCtrl.text.trim();
+                                          if (fName.isEmpty) return;
+                                          Navigator.pop(fctx);
+                                          final newPath = currentPath == '/' ? '/$fName' : '$currentPath/$fName';
+                                          try {
+                                            final ok = await ApiService.createStorageDirectory(
+                                              path: newPath,
+                                              targetNode: currentNode,
+                                              permissions: '0777',
+                                            );
+                                            if (ok) {
+                                              _showSnackBar('✅ Folder "$newPath" created!');
+                                              currentPath = newPath;
+                                              loadEntries();
+                                              _loadAllData();
+                                            } else {
+                                              _showSnackBar('❌ Failed to create folder', isError: true);
+                                            }
+                                          } catch (e) {
+                                            _showSnackBar('❌ Error: $e', isError: true);
+                                          }
+                                        },
+                                        child: const Text('Create Folder'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Quick Path Bookmark Chips
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.bookmark_outline, size: 14),
+                          label: const Text('/var/contenedores', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            currentPath = '/var/contenedores';
+                            loadEntries();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.bookmark_outline, size: 14),
+                          label: const Text('/var/backups', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            currentPath = '/var/backups';
+                            loadEntries();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.bookmark_outline, size: 14),
+                          label: const Text('/data', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            currentPath = '/data';
+                            loadEntries();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.bookmark_outline, size: 14),
+                          label: const Text('/mnt', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            currentPath = '/mnt';
+                            loadEntries();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.bookmark_outline, size: 14),
+                          label: const Text('/var/lib/docker/volumes', style: TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            currentPath = '/var/lib/docker/volumes';
+                            loadEntries();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Directory Listing
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : errorMessage != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 36),
+                                      const SizedBox(height: 8),
+                                      Text(errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13), textAlign: TextAlign.center),
+                                      const SizedBox(height: 12),
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.refresh, size: 16),
+                                        label: const Text('Retry'),
+                                        onPressed: loadEntries,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : entries.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.folder_open, size: 40, color: Colors.grey[500]),
+                                          const SizedBox(height: 8),
+                                          const Text('Directory is empty', style: TextStyle(color: Colors.grey)),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      itemCount: entries.length,
+                                      separatorBuilder: (_, __) => const Divider(height: 1),
+                                      itemBuilder: (context, idx) {
+                                        final item = entries[idx];
+                                        return ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          leading: Icon(
+                                            item.isDir ? Icons.folder : Icons.insert_drive_file,
+                                            color: item.isDir ? Colors.amber : const Color(0xFF38BDF8),
+                                            size: 22,
+                                          ),
+                                          title: Text(
+                                            item.name,
+                                            style: TextStyle(
+                                              fontWeight: item.isDir ? FontWeight.bold : FontWeight.normal,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            'Path: ${item.path}',
+                                            style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.grey[400]),
+                                          ),
+                                          trailing: item.isDir
+                                              ? Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    OutlinedButton(
+                                                      style: OutlinedButton.styleFrom(
+                                                        visualDensity: VisualDensity.compact,
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                                      ),
+                                                      onPressed: () => Navigator.pop(ctx, item.path),
+                                                      child: const Text('Select', style: TextStyle(fontSize: 11)),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                                                      tooltip: 'Open folder',
+                                                      onPressed: () {
+                                                        currentPath = item.path;
+                                                        loadEntries();
+                                                      },
+                                                    ),
+                                                  ],
+                                                )
+                                              : Text(item.sizeFormatted, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                          onTap: item.isDir
+                                              ? () {
+                                                  currentPath = item.path;
+                                                  loadEntries();
+                                                }
+                                              : null,
+                                        );
+                                      },
+                                    ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, null),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  icon: const Icon(Icons.check_circle, size: 18),
+                  label: Text('Select "$currentPath"'),
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                  onPressed: () => Navigator.pop(ctx, currentPath),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showCreateDockerVolumeDialog({String? initialNode}) {
     final nameCtrl = TextEditingController();
     String selectedDriver = 'local';
@@ -995,16 +1362,18 @@ volumes:
   void _showCreateBackupDialog({String? initialStackId, String? initialVolumeName, String? initialSourcePath}) {
     final nameCtrl = TextEditingController(text: initialVolumeName != null ? 'backup-$initialVolumeName' : '');
     final sourcePathCtrl = TextEditingController(text: initialSourcePath ?? '');
+    final destinationPathCtrl = TextEditingController(text: '/var/backups/gbnt');
     String selectedStack = initialStackId ?? (widget.state.stacks.isNotEmpty ? widget.state.stacks.first.id : '');
     String selectedVolumeName = initialVolumeName ?? '';
     String sourceMode = (initialSourcePath != null || initialVolumeName != null) ? 'select' : (_volumes.isNotEmpty ? 'select' : 'custom');
     bool pauseContainer = true;
-    bool isCreatingDir = false;
+    bool isCreatingSourceDir = false;
+    bool isCreatingDestDir = false;
 
     // Collect all selectable storage targets
     final List<Map<String, String>> selectableTargets = [];
 
-    // 1. Volumes
+    // 1. Volumes & Shared Pools
     for (final v in _volumes) {
       final label = v.type == 'docker_named'
           ? '💾 [Docker] ${v.name} (${v.nodeHostname})'
@@ -1063,6 +1432,8 @@ volumes:
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDlgState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
             return AlertDialog(
               title: const Row(
                 children: [
@@ -1072,7 +1443,7 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 560,
+                width: 620,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1083,6 +1454,10 @@ volumes:
                         style: TextStyle(fontSize: 12.5, color: Colors.grey),
                       ),
                       const SizedBox(height: 16),
+
+                      // 1. NOMBRE DEL BACKUP
+                      _buildSectionHeader('1. NOMBRE DEL BACKUP / SNAPSHOT', Icons.label_outline, const Color(0xFF10B981), isDark),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: nameCtrl,
                         decoration: const InputDecoration(
@@ -1094,8 +1469,8 @@ volumes:
                       ),
                       const SizedBox(height: 16),
 
-                      // Selection Mode Toggle
-                      const Text('Source Target / Directory:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      // 2. ORIGEN DE DATOS
+                      _buildSectionHeader('2. ORIGEN DE DATOS (¿Qué respaldar?)', Icons.source_outlined, const Color(0xFF38BDF8), isDark),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
@@ -1103,12 +1478,12 @@ volumes:
                           segments: const [
                             ButtonSegment(
                               value: 'select',
-                              icon: Icon(Icons.folder_special_outlined, size: 16),
-                              label: Text('Select Existing Volume / Mount'),
+                              icon: Icon(Icons.inventory_2_outlined, size: 16),
+                              label: Text('Discovered Volumes / Stacks'),
                             ),
                             ButtonSegment(
                               value: 'custom',
-                              icon: Icon(Icons.edit_note, size: 16),
+                              icon: Icon(Icons.folder_open, size: 16),
                               label: Text('Custom Filesystem Path'),
                             ),
                           ],
@@ -1131,15 +1506,15 @@ volumes:
                           },
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
 
                       if (sourceMode == 'select' && selectableTargets.isNotEmpty) ...[
                         DropdownButtonFormField<String>(
                           value: selectedTargetId,
                           isExpanded: true,
                           decoration: const InputDecoration(
-                            labelText: 'Discovered Volumes, Pools & Mounts',
-                            prefixIcon: Icon(Icons.inventory_2_outlined),
+                            labelText: 'Select Discovered Volume, Pool or Stack',
+                            prefixIcon: Icon(Icons.storage),
                             border: OutlineInputBorder(),
                           ),
                           items: selectableTargets.map((t) {
@@ -1178,11 +1553,11 @@ volumes:
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.folder_open, size: 16, color: Color(0xFF10B981)),
+                              const Icon(Icons.folder_open, size: 16, color: Color(0xFF38BDF8)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Path: ${sourcePathCtrl.text}',
+                                  'Source Path: ${sourcePathCtrl.text}',
                                   style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1191,14 +1566,43 @@ volumes:
                           ),
                         ),
                       ] else ...[
-                        TextField(
-                          controller: sourcePathCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Source Directory / Volume Path',
-                            hintText: 'e.g. /var/contenedores/wordpress/data or /data/storage',
-                            prefixIcon: Icon(Icons.folder_outlined),
-                            border: OutlineInputBorder(),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: sourcePathCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Source Directory / Volume Path',
+                                  hintText: 'e.g. /var/contenedores/wordpress/data or /data/storage',
+                                  prefixIcon: Icon(Icons.folder_outlined),
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.explore, size: 16),
+                              label: const Text('Browse...'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              ),
+                              onPressed: () async {
+                                final selected = await _showDirectoryPickerDialog(
+                                  initialPath: sourcePathCtrl.text.isNotEmpty ? sourcePathCtrl.text : '/var/contenedores',
+                                  title: 'Browse Source Directory',
+                                );
+                                if (selected != null) {
+                                  setDlgState(() {
+                                    sourcePathCtrl.text = selected;
+                                    if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('backup-')) {
+                                      final baseName = selected.split('/').where((s) => s.isNotEmpty).lastOrNull ?? 'source';
+                                      nameCtrl.text = 'backup-$baseName';
+                                    }
+                                  });
+                                }
+                              },
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Wrap(
@@ -1222,32 +1626,27 @@ volumes:
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Inline Directory Creator Action
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             OutlinedButton.icon(
-                              icon: isCreatingDir
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF10B981)),
-                              label: const Text('Create Directory on Host(s) (mkdir -p)', style: TextStyle(fontSize: 12)),
+                              icon: isCreatingSourceDir
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.create_new_folder, size: 15, color: Color(0xFF38BDF8)),
+                              label: const Text('Create Source Directory (mkdir -p)', style: TextStyle(fontSize: 12)),
                               style: OutlinedButton.styleFrom(
                                 visualDensity: VisualDensity.compact,
-                                foregroundColor: const Color(0xFF10B981),
+                                foregroundColor: const Color(0xFF38BDF8),
                               ),
-                              onPressed: isCreatingDir
+                              onPressed: isCreatingSourceDir
                                   ? null
                                   : () async {
                                       final path = sourcePathCtrl.text.trim();
                                       if (path.isEmpty) {
-                                        _showSnackBar('Please enter a directory path first', isError: true);
+                                        _showSnackBar('Please enter a source directory path first', isError: true);
                                         return;
                                       }
-                                      setDlgState(() => isCreatingDir = true);
+                                      setDlgState(() => isCreatingSourceDir = true);
                                       try {
                                         final ok = await ApiService.createStorageDirectory(
                                           path: path,
@@ -1255,7 +1654,7 @@ volumes:
                                           permissions: '0777',
                                         );
                                         if (ok) {
-                                          _showSnackBar('✅ Directory "$path" created across cluster!');
+                                          _showSnackBar('✅ Source directory "$path" ready across cluster!');
                                           _loadAllData();
                                         } else {
                                           _showSnackBar('❌ Failed to create directory', isError: true);
@@ -1263,20 +1662,124 @@ volumes:
                                       } catch (e) {
                                         _showSnackBar('❌ Error: $e', isError: true);
                                       } finally {
-                                        setDlgState(() => isCreatingDir = false);
+                                        setDlgState(() => isCreatingSourceDir = false);
                                       }
                                     },
                             ),
                           ],
                         ),
                       ],
-
                       const SizedBox(height: 16),
+
+                      // 3. DESTINO DEL BACKUP
+                      _buildSectionHeader('3. DESTINO DEL BACKUP (¿Dónde guardar la copia?)', Icons.save_alt, const Color(0xFFF59E0B), isDark),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: destinationPathCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Destination Directory Path',
+                                hintText: 'e.g. /var/backups/gbnt or /var/contenedores/backups',
+                                prefixIcon: Icon(Icons.folder_special_outlined),
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.explore, size: 16),
+                            label: const Text('Browse...'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            ),
+                            onPressed: () async {
+                              final selected = await _showDirectoryPickerDialog(
+                                initialPath: destinationPathCtrl.text.isNotEmpty ? destinationPathCtrl.text : '/var/backups',
+                                title: 'Browse / Select Destination Directory',
+                              );
+                              if (selected != null) {
+                                setDlgState(() => destinationPathCtrl.text = selected);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          ActionChip(
+                            label: const Text('Default (/var/backups/gbnt)', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/var/backups/gbnt'),
+                          ),
+                          ActionChip(
+                            label: const Text('/var/contenedores/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/var/contenedores/backups/'),
+                          ),
+                          ActionChip(
+                            label: const Text('/data/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/data/backups/'),
+                          ),
+                          ActionChip(
+                            label: const Text('/mnt/shared/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/mnt/shared/backups/'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          OutlinedButton.icon(
+                            icon: isCreatingDestDir
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.create_new_folder, size: 15, color: Color(0xFFF59E0B)),
+                            label: const Text('Create Destination Directory (mkdir -p)', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFFF59E0B),
+                            ),
+                            onPressed: isCreatingDestDir
+                                ? null
+                                : () async {
+                                    final path = destinationPathCtrl.text.trim();
+                                    if (path.isEmpty) {
+                                      _showSnackBar('Please enter a destination path first', isError: true);
+                                      return;
+                                    }
+                                    setDlgState(() => isCreatingDestDir = true);
+                                    try {
+                                      final ok = await ApiService.createStorageDirectory(
+                                        path: path,
+                                        targetNode: 'all',
+                                        permissions: '0777',
+                                      );
+                                      if (ok) {
+                                        _showSnackBar('✅ Destination directory "$path" ready across cluster!');
+                                        _loadAllData();
+                                      } else {
+                                        _showSnackBar('❌ Failed to create directory', isError: true);
+                                      }
+                                    } catch (e) {
+                                      _showSnackBar('❌ Error: $e', isError: true);
+                                    } finally {
+                                      setDlgState(() => isCreatingDestDir = false);
+                                    }
+                                  },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 4. OPCIONES
+                      _buildSectionHeader('4. OPCIONES ADICIONALES', Icons.tune, Colors.grey, isDark),
+                      const SizedBox(height: 8),
                       if (widget.state.stacks.isNotEmpty) ...[
                         DropdownButtonFormField<String>(
                           value: selectedStack.isNotEmpty ? selectedStack : null,
                           decoration: const InputDecoration(
-                            labelText: 'Associated Stack (Legion)',
+                            labelText: 'Associated Stack (Legion) - Optional',
                             prefixIcon: Icon(Icons.layers_outlined),
                             border: OutlineInputBorder(),
                           ),
@@ -1295,7 +1798,7 @@ volumes:
                             }
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
 
                       Container(
@@ -1337,8 +1840,9 @@ volumes:
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
                   onPressed: () async {
                     final name = nameCtrl.text.trim();
-                    final path = sourcePathCtrl.text.trim();
-                    if (name.isEmpty && path.isEmpty) {
+                    final srcPath = sourcePathCtrl.text.trim();
+                    final destPath = destinationPathCtrl.text.trim();
+                    if (name.isEmpty && srcPath.isEmpty) {
                       _showSnackBar('Please specify a backup name or source path', isError: true);
                       return;
                     }
@@ -1349,7 +1853,8 @@ volumes:
                         name: name,
                         stackId: selectedStack,
                         volumeName: selectedVolumeName,
-                        sourcePath: path,
+                        sourcePath: srcPath,
+                        destinationPath: destPath,
                         pauseContainers: pauseContainer,
                       );
                       _showSnackBar('✅ Backup created successfully!');
@@ -1364,6 +1869,24 @@ volumes:
           },
         );
       },
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon, Color color, bool isDark) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12.5,
+            color: color,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1385,21 +1908,44 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 520,
+                width: 540,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('You are about to restore backup "${backup.name}" (${backup.sizeFormatted}).', style: const TextStyle(fontSize: 13)),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: targetCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Target Restore Directory',
-                        hintText: 'e.g. /var/contenedores/wordpress/data',
-                        prefixIcon: Icon(Icons.folder_outlined),
-                        border: OutlineInputBorder(),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: targetCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Target Restore Directory',
+                              hintText: 'e.g. /var/contenedores/wordpress/data',
+                              prefixIcon: Icon(Icons.folder_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.explore, size: 16),
+                          label: const Text('Browse...'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          ),
+                          onPressed: () async {
+                            final selected = await _showDirectoryPickerDialog(
+                              initialPath: targetCtrl.text.isNotEmpty ? targetCtrl.text : '/var/contenedores',
+                              title: 'Select Restore Target Directory',
+                            );
+                            if (selected != null) {
+                              setDlgState(() => targetCtrl.text = selected);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -1421,11 +1967,7 @@ volumes:
                       children: [
                         OutlinedButton.icon(
                           icon: isCreatingTarget
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF3B82F6)),
                           label: const Text('Ensure Target Directory Exists (mkdir -p)', style: TextStyle(fontSize: 12)),
                           style: OutlinedButton.styleFrom(
@@ -1449,6 +1991,7 @@ volumes:
                                     );
                                     if (ok) {
                                       _showSnackBar('✅ Directory "$path" ready on host(s)!');
+                                      _loadAllData();
                                     } else {
                                       _showSnackBar('❌ Failed to create directory', isError: true);
                                     }
@@ -1506,6 +2049,11 @@ volumes:
           ? schedule.targetId
           : '',
     );
+    final destinationPathCtrl = TextEditingController(
+      text: schedule?.destinationPath != null && schedule!.destinationPath.isNotEmpty
+          ? schedule.destinationPath
+          : '/var/backups/gbnt',
+    );
     String targetType = schedule?.targetType ?? 'stack';
     String selectedStack = (schedule != null && schedule.targetType == 'stack')
         ? schedule.targetId
@@ -1515,7 +2063,8 @@ volumes:
         : (_volumes.isNotEmpty ? _volumes.first.id : (_mounts.isNotEmpty ? _mounts.first.id : ''));
     int retention = schedule?.retentionCount ?? 7;
     bool pauseContainers = schedule?.pauseContainers ?? true;
-    bool isCreatingDir = false;
+    bool isCreatingSourceDir = false;
+    bool isCreatingDestDir = false;
 
     // Collect selectable volumes and mounts
     final List<Map<String, String>> selectableVolumes = [];
@@ -1546,6 +2095,8 @@ volumes:
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDlgState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
             return AlertDialog(
               title: Row(
                 children: [
@@ -1555,12 +2106,15 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 560,
+                width: 620,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 1. NOMBRE DE LA POLÍTICA
+                      _buildSectionHeader('1. NOMBRE DE LA POLÍTICA', Icons.label_outline, const Color(0xFF8B5CF6), isDark),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: nameCtrl,
                         decoration: const InputDecoration(
@@ -1572,8 +2126,8 @@ volumes:
                       ),
                       const SizedBox(height: 16),
 
-                      // Target Type Selector
-                      const Text('Backup Target Type:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      // 2. ORIGEN DE DATOS
+                      _buildSectionHeader('2. ORIGEN DE DATOS (Target to Backup)', Icons.source_outlined, const Color(0xFF38BDF8), isDark),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
@@ -1601,7 +2155,7 @@ volumes:
                           },
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
 
                       if (targetType == 'stack') ...[
                         if (widget.state.stacks.isNotEmpty)
@@ -1667,14 +2221,37 @@ volumes:
                         else
                           const Text('No volumes or mounts discovered yet.', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ] else ...[
-                        TextField(
-                          controller: customPathCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Directory Path',
-                            hintText: 'e.g. /var/contenedores/myapp or /data/glusterfs',
-                            prefixIcon: Icon(Icons.folder_outlined),
-                            border: OutlineInputBorder(),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: customPathCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Directory Path',
+                                  hintText: 'e.g. /var/contenedores/myapp or /data/glusterfs',
+                                  prefixIcon: Icon(Icons.folder_outlined),
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.explore, size: 16),
+                              label: const Text('Browse...'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              ),
+                              onPressed: () async {
+                                final selected = await _showDirectoryPickerDialog(
+                                  initialPath: customPathCtrl.text.isNotEmpty ? customPathCtrl.text : '/var/contenedores',
+                                  title: 'Select Target Source Directory',
+                                );
+                                if (selected != null) {
+                                  setDlgState(() => customPathCtrl.text = selected);
+                                }
+                              },
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Wrap(
@@ -1698,23 +2275,19 @@ volumes:
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             OutlinedButton.icon(
-                              icon: isCreatingDir
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
+                              icon: isCreatingSourceDir
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                                   : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF8B5CF6)),
                               label: const Text('Create Directory on Host(s) (mkdir -p)', style: TextStyle(fontSize: 12)),
                               style: OutlinedButton.styleFrom(
                                 visualDensity: VisualDensity.compact,
                                 foregroundColor: const Color(0xFF8B5CF6),
                               ),
-                              onPressed: isCreatingDir
+                              onPressed: isCreatingSourceDir
                                   ? null
                                   : () async {
                                       final path = customPathCtrl.text.trim();
@@ -1722,7 +2295,7 @@ volumes:
                                         _showSnackBar('Please enter a directory path first', isError: true);
                                         return;
                                       }
-                                      setDlgState(() => isCreatingDir = true);
+                                      setDlgState(() => isCreatingSourceDir = true);
                                       try {
                                         final ok = await ApiService.createStorageDirectory(
                                           path: path,
@@ -1738,15 +2311,119 @@ volumes:
                                       } catch (e) {
                                         _showSnackBar('❌ Error: $e', isError: true);
                                       } finally {
-                                        setDlgState(() => isCreatingDir = false);
+                                        setDlgState(() => isCreatingSourceDir = false);
                                       }
                                     },
                             ),
                           ],
                         ),
                       ],
-
                       const SizedBox(height: 16),
+
+                      // 3. DESTINO DEL BACKUP
+                      _buildSectionHeader('3. DESTINO DEL BACKUP (¿Dónde guardar las copias?)', Icons.save_alt, const Color(0xFFF59E0B), isDark),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: destinationPathCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Destination Directory Path',
+                                hintText: 'e.g. /var/backups/gbnt or /var/contenedores/backups',
+                                prefixIcon: Icon(Icons.folder_special_outlined),
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.explore, size: 16),
+                            label: const Text('Browse...'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            ),
+                            onPressed: () async {
+                              final selected = await _showDirectoryPickerDialog(
+                                initialPath: destinationPathCtrl.text.isNotEmpty ? destinationPathCtrl.text : '/var/backups',
+                                title: 'Select Backup Destination Directory',
+                              );
+                              if (selected != null) {
+                                setDlgState(() => destinationPathCtrl.text = selected);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          ActionChip(
+                            label: const Text('Default (/var/backups/gbnt)', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/var/backups/gbnt'),
+                          ),
+                          ActionChip(
+                            label: const Text('/var/contenedores/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/var/contenedores/backups/'),
+                          ),
+                          ActionChip(
+                            label: const Text('/data/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/data/backups/'),
+                          ),
+                          ActionChip(
+                            label: const Text('/mnt/shared/backups/', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => destinationPathCtrl.text = '/mnt/shared/backups/'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          OutlinedButton.icon(
+                            icon: isCreatingDestDir
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.create_new_folder, size: 15, color: Color(0xFFF59E0B)),
+                            label: const Text('Create Destination Directory (mkdir -p)', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFFF59E0B),
+                            ),
+                            onPressed: isCreatingDestDir
+                                ? null
+                                : () async {
+                                    final path = destinationPathCtrl.text.trim();
+                                    if (path.isEmpty) {
+                                      _showSnackBar('Please enter a destination path first', isError: true);
+                                      return;
+                                    }
+                                    setDlgState(() => isCreatingDestDir = true);
+                                    try {
+                                      final ok = await ApiService.createStorageDirectory(
+                                        path: path,
+                                        targetNode: 'all',
+                                        permissions: '0777',
+                                      );
+                                      if (ok) {
+                                        _showSnackBar('✅ Destination directory "$path" ready across cluster!');
+                                        _loadAllData();
+                                      } else {
+                                        _showSnackBar('❌ Failed to create directory', isError: true);
+                                      }
+                                    } catch (e) {
+                                      _showSnackBar('❌ Error: $e', isError: true);
+                                    } finally {
+                                      setDlgState(() => isCreatingDestDir = false);
+                                    }
+                                  },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 4. PROGRAMACIÓN & RETENCIÓN
+                      _buildSectionHeader('4. PROGRAMACIÓN & RETENCIÓN', Icons.alarm_outlined, const Color(0xFF8B5CF6), isDark),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: cronCtrl,
                         decoration: const InputDecoration(
@@ -1851,6 +2528,7 @@ volumes:
                         targetType: targetType,
                         targetId: targetId,
                         targetName: targetName,
+                        destinationPath: destinationPathCtrl.text.trim(),
                         retentionCount: retention,
                         pauseContainers: pauseContainers,
                         enabled: schedule?.enabled ?? true,

@@ -1097,6 +1097,7 @@ class ApiService {
     String stackId = '',
     String volumeName = '',
     String sourcePath = '',
+    String destinationPath = '',
     bool pauseContainers = true,
   }) async {
     final body = jsonEncode({
@@ -1104,6 +1105,7 @@ class ApiService {
       'stack_id': stackId,
       'volume_name': volumeName,
       'source_path': sourcePath,
+      'destination_path': destinationPath,
       'pause_containers': pauseContainers,
     });
     final response = await http.post(

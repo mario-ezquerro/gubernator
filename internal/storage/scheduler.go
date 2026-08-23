@@ -93,6 +93,7 @@ func ExecuteScheduledBackup(s db.BackupSchedule) {
 		StackID:         stackID,
 		VolumeName:      volumeName,
 		SourcePath:      sourcePath,
+		DestinationPath: s.DestinationPath,
 		PauseContainers: s.PauseContainers,
 		IsScheduled:     true,
 		ScheduleID:      s.ID,

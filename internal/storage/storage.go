@@ -459,6 +459,46 @@ func ListVolumes(targetNode string) ([]db.StorageVolume, error) {
 		}
 	}
 
+	// 6. Scan all registered StoragePool records from database
+	if db.DB != nil {
+		var pools []db.StoragePool
+		db.DB.Find(&pools)
+		for _, p := range pools {
+			volKey := fmt.Sprintf("pool:%s", p.Path)
+			if seenVolumes[volKey] {
+				continue
+			}
+			seenVolumes[volKey] = true
+
+			var sizeBytes int64
+			if info, err := os.Stat(p.Path); err == nil && info.IsDir() {
+				sizeBytes, _ = GetDirectorySize(p.Path)
+			}
+			sv := db.StorageVolume{
+				ID:            fmt.Sprintf("vol-pool-%s", p.ID),
+				Name:          p.Name,
+				Type:          "shared_pool",
+				Driver:        p.FSType,
+				SourcePath:    p.Path,
+				TargetPath:    p.Path,
+				StackID:       "",
+				StackName:     p.Name,
+				ServiceName:   "",
+				NodeID:        "cluster",
+				NodeIP:        p.Path,
+				NodeHostname:  "All Centurions (Shared Mesh)",
+				NodeRole:      "CLUSTER",
+				SizeBytes:     sizeBytes,
+				SizeFormatted: FormatBytes(sizeBytes),
+				IsShared:      true,
+				LastScannedAt: time.Now(),
+				CreatedAt:     p.CreatedAt,
+				UpdatedAt:     time.Now(),
+			}
+			volumes = append(volumes, sv)
+		}
+	}
+
 	slog.Info("storage: discovered persistent & docker volumes", "count", len(volumes), "target_node", targetNode)
 	return volumes, nil
 }
@@ -501,6 +541,25 @@ func CreateDirectory(dirPath, permissions, targetNode string) error {
 			} else {
 				slog.Info("created remote directory on worker", "node_ip", ip, "path", dirPath)
 			}
+		}
+	}
+
+	// Persist created directory to db.StoragePool so it permanently appears in discovery
+	if db.DB != nil {
+		poolName := filepath.Base(dirPath)
+		var existing db.StoragePool
+		if err := db.DB.First(&existing, "path = ?", dirPath).Error; err != nil {
+			newPool := db.StoragePool{
+				ID:        fmt.Sprintf("pool-%d", time.Now().UnixNano()),
+				Name:      poolName,
+				Path:      dirPath,
+				FSType:    "posix",
+				IsActive:  true,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			db.DB.Create(&newPool)
+			slog.Info("storage: persisted new storage pool to database", "path", dirPath, "name", poolName)
 		}
 	}
 

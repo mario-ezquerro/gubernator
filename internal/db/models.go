@@ -275,6 +275,7 @@ type BackupSchedule struct {
 	TargetType      string     `gorm:"type:varchar(50);default:'stack'" json:"target_type"` // "stack", "volume", "all"
 	TargetID        string     `gorm:"type:varchar(255)" json:"target_id"` // StackID, VolumeName, or "all"
 	TargetName      string     `gorm:"type:varchar(255)" json:"target_name"`
+	DestinationPath string     `gorm:"type:text" json:"destination_path"` // Destination directory for backup archives
 	RetentionCount  int        `gorm:"default:7" json:"retention_count"` // Keep last N backups
 	PauseContainers bool       `gorm:"default:true" json:"pause_containers"`
 	Enabled         bool       `gorm:"default:true" json:"enabled"`
