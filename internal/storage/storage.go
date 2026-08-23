@@ -29,10 +29,55 @@ func BackupDir() string {
 	return filepath.Join(home, ".gbnt", "backups")
 }
 
+// EnsureDirectoryLocal creates a local directory with given permissions (default 0777),
+// falling back to sudo mkdir -p and sudo chmod if regular user permissions are denied.
+func EnsureDirectoryLocal(dirPath string, permissions ...string) error {
+	dirPath = strings.TrimSpace(dirPath)
+	if dirPath == "" {
+		return fmt.Errorf("directory path cannot be empty")
+	}
+
+	permStr := "0777"
+	if len(permissions) > 0 && permissions[0] != "" {
+		permStr = permissions[0]
+	}
+
+	mode := os.FileMode(0777)
+	if m, err := strconv.ParseUint(permStr, 8, 32); err == nil {
+		mode = os.FileMode(m)
+	}
+
+	// 1. If directory already exists, ensure permissions
+	if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
+		if err := os.Chmod(dirPath, mode); err == nil {
+			return nil
+		}
+		// Sudo chmod if unprivileged
+		_ = exec.Command("sudo", "chmod", permStr, dirPath).Run()
+		return nil
+	}
+
+	// 2. Try standard os.MkdirAll
+	if err := os.MkdirAll(dirPath, mode); err == nil {
+		_ = os.Chmod(dirPath, mode)
+		return nil
+	}
+
+	// 3. Fallback to sudo mkdir -p && sudo chmod
+	slog.Info("storage: elevating with sudo to create local directory", "path", dirPath, "perm", permStr)
+	cmd := exec.Command("sudo", "mkdir", "-p", dirPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create directory %s: %v (%s)", dirPath, err, strings.TrimSpace(string(out)))
+	}
+	_ = exec.Command("sudo", "chmod", permStr, dirPath).Run()
+
+	return nil
+}
+
 // EnsureBackupDir creates the backup directory if it does not exist.
 func EnsureBackupDir() error {
 	dir := BackupDir()
-	return os.MkdirAll(dir, 0755)
+	return EnsureDirectoryLocal(dir, "0777")
 }
 
 // FormatBytes formats a byte count into a human-readable string (e.g. "14.5 MB", "1.2 GB").
@@ -524,15 +569,10 @@ func CreateDirectory(dirPath, permissions, targetNode string) error {
 	var errors []string
 	for _, ip := range ips {
 		if IsLocalHost(ip) {
-			mode := os.FileMode(0777)
-			if m, err := strconv.ParseUint(permissions, 8, 32); err == nil {
-				mode = os.FileMode(m)
-			}
-			if err := os.MkdirAll(dirPath, mode); err != nil {
+			if err := EnsureDirectoryLocal(dirPath, permissions); err != nil {
 				errors = append(errors, fmt.Sprintf("%s: failed to mkdir: %v", ip, err))
 				continue
 			}
-			_ = os.Chmod(dirPath, mode)
 			slog.Info("created local directory", "path", dirPath, "perm", permissions)
 		} else {
 			script := fmt.Sprintf("sudo mkdir -p %s && sudo chmod %s %s", dirPath, permissions, dirPath)

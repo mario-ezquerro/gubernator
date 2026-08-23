@@ -95,7 +95,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
 		if strings.HasPrefix(sourcePath, DefaultSharedPoolPath) {
-			_ = os.MkdirAll(sourcePath, 0777)
+			_ = EnsureDirectoryLocal(sourcePath, "0777")
 		}
 		if _, err2 := os.Stat(sourcePath); os.IsNotExist(err2) {
 			return nil, fmt.Errorf("source path does not exist on disk: %s", sourcePath)
@@ -107,8 +107,19 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	if destDir == "" {
 		destDir = BackupDir()
 	}
-	if err := os.MkdirAll(destDir, 0777); err != nil {
-		return nil, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+	if err := EnsureDirectoryLocal(destDir, "0777"); err != nil {
+		// If custom or /var/backups/gbnt fails even with sudo, fallback to BackupDir()
+		fallbackDir := BackupDir()
+		if fallbackDir != destDir {
+			slog.Warn("storage: failed to create requested destDir, falling back to BackupDir", "destDir", destDir, "fallbackDir", fallbackDir, "err", err)
+			if err2 := EnsureDirectoryLocal(fallbackDir, "0777"); err2 == nil {
+				destDir = fallbackDir
+			} else {
+				return nil, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+		}
 	}
 
 	// Generate filename and destination path
@@ -284,8 +295,8 @@ func RestoreBackup(req RestoreBackupRequest) error {
 		return fmt.Errorf("target_path is required for restoration")
 	}
 
-	if err := os.MkdirAll(targetPath, 0755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
+	if err := EnsureDirectoryLocal(targetPath, "0777"); err != nil {
+		return fmt.Errorf("failed to create target directory %s: %w", targetPath, err)
 	}
 
 	file, err := os.Open(b.FilePath)
@@ -321,11 +332,11 @@ func RestoreBackup(req RestoreBackupRequest) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(destPath, 0755); err != nil {
+			if err := EnsureDirectoryLocal(destPath, "0777"); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			if err := EnsureDirectoryLocal(filepath.Dir(destPath), "0777"); err != nil {
 				return err
 			}
 			outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, header.FileInfo().Mode())

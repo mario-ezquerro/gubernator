@@ -252,6 +252,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Consolidated Host Metrics Telemetry:** Removed redundant circular gauges (`Host System Consumption (Gauges)`) in the default Grafana Monitoring dashboard in favor of the unified **Centurions — Termómetros & Estado de Hosts** subsystem.
 * **Unified Centurions Visualization:** All host CPU, RAM, Network I/O, and Host Disk space are now represented cleanly via horizontal LCD bargauges and the comprehensive multi-metric Centurions host table starting seamlessly after runtime timeseries panels.
 
+### 33. Automatic Backup & Snapshot Destination Directory Preparation & Self-Healing (`v2.39.2`)
+* **Zero-Failure Directory Preparation (`EnsureDirectoryLocal`):** Universal directory preparation engine automatically handling parent filesystem creation, permission elevation (`sudo mkdir -p` and `sudo chmod 0777`), and unprivileged user fallbacks when targeting `/var/backups/gbnt`, `/var/contenedores/backups`, or custom mountpaths.
+* **Automatic Recovery & Fallbacks:** If a custom destination directory path is unresolvable or fails creation on restricted filesystems, the backup engine seamlessly creates and uses the user's home backup directory (`~/.gbnt/backups`) without interrupting snapshot execution.
+* **Informative UI Notice Banners:** Added dynamic auto-creation guidance banners to both the **Create Compressed Backup / Snapshot** modal and the **Automated Backup Policy Scheduler** informing users that destination folders are prepared automatically with proper permissions upon backup execution.
+
+
 
 
 

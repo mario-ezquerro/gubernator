@@ -1787,6 +1787,27 @@ volumes:
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.auto_awesome, size: 16, color: Color(0xFF10B981)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Auto-creación inteligente: La carpeta de destino (ej. /var/backups/gbnt) se creará automáticamente en el sistema con permisos 0777 al guardar el backup si aún no existe.',
+                                style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // 4. OPCIONES
@@ -2435,6 +2456,27 @@ volumes:
                                   },
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.auto_awesome, size: 16, color: Color(0xFF10B981)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Auto-creación inteligente: La carpeta de destino (ej. /var/backups/gbnt) se creará automáticamente en el sistema con permisos 0777 al ejecutar el snapshot programado si aún no existe.',
+                                style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
 
