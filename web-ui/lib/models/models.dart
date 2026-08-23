@@ -1312,6 +1312,16 @@ class StorageMountModel {
       updatedAt: json['updated_at'] ?? '',
     );
   }
+
+  factory StorageMountModel.empty() {
+    return StorageMountModel(
+      id: '',
+      name: '',
+      device: '',
+      mountPoint: '',
+      fsType: '',
+    );
+  }
 }
 
 class TestMountResultModel {

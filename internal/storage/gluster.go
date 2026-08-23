@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
@@ -476,6 +477,29 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		return fmt.Errorf("at least 2 bricks required for cluster volume (3 recommended)")
 	}
 
+	// Proactively create all brick storage directories across target nodes
+	for _, b := range bricks {
+		parts := strings.SplitN(b, ":", 2)
+		if len(parts) == 2 {
+			host := strings.TrimSpace(parts[0])
+			brickPath := strings.TrimSpace(parts[1])
+			if brickPath == "" {
+				continue
+			}
+
+			if IsLocalHost(host) {
+				slog.Info("pre-creating local gluster brick directory", "host", host, "path", brickPath)
+				_ = exec.Command("sudo", "mkdir", "-p", brickPath).Run()
+				_ = exec.Command("sudo", "chmod", "0777", brickPath).Run()
+				_ = os.MkdirAll(brickPath, 0777)
+			} else {
+				slog.Info("pre-creating remote gluster brick directory", "host", host, "path", brickPath)
+				cmd := fmt.Sprintf("sudo mkdir -p %s && sudo chmod 0777 %s", brickPath, brickPath)
+				_, _ = ExecuteRemoteScript(host, cmd)
+			}
+		}
+	}
+
 	args := []string{"volume", "create", req.Name}
 
 	if req.ReplicaCount > 0 {
@@ -510,13 +534,14 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		_ = StartGlusterVolume(req.Name)
 	}
 
+	mountPoint := req.MountPoint
+	if mountPoint == "" {
+		mountPoint = "/var/contenedores"
+	}
+
 	// Persist to database
 	if db.DB != nil {
 		bricksJSON, _ := json.Marshal(bricks)
-		mountPoint := req.MountPoint
-		if mountPoint == "" {
-			mountPoint = "/var/contenedores"
-		}
 		rec := ManagedGlusterVolume{
 			Name:         req.Name,
 			Type:         "Replicate",
@@ -531,12 +556,8 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		db.DB.Save(&rec)
 	}
 
-	// Auto-mount to /var/contenedores across cluster if requested
+	// Auto-mount and register in Network Mounts / fstab
 	if req.AutoMount {
-		mountPoint := req.MountPoint
-		if mountPoint == "" {
-			mountPoint = "/var/contenedores"
-		}
 		_ = MountGlusterToCluster(req.Name, mountPoint, req.TargetNodes)
 	}
 

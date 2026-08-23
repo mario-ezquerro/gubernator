@@ -43,6 +43,7 @@ test_output.txt
 /gbnt-mac
 bin/
 build/
+dist/
 monitor/
 *.tar.gz
 *.tar

@@ -195,6 +195,9 @@ func GetAPIToken() string {
 
 // GetJoinToken returns the cluster join token from the database.
 func GetJoinToken() string {
+	if DB == nil {
+		return ""
+	}
 	var config ClusterConfig
 	if err := DB.First(&config, "id = ?", "global").Error; err != nil {
 		return ""
@@ -204,9 +207,11 @@ func GetJoinToken() string {
 
 // GetManagerIP returns the IP address of the cluster manager node.
 func GetManagerIP() string {
-	var manager Node
-	if err := DB.First(&manager, "role = ?", "manager").Error; err == nil && manager.IP != "" {
-		return manager.IP
+	if DB != nil {
+		var manager Node
+		if err := DB.First(&manager, "role = ?", "manager").Error; err == nil && manager.IP != "" {
+			return manager.IP
+		}
 	}
 	return detectLocalIP()
 }

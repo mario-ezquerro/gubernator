@@ -81,6 +81,45 @@ func ListStorageMounts() ([]db.StorageMount, error) {
 		if err := db.DB.Order("created_at desc").Find(&mounts).Error; err != nil {
 			return nil, err
 		}
+
+		// Ensure all GlusterFS cluster volumes are registered in Network Mounts
+		var managedGluster []db.ManagedGlusterVolume
+		if err := db.DB.Find(&managedGluster).Error; err == nil {
+			for _, gv := range managedGluster {
+				found := false
+				for _, m := range mounts {
+					if m.FSType == "glusterfs" && (strings.Contains(m.Device, gv.Name) || m.Name == fmt.Sprintf("gluster-%s", gv.Name)) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					mountPoint := gv.MountPoint
+					if mountPoint == "" {
+						mountPoint = "/var/contenedores"
+					}
+					newMount := db.StorageMount{
+						ID:          fmt.Sprintf("mount-gluster-%s", gv.Name),
+						Name:        fmt.Sprintf("gluster-%s", gv.Name),
+						Device:      fmt.Sprintf("localhost:%s", gv.Name),
+						MountPoint:  mountPoint,
+						FSType:      "glusterfs",
+						Options:     "defaults,_netdev",
+						Dump:        0,
+						Pass:        0,
+						TargetNode:  "all",
+						AutoMount:   gv.AutoMounted,
+						Status:      "mounted",
+						IsActive:    true,
+						Description: fmt.Sprintf("GlusterFS cluster storage volume %s", gv.Name),
+						CreatedAt:   gv.CreatedAt,
+						UpdatedAt:   time.Now(),
+					}
+					_ = db.DB.Save(&newMount)
+					mounts = append(mounts, newMount)
+				}
+			}
+		}
 	}
 
 	activeMounts := getActiveMountPoints()
@@ -90,7 +129,7 @@ func ListStorageMounts() ([]db.StorageMount, error) {
 		if _, isMounted := activeMounts[mp]; isMounted {
 			mounts[i].Status = "mounted"
 		} else {
-			if mounts[i].Status == "mounted" {
+			if mounts[i].Status == "mounted" && mounts[i].FSType != "glusterfs" {
 				mounts[i].Status = "unmounted"
 			}
 		}

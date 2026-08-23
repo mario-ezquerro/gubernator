@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.34.0"
+var Version = "v2.35.0"
 
 func GetVersion() string {
 	if Version != "" && Version != "dev" && Version != "unknown" {
@@ -62,7 +62,7 @@ func GetVersion() string {
 			}
 		}
 	}
-	return "v2.34.0"
+	return "v2.35.0"
 }
 
 

@@ -79,3 +79,40 @@ func TestGlusterDiagnostics(t *testing.T) {
 		t.Errorf("invalid health score: %d", diag.HealthScore)
 	}
 }
+
+func TestCreateGlusterVolumeAutoBricks(t *testing.T) {
+	setupTestDB(t)
+
+	req := GlusterVolumeCreateRequest{
+		Name:         "test_vol_2",
+		ReplicaCount: 2,
+		BrickDir:     "/data/glusterfs/brick2",
+		MountPoint:   "/var/contenedores2",
+		TargetNodes:  []string{"192.168.252.27", "192.168.252.25"},
+		AutoMount:    false,
+	}
+
+	err := CreateGlusterVolume(req)
+	if err != nil {
+		t.Fatalf("CreateGlusterVolume failed: %v", err)
+	}
+
+	vols, err := GetGlusterVolumes()
+	if err != nil {
+		t.Fatalf("GetGlusterVolumes failed: %v", err)
+	}
+
+	found := false
+	for _, v := range vols {
+		if v.Name == "test_vol_2" {
+			found = true
+			if len(v.Bricks) != 2 {
+				t.Errorf("expected 2 bricks, got %d", len(v.Bricks))
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected test_vol_2 to be in managed volumes")
+	}
+}

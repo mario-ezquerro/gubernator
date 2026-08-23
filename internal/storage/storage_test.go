@@ -27,6 +27,7 @@ func setupTestDB(t *testing.T) {
 	err = db.DB.AutoMigrate(
 		&db.Stack{}, &db.Service{}, &db.Task{}, &db.Node{},
 		&db.StorageVolume{}, &db.Backup{}, &db.BackupSchedule{}, &db.StoragePool{},
+		&db.StorageMount{}, &ManagedGlusterVolume{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)

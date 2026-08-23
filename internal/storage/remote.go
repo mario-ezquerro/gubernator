@@ -168,24 +168,27 @@ func SyncMountToTargetNode(m db.StorageMount, targetIP string) error {
 		if m.AutoMount {
 			_ = appendFstabEntry(m)
 		}
-		out, err := exec.Command("mount", m.MountPoint).CombinedOutput()
+		out, err := exec.Command("sudo", "mount", m.MountPoint).CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("local mount failed: %v (%s)", err, strings.TrimSpace(string(out)))
+			out2, err2 := exec.Command("sudo", "mount", "-t", m.FSType, "-o", m.Options, m.Device, m.MountPoint).CombinedOutput()
+			if err2 != nil {
+				return fmt.Errorf("local mount failed: %v (%s / %s)", err, strings.TrimSpace(string(out)), strings.TrimSpace(string(out2)))
+			}
 		}
 		return nil
 	}
 
 	// Prepare remote script
 	var scriptBuilder strings.Builder
-	scriptBuilder.WriteString(fmt.Sprintf("mkdir -p %s\n", m.MountPoint))
+	scriptBuilder.WriteString(fmt.Sprintf("sudo mkdir -p %s\n", m.MountPoint))
 
 	// Credentials file if any
 	if m.CredentialsFile != "" {
 		if credData, err := os.ReadFile(m.CredentialsFile); err == nil {
 			b64Cred := base64.StdEncoding.EncodeToString(credData)
-			scriptBuilder.WriteString("mkdir -p /etc/gbnt/credentials\n")
-			scriptBuilder.WriteString(fmt.Sprintf("echo '%s' | base64 -d > %s\n", b64Cred, m.CredentialsFile))
-			scriptBuilder.WriteString(fmt.Sprintf("chmod 600 %s\n", m.CredentialsFile))
+			scriptBuilder.WriteString("sudo mkdir -p /etc/gbnt/credentials\n")
+			scriptBuilder.WriteString(fmt.Sprintf("echo '%s' | base64 -d | sudo tee %s >/dev/null\n", b64Cred, m.CredentialsFile))
+			scriptBuilder.WriteString(fmt.Sprintf("sudo chmod 600 %s\n", m.CredentialsFile))
 		}
 	}
 
@@ -194,16 +197,16 @@ func SyncMountToTargetNode(m db.StorageMount, targetIP string) error {
 		tagEnd := fmt.Sprintf("# END GBNT MOUNT %s", m.ID)
 		fstabLine := fmt.Sprintf("%s\t%s\t%s\t%s\t%d\t%d", m.Device, m.MountPoint, m.FSType, m.Options, m.Dump, m.Pass)
 		scriptBuilder.WriteString(fmt.Sprintf(`
-if grep -q "%s" /etc/fstab 2>/dev/null; then
-  sed -i '/%s/,/%s/d' /etc/fstab
+if sudo grep -q "%s" /etc/fstab 2>/dev/null; then
+  sudo sed -i '/%s/,/%s/d' /etc/fstab
 fi
-echo "%s (%s)" >> /etc/fstab
-echo "%s" >> /etc/fstab
-echo "%s" >> /etc/fstab
+echo "%s (%s)" | sudo tee -a /etc/fstab >/dev/null
+echo "%s" | sudo tee -a /etc/fstab >/dev/null
+echo "%s" | sudo tee -a /etc/fstab >/dev/null
 `, tagStart, tagStart, tagEnd, tagStart, m.Name, fstabLine, tagEnd))
 	}
 
-	scriptBuilder.WriteString(fmt.Sprintf("mount %s 2>&1 || mount -a 2>&1\n", m.MountPoint))
+	scriptBuilder.WriteString(fmt.Sprintf("sudo mount %s 2>&1 || sudo mount -a 2>&1\n", m.MountPoint))
 
 	_, err := ExecuteRemoteScript(targetIP, scriptBuilder.String())
 	return err
@@ -212,9 +215,9 @@ echo "%s" >> /etc/fstab
 // UnmountFromTargetNode unmounts the mount point on a target node.
 func UnmountFromTargetNode(mountPoint string, targetIP string) error {
 	if IsLocalHost(targetIP) {
-		out, err := exec.Command("umount", mountPoint).CombinedOutput()
+		out, err := exec.Command("sudo", "umount", mountPoint).CombinedOutput()
 		if err != nil {
-			outLazy, errLazy := exec.Command("umount", "-l", mountPoint).CombinedOutput()
+			outLazy, errLazy := exec.Command("sudo", "umount", "-l", mountPoint).CombinedOutput()
 			if errLazy != nil {
 				return fmt.Errorf("local unmount failed: %v (%s / lazy: %s)", err, strings.TrimSpace(string(out)), strings.TrimSpace(string(outLazy)))
 			}
@@ -222,7 +225,7 @@ func UnmountFromTargetNode(mountPoint string, targetIP string) error {
 		return nil
 	}
 
-	script := fmt.Sprintf("umount %s 2>/dev/null || umount -l %s 2>/dev/null || true", mountPoint, mountPoint)
+	script := fmt.Sprintf("sudo umount %s 2>/dev/null || sudo umount -l %s 2>/dev/null || true", mountPoint, mountPoint)
 	_, err := ExecuteRemoteScript(targetIP, script)
 	return err
 }
@@ -230,7 +233,7 @@ func UnmountFromTargetNode(mountPoint string, targetIP string) error {
 // DeleteMountFromTargetNode removes fstab entries and unmounts on a target node.
 func DeleteMountFromTargetNode(m db.StorageMount, targetIP string) error {
 	if IsLocalHost(targetIP) {
-		_ = exec.Command("umount", "-l", m.MountPoint).Run()
+		_ = exec.Command("sudo", "umount", "-l", m.MountPoint).Run()
 		_ = removeFstabEntry(m.ID)
 		if m.CredentialsFile != "" {
 			_ = os.Remove(m.CredentialsFile)
@@ -241,12 +244,12 @@ func DeleteMountFromTargetNode(m db.StorageMount, targetIP string) error {
 	tagStart := fmt.Sprintf("# BEGIN GBNT MOUNT %s", m.ID)
 	tagEnd := fmt.Sprintf("# END GBNT MOUNT %s", m.ID)
 	script := fmt.Sprintf(`
-umount -l %s 2>/dev/null || true
-if grep -q "%s" /etc/fstab 2>/dev/null; then
-  sed -i '/%s/,/%s/d' /etc/fstab
+sudo umount -l %s 2>/dev/null || true
+if sudo grep -q "%s" /etc/fstab 2>/dev/null; then
+  sudo sed -i '/%s/,/%s/d' /etc/fstab
 fi
 if [ -n "%s" ]; then
-  rm -f %s 2>/dev/null || true
+  sudo rm -f %s 2>/dev/null || true
 fi
 `, m.MountPoint, tagStart, tagStart, tagEnd, m.CredentialsFile, m.CredentialsFile)
 
@@ -260,7 +263,7 @@ func MountAllOnTargetNode(targetIP string) (string, error) {
 		out, err := exec.Command("mount", "-a").CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	}
-	return ExecuteRemoteScript(targetIP, "mount -a")
+	return ExecuteRemoteScript(targetIP, "sudo mount -a")
 }
 
 func containsString(slice []string, s string) bool {

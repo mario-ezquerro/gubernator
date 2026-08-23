@@ -2908,9 +2908,10 @@ volumes:
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: 'nfs', label: Text('NFS v3/v4'), icon: Icon(Icons.storage, size: 16)),
+                          ButtonSegment(value: 'glusterfs', label: Text('GlusterFS'), icon: Icon(Icons.hub, size: 16)),
                           ButtonSegment(value: 'cifs', label: Text('Samba / CIFS'), icon: Icon(Icons.folder_shared, size: 16)),
                           ButtonSegment(value: 's3', label: Text('S3 Object'), icon: Icon(Icons.cloud_queue, size: 16)),
-                          ButtonSegment(value: 'custom', label: Text('Custom / POSIX'), icon: Icon(Icons.settings, size: 16)),
+                          ButtonSegment(value: 'custom', label: Text('POSIX'), icon: Icon(Icons.settings, size: 16)),
                         ],
                         selected: {protocol},
                         onSelectionChanged: (newSet) {
@@ -2923,6 +2924,13 @@ volumes:
                               mountPointCtrl.text = '/var/contenedores';
                               optionsCtrl.text = 'rw,hard,intr,noatime,rsize=1048576,wsize=1048576,_netdev';
                               descCtrl.text = 'Shared NFS volume for container mobility';
+                            } else if (protocol == 'glusterfs') {
+                              final defaultVol = _glusterVolumes.isNotEmpty ? _glusterVolumes.first.name : 'gv_contenedores';
+                              nameCtrl.text = 'gluster-$defaultVol';
+                              deviceCtrl.text = 'localhost:$defaultVol';
+                              mountPointCtrl.text = '/var/contenedores';
+                              optionsCtrl.text = 'defaults,_netdev';
+                              descCtrl.text = 'GlusterFS 3-way replicated cluster volume';
                             } else if (protocol == 'cifs') {
                               nameCtrl.text = 'samba-shared-data';
                               deviceCtrl.text = '//192.168.1.50/docker_share';
@@ -3797,7 +3805,13 @@ volumes:
 
   Widget _buildVolumeCard(GlusterVolumeModel vol, bool isDark) {
     final isStarted = vol.status == 'Started';
-    final isMounted = vol.isMounted;
+    final hasRegisteredMount = _mounts.any((m) => m.fsType == 'glusterfs' && (m.device.contains(vol.name) || m.name.contains(vol.name)));
+    final matchingMount = _mounts.firstWhere(
+      (m) => m.fsType == 'glusterfs' && (m.device.contains(vol.name) || m.name.contains(vol.name)),
+      orElse: () => StorageMountModel.empty(),
+    );
+    final isMounted = vol.isMounted || hasRegisteredMount;
+    final displayMountPoint = matchingMount.mountPoint.isNotEmpty ? matchingMount.mountPoint : (vol.mountPoint.isNotEmpty ? vol.mountPoint : '/var/contenedores');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -3861,17 +3875,39 @@ volumes:
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.link, size: 12, color: Color(0xFF3B82F6)),
+                        const Icon(Icons.link, size: 12, color: Color(0xFF10B981)),
                         const SizedBox(width: 4),
                         Text(
-                          vol.mountPoint,
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF3B82F6)),
+                          'fstab: $displayMountPoint',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.link_off, size: 12, color: Colors.amber),
+                        SizedBox(width: 4),
+                        Text(
+                          'Unmounted in fstab',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
                         ),
                       ],
                     ),
@@ -3879,18 +3915,28 @@ volumes:
                 ],
                 const Spacer(),
 
+                // Prominent Mount Action Button
+                OutlinedButton.icon(
+                  icon: Icon(isMounted ? Icons.sync : Icons.add_link, size: 14, color: const Color(0xFF3B82F6)),
+                  label: Text(
+                    isMounted ? 'Remount / fstab' : 'Mount to fstab',
+                    style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () => _showMountClusterDialog(vol.name),
+                ),
+                const SizedBox(width: 6),
+
                 // Action Buttons
                 IconButton(
                   icon: const Icon(Icons.medical_services_outlined, size: 18, color: Color(0xFF10B981)),
                   tooltip: 'Self-Heal & Split-Brain Diagnostics',
                   onPressed: () => _showGlusterHealDialog(vol.name),
                 ),
-                if (!isMounted)
-                  IconButton(
-                    icon: const Icon(Icons.link, size: 18, color: Color(0xFF3B82F6)),
-                    tooltip: 'Auto-Mount to /var/contenedores across cluster or selected host',
-                    onPressed: () => _showMountClusterDialog(vol.name),
-                  ),
                 if (isStarted)
                   IconButton(
                     icon: const Icon(Icons.stop_circle_outlined, size: 18, color: Colors.orange),

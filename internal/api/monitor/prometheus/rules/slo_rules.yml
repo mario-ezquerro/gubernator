@@ -1,5 +1,5 @@
 groups:
-  - name: sloth-slo-sli-recordings-gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+  - name: sloth-slo-sli-recordings-gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
     rules:
       - record: slo:sli_error:ratio_rate5m
         expr: |
@@ -7,11 +7,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[5m])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 5m
       - record: slo:sli_error:ratio_rate30m
         expr: |
@@ -19,11 +19,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[30m])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 30m
       - record: slo:sli_error:ratio_rate1h
         expr: |
@@ -31,11 +31,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[1h])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 1h
       - record: slo:sli_error:ratio_rate2h
         expr: |
@@ -43,11 +43,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[2h])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 2h
       - record: slo:sli_error:ratio_rate6h
         expr: |
@@ -55,11 +55,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[6h])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 6h
       - record: slo:sli_error:ratio_rate1d
         expr: |
@@ -67,11 +67,11 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[1d])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 1d
       - record: slo:sli_error:ratio_rate3d
         expr: |
@@ -79,106 +79,106 @@ groups:
           /
           (sum(rate(http_requests_total{service="payment-api"}[3d])))
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 3d
       - record: slo:sli_error:ratio_rate30d
         expr: |
-          sum_over_time(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}[30d])
+          sum_over_time(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}[30d])
           / ignoring (sloth_window)
-          count_over_time(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}[30d])
+          count_over_time(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}[30d])
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_window: 30d
-  - name: sloth-slo-meta-recordings-gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+  - name: sloth-slo-meta-recordings-gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
     rules:
       - record: slo:objective:ratio
         expr: vector(0.9990000000000001)
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: slo:error_budget:ratio
         expr: vector(1-0.9990000000000001)
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: slo:time_period:days
         expr: vector(30)
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: slo:current_burn_rate:ratio
         expr: |
-          slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}
+          slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}
           / on(sloth_id, sloth_slo, sloth_service) group_left
-          slo:error_budget:ratio{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}
+          slo:error_budget:ratio{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: slo:period_burn_rate:ratio
         expr: |
-          slo:sli_error:ratio_rate30d{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}
+          slo:sli_error:ratio_rate30d{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}
           / on(sloth_id, sloth_slo, sloth_service) group_left
-          slo:error_budget:ratio{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}
+          slo:error_budget:ratio{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: slo:period_error_budget_remaining:ratio
-        expr: 1 - slo:period_burn_rate:ratio{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"}
+        expr: 1 - slo:period_burn_rate:ratio{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"}
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
       - record: sloth_slo_info
         expr: vector(1)
         labels:
-          gbnt_service_id: d017c009-3679-4ef6-ab03-6df47b389f8e
-          gbnt_stack_id: c96ee01e-e60f-4e7e-9464-737b687b3a0b
-          sloth_id: gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          gbnt_service_id: d5077e9d-043f-4930-8d85-d1bc8cad0e4f
+          gbnt_stack_id: 479b4735-8f62-48f1-829e-aadb0a122251
+          sloth_id: gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_mode: api-gen-prom
           sloth_objective: "99.9"
           sloth_service: gubernator-services
-          sloth_slo: gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+          sloth_slo: gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
           sloth_spec: prometheus/v1
           sloth_version: dev
-  - name: sloth-slo-alerts-gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e
+  - name: sloth-slo-alerts-gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f
     rules:
       - alert: payment-apiSLOAlert
         expr: |
           (
-              max(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (14.4 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate5m{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (14.4 * 0.0009999999999999432)) without (sloth_window)
               and
-              max(slo:sli_error:ratio_rate1h{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (14.4 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate1h{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (14.4 * 0.0009999999999999432)) without (sloth_window)
           )
           or
           (
-              max(slo:sli_error:ratio_rate30m{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (6 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate30m{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (6 * 0.0009999999999999432)) without (sloth_window)
               and
-              max(slo:sli_error:ratio_rate6h{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (6 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate6h{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (6 * 0.0009999999999999432)) without (sloth_window)
           )
         labels:
           sloth_severity: page
@@ -188,15 +188,15 @@ groups:
       - alert: payment-apiSLOAlert
         expr: |
           (
-              max(slo:sli_error:ratio_rate2h{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (3 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate2h{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (3 * 0.0009999999999999432)) without (sloth_window)
               and
-              max(slo:sli_error:ratio_rate1d{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (3 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate1d{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (3 * 0.0009999999999999432)) without (sloth_window)
           )
           or
           (
-              max(slo:sli_error:ratio_rate6h{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (1 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate6h{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (1 * 0.0009999999999999432)) without (sloth_window)
               and
-              max(slo:sli_error:ratio_rate3d{sloth_id="gubernator-services-gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d017c009-3679-4ef6-ab03-6df47b389f8e"} > (1 * 0.0009999999999999432)) without (sloth_window)
+              max(slo:sli_error:ratio_rate3d{sloth_id="gubernator-services-gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f", sloth_service="gubernator-services", sloth_slo="gbnt-slo-d5077e9d-043f-4930-8d85-d1bc8cad0e4f"} > (1 * 0.0009999999999999432)) without (sloth_window)
           )
         labels:
           sloth_severity: ticket

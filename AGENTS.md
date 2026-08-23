@@ -215,6 +215,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Volume Deletion & Inspection (`docker volume rm / inspect`):** Safe volume deletion modal (`DELETE /api/storage/volumes/docker`) and JSON inspection modal (`GET /api/storage/volumes/docker/inspect`) for Docker volumes.
 * **Interactive Docker Compose Blueprint Generator:** One-click "Compose" action generating copyable `docker-compose.yml` service volume binding and external volume blocks for instant integration into Compose Studio.
 
+### 27. GlusterFS Mount Point Sync, Multi-Brick Directory Creator & Host Permissions Subsystem (`v2.35.0`)
+* **Automated GlusterFS Mount Point Synchronization:** Proactively bridges GlusterFS distributed volumes into `db.StorageMount` records (`fs_type = 'glusterfs'`), ensuring newly created or existing Gluster volumes instantly register and display across **Network Mounts & /etc/fstab** with live status indicators.
+* **Multi-Host Brick Directory Pre-Creation (`mkdir -p`):** Proactive brick filesystem preparation executing `sudo mkdir -p <path> && sudo chmod 0777 <path>` across all target brick hosts (locally on Manager and remotely via automated SSH bridge on Centurion workers) prior to `gluster volume create`.
+* **GlusterFS Protocol in Network Mounts Creation Wizard:** Integrated GlusterFS as a first-class storage protocol in the Add Mount dialog with dynamic volume name dropdowns and `localhost:<volName>` device formatting.
+* **Direct Mount & Remount Actions in GlusterFS Cards:** Added instant **Mount to fstab / Remount** action buttons and color-coded status badges (`🔗 fstab: /var/contenedores` / `⚠️ Unmounted in fstab`) directly on GlusterFS volume cards.
+* **Sudo Elevation for Remote Host Orchestration:** Automated `sudo` privilege elevation across all remote Worker storage operations (`sudo tee -a /etc/fstab`, `sudo sed -i`, `sudo mount -a`, `sudo mkdir -p`).
+
+
 
 
 
