@@ -222,6 +222,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Direct Mount & Remount Actions in GlusterFS Cards:** Added instant **Mount to fstab / Remount** action buttons and color-coded status badges (`🔗 fstab: /var/contenedores` / `⚠️ Unmounted in fstab`) directly on GlusterFS volume cards.
 * **Sudo Elevation for Remote Host Orchestration:** Automated `sudo` privilege elevation across all remote Worker storage operations (`sudo tee -a /etc/fstab`, `sudo sed -i`, `sudo mount -a`, `sudo mkdir -p`).
 
+### 28. Backups & Snapshots Storage Target Picker, Multi-Node Directory Creator & Schedule Engine (`v2.36.0`)
+* **Intelligent Storage Target Selector:** Multi-mode selector in Backup and Snapshot creation dialogs enabling one-click selection from discovered Docker Named Volumes, Shared Storage Pools (`/var/contenedores`), Network Mounts, or Stacks, automatically populating paths, volume identifiers, and backup naming blueprints.
+* **Inline Multi-Host Directory Creator (`mkdir -p` & `chmod 0777`):** Direct in-modal filesystem preparation action across Manager and Worker nodes (`ApiService.createStorageDirectory`), allowing instant creation of target directories when defining custom backup paths or restore destinations without leaving the dialog.
+* **Multi-Target Backup Scheduler (`targetType = 'stack' | 'volume' | 'path'`):** Enriched backup policy scheduler with dedicated selection interfaces for Stacks, Discovered Volumes/Mounts, and Custom Paths, syncing directly into SQLite and background cron runner (`ExecuteScheduledBackup`).
+* **Smart Path Auto-Detection & Self-Healing:** Backend source path resolution supporting Docker volume data directories (`/var/lib/docker/volumes/.../_data`), GlusterFS mountpoints, and auto-creation of missing shared storage folders during backup operations.
+* **Quick Directory Path Suggestion Chips:** Contextual path chips (`/var/contenedores/`, `/var/lib/docker/volumes/`, `/mnt/shared/`, `/data/`) for rapid path composition.
+
+
 
 
 

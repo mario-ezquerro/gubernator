@@ -996,7 +996,67 @@ volumes:
     final nameCtrl = TextEditingController(text: initialVolumeName != null ? 'backup-$initialVolumeName' : '');
     final sourcePathCtrl = TextEditingController(text: initialSourcePath ?? '');
     String selectedStack = initialStackId ?? (widget.state.stacks.isNotEmpty ? widget.state.stacks.first.id : '');
+    String selectedVolumeName = initialVolumeName ?? '';
+    String sourceMode = (initialSourcePath != null || initialVolumeName != null) ? 'select' : (_volumes.isNotEmpty ? 'select' : 'custom');
     bool pauseContainer = true;
+    bool isCreatingDir = false;
+
+    // Collect all selectable storage targets
+    final List<Map<String, String>> selectableTargets = [];
+
+    // 1. Volumes
+    for (final v in _volumes) {
+      final label = v.type == 'docker_named'
+          ? '💾 [Docker] ${v.name} (${v.nodeHostname})'
+          : (v.type == 'shared_pool'
+              ? '📁 [Shared] ${v.name} (/var/contenedores)'
+              : '📂 [Bind] ${v.name} (${v.sourcePath})');
+      selectableTargets.add({
+        'id': v.id,
+        'name': v.name,
+        'path': v.sourcePath,
+        'stackId': v.stackId,
+        'label': label,
+      });
+    }
+
+    // 2. Network Mounts
+    for (final m in _mounts) {
+      selectableTargets.add({
+        'id': m.id,
+        'name': m.name,
+        'path': m.mountPoint,
+        'stackId': '',
+        'label': '🌐 [Mount] ${m.name} (${m.mountPoint})',
+      });
+    }
+
+    // 3. Stacks
+    for (final s in widget.state.stacks) {
+      selectableTargets.add({
+        'id': s.id,
+        'name': s.name,
+        'path': '/var/contenedores/${s.name}',
+        'stackId': s.id,
+        'label': '📦 [Stack] ${s.name} (${s.id})',
+      });
+    }
+
+    String? selectedTargetId;
+    if (initialVolumeName != null && initialVolumeName.isNotEmpty) {
+      for (final t in selectableTargets) {
+        if (t['name'] == initialVolumeName || t['path'] == initialSourcePath) {
+          selectedTargetId = t['id'];
+          break;
+        }
+      }
+    } else if (selectableTargets.isNotEmpty) {
+      selectedTargetId = selectableTargets.first['id'];
+      if (sourcePathCtrl.text.isEmpty) {
+        sourcePathCtrl.text = selectableTargets.first['path'] ?? '';
+        selectedVolumeName = selectableTargets.first['name'] ?? '';
+      }
+    }
 
     showDialog(
       context: context,
@@ -1006,84 +1066,267 @@ volumes:
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.backup, color: Color(0xFF10B981)),
+                  Icon(Icons.archive, color: Color(0xFF10B981)),
                   SizedBox(width: 8),
-                  Text('Create Compressed Backup'),
+                  Text('Create Compressed Backup / Snapshot'),
                 ],
               ),
               content: SizedBox(
-                width: 500,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Backup Name',
-                        hintText: 'e.g. backup-wordpress-db',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (widget.state.stacks.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: selectedStack.isNotEmpty ? selectedStack : null,
-                        decoration: const InputDecoration(
-                          labelText: 'Associated Stack (Legion)',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: widget.state.stacks.map((s) {
-                          return DropdownMenuItem(
-                            value: s.id,
-                            child: Text('${s.name} (${s.id})'),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setDlgState(() => selectedStack = val);
-                          }
-                        },
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Create a point-in-time compressed .tar.gz archive with cryptographic SHA-256 integrity verification.',
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey),
                       ),
                       const SizedBox(height: 16),
-                    ],
-                    TextField(
-                      controller: sourcePathCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Source Directory / Volume Path',
-                        hintText: 'e.g. /var/contenedores/wordpress/data',
-                        border: OutlineInputBorder(),
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Backup Name',
+                          hintText: 'e.g. backup-wordpress-db',
+                          prefixIcon: Icon(Icons.label_outline),
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lock_clock, size: 20, color: Color(0xFF10B981)),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Pause Containers during backup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                                Text('Freezes write operations temporarily for 100% DB consistency', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              ],
+                      const SizedBox(height: 16),
+
+                      // Selection Mode Toggle
+                      const Text('Source Target / Directory:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'select',
+                              icon: Icon(Icons.folder_special_outlined, size: 16),
+                              label: Text('Select Existing Volume / Mount'),
                             ),
-                          ),
-                          Switch(
-                            value: pauseContainer,
-                            activeColor: const Color(0xFF10B981),
-                            onChanged: (val) => setDlgState(() => pauseContainer = val),
-                          ),
-                        ],
+                            ButtonSegment(
+                              value: 'custom',
+                              icon: Icon(Icons.edit_note, size: 16),
+                              label: Text('Custom Filesystem Path'),
+                            ),
+                          ],
+                          selected: {sourceMode},
+                          onSelectionChanged: (newVal) {
+                            setDlgState(() {
+                              sourceMode = newVal.first;
+                              if (sourceMode == 'select' && selectedTargetId != null) {
+                                final match = selectableTargets.firstWhere(
+                                  (t) => t['id'] == selectedTargetId,
+                                  orElse: () => selectableTargets.first,
+                                );
+                                sourcePathCtrl.text = match['path'] ?? '';
+                                selectedVolumeName = match['name'] ?? '';
+                                if (match['stackId'] != null && match['stackId']!.isNotEmpty) {
+                                  selectedStack = match['stackId']!;
+                                }
+                              }
+                            });
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+
+                      if (sourceMode == 'select' && selectableTargets.isNotEmpty) ...[
+                        DropdownButtonFormField<String>(
+                          value: selectedTargetId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Discovered Volumes, Pools & Mounts',
+                            prefixIcon: Icon(Icons.inventory_2_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: selectableTargets.map((t) {
+                            return DropdownMenuItem(
+                              value: t['id'],
+                              child: Text(
+                                t['label'] ?? '',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDlgState(() {
+                                selectedTargetId = val;
+                                final match = selectableTargets.firstWhere((t) => t['id'] == val);
+                                sourcePathCtrl.text = match['path'] ?? '';
+                                selectedVolumeName = match['name'] ?? '';
+                                if (match['stackId'] != null && match['stackId']!.isNotEmpty) {
+                                  selectedStack = match['stackId']!;
+                                }
+                                if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('backup-')) {
+                                  nameCtrl.text = 'backup-${match['name']}';
+                                }
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.folder_open, size: 16, color: Color(0xFF10B981)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Path: ${sourcePathCtrl.text}',
+                                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        TextField(
+                          controller: sourcePathCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Source Directory / Volume Path',
+                            hintText: 'e.g. /var/contenedores/wordpress/data or /data/storage',
+                            prefixIcon: Icon(Icons.folder_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            ActionChip(
+                              label: const Text('/var/contenedores/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => sourcePathCtrl.text = '/var/contenedores/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/var/lib/docker/volumes/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => sourcePathCtrl.text = '/var/lib/docker/volumes/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/mnt/shared/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => sourcePathCtrl.text = '/mnt/shared/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/data/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => sourcePathCtrl.text = '/data/'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Inline Directory Creator Action
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              icon: isCreatingDir
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF10B981)),
+                              label: const Text('Create Directory on Host(s) (mkdir -p)', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: const Color(0xFF10B981),
+                              ),
+                              onPressed: isCreatingDir
+                                  ? null
+                                  : () async {
+                                      final path = sourcePathCtrl.text.trim();
+                                      if (path.isEmpty) {
+                                        _showSnackBar('Please enter a directory path first', isError: true);
+                                        return;
+                                      }
+                                      setDlgState(() => isCreatingDir = true);
+                                      try {
+                                        final ok = await ApiService.createStorageDirectory(
+                                          path: path,
+                                          targetNode: 'all',
+                                          permissions: '0777',
+                                        );
+                                        if (ok) {
+                                          _showSnackBar('✅ Directory "$path" created across cluster!');
+                                          _loadAllData();
+                                        } else {
+                                          _showSnackBar('❌ Failed to create directory', isError: true);
+                                        }
+                                      } catch (e) {
+                                        _showSnackBar('❌ Error: $e', isError: true);
+                                      } finally {
+                                        setDlgState(() => isCreatingDir = false);
+                                      }
+                                    },
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+                      if (widget.state.stacks.isNotEmpty) ...[
+                        DropdownButtonFormField<String>(
+                          value: selectedStack.isNotEmpty ? selectedStack : null,
+                          decoration: const InputDecoration(
+                            labelText: 'Associated Stack (Legion)',
+                            prefixIcon: Icon(Icons.layers_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            const DropdownMenuItem(value: '', child: Text('None / Standalone Volume')),
+                            ...widget.state.stacks.map((s) {
+                              return DropdownMenuItem(
+                                value: s.id,
+                                child: Text('${s.name} (${s.id})'),
+                              );
+                            }),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDlgState(() => selectedStack = val);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lock_clock, size: 20, color: Color(0xFF10B981)),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Pause Containers during backup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                  Text('Freezes write operations temporarily for 100% DB consistency', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: pauseContainer,
+                              activeColor: const Color(0xFF10B981),
+                              onChanged: (val) => setDlgState(() => pauseContainer = val),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -1093,14 +1336,20 @@ volumes:
                   label: const Text('Create Backup'),
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
                   onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final path = sourcePathCtrl.text.trim();
+                    if (name.isEmpty && path.isEmpty) {
+                      _showSnackBar('Please specify a backup name or source path', isError: true);
+                      return;
+                    }
                     Navigator.pop(ctx);
                     try {
                       _showSnackBar('Creating backup archive...');
                       await ApiService.createBackup(
-                        name: nameCtrl.text.trim(),
+                        name: name,
                         stackId: selectedStack,
-                        volumeName: initialVolumeName ?? '',
-                        sourcePath: sourcePathCtrl.text.trim(),
+                        volumeName: selectedVolumeName,
+                        sourcePath: path,
                         pauseContainers: pauseContainer,
                       );
                       _showSnackBar('✅ Backup created successfully!');
@@ -1120,64 +1369,130 @@ volumes:
 
   void _showRestoreDialog(BackupModel backup) {
     final targetCtrl = TextEditingController(text: backup.sourcePath);
+    bool isCreatingTarget = false;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.restore, color: Color(0xFF3B82F6)),
-              SizedBox(width: 8),
-              Text('Restore Backup Archive'),
-            ],
-          ),
-          content: SizedBox(
-            width: 500,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('You are about to restore backup "${backup.name}" (${backup.sizeFormatted}).', style: const TextStyle(fontSize: 13)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: targetCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Restore Directory',
-                    hintText: 'e.g. /var/contenedores/wordpress/data',
-                    border: OutlineInputBorder(),
-                  ),
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.restore, color: Color(0xFF3B82F6)),
+                  SizedBox(width: 8),
+                  Text('Restore Backup Archive'),
+                ],
+              ),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('You are about to restore backup "${backup.name}" (${backup.sizeFormatted}).', style: const TextStyle(fontSize: 13)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: targetCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Restore Directory',
+                        hintText: 'e.g. /var/contenedores/wordpress/data',
+                        prefixIcon: Icon(Icons.folder_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        if (backup.sourcePath.isNotEmpty)
+                          ActionChip(
+                            label: const Text('Original Path', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => targetCtrl.text = backup.sourcePath),
+                          ),
+                        ActionChip(
+                          label: const Text('/var/contenedores/', style: TextStyle(fontSize: 11)),
+                          onPressed: () => setDlgState(() => targetCtrl.text = '/var/contenedores/'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          icon: isCreatingTarget
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF3B82F6)),
+                          label: const Text('Ensure Target Directory Exists (mkdir -p)', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: const Color(0xFF3B82F6),
+                          ),
+                          onPressed: isCreatingTarget
+                              ? null
+                              : () async {
+                                  final path = targetCtrl.text.trim();
+                                  if (path.isEmpty) {
+                                    _showSnackBar('Please enter a target path first', isError: true);
+                                    return;
+                                  }
+                                  setDlgState(() => isCreatingTarget = true);
+                                  try {
+                                    final ok = await ApiService.createStorageDirectory(
+                                      path: path,
+                                      targetNode: 'all',
+                                      permissions: '0777',
+                                    );
+                                    if (ok) {
+                                      _showSnackBar('✅ Directory "$path" ready on host(s)!');
+                                    } else {
+                                      _showSnackBar('❌ Failed to create directory', isError: true);
+                                    }
+                                  } catch (e) {
+                                    _showSnackBar('❌ Error: $e', isError: true);
+                                  } finally {
+                                    setDlgState(() => isCreatingTarget = false);
+                                  }
+                                },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '⚠️ Existing files with the same name in the target directory will be overwritten with backup contents.',
+                      style: TextStyle(fontSize: 11.5, color: Colors.orange),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  '⚠️ Existing files with the same name in the target directory will be overwritten with backup contents.',
-                  style: TextStyle(fontSize: 11.5, color: Colors.orange),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton.icon(
+                  icon: const Icon(Icons.unarchive, size: 18),
+                  label: const Text('Restore Now'),
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      _showSnackBar('Restoring backup archive...');
+                      await ApiService.restoreBackup(
+                        backupId: backup.id,
+                        targetPath: targetCtrl.text.trim(),
+                      );
+                      _showSnackBar('✅ Backup restored successfully!');
+                      _loadAllData();
+                    } catch (e) {
+                      _showSnackBar('❌ Failed to restore backup: $e', isError: true);
+                    }
+                  },
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            FilledButton.icon(
-              icon: const Icon(Icons.unarchive, size: 18),
-              label: const Text('Restore Now'),
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                try {
-                  _showSnackBar('Restoring backup archive...');
-                  await ApiService.restoreBackup(
-                    backupId: backup.id,
-                    targetPath: targetCtrl.text.trim(),
-                  );
-                  _showSnackBar('✅ Backup restored successfully!');
-                  _loadAllData();
-                } catch (e) {
-                  _showSnackBar('❌ Failed to restore backup: $e', isError: true);
-                }
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -1186,9 +1501,45 @@ volumes:
   void _showScheduleDialog({BackupScheduleModel? schedule}) {
     final nameCtrl = TextEditingController(text: schedule?.name ?? '');
     final cronCtrl = TextEditingController(text: schedule?.cronExpression ?? '0 3 * * *');
-    String selectedStack = schedule?.targetId ?? (widget.state.stacks.isNotEmpty ? widget.state.stacks.first.id : '');
+    final customPathCtrl = TextEditingController(
+      text: schedule != null && (schedule.targetType == 'path' || schedule.targetId.startsWith('/'))
+          ? schedule.targetId
+          : '',
+    );
+    String targetType = schedule?.targetType ?? 'stack';
+    String selectedStack = (schedule != null && schedule.targetType == 'stack')
+        ? schedule.targetId
+        : (widget.state.stacks.isNotEmpty ? widget.state.stacks.first.id : '');
+    String selectedVolumeId = (schedule != null && schedule.targetType == 'volume')
+        ? schedule.targetId
+        : (_volumes.isNotEmpty ? _volumes.first.id : (_mounts.isNotEmpty ? _mounts.first.id : ''));
     int retention = schedule?.retentionCount ?? 7;
     bool pauseContainers = schedule?.pauseContainers ?? true;
+    bool isCreatingDir = false;
+
+    // Collect selectable volumes and mounts
+    final List<Map<String, String>> selectableVolumes = [];
+    for (final v in _volumes) {
+      final label = v.type == 'docker_named'
+          ? '💾 [Docker] ${v.name} (${v.nodeHostname})'
+          : (v.type == 'shared_pool'
+              ? '📁 [Shared] ${v.name} (/var/contenedores)'
+              : '📂 [Bind] ${v.name} (${v.sourcePath})');
+      selectableVolumes.add({
+        'id': v.id,
+        'name': v.name,
+        'path': v.sourcePath,
+        'label': label,
+      });
+    }
+    for (final m in _mounts) {
+      selectableVolumes.add({
+        'id': m.id,
+        'name': m.name,
+        'path': m.mountPoint,
+        'label': '🌐 [Mount] ${m.name} (${m.mountPoint})',
+      });
+    }
 
     showDialog(
       context: context,
@@ -1204,94 +1555,263 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 500,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Policy Name',
-                        hintText: 'e.g. Daily WordPress DB Backup',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (widget.state.stacks.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: selectedStack.isNotEmpty ? selectedStack : null,
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: nameCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Target Stack (Legion)',
+                          labelText: 'Policy Name',
+                          hintText: 'e.g. Daily WordPress DB Backup',
+                          prefixIcon: Icon(Icons.label_outline),
                           border: OutlineInputBorder(),
                         ),
-                        items: widget.state.stacks.map((s) {
-                          return DropdownMenuItem(
-                            value: s.id,
-                            child: Text('${s.name} (${s.id})'),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDlgState(() => selectedStack = val);
-                        },
                       ),
                       const SizedBox(height: 16),
-                    ],
-                    TextField(
-                      controller: cronCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Cron Expression',
-                        hintText: 'e.g. 0 3 * * * (Daily at 03:00 AM)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ActionChip(
-                          label: const Text('Daily (3 AM)', style: TextStyle(fontSize: 11)),
-                          onPressed: () => setDlgState(() => cronCtrl.text = '0 3 * * *'),
-                        ),
-                        ActionChip(
-                          label: const Text('Every 12h', style: TextStyle(fontSize: 11)),
-                          onPressed: () => setDlgState(() => cronCtrl.text = '0 */12 * * *'),
-                        ),
-                        ActionChip(
-                          label: const Text('Weekly (Sun)', style: TextStyle(fontSize: 11)),
-                          onPressed: () => setDlgState(() => cronCtrl.text = '0 3 * * 0'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        const Text('Retention (Keep Last N):', style: TextStyle(fontSize: 13)),
-                        const Spacer(),
-                        DropdownButton<int>(
-                          value: retention,
-                          items: [3, 7, 14, 30, 60].map((n) {
-                            return DropdownMenuItem(value: n, child: Text('$n copies'));
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) setDlgState(() => retention = val);
+
+                      // Target Type Selector
+                      const Text('Backup Target Type:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'stack',
+                              icon: Icon(Icons.layers_outlined, size: 16),
+                              label: Text('Stack (Legion)'),
+                            ),
+                            ButtonSegment(
+                              value: 'volume',
+                              icon: Icon(Icons.inventory_2_outlined, size: 16),
+                              label: Text('Volume / Mount'),
+                            ),
+                            ButtonSegment(
+                              value: 'path',
+                              icon: Icon(Icons.folder_outlined, size: 16),
+                              label: Text('Custom Path'),
+                            ),
+                          ],
+                          selected: {targetType},
+                          onSelectionChanged: (newVal) {
+                            setDlgState(() => targetType = newVal.first);
                           },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Text('Pause Containers during backup:', style: TextStyle(fontSize: 13)),
-                        const Spacer(),
-                        Switch(
-                          value: pauseContainers,
-                          activeColor: const Color(0xFF8B5CF6),
-                          onChanged: (val) => setDlgState(() => pauseContainers = val),
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (targetType == 'stack') ...[
+                        if (widget.state.stacks.isNotEmpty)
+                          DropdownButtonFormField<String>(
+                            value: selectedStack.isNotEmpty ? selectedStack : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Target Stack (Legion)',
+                              prefixIcon: Icon(Icons.layers_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                            items: widget.state.stacks.map((s) {
+                              return DropdownMenuItem(
+                                value: s.id,
+                                child: Text('${s.name} (${s.id})'),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDlgState(() {
+                                  selectedStack = val;
+                                  if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Daily ') || nameCtrl.text.startsWith('Backup ')) {
+                                    final stack = widget.state.stacks.firstWhere((s) => s.id == val);
+                                    nameCtrl.text = 'Daily ${stack.name} Backup';
+                                  }
+                                });
+                              }
+                            },
+                          )
+                        else
+                          const Text('No stacks deployed yet.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ] else if (targetType == 'volume') ...[
+                        if (selectableVolumes.isNotEmpty)
+                          DropdownButtonFormField<String>(
+                            value: selectedVolumeId.isNotEmpty ? selectedVolumeId : selectableVolumes.first['id'],
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Select Discovered Volume or Mount',
+                              prefixIcon: Icon(Icons.inventory_2_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                            items: selectableVolumes.map((v) {
+                              return DropdownMenuItem(
+                                value: v['id'],
+                                child: Text(
+                                  v['label'] ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDlgState(() {
+                                  selectedVolumeId = val;
+                                  final match = selectableVolumes.firstWhere((v) => v['id'] == val);
+                                  if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Daily ') || nameCtrl.text.startsWith('Backup ')) {
+                                    nameCtrl.text = 'Daily ${match['name']} Snapshot';
+                                  }
+                                });
+                              }
+                            },
+                          )
+                        else
+                          const Text('No volumes or mounts discovered yet.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ] else ...[
+                        TextField(
+                          controller: customPathCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Directory Path',
+                            hintText: 'e.g. /var/contenedores/myapp or /data/glusterfs',
+                            prefixIcon: Icon(Icons.folder_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            ActionChip(
+                              label: const Text('/var/contenedores/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => customPathCtrl.text = '/var/contenedores/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/var/lib/docker/volumes/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => customPathCtrl.text = '/var/lib/docker/volumes/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/mnt/shared/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => customPathCtrl.text = '/mnt/shared/'),
+                            ),
+                            ActionChip(
+                              label: const Text('/data/', style: TextStyle(fontSize: 11)),
+                              onPressed: () => setDlgState(() => customPathCtrl.text = '/data/'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              icon: isCreatingDir
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.create_new_folder, size: 16, color: Color(0xFF8B5CF6)),
+                              label: const Text('Create Directory on Host(s) (mkdir -p)', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: const Color(0xFF8B5CF6),
+                              ),
+                              onPressed: isCreatingDir
+                                  ? null
+                                  : () async {
+                                      final path = customPathCtrl.text.trim();
+                                      if (path.isEmpty) {
+                                        _showSnackBar('Please enter a directory path first', isError: true);
+                                        return;
+                                      }
+                                      setDlgState(() => isCreatingDir = true);
+                                      try {
+                                        final ok = await ApiService.createStorageDirectory(
+                                          path: path,
+                                          targetNode: 'all',
+                                          permissions: '0777',
+                                        );
+                                        if (ok) {
+                                          _showSnackBar('✅ Directory "$path" created across cluster!');
+                                          _loadAllData();
+                                        } else {
+                                          _showSnackBar('❌ Failed to create directory', isError: true);
+                                        }
+                                      } catch (e) {
+                                        _showSnackBar('❌ Error: $e', isError: true);
+                                      } finally {
+                                        setDlgState(() => isCreatingDir = false);
+                                      }
+                                    },
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
+
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: cronCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Cron Expression',
+                          hintText: 'e.g. 0 3 * * * (Daily at 03:00 AM)',
+                          prefixIcon: Icon(Icons.alarm_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ActionChip(
+                            label: const Text('Daily (3 AM)', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => cronCtrl.text = '0 3 * * *'),
+                          ),
+                          ActionChip(
+                            label: const Text('Every 12h', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => cronCtrl.text = '0 */12 * * *'),
+                          ),
+                          ActionChip(
+                            label: const Text('Every 6h', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => cronCtrl.text = '0 */6 * * *'),
+                          ),
+                          ActionChip(
+                            label: const Text('Weekly (Sun)', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => cronCtrl.text = '0 3 * * 0'),
+                          ),
+                          ActionChip(
+                            label: const Text('Hourly', style: TextStyle(fontSize: 11)),
+                            onPressed: () => setDlgState(() => cronCtrl.text = '0 * * * *'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Text('Retention (Keep Last N):', style: TextStyle(fontSize: 13)),
+                          const Spacer(),
+                          DropdownButton<int>(
+                            value: retention,
+                            items: [3, 7, 14, 30, 60].map((n) {
+                              return DropdownMenuItem(value: n, child: Text('$n copies'));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setDlgState(() => retention = val);
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Text('Pause Containers during backup:', style: TextStyle(fontSize: 13)),
+                          const Spacer(),
+                          Switch(
+                            value: pauseContainers,
+                            activeColor: const Color(0xFF8B5CF6),
+                            onChanged: (val) => setDlgState(() => pauseContainers = val),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -1301,13 +1821,36 @@ volumes:
                   onPressed: () async {
                     Navigator.pop(ctx);
                     try {
+                      String targetId = '';
+                      String targetName = '';
+
+                      if (targetType == 'stack') {
+                        targetId = selectedStack;
+                        final match = widget.state.stacks.where((s) => s.id == selectedStack);
+                        targetName = match.isNotEmpty ? match.first.name : selectedStack;
+                      } else if (targetType == 'volume') {
+                        targetId = selectedVolumeId;
+                        final match = selectableVolumes.where((v) => v['id'] == selectedVolumeId);
+                        if (match.isNotEmpty) {
+                          targetName = match.first['name'] ?? selectedVolumeId;
+                          if (match.first['path'] != null && match.first['path']!.isNotEmpty) {
+                            targetId = match.first['path']!;
+                          }
+                        } else {
+                          targetName = selectedVolumeId;
+                        }
+                      } else {
+                        targetId = customPathCtrl.text.trim();
+                        targetName = customPathCtrl.text.trim();
+                      }
+
                       final item = BackupScheduleModel(
                         id: schedule?.id ?? '',
-                        name: nameCtrl.text.trim(),
+                        name: nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Scheduled Backup ($targetName)',
                         cronExpression: cronCtrl.text.trim(),
-                        targetType: 'stack',
-                        targetId: selectedStack,
-                        targetName: selectedStack,
+                        targetType: targetType,
+                        targetId: targetId,
+                        targetName: targetName,
                         retentionCount: retention,
                         pauseContainers: pauseContainers,
                         enabled: schedule?.enabled ?? true,

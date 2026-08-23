@@ -65,16 +65,40 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	// Determine source path if only VolumeName or StackID was passed
 	sourcePath := req.SourcePath
 	if sourcePath == "" {
-		// Fallback to shared path
-		if stackName != "" {
-			sourcePath = filepath.Join(DefaultSharedPoolPath, stackName)
+		if req.VolumeName != "" {
+			if strings.HasPrefix(req.VolumeName, "/") {
+				sourcePath = req.VolumeName
+			} else {
+				sharedPath := filepath.Join(DefaultSharedPoolPath, req.VolumeName)
+				if info, err := os.Stat(sharedPath); err == nil && info.IsDir() {
+					sourcePath = sharedPath
+				} else {
+					dockerVolPath := fmt.Sprintf("/var/lib/docker/volumes/%s/_data", req.VolumeName)
+					if info, err := os.Stat(dockerVolPath); err == nil && info.IsDir() {
+						sourcePath = dockerVolPath
+					} else {
+						sourcePath = sharedPath
+					}
+				}
+			}
+		} else if stackName != "" {
+			if strings.HasPrefix(stackName, "/") {
+				sourcePath = stackName
+			} else {
+				sourcePath = filepath.Join(DefaultSharedPoolPath, stackName)
+			}
 		} else {
 			return nil, fmt.Errorf("source_path or stack_id must be specified")
 		}
 	}
 
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("source path does not exist on disk: %s", sourcePath)
+		if strings.HasPrefix(sourcePath, DefaultSharedPoolPath) {
+			_ = os.MkdirAll(sourcePath, 0777)
+		}
+		if _, err2 := os.Stat(sourcePath); os.IsNotExist(err2) {
+			return nil, fmt.Errorf("source path does not exist on disk: %s", sourcePath)
+		}
 	}
 
 	// Generate filename and destination path

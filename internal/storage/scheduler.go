@@ -2,6 +2,7 @@ package storage
 
 import (
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,11 +69,30 @@ func SyncSchedules() {
 func ExecuteScheduledBackup(s db.BackupSchedule) {
 	slog.Info("storage: executing scheduled backup", "schedule_id", s.ID, "name", s.Name)
 	now := time.Now()
+	sourcePath := ""
+	stackID := s.TargetID
+	volumeName := s.TargetName
+
+	if s.TargetType == "path" || strings.HasPrefix(s.TargetID, "/") {
+		sourcePath = s.TargetID
+		stackID = ""
+		volumeName = ""
+	} else if s.TargetType == "volume" {
+		volumeName = s.TargetID
+		stackID = ""
+		if strings.HasPrefix(s.TargetName, "/") {
+			sourcePath = s.TargetName
+		}
+	} else if s.TargetType == "stack" {
+		stackID = s.TargetID
+		volumeName = s.TargetName
+	}
 
 	req := CreateBackupRequest{
 		Name:            s.Name,
-		StackID:         s.TargetID,
-		VolumeName:      s.TargetName,
+		StackID:         stackID,
+		VolumeName:      volumeName,
+		SourcePath:      sourcePath,
 		PauseContainers: s.PauseContainers,
 		IsScheduled:     true,
 		ScheduleID:      s.ID,
