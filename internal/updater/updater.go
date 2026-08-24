@@ -147,6 +147,42 @@ func parseTime(tStr string) time.Time {
 	return t
 }
 
+// UpdateProgressStatus holds live update state for UI progress monitoring.
+type UpdateProgressStatus struct {
+	Status          string `json:"status"` // "idle", "downloading", "installing", "restarting", "success", "failed"
+	TargetVersion   string `json:"target_version"`
+	ProgressMessage string `json:"progress_message"`
+	Error           string `json:"error,omitempty"`
+	UpdatedAt       string `json:"updated_at"`
+}
+
+var (
+	currentUpdateStatus = UpdateProgressStatus{
+		Status:          "idle",
+		ProgressMessage: "Ready",
+	}
+	statusMutex sync.RWMutex
+)
+
+// GetUpdateStatus returns the live status of an active or recent update.
+func GetUpdateStatus() UpdateProgressStatus {
+	statusMutex.RLock()
+	defer statusMutex.RUnlock()
+	return currentUpdateStatus
+}
+
+func setUpdateStatus(status, version, msg, errStr string) {
+	statusMutex.Lock()
+	defer statusMutex.Unlock()
+	currentUpdateStatus = UpdateProgressStatus{
+		Status:          status,
+		TargetVersion:   version,
+		ProgressMessage: msg,
+		Error:           errStr,
+		UpdatedAt:       time.Now().UTC().Format(time.RFC3339),
+	}
+}
+
 // ApplyClusterUpdate triggers binary downloading, container pulling, version updating, and node upgrades across the cluster.
 func ApplyClusterUpdate(targetVersion string) error {
 	slog.Info("🚀 Initiating cluster-wide update", "target_version", targetVersion)
@@ -155,15 +191,11 @@ func ApplyClusterUpdate(targetVersion string) error {
 	cachedInfo = nil
 	cacheMutex.Unlock()
 
+	setUpdateStatus("downloading", targetVersion, fmt.Sprintf("Connecting to GitHub to download %s...", targetVersion), "")
+
 	if targetVersion != "" {
-		written := false
 		for _, path := range []string{"/data/VERSION", "/app/VERSION", "VERSION", "../VERSION"} {
-			if err := os.WriteFile(path, []byte(targetVersion), 0644); err == nil {
-				written = true
-			}
-		}
-		if !written {
-			_ = os.WriteFile("/app/VERSION", []byte(targetVersion), 0644)
+			_ = os.WriteFile(path, []byte(targetVersion), 0644)
 		}
 	}
 
@@ -177,9 +209,13 @@ func ApplyClusterUpdate(targetVersion string) error {
 
 	// Trigger asynchronous cluster upgrade so HTTP response returns cleanly first
 	go func() {
-		time.Sleep(1000 * time.Millisecond)
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("recovered panic in cluster update", "err", r)
+				setUpdateStatus("failed", targetVersion, "Update crashed unexpectedly", fmt.Sprintf("%v", r))
+			}
+		}()
 
-		// 1. Download and replace binary on Manager host if running natively / systemd
 		goos := runtime.GOOS
 		goarch := runtime.GOARCH
 		binURL := fmt.Sprintf("https://github.com/mario-ezquerro/gubernator/releases/download/%s/gbnt-%s-%s", targetVersion, goos, goarch)
@@ -187,32 +223,65 @@ func ApplyClusterUpdate(targetVersion string) error {
 			binURL += ".exe"
 		}
 
-		slog.Info("downloading release binary for host update", "url", binURL)
+		slog.Info("downloading release binary with retry", "url", binURL)
 		tmpPath := fmt.Sprintf("/tmp/gbnt-update-%d", time.Now().Unix())
-		if err := downloadFile(binURL, tmpPath); err == nil {
-			_ = os.Chmod(tmpPath, 0755)
 
-			// Target paths to overwrite
-			installPaths := []string{"/usr/local/bin/gbnt", "/app/gbnt"}
-			if execPath, err := os.Executable(); err == nil && execPath != "" {
-				installPaths = append([]string{execPath}, installPaths...)
-			}
-
-			for _, dst := range installPaths {
-				if _, err := os.Stat(dst); err == nil {
-					// Use atomic move/copy
-					_ = exec.Command("mv", "-f", tmpPath, dst).Run()
-					_ = os.Chmod(dst, 0755)
-					slog.Info("successfully replaced binary", "path", dst)
-					break
+		// Try downloading with retry (up to 15 attempts x 3s = 45s backoff for GitHub Actions release publication)
+		var dlErr error
+		client := &http.Client{Timeout: 30 * time.Second}
+		for attempt := 1; attempt <= 15; attempt++ {
+			setUpdateStatus("downloading", targetVersion, fmt.Sprintf("Downloading binary from GitHub (attempt %d/15)...", attempt), "")
+			resp, err := client.Get(binURL)
+			if err == nil {
+				if resp.StatusCode == http.StatusOK {
+					out, createErr := os.Create(tmpPath)
+					if createErr == nil {
+						_, copyErr := io.Copy(out, resp.Body)
+						out.Close()
+						resp.Body.Close()
+						if copyErr == nil {
+							// Verify binary size > 1MB
+							if fi, sErr := os.Stat(tmpPath); sErr == nil && fi.Size() > 1000000 {
+								dlErr = nil
+								break
+							}
+						}
+					}
+				} else {
+					resp.Body.Close()
+					dlErr = fmt.Errorf("GitHub returned HTTP %s (release assets may still be uploading)", resp.Status)
 				}
+			} else {
+				dlErr = err
 			}
-			_ = os.Remove(tmpPath)
-		} else {
-			slog.Warn("could not direct-download binary, proceeding with Docker pull fallback", "err", err)
+			time.Sleep(3 * time.Second)
 		}
 
-		// 2. Upgrade worker Centurion nodes via remote execution
+		if dlErr != nil {
+			slog.Warn("could not download release binary", "err", dlErr)
+			setUpdateStatus("failed", targetVersion, "Download failed from GitHub", dlErr.Error())
+			return
+		}
+
+		setUpdateStatus("installing", targetVersion, "Installing new binary on Manager and Centurions...", "")
+		_ = os.Chmod(tmpPath, 0755)
+
+		// Overwrite local binary
+		installPaths := []string{"/usr/local/bin/gbnt", "/app/gbnt"}
+		if execPath, err := os.Executable(); err == nil && execPath != "" {
+			installPaths = append([]string{execPath}, installPaths...)
+		}
+
+		for _, dst := range installPaths {
+			_ = exec.Command("sudo", "install", "-m", "755", tmpPath, dst).Run()
+			_ = exec.Command("install", "-m", "755", tmpPath, dst).Run()
+			_ = exec.Command("sudo", "cp", "-f", tmpPath, dst).Run()
+			_ = exec.Command("cp", "-f", tmpPath, dst).Run()
+			_ = os.Chmod(dst, 0755)
+		}
+		_ = os.Remove(tmpPath)
+
+		// 2. Upgrade worker Centurion nodes via remote SSH
 		if db.DB != nil {
 			var workers []db.Node
 			if err := db.DB.Where("role = 'worker' AND status != 'left'").Find(&workers).Error; err == nil {
@@ -222,7 +291,7 @@ func ApplyClusterUpdate(targetVersion string) error {
 						slog.Info("triggering remote update on worker node", "node_id", w.ID, "ip", workerIP)
 						go func(ip string) {
 							workerScript := fmt.Sprintf(
-								`curl -fsSL -o /tmp/gbnt-new "%s" && chmod +x /tmp/gbnt-new && mv -f /tmp/gbnt-new /usr/local/bin/gbnt && (systemctl restart gbnt-worker || true)`,
+								`curl -fsSL -o /tmp/gbnt-new "%s" && sudo install -m 755 /tmp/gbnt-new /usr/local/bin/gbnt && rm -f /tmp/gbnt-new && (sudo systemctl restart gbnt-worker || systemctl restart gbnt-worker || true)`,
 								binURL,
 							)
 							_, _ = exec.Command("ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5", fmt.Sprintf("ubuntu@%s", ip), "sudo", "sh", "-c", workerScript).CombinedOutput()
@@ -232,41 +301,19 @@ func ApplyClusterUpdate(targetVersion string) error {
 			}
 		}
 
-		// 3. If running in Docker container, pull new image and restart container
-		img := fmt.Sprintf("marioezquerro/gubernator:%s", targetVersion)
-		if targetVersion == "" || targetVersion == "latest" {
-			img = "marioezquerro/gubernator:latest"
-		}
-		_ = exec.Command("docker", "pull", img).Run()
+		// 3. Restart services
+		setUpdateStatus("restarting", targetVersion, "Restarting Gubernator services...", "")
+		time.Sleep(1500 * time.Millisecond)
+
+		// Try container restart
 		_ = exec.Command("docker", "restart", "gbnt-manager").Run()
 
-		// 4. If running under systemd, restart the systemd service
-		time.Sleep(1000 * time.Millisecond)
-		slog.Info("restarting gbnt-manager service...")
+		// Try systemd restart with sudo and without sudo
+		_ = exec.Command("sudo", "systemctl", "restart", "gbnt-manager").Run()
 		_ = exec.Command("systemctl", "restart", "gbnt-manager").Run()
+
+		setUpdateStatus("success", targetVersion, fmt.Sprintf("Successfully upgraded cluster to %s", targetVersion), "")
 	}()
 
 	return nil
-}
-
-func downloadFile(url, destPath string) error {
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad HTTP status: %s", resp.Status)
-	}
-
-	out, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	return err
 }

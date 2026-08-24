@@ -392,10 +392,21 @@ class ApiService {
   static Future<bool> applyUpdate(String targetVersion) async {
     final response = await http.post(
       Uri.parse('/api/update/apply'),
-      headers: {'Content-Type': 'application/json'},
+      headers: authHeaders,
       body: jsonEncode({'target_version': targetVersion}),
     );
     return response.statusCode == 200;
+  }
+
+  /// Fetches live status of an ongoing or recent update.
+  static Future<Map<String, dynamic>> fetchUpdateStatus() async {
+    try {
+      final response = await http.get(Uri.parse('/api/update/status'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (_) {}
+    return {'status': 'unknown'};
   }
 
   /// Fetches active SLO definitions and error budgets.

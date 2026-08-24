@@ -271,6 +271,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Storage Network & Subnet Selector in Volume Creator:** Enhanced the **Create GlusterFS Replicated Volume** modal with explicit network routing selection (`🌐 Dedicated Storage Network (Dual-NIC / 10.10.100.0/24)`, `🏢 Management / Primary Network (192.168.x.x)`, `🛠️ Custom Node IPs (Comma-separated)`), enabling flexible interface targeting and multi-IP binding.
 * **Detailed Error Inspection Dialog with One-Click Copy:** Replaced fleeting SnackBar notifications with rich, persistent error dialogs containing monospace output inspection, selectable text, and a **Copy Error** button for seamless troubleshooting.
 
+### 37. Auto-Updater Live Progress Tracker & GitHub Release Retry Pipeline (`v2.39.6`)
+* **Live Update Progress Screen:** Redesigned the Web UI `UpdateDialog` to remain open during updates with interactive multi-step progress tracking (1. Download release binary from GitHub, 2. Install binary on Manager & Centurion workers, 3. Restart Gubernator cluster daemon, 4. Reconnect and verify updated state) with automatic UI reload upon completion.
+* **Release Asset Retry & Backoff Engine:** Implemented 15-attempt (45-second) exponential backoff polling in `updater.go` to handle GitHub Actions build latency when new releases are published, preventing 404 download errors.
+* **Safe Binary Replacement & Daemon Restart:** Replaced basic atomic copy with `sudo install -m 755` across `/usr/local/bin/gbnt`, `/app/gbnt`, and active executable paths with automated worker SSH propagation and fallback systemd restart.
+* **Live Status Endpoint (`GET /api/system/update/status`):** Real-time update phase telemetry streaming status (`downloading`, `installing`, `restarting`, `success`, `failed`), progress messages, and error diagnostics directly to the client.
+
+
 
 
 

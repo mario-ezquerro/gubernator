@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.39.5"
+var Version = "v2.39.6"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -290,6 +290,7 @@ func StartDashboard() {
 		api.GET("/coredns/custom-records", getCustomDNSRecordsHandler)
 		api.GET("/scope/status", scopeStatusHandler)
 		api.GET("/update/check", updateCheckHandler)
+		api.GET("/update/status", updateStatusHandler)
 		api.GET("/system/adoption", systemAdoptionHandler)
 		api.GET("/slo", sloListHandler)
 		api.GET("/slo/journeys", sloJourneysHandler)
@@ -623,6 +624,11 @@ func updateCheckHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, info)
+}
+
+func updateStatusHandler(c *gin.Context) {
+	status := updater.GetUpdateStatus()
+	c.JSON(http.StatusOK, status)
 }
 
 func systemAdoptionHandler(c *gin.Context) {
