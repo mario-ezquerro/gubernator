@@ -98,15 +98,17 @@ type GlusterClusterDiagnostics struct {
 
 // GlusterVolumeCreateRequest is the payload used to create a new cluster volume.
 type GlusterVolumeCreateRequest struct {
-	Name         string   `json:"name"`          // e.g. "gv_contenedores"
-	Type         string   `json:"type"`          // "replica", "arbiter", "distribute", "disperse"
-	ReplicaCount int      `json:"replica_count"` // e.g. 3
-	ArbiterCount int      `json:"arbiter_count"` // e.g. 1
-	Bricks       []string `json:"bricks"`        // ["192.168.252.27:/data/gluster/b1", "192.168.252.28:/data/gluster/b1", "192.168.252.29:/data/gluster/b1"]
-	BrickDir     string   `json:"brick_dir"`     // optional shortcut, e.g. "/data/glusterfs/brick1"
-	AutoMount    bool     `json:"auto_mount"`    // mount to /var/contenedores across cluster
-	MountPoint   string   `json:"mount_point"`   // default "/var/contenedores"
-	TargetNodes  []string `json:"target_nodes"`  // node IPs to auto-mount
+	Name         string   `json:"name"`                   // e.g. "gv_contenedores"
+	Type         string   `json:"type"`                   // "replica", "arbiter", "distribute", "disperse"
+	ReplicaCount int      `json:"replica_count"`          // e.g. 3
+	ArbiterCount int      `json:"arbiter_count"`          // e.g. 1
+	Bricks       []string `json:"bricks"`                 // ["10.10.100.24:/data/glusterfs/brick1/gv", ...]
+	BrickDir     string   `json:"brick_dir"`              // optional shortcut, e.g. "/data/glusterfs/brick1"
+	NetworkMode  string   `json:"network_mode,omitempty"` // "storage" (Dual-NIC), "management", "custom"
+	CustomHosts  []string `json:"custom_hosts,omitempty"` // e.g. ["10.10.100.24", "10.10.100.25", "10.10.100.26"]
+	AutoMount    bool     `json:"auto_mount"`             // mount to /var/contenedores across cluster
+	MountPoint   string   `json:"mount_point"`            // default "/var/contenedores"
+	TargetNodes  []string `json:"target_nodes"`           // node IPs to auto-mount
 	Force        bool     `json:"force"`
 }
 
@@ -124,24 +126,16 @@ func InitGlusterDB() {
 	}
 }
 
-// ExecGlusterCmd builds an exec.Cmd for gluster, prepending sudo if running as non-root.
-func ExecGlusterCmd(args ...string) *exec.Cmd {
-	if os.Geteuid() == 0 {
-		return exec.Command("gluster", args...)
-	}
-	return exec.Command("sudo", append([]string{"gluster"}, args...)...)
-}
-
-// CheckGlusterInstalled checks if gluster CLI and glusterd daemon exist.
-func CheckGlusterInstalled() (bool, bool, string) {
+// CheckGlusterInstalled verifies if glusterfs-server and gluster CLI tools are present.
+func CheckGlusterInstalled() (installed bool, running bool, version string) {
 	_, err := exec.LookPath("gluster")
 	if err != nil {
 		return false, false, ""
 	}
+	installed = true
 
 	cmd := ExecGlusterCmd("--version")
-	out, err := cmd.Output()
-	version := "unknown"
+	out, err := cmd.CombinedOutput()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
 		if len(lines) > 0 {
@@ -149,38 +143,110 @@ func CheckGlusterInstalled() (bool, bool, string) {
 		}
 	}
 
-	// Check if glusterd is active
-	running := false
-	statusCmd := ExecGlusterCmd("peer", "status")
-	if err := statusCmd.Run(); err == nil {
+	// Check if glusterd daemon is actively running
+	statusCmd := exec.Command("systemctl", "is-active", "glusterd")
+	sOut, sErr := statusCmd.CombinedOutput()
+	if sErr == nil && strings.TrimSpace(string(sOut)) == "active" {
 		running = true
+	} else {
+		// Fallback check via pgrep
+		pgCmd := exec.Command("pgrep", "-x", "glusterd")
+		if pgCmd.Run() == nil {
+			running = true
+		}
 	}
 
-	return true, running, version
+	return installed, running, version
 }
 
-// GetGlusterPeers lists all trusted storage pool peers.
-func GetGlusterPeers() ([]GlusterPeer, error) {
-	glusterMu.Lock()
-	defer glusterMu.Unlock()
+// ExecGlusterCmd executes a gluster CLI command with sudo if needed.
+func ExecGlusterCmd(args ...string) *exec.Cmd {
+	if os.Geteuid() == 0 {
+		return exec.Command("gluster", args...)
+	}
+	allArgs := append([]string{"gluster"}, args...)
+	return exec.Command("sudo", allArgs...)
+}
 
+// GetGlusterDiagnostics returns a comprehensive health report of the cluster storage pool.
+func GetGlusterDiagnostics() (*GlusterClusterDiagnostics, error) {
+	installed, running, version := CheckGlusterInstalled()
+	diag := &GlusterClusterDiagnostics{
+		Installed:     installed,
+		DaemonRunning: running,
+		Version:       version,
+		CheckedAt:     time.Now().UTC().Format(time.RFC3339),
+		Issues:        []string{},
+		Peers:         []GlusterPeer{},
+	}
+
+	if !installed {
+		diag.HealthScore = 0
+		diag.Issues = append(diag.Issues, "glusterfs-server is not installed. Run 'ansible-playbook glusterfs.yml' or install via package manager.")
+		return diag, nil
+	}
+
+	if !running {
+		diag.HealthScore = 20
+		diag.Issues = append(diag.Issues, "glusterd daemon is stopped. Start it with 'sudo systemctl start glusterd'.")
+		return diag, nil
+	}
+
+	// Fetch peers
+	peers, err := GetGlusterPeers()
+	if err == nil {
+		diag.Peers = peers
+		diag.PeersCount = len(peers)
+	}
+
+	// Fetch volumes
+	vols, err := GetGlusterVolumes()
+	if err == nil {
+		diag.VolumesCount = len(vols)
+		for _, v := range vols {
+			if v.Status == "Started" {
+				diag.OnlineVolumes++
+			}
+		}
+	}
+
+	// Calculate quorum and health score
+	connectedPeers := 0
+	for _, p := range diag.Peers {
+		if p.Connected {
+			connectedPeers++
+		}
+	}
+
+	if diag.PeersCount == 0 {
+		diag.QuorumHealthy = true
+		diag.HealthScore = 80 // Single node ready
+	} else if connectedPeers == diag.PeersCount {
+		diag.QuorumHealthy = true
+		diag.HealthScore = 100
+	} else {
+		diag.QuorumHealthy = false
+		diag.HealthScore = 50
+		diag.Issues = append(diag.Issues, fmt.Sprintf("%d of %d peers disconnected from storage pool", diag.PeersCount-connectedPeers, diag.PeersCount))
+	}
+
+	return diag, nil
+}
+
+// GetGlusterPeers lists all peers in the trusted storage pool.
+func GetGlusterPeers() ([]GlusterPeer, error) {
 	installed, running, _ := CheckGlusterInstalled()
 	if !installed || !running {
-		// Return cluster nodes discovery fallback if glusterd is not locally running
-		return getFallbackClusterPeers(), nil
+		return []GlusterPeer{}, nil
 	}
 
 	cmd := ExecGlusterCmd("peer", "status")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return getFallbackClusterPeers(), nil
+		return []GlusterPeer{}, fmt.Errorf("gluster peer status failed: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 
-	peers := parseGlusterPeerStatus(string(out))
-	if len(peers) == 0 {
-		return getFallbackClusterPeers(), nil
-	}
-	return peers, nil
+	return parseGlusterPeerStatus(string(out)), nil
 }
 
 func parseGlusterPeerStatus(output string) []GlusterPeer {
@@ -196,7 +262,7 @@ func parseGlusterPeerStatus(output string) []GlusterPeer {
 		CheckedAt: now,
 	})
 
-	blocks := strings.Split(output, "Hostname:")
+	blocks := strings.Split(output, "Hostname: ")
 	for i, b := range blocks {
 		if i == 0 {
 			continue
@@ -298,94 +364,13 @@ func GetGlusterVolumes() ([]GlusterVolume, error) {
 
 func parseGlusterVolumeInfo(output string) []GlusterVolume {
 	var volumes []GlusterVolume
-	blocks := strings.Split(output, "Volume Name:")
+	blocks := strings.Split(output, "Volume Name: ")
+
 	for i, b := range blocks {
 		if i == 0 {
 			continue
 		}
-		lines := strings.Split(b, "\n")
-		vol := GlusterVolume{
-			Options:   make(map[string]string),
-			Transport: "tcp",
-		}
-		if len(lines) > 0 {
-			vol.Name = strings.TrimSpace(lines[0])
-		}
-
-		inBricks := false
-		inOptions := false
-
-		for _, l := range lines[1:] {
-			l = strings.TrimSpace(l)
-			if l == "" {
-				continue
-			}
-
-			if strings.HasPrefix(l, "Type:") {
-				vol.Type = strings.TrimSpace(strings.TrimPrefix(l, "Type:"))
-			} else if strings.HasPrefix(l, "Volume ID:") {
-				vol.UUID = strings.TrimSpace(strings.TrimPrefix(l, "Volume ID:"))
-			} else if strings.HasPrefix(l, "Status:") {
-				vol.Status = strings.TrimSpace(strings.TrimPrefix(l, "Status:"))
-			} else if strings.HasPrefix(l, "Number of Bricks:") {
-				parts := strings.Fields(l)
-				if len(parts) >= 4 {
-					num, _ := strconv.Atoi(parts[3])
-					vol.NumBricks = num
-				}
-			} else if strings.HasPrefix(l, "Transport-type:") {
-				vol.Transport = strings.TrimSpace(strings.TrimPrefix(l, "Transport-type:"))
-			} else if strings.HasPrefix(l, "Bricks:") {
-				inBricks = true
-				inOptions = false
-				continue
-			} else if strings.HasPrefix(l, "Options Reconfigured:") {
-				inBricks = false
-				inOptions = true
-				continue
-			}
-
-			if inBricks && strings.HasPrefix(l, "Brick") {
-				parts := strings.SplitN(l, ": ", 2)
-				if len(parts) == 2 {
-					brickSpec := strings.TrimSpace(parts[1])
-					hostPath := strings.SplitN(brickSpec, ":", 2)
-					host := "localhost"
-					path := brickSpec
-					if len(hostPath) == 2 {
-						host = hostPath[0]
-						path = hostPath[1]
-					}
-					vol.Bricks = append(vol.Bricks, GlusterBrick{
-						FullSpec: brickSpec,
-						Host:     host,
-						Path:     path,
-						Online:   vol.Status == "Started",
-					})
-				}
-			} else if inOptions {
-				parts := strings.SplitN(l, ":", 2)
-				if len(parts) == 2 {
-					vol.Options[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-				}
-			}
-		}
-
-		// Calculate replica count from type
-		if strings.Contains(strings.ToLower(vol.Type), "replicate") {
-			if len(vol.Bricks) >= 3 {
-				vol.ReplicaCount = 3
-			} else if len(vol.Bricks) == 2 {
-				vol.ReplicaCount = 2
-			}
-		}
-		if strings.Contains(strings.ToLower(vol.Type), "arbiter") {
-			vol.ArbiterCount = 1
-			if len(vol.Bricks) > 0 {
-				vol.Bricks[len(vol.Bricks)-1].IsArbiter = true
-			}
-		}
-
+		vol := parseSingleVolumeBlock(b)
 		if vol.Name != "" {
 			volumes = append(volumes, vol)
 		}
@@ -393,50 +378,128 @@ func parseGlusterVolumeInfo(output string) []GlusterVolume {
 	return volumes
 }
 
-func checkVolumeMountStatus(vol *GlusterVolume) {
-	// Check if mounted on /var/contenedores
-	mounts, err := ListStorageMounts()
-	if err == nil {
-		for _, m := range mounts {
-			if m.FSType == "glusterfs" && strings.Contains(m.Device, vol.Name) {
-				vol.IsMounted = true
-				vol.MountPoint = m.MountPoint
-				break
+func parseSingleVolumeBlock(block string) GlusterVolume {
+	lines := strings.Split(block, "\n")
+	vol := GlusterVolume{
+		Options: make(map[string]string),
+		Bricks:  []GlusterBrick{},
+	}
+
+	if len(lines) > 0 {
+		vol.Name = strings.TrimSpace(lines[0])
+	}
+
+	inBricks := false
+	inOptions := false
+
+	for _, l := range lines[1:] {
+		trimmed := strings.TrimSpace(l)
+		if trimmed == "" {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "Type:") {
+			vol.Type = strings.TrimSpace(strings.TrimPrefix(trimmed, "Type:"))
+		} else if strings.HasPrefix(trimmed, "Volume ID:") {
+			vol.UUID = strings.TrimSpace(strings.TrimPrefix(trimmed, "Volume ID:"))
+		} else if strings.HasPrefix(trimmed, "Status:") {
+			vol.Status = strings.TrimSpace(strings.TrimPrefix(trimmed, "Status:"))
+		} else if strings.HasPrefix(trimmed, "Number of Bricks:") {
+			vol.NumBricks = parseLeadingInt(strings.TrimPrefix(trimmed, "Number of Bricks:"))
+		} else if strings.HasPrefix(trimmed, "Transport-type:") {
+			vol.Transport = strings.TrimSpace(strings.TrimPrefix(trimmed, "Transport-type:"))
+		} else if strings.HasPrefix(trimmed, "Bricks:") {
+			inBricks = true
+			inOptions = false
+		} else if strings.HasPrefix(trimmed, "Options Reconfigured:") {
+			inBricks = false
+			inOptions = true
+		} else if inBricks && strings.HasPrefix(trimmed, "Brick") && strings.Contains(trimmed, ":") {
+			parts := strings.SplitN(trimmed, ": ", 2)
+			if len(parts) == 2 {
+				brickSpec := strings.TrimSpace(parts[1])
+				hostPath := strings.SplitN(brickSpec, ":", 2)
+				bHost := ""
+				bPath := brickSpec
+				if len(hostPath) == 2 {
+					bHost = strings.TrimSpace(hostPath[0])
+					bPath = strings.TrimSpace(hostPath[1])
+				}
+				vol.Bricks = append(vol.Bricks, GlusterBrick{
+					FullSpec: brickSpec,
+					Host:     bHost,
+					Path:     bPath,
+					Online:   vol.Status == "Started",
+				})
+			}
+		} else if inOptions && strings.Contains(trimmed, ":") {
+			optParts := strings.SplitN(trimmed, ":", 2)
+			if len(optParts) == 2 {
+				k := strings.TrimSpace(optParts[0])
+				v := strings.TrimSpace(optParts[1])
+				vol.Options[k] = v
 			}
 		}
 	}
-	if !vol.IsMounted {
-		// Check local /etc/mtab
-		data, err := os.ReadFile("/etc/mtab")
-		if err == nil {
-			if strings.Contains(string(data), vol.Name) && strings.Contains(string(data), "/var/contenedores") {
+
+	// Extract replica count from Type
+	if strings.Contains(vol.Type, "Replicate") {
+		if strings.Contains(vol.Type, "3") || len(vol.Bricks) == 3 {
+			vol.ReplicaCount = 3
+		} else if strings.Contains(vol.Type, "2") || len(vol.Bricks) == 2 {
+			vol.ReplicaCount = 2
+		} else {
+			vol.ReplicaCount = len(vol.Bricks)
+		}
+	}
+
+	return vol
+}
+
+func parseLeadingInt(str string) int {
+	str = strings.TrimSpace(str)
+	fields := strings.Fields(str)
+	if len(fields) > 0 {
+		val, _ := strconv.Atoi(fields[0])
+		return val
+	}
+	return 0
+}
+
+func checkVolumeMountStatus(vol *GlusterVolume) {
+	vol.MountPoint = "/var/contenedores"
+	targetMount := "/var/contenedores"
+
+	// 1. Check active local mount
+	out, err := exec.Command("mount").CombinedOutput()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, l := range lines {
+			if strings.Contains(l, targetMount) && (strings.Contains(l, "glusterfs") || strings.Contains(l, vol.Name)) {
 				vol.IsMounted = true
-				vol.MountPoint = "/var/contenedores"
+				return
 			}
+		}
+	}
+
+	// 2. Check DB records
+	if db.DB != nil {
+		var count int64
+		db.DB.Model(&db.StorageMount{}).Where("mount_point = ? AND status = 'mounted' AND fs_type = 'glusterfs'", targetMount).Count(&count)
+		if count > 0 {
+			vol.IsMounted = true
 		}
 	}
 }
 
 func enrichVolumeMetrics(vol *GlusterVolume) {
-	// Query detail status if volume is started
-	if vol.Status == "Started" {
-		cmd := ExecGlusterCmd("volume", "status", vol.Name, "detail")
-		out, err := cmd.CombinedOutput()
-		if err == nil {
-			statusText := string(out)
-			for i := range vol.Bricks {
-				if strings.Contains(statusText, vol.Bricks[i].FullSpec) {
-					vol.Bricks[i].Online = true
-				}
-			}
-		}
+	if vol.Status != "Started" {
+		return
+	}
 
-		// Query disk space of mount point if available
-		targetPath := vol.MountPoint
-		if targetPath == "" {
-			targetPath = "/var/contenedores"
-		}
-		total, free, err := getDiskSpace(targetPath)
+	// If mounted locally, query statfs
+	if vol.IsMounted && vol.MountPoint != "" {
+		total, free, err := GetDiskSpace(vol.MountPoint)
 		if err == nil && total > 0 {
 			vol.CapacityTotal = int64(total)
 			vol.CapacityFree = int64(free)
@@ -453,39 +516,91 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		return fmt.Errorf("volume name is required")
 	}
 
+	brickDir := req.BrickDir
+	if brickDir == "" {
+		brickDir = "/data/glusterfs/brick1"
+	}
+	if !strings.HasPrefix(brickDir, "/") {
+		brickDir = "/" + brickDir
+	}
+
 	// Auto-construct brick list if not provided
 	bricks := req.Bricks
 	if len(bricks) == 0 {
-		brickDir := req.BrickDir
-		if brickDir == "" {
-			brickDir = "/data/glusterfs/brick1"
-		}
-		if !strings.HasPrefix(brickDir, "/") {
-			brickDir = "/" + brickDir
-		}
-		// Use target nodes or discovered centurions
-		nodes := req.TargetNodes
-		if len(nodes) == 0 {
-			peers, _ := GetGlusterPeers()
-			for _, p := range peers {
-				if p.Hostname != "" {
-					nodes = append(nodes, p.Hostname)
+		var nodes []string
+		if len(req.CustomHosts) > 0 {
+			nodes = req.CustomHosts
+		} else if len(req.TargetNodes) > 0 && req.TargetNodes[0] != "all" {
+			nodes = req.TargetNodes
+		} else {
+			// Query cluster storage network report to find dedicated storage IPs or management IPs
+			netReport, err := GetClusterStorageNetworkReport()
+			if err == nil && netReport != nil && len(netReport.Nodes) > 0 {
+				for _, n := range netReport.Nodes {
+					chosenIP := n.HostIP
+					if req.NetworkMode != "management" && n.StorageIP != "" {
+						chosenIP = n.StorageIP
+					} else if req.NetworkMode != "management" {
+						for _, iface := range n.Interfaces {
+							if iface.IsStorage && len(iface.IPAddresses) > 0 {
+								chosenIP = iface.IPAddresses[0]
+								break
+							}
+						}
+					}
+					if chosenIP != "" && chosenIP != "127.0.0.1" && chosenIP != "localhost" {
+						nodes = append(nodes, chosenIP)
+					}
 				}
 			}
-			if len(nodes) < 2 {
-				nodes = []string{"192.168.252.27", "192.168.252.25", "192.168.252.26"}
+
+			// Fallback: discover DB nodes (Manager + Workers)
+			if len(nodes) == 0 && db.DB != nil {
+				var dbNodes []db.Node
+				_ = db.DB.Find(&dbNodes).Error
+				for _, n := range dbNodes {
+					if n.IP != "" && n.IP != "127.0.0.1" {
+						nodes = append(nodes, n.IP)
+					}
+				}
+			}
+
+			// Fallback: probed Gluster peers + local IP
+			if len(nodes) == 0 {
+				localIP := os.Getenv("GBNT_HOST_IP")
+				if localIP != "" && localIP != "127.0.0.1" {
+					nodes = append(nodes, localIP)
+				}
+				peers, _ := GetGlusterPeers()
+				for _, p := range peers {
+					if p.Hostname != "" && p.Hostname != localIP {
+						nodes = append(nodes, p.Hostname)
+					}
+				}
 			}
 		}
+
+		// Remove duplicate node entries
+		uniqueNodes := make([]string, 0, len(nodes))
+		seen := make(map[string]bool)
 		for _, n := range nodes {
+			n = strings.TrimSpace(n)
+			if n != "" && !seen[n] {
+				seen[n] = true
+				uniqueNodes = append(uniqueNodes, n)
+			}
+		}
+
+		for _, n := range uniqueNodes {
 			bricks = append(bricks, fmt.Sprintf("%s:%s/%s", n, brickDir, req.Name))
 		}
 	}
 
 	if len(bricks) < 2 {
-		return fmt.Errorf("at least 2 bricks required for cluster volume (3 recommended)")
+		return fmt.Errorf("at least 2 brick nodes are required to form a replicated volume (found %d bricks)", len(bricks))
 	}
 
-	// Proactively create all brick storage directories across target nodes
+	// 1. Proactively clean stale volume metadata/xattrs and prepare all brick storage directories across target nodes
 	for _, b := range bricks {
 		parts := strings.SplitN(b, ":", 2)
 		if len(parts) == 2 {
@@ -495,18 +610,27 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 				continue
 			}
 
+			// Ensure peer is probed into the trusted storage pool
+			if !IsLocalHost(host) && host != "127.0.0.1" && host != "localhost" {
+				_ = ProbeGlusterPeer(host)
+			}
+
+			// Clean any residual .glusterfs hidden folder and extended filesystem attributes from previous volume instances
+			cleanScript := fmt.Sprintf("sudo mkdir -p %s && sudo chmod 0777 %s && sudo rm -rf %s/.glusterfs && sudo setfattr -x trusted.gfid %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.volume-id %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.dht %s 2>/dev/null; true", brickPath, brickPath, brickPath, brickPath, brickPath, brickPath)
+
 			if IsLocalHost(host) {
-				slog.Info("pre-creating local gluster brick directory", "host", host, "path", brickPath)
-				_ = exec.Command("sudo", "mkdir", "-p", brickPath).Run()
-				_ = exec.Command("sudo", "chmod", "0777", brickPath).Run()
+				slog.Info("preparing and cleaning local gluster brick directory", "host", host, "path", brickPath)
+				_ = exec.Command("sh", "-c", cleanScript).Run()
 				_ = os.MkdirAll(brickPath, 0777)
 			} else {
-				slog.Info("pre-creating remote gluster brick directory", "host", host, "path", brickPath)
-				cmd := fmt.Sprintf("sudo mkdir -p %s && sudo chmod 0777 %s", brickPath, brickPath)
-				_, _ = ExecuteRemoteScript(host, cmd)
+				slog.Info("preparing and cleaning remote gluster brick directory", "host", host, "path", brickPath)
+				_, _ = ExecuteRemoteScript(host, cleanScript)
 			}
 		}
 	}
+
+	// Give peers 2 seconds to synchronize peer status if newly probed
+	time.Sleep(2 * time.Second)
 
 	args := []string{"volume", "create", req.Name}
 
@@ -523,9 +647,8 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	args = append(args, bricks...)
 
-	if req.Force || true {
-		args = append(args, "force")
-	}
+	// Always append force to ensure volume creation passes over directory checks
+	args = append(args, "force")
 
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
@@ -578,27 +701,24 @@ func tuneGlusterVolumeForContainers(volName string) {
 		"performance.write-behind":        "on",
 		"performance.flush-behind":        "on",
 		"performance.stat-prefetch":       "on",
-		"performance.read-ahead":          "on",
 		"performance.quick-read":          "on",
-		"performance.io-cache":            "on",
 		"network.ping-timeout":            "10",
 		"cluster.favorite-child-policy":   "mtime",
-		"cluster.lookup-optimize":         "on",
 	}
 
 	for k, v := range opts {
-		cmd := ExecGlusterCmd("volume", "set", volName, k, v)
-		_ = cmd.Run()
+		_ = SetGlusterVolumeOption(volName, k, v)
 	}
 }
 
-// StartGlusterVolume starts a stopped volume.
+// StartGlusterVolume starts a stopped GlusterFS volume.
 func StartGlusterVolume(name string) error {
 	installed, running, _ := CheckGlusterInstalled()
 	if !installed || !running {
-		return nil
+		return fmt.Errorf("glusterd daemon is not running")
 	}
-	cmd := ExecGlusterCmd("--mode=script", "volume", "start", name, "force")
+
+	cmd := ExecGlusterCmd("volume", "start", name, "force")
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "already started") {
 		return fmt.Errorf("gluster volume start failed: %s (%v)", string(out), err)
@@ -606,12 +726,18 @@ func StartGlusterVolume(name string) error {
 	return nil
 }
 
-// StopGlusterVolume stops an active volume.
+// StopGlusterVolume stops an active GlusterFS volume.
 func StopGlusterVolume(name string, force bool) error {
+	installed, running, _ := CheckGlusterInstalled()
+	if !installed || !running {
+		return fmt.Errorf("glusterd daemon is not running")
+	}
+
 	args := []string{"--mode=script", "volume", "stop", name}
 	if force {
 		args = append(args, "force")
 	}
+
 	cmd := ExecGlusterCmd(args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "already stopped") && !strings.Contains(string(out), "does not exist") {
@@ -648,7 +774,16 @@ func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
 		}
 	}
 
-	// 2. Stop and delete volume from Gluster CLI using non-interactive script mode
+	// 2. Fetch brick specs to clean up directories
+	var brickSpecs []string
+	if db.DB != nil {
+		var managed ManagedGlusterVolume
+		if err := db.DB.Where("name = ?", name).First(&managed).Error; err == nil && managed.BricksJSON != "" {
+			_ = json.Unmarshal([]byte(managed.BricksJSON), &brickSpecs)
+		}
+	}
+
+	// 3. Stop and delete volume from Gluster CLI using non-interactive script mode
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
 		_ = StopGlusterVolume(name, true)
@@ -659,7 +794,22 @@ func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
 		}
 	}
 
-	// 3. Delete from database records (ManagedGlusterVolume, StoragePool)
+	// 4. Proactively clean brick xattrs and markers across hosts
+	for _, b := range brickSpecs {
+		parts := strings.SplitN(b, ":", 2)
+		if len(parts) == 2 {
+			host := strings.TrimSpace(parts[0])
+			brickPath := strings.TrimSpace(parts[1])
+			cleanScript := fmt.Sprintf("sudo rm -rf %s/.glusterfs && sudo setfattr -x trusted.gfid %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.volume-id %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.dht %s 2>/dev/null; true", brickPath, brickPath, brickPath, brickPath)
+			if IsLocalHost(host) {
+				_ = exec.Command("sh", "-c", cleanScript).Run()
+			} else {
+				_, _ = ExecuteRemoteScript(host, cleanScript)
+			}
+		}
+	}
+
+	// 5. Delete from database records (ManagedGlusterVolume, StoragePool)
 	if db.DB != nil {
 		db.DB.Where("name = ?", name).Delete(&ManagedGlusterVolume{})
 		db.DB.Where("name = ?", name).Delete(&db.StoragePool{})
@@ -843,53 +993,6 @@ func TriggerGlusterSelfHeal(volumeName string) error {
 		return fmt.Errorf("trigger self-heal failed: %s (%v)", string(out), err)
 	}
 	return nil
-}
-
-// GetGlusterDiagnostics produces an all-in-one health diagnostic report.
-func GetGlusterDiagnostics() (*GlusterClusterDiagnostics, error) {
-	installed, running, version := CheckGlusterInstalled()
-	now := time.Now().UTC().Format(time.RFC3339)
-
-	diag := &GlusterClusterDiagnostics{
-		Installed:     installed,
-		DaemonRunning: running,
-		Version:       version,
-		CheckedAt:     now,
-		HealthScore:   100,
-		QuorumHealthy: true,
-	}
-
-	peers, _ := GetGlusterPeers()
-	diag.Peers = peers
-	diag.PeersCount = len(peers)
-
-	vols, _ := GetGlusterVolumes()
-	diag.VolumesCount = len(vols)
-
-	onlineVols := 0
-	for _, v := range vols {
-		if v.Status == "Started" {
-			onlineVols++
-		}
-	}
-	diag.OnlineVolumes = onlineVols
-
-	if !installed {
-		diag.HealthScore = 60
-		diag.Issues = append(diag.Issues, "GlusterFS packages (glusterfs-server) not found on Manager node. Install with ansible/glusterfs.yml.")
-	} else if !running {
-		diag.HealthScore = 70
-		diag.Issues = append(diag.Issues, "glusterd service is not active on Manager node.")
-	}
-
-	if len(peers) < 3 {
-		diag.Issues = append(diag.Issues, fmt.Sprintf("Cluster has %d peer(s). 3 nodes recommended for Replica 3 quorum.", len(peers)))
-		if diag.HealthScore > 85 {
-			diag.HealthScore = 85
-		}
-	}
-
-	return diag, nil
 }
 
 // Fallback fixtures for discovery when gluster CLI is not locally available

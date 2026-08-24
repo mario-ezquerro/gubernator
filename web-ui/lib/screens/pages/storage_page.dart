@@ -123,7 +123,76 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.redAccent : const Color(0xFF10B981),
-        duration: const Duration(seconds: 3),
+        duration: Duration(seconds: isError ? 12 : 4),
+        action: isError
+            ? SnackBarAction(
+                label: 'View Error',
+                textColor: Colors.white,
+                onPressed: () => _showErrorDialog('Operation Failed', message),
+              )
+            : null,
+      ),
+    );
+  }
+
+  void _showErrorDialog(String title, String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.redAccent, size: 22),
+            const SizedBox(width: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'The system returned the following detailed error output:',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                ),
+                child: SelectableText(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Courier New',
+                    fontSize: 12,
+                    color: Color(0xFFFCA5A5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('Copy Error'),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: message));
+              _showSnackBar('Error message copied to clipboard');
+            },
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Dismiss'),
+          ),
+        ],
       ),
     );
   }
@@ -6394,9 +6463,11 @@ volumes:
     final nameCtrl = TextEditingController(text: 'gv_contenedores');
     final brickDirCtrl = TextEditingController(text: '/data/glusterfs/brick1');
     final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    final customHostsCtrl = TextEditingController(text: '');
     int replicaCount = 3;
     bool autoMount = true;
     String targetScope = 'all';
+    String networkMode = 'storage'; // 'storage', 'management', 'custom'
 
     showDialog(
       context: context,
@@ -6412,7 +6483,7 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 540,
+                width: 560,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -6424,6 +6495,7 @@ volumes:
                           labelText: 'Volume Name',
                           hintText: 'e.g. gv_contenedores',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.folder_shared, size: 20),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -6432,6 +6504,7 @@ volumes:
                         decoration: const InputDecoration(
                           labelText: 'Replication Strategy',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.copy_all, size: 20),
                         ),
                         items: const [
                           DropdownMenuItem(value: 3, child: Text('Replica 3 — 3-Way Mirror (Recommended for 3 hosts)')),
@@ -6442,6 +6515,49 @@ volumes:
                         },
                       ),
                       const SizedBox(height: 16),
+
+                      // Storage Network Interface Selector
+                      DropdownButtonFormField<String>(
+                        value: networkMode,
+                        decoration: const InputDecoration(
+                          labelText: 'Storage Network Interface / Subnet',
+                          helperText: 'Select which network GlusterFS binds its bricks and replication traffic to.',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.settings_ethernet, size: 20),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'storage',
+                            child: Text('🌐 Dedicated Storage Network (Dual-NIC / 10.10.100.0/24)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'management',
+                            child: Text('🏢 Management / Primary Network (192.168.x.x)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'custom',
+                            child: Text('🛠️ Custom Host Storage IPs (Specify manually)'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDlgState(() => networkMode = val);
+                        },
+                      ),
+                      if (networkMode == 'custom') ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: customHostsCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Custom Node Storage IPs (Comma-separated)',
+                            hintText: 'e.g. 10.10.100.24, 10.10.100.25, 10.10.100.26',
+                            helperText: 'Enter specific storage IPs for the manager and worker bricks.',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.lan, size: 20),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+
                       DropdownButtonFormField<String>(
                         value: targetScope,
                         decoration: const InputDecoration(
@@ -6472,7 +6588,9 @@ volumes:
                         decoration: const InputDecoration(
                           labelText: 'Brick Storage Directory on Nodes',
                           hintText: 'e.g. /data/glusterfs/brick1',
+                          helperText: 'Residual metadata and xattrs will be cleaned automatically.',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.storage, size: 20),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -6482,6 +6600,7 @@ volumes:
                           labelText: 'Target Mount Point for Containers',
                           hintText: 'e.g. /var/contenedores',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.link, size: 20),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -6507,10 +6626,21 @@ volumes:
                       if (targetScope != 'all') {
                         targetNodes = [targetScope];
                       }
+                      List<String>? customHosts;
+                      if (networkMode == 'custom' && customHostsCtrl.text.trim().isNotEmpty) {
+                        customHosts = customHostsCtrl.text
+                            .split(',')
+                            .map((s) => s.trim())
+                            .where((s) => s.isNotEmpty)
+                            .toList();
+                      }
+
                       await ApiService.createGlusterVolume({
                         'name': nameCtrl.text.trim(),
                         'replica_count': replicaCount,
                         'brick_dir': brickDirCtrl.text.trim(),
+                        'network_mode': networkMode,
+                        'custom_hosts': customHosts,
                         'mount_point': mountPointCtrl.text.trim(),
                         'auto_mount': autoMount,
                         'target_nodes': targetNodes,
@@ -6519,6 +6649,7 @@ volumes:
                       _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
                       _loadAllData();
                     } catch (e) {
+                      _showErrorDialog('Volume Creation Failed', 'Failed to create GlusterFS volume ${nameCtrl.text.trim()}:\n\n$e');
                       _showSnackBar('Failed to create volume: $e', isError: true);
                     }
                   },
@@ -6764,6 +6895,7 @@ volumes:
                       _showSnackBar('Volume ${vol.name} deleted successfully');
                       _loadAllData();
                     } catch (e) {
+                      _showErrorDialog('Delete Volume Failed', 'Failed to delete volume ${vol.name}:\n\n$e');
                       _showSnackBar('Failed to delete volume: $e', isError: true);
                     }
                   },
@@ -7097,6 +7229,7 @@ volumes:
       _showSnackBar('Volume $name started');
       _loadAllData();
     } catch (e) {
+      _showErrorDialog('Start Volume Failed', 'Failed to start volume $name:\n\n$e');
       _showSnackBar('Failed to start volume: $e', isError: true);
     }
   }
@@ -7107,6 +7240,7 @@ volumes:
       _showSnackBar('Volume $name stopped');
       _loadAllData();
     } catch (e) {
+      _showErrorDialog('Stop Volume Failed', 'Failed to stop volume $name:\n\n$e');
       _showSnackBar('Failed to stop volume: $e', isError: true);
     }
   }
@@ -7117,6 +7251,7 @@ volumes:
       _showSnackBar('Volume $name registered and mounted on /var/contenedores across cluster');
       _loadAllData();
     } catch (e) {
+      _showErrorDialog('Mount Volume Failed', 'Failed to mount volume $name:\n\n$e');
       _showSnackBar('Failed to mount volume: $e', isError: true);
     }
   }

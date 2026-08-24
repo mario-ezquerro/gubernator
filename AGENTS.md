@@ -266,6 +266,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Dynamic Option Configuration Modal:** Added interactive **Configure / Edit** action buttons on every option tile and a **+ Set Custom Option** header button with quick preset chips (`auth.allow (10.10.100.*)`, `auth.allow (*)`, `network.ping-timeout (10)`, `write-behind (on)`), allowing instant volume option application and defaults reset with automatic UI synchronization.
 * **Full CLI Parity (`gbnt gluster volume option`):** Implemented dedicated CLI command `gbnt gluster volume option <volume-name> <key> [value] [--reset]` for configuring and resetting volume tuning and subnet isolation parameters.
 
+### 36. GlusterFS Re-Creation Zero-Error Engine, Network Selector & Interactive Error Inspection (`v2.39.5`)
+* **Zero-Error Volume Re-Creation (`brick xattr cleanup`):** Solved GlusterFS volume re-creation errors caused by residual metadata attributes (`trusted.gfid`, `trusted.glusterfs.volume-id`, `trusted.glusterfs.dht`) and `.glusterfs` directory markers from previously deleted volumes by automatically wiping xattrs and syncing permissions across local and remote bricks prior to creation and upon deletion.
+* **Storage Network & Subnet Selector in Volume Creator:** Enhanced the **Create GlusterFS Replicated Volume** modal with explicit network routing selection (`🌐 Dedicated Storage Network (Dual-NIC / 10.10.100.0/24)`, `🏢 Management / Primary Network (192.168.x.x)`, `🛠️ Custom Node IPs (Comma-separated)`), enabling flexible interface targeting and multi-IP binding.
+* **Detailed Error Inspection Dialog with One-Click Copy:** Replaced fleeting SnackBar notifications with rich, persistent error dialogs containing monospace output inspection, selectable text, and a **Copy Error** button for seamless troubleshooting.
+
+
 
 
 
