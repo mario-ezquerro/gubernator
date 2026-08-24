@@ -106,10 +106,11 @@ type GlusterVolumeCreateRequest struct {
 	BrickDir     string   `json:"brick_dir"`              // optional shortcut, e.g. "/data/glusterfs/brick1"
 	NetworkMode  string   `json:"network_mode,omitempty"` // "storage" (Dual-NIC), "management", "custom"
 	CustomHosts  []string `json:"custom_hosts,omitempty"` // e.g. ["10.10.100.24", "10.10.100.25", "10.10.100.26"]
-	AutoMount    bool     `json:"auto_mount"`             // mount to /var/contenedores across cluster
-	MountPoint   string   `json:"mount_point"`            // default "/var/contenedores"
-	TargetNodes  []string `json:"target_nodes"`           // node IPs to auto-mount
-	Force        bool     `json:"force"`
+	AutoMount     bool     `json:"auto_mount"`             // mount to /var/contenedores across cluster
+	MountPoint    string   `json:"mount_point"`            // default "/var/contenedores"
+	TargetNodes   []string `json:"target_nodes"`           // node IPs to auto-mount
+	Force         bool     `json:"force"`
+	ForceRecreate bool     `json:"force_recreate"`         // if volume already exists, stop and purge first
 }
 
 // Type alias to central DB model
@@ -656,10 +657,33 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
+		// If ForceRecreate is requested, proactively delete and clean any existing ghost volume first
+		if req.ForceRecreate {
+			slog.Info("proactively purging existing volume for force recreate", "volume", req.Name)
+			_ = DeleteGlusterVolume(req.Name, false)
+			time.Sleep(1 * time.Second)
+		}
+
 		cmd := ExecGlusterCmd(args...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("gluster volume create failed: %s (%v)", string(out), err)
+			outStr := string(out)
+			if strings.Contains(outStr, "already exists") {
+				if req.ForceRecreate || req.Force {
+					slog.Info("gluster volume already exists, executing force recreation cleanup", "name", req.Name)
+					_ = DeleteGlusterVolume(req.Name, false)
+					time.Sleep(1 * time.Second)
+					cmdRetry := ExecGlusterCmd(args...)
+					outRetry, errRetry := cmdRetry.CombinedOutput()
+					if errRetry != nil {
+						return fmt.Errorf("gluster volume create failed after purge: %s (%v)", string(outRetry), errRetry)
+					}
+				} else {
+					return fmt.Errorf("GlusterFS volume '%s' already exists in the cluster.\n\nTip: You can delete the volume from the GlusterFS tab, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly.", req.Name)
+				}
+			} else {
+				return fmt.Errorf("gluster volume create failed: %s (%v)", outStr, err)
+			}
 		}
 
 		// Apply Container Optimization Presets
@@ -787,8 +811,21 @@ func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
 		}
 	}
 
-	// 3. Stop and delete volume from Gluster CLI using non-interactive script mode
 	installed, running, _ := CheckGlusterInstalled()
+	if len(brickSpecs) == 0 && installed && running {
+		if vols, err := GetGlusterVolumes(); err == nil {
+			for _, v := range vols {
+				if v.Name == name {
+					for _, b := range v.Bricks {
+						brickSpecs = append(brickSpecs, b.FullSpec)
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// 3. Stop and delete volume from Gluster CLI using non-interactive script mode
 	if installed && running {
 		_ = StopGlusterVolume(name, true)
 		cmd := ExecGlusterCmd("--mode=script", "volume", "delete", name)

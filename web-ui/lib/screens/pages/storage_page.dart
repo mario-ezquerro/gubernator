@@ -6466,6 +6466,7 @@ volumes:
     final customHostsCtrl = TextEditingController(text: '');
     int replicaCount = 3;
     bool autoMount = true;
+    bool forceRecreate = false;
     String targetScope = 'all';
     String networkMode = 'storage'; // 'storage', 'management', 'custom'
 
@@ -6611,6 +6612,14 @@ volumes:
                         activeColor: const Color(0xFF10B981),
                         onChanged: (val) => setDlgState(() => autoMount = val),
                       ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        title: const Text('Force Recreate / Purge Ghost Volume'),
+                        subtitle: const Text('If a volume with this name already exists or is in an inconsistent state, automatically stop, purge, and recreate it cleanly'),
+                        value: forceRecreate,
+                        activeColor: const Color(0xFF10B981),
+                        onChanged: (val) => setDlgState(() => forceRecreate = val),
+                      ),
                     ],
                   ),
                 ),
@@ -6645,6 +6654,7 @@ volumes:
                         'auto_mount': autoMount,
                         'target_nodes': targetNodes,
                         'force': true,
+                        'force_recreate': forceRecreate,
                       });
                       _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
                       _loadAllData();

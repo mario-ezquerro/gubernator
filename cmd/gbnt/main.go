@@ -11,7 +11,7 @@ import (
 // @host            localhost:4002
 // @BasePath        /
 
-var version = "v2.39.7"
+var version = "v2.39.8"
 
 func init() {
 	cli.Version = version
