@@ -252,10 +252,12 @@ resource "hcloud_server" "workers" {
 
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.ini.tpl", {
-    manager_ip = hcloud_server.manager.ipv4_address
-    worker_ips = hcloud_server.workers[*].ipv4_address
-    ssh_user   = var.ssh_user
-    ssh_key    = var.ssh_private_key_path
+    manager_ip         = hcloud_server.manager.ipv4_address
+    manager_storage_ip = "10.0.1.10"
+    worker_ips         = hcloud_server.workers[*].ipv4_address
+    worker_storage_ips = [for i in range(var.worker_count) : "10.0.1.1${i + 1}"]
+    ssh_user           = var.ssh_user
+    ssh_key            = var.ssh_private_key_path
   })
   filename = "${path.module}/../../ansible/inventory.ini"
 }

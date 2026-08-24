@@ -132,10 +132,12 @@ resource "google_compute_instance" "workers" {
 
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.ini.tpl", {
-    manager_ip = google_compute_instance.manager.network_interface[0].access_config[0].nat_ip
-    worker_ips = google_compute_instance.workers[*].network_interface[0].access_config[0].nat_ip
-    ssh_user   = var.ssh_user
-    ssh_key    = var.ssh_private_key_path
+    manager_ip         = google_compute_instance.manager.network_interface[0].access_config[0].nat_ip
+    manager_storage_ip = google_compute_instance.manager.network_interface[0].network_ip
+    worker_ips         = google_compute_instance.workers[*].network_interface[0].access_config[0].nat_ip
+    worker_storage_ips = google_compute_instance.workers[*].network_interface[0].network_ip
+    ssh_user           = var.ssh_user
+    ssh_key            = var.ssh_private_key_path
   })
   filename = "${path.module}/../../ansible/inventory.ini"
 }

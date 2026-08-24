@@ -257,6 +257,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Automatic Recovery & Fallbacks:** If a custom destination directory path is unresolvable or fails creation on restricted filesystems, the backup engine seamlessly creates and uses the user's home backup directory (`~/.gbnt/backups`) without interrupting snapshot execution.
 * **Informative UI Notice Banners:** Added dynamic auto-creation guidance banners to both the **Create Compressed Backup / Snapshot** modal and the **Automated Backup Policy Scheduler** informing users that destination folders are prepared automatically with proper permissions upon backup execution.
 
+### 34. Dual-NIC Dedicated Storage Network & GlusterFS Integration across Terraform & Ansible (`v2.39.3`)
+* **Multi-Cloud Terraform Storage Network Bridge:** Enhanced Terraform modules across **Hetzner Cloud**, **AWS**, **Proxmox VE**, **Google Cloud Platform (GCP)**, and **DigitalOcean** to configure secondary network interfaces / private storage subnets and export dedicated `storage_ip` attributes directly into `ansible/inventory.ini`.
+* **Ansible GlusterFS Dual-NIC Automation (`storage_ip`):** Updated `ansible/glusterfs.yml` and variable templates (`group_vars/all.yml`, `inventory.example.ini`, `inventory.example.yml`) to automatically route peer probing (`gluster peer probe <storage_ip>`), brick topology (`<storage_ip>:<brick>`), and FUSE mount failovers over the dedicated storage network (`10.10.100.0/24` or private VPC).
+
+
 
 
 

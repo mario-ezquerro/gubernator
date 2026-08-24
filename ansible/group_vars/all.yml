@@ -39,3 +39,13 @@ wave_scope_port: 4040
 
 # SRE Observability Stack (cAdvisor, Prometheus, Grafana, Loki, Promtail, Jaeger)
 enable_sre_monitoring: true
+
+# GlusterFS Dedicated Storage Network & Distributed Volume (Replica 3)
+enable_glusterfs: true
+gluster_volume_name: "gv_contenedores"
+gluster_mount_point: "/var/contenedores"
+gluster_brick_dir: "/data/glusterfs/brick1"
+# Dedicated storage network settings (Dual-NIC architecture)
+gluster_storage_subnet: "10.10.100.0/24"
+gluster_storage_interface: "enp0s2" # Physical or virtual storage NIC (e.g. enp0s2, eth1, ens4, vmbr1)
+

@@ -171,10 +171,12 @@ resource "digitalocean_firewall" "gbnt_fw" {
 
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.ini.tpl", {
-    manager_ip = digitalocean_droplet.manager.ipv4_address
-    worker_ips = digitalocean_droplet.workers[*].ipv4_address
-    ssh_user   = var.ssh_user
-    ssh_key    = var.ssh_private_key_path
+    manager_ip         = digitalocean_droplet.manager.ipv4_address
+    manager_storage_ip = digitalocean_droplet.manager.ipv4_address_private
+    worker_ips         = digitalocean_droplet.workers[*].ipv4_address
+    worker_storage_ips = digitalocean_droplet.workers[*].ipv4_address_private
+    ssh_user           = var.ssh_user
+    ssh_key            = var.ssh_private_key_path
   })
   filename = "${path.module}/../../ansible/inventory.ini"
 }

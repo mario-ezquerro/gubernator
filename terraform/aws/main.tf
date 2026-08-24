@@ -282,10 +282,12 @@ resource "aws_instance" "workers" {
 
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.ini.tpl", {
-    manager_ip          = aws_instance.manager.public_ip
-    worker_ips          = aws_instance.workers[*].public_ip
-    ssh_user            = var.ssh_user
-    ssh_key             = var.ssh_private_key_path
+    manager_ip         = aws_instance.manager.public_ip
+    manager_storage_ip = aws_instance.manager.private_ip
+    worker_ips         = aws_instance.workers[*].public_ip
+    worker_storage_ips = aws_instance.workers[*].private_ip
+    ssh_user           = var.ssh_user
+    ssh_key            = var.ssh_private_key_path
   })
   filename = "${path.module}/../../ansible/inventory.ini"
 }

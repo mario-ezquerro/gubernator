@@ -91,3 +91,30 @@ variable "ssh_user" {
   type        = string
   default     = "ubuntu"
 }
+
+# --- Dedicated Storage Network Variables (Dual-NIC Architecture) ---
+
+variable "management_bridge" {
+  description = "Proxmox Linux Bridge for Management & Ingress traffic (e.g. vmbr0)"
+  type        = string
+  default     = "vmbr0"
+}
+
+variable "storage_bridge" {
+  description = "Proxmox Linux Bridge for dedicated GlusterFS Storage traffic (e.g. vmbr1)"
+  type        = string
+  default     = "vmbr1"
+}
+
+variable "enable_dual_nic" {
+  description = "Attach secondary NIC for dedicated GlusterFS storage network"
+  type        = bool
+  default     = true
+}
+
+variable "storage_subnet_prefix" {
+  description = "IP prefix for static storage network (e.g. 10.10.100)"
+  type        = string
+  default     = "10.10.100"
+}
+

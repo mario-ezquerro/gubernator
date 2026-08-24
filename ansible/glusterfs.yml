@@ -94,7 +94,7 @@
     gluster_mount_point: "/var/contenedores"
   tasks:
     - name: Probe all Worker Centurions into Trusted Storage Pool
-      command: "gluster peer probe {{ hostvars[item]['ansible_host'] | default(item) }}"
+      command: "gluster peer probe {{ hostvars[item]['storage_ip'] | default(hostvars[item]['ansible_host']) | default(item) }}"
       loop: "{{ groups['workers'] }}"
       register: peer_probe_res
       changed_when: "'already in peer list' not in peer_probe_res.stdout"
@@ -114,7 +114,7 @@
         all_bricks: >-
           {% set b_list = [] %}
           {% for h in groups['cluster'] %}
-            {% set ip = hostvars[h]['ansible_host'] | default(h) %}
+            {% set ip = hostvars[h]['storage_ip'] | default(hostvars[h]['ansible_host']) | default(h) %}
             {% set _ = b_list.append(ip ~ ':' ~ gluster_brick_dir ~ '/' ~ gluster_volume_name) %}
           {% endfor %}
           {{ b_list }}
@@ -153,11 +153,21 @@
     gluster_volume_name: "gv_contenedores"
     gluster_mount_point: "/var/contenedores"
   tasks:
+    - name: Build backup volfile server list
+      set_fact:
+        backup_volfile_servers: >-
+          {% set ips = [] %}
+          {% for h in groups['cluster'] %}
+            {% set ip = hostvars[h]['storage_ip'] | default(hostvars[h]['ansible_host']) | default(h) %}
+            {% set _ = ips.append(ip) %}
+          {% endfor %}
+          {{ ips | join(':') }}
+
     - name: Mount GlusterFS in /etc/fstab for zero-data-loss container persistence
       mount:
         path: "{{ gluster_mount_point }}"
         src: "localhost:/{{ gluster_volume_name }}"
         fstype: glusterfs
-        opts: "defaults,_netdev,backup-volfile-servers={{ groups['cluster'] | map('extract', hostvars, ['ansible_host']) | join(':') }}"
+        opts: "defaults,_netdev,backup-volfile-servers={{ backup_volfile_servers }}"
         state: mounted
       ignore_errors: yes

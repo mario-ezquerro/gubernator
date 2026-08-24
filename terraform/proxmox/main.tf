@@ -48,12 +48,22 @@ resource "proxmox_vm_qemu" "manager" {
   network {
     id     = 0
     model  = "virtio"
-    bridge = "vmbr0"
+    bridge = var.management_bridge
   }
 
-  ciuser  = var.ssh_user
-  sshkeys = file(pathexpand(var.ssh_public_key_path))
+  dynamic "network" {
+    for_each = var.enable_dual_nic ? [1] : []
+    content {
+      id     = 1
+      model  = "virtio"
+      bridge = var.storage_bridge
+    }
+  }
+
+  ciuser    = var.ssh_user
+  sshkeys   = file(pathexpand(var.ssh_public_key_path))
   ipconfig0 = "ip=dhcp"
+  ipconfig1 = var.enable_dual_nic ? "ip=${var.storage_subnet_prefix}.10/24" : null
 }
 
 # --- 2. Worker VMs ---
@@ -86,22 +96,34 @@ resource "proxmox_vm_qemu" "workers" {
   network {
     id     = 0
     model  = "virtio"
-    bridge = "vmbr0"
+    bridge = var.management_bridge
   }
 
-  ciuser  = var.ssh_user
-  sshkeys = file(pathexpand(var.ssh_public_key_path))
+  dynamic "network" {
+    for_each = var.enable_dual_nic ? [1] : []
+    content {
+      id     = 1
+      model  = "virtio"
+      bridge = var.storage_bridge
+    }
+  }
+
+  ciuser    = var.ssh_user
+  sshkeys   = file(pathexpand(var.ssh_public_key_path))
   ipconfig0 = "ip=dhcp"
+  ipconfig1 = var.enable_dual_nic ? "ip=${var.storage_subnet_prefix}.${11 + count.index}/24" : null
 }
 
 # --- 3. Automated Ansible Inventory Generation ---
 
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.ini.tpl", {
-    manager_ip = proxmox_vm_qemu.manager.default_ipv4_address
-    worker_ips = proxmox_vm_qemu.workers[*].default_ipv4_address
-    ssh_user   = var.ssh_user
-    ssh_key    = var.ssh_private_key_path
+    manager_ip         = proxmox_vm_qemu.manager.default_ipv4_address
+    manager_storage_ip = var.enable_dual_nic ? "${var.storage_subnet_prefix}.10" : ""
+    worker_ips         = proxmox_vm_qemu.workers[*].default_ipv4_address
+    worker_storage_ips = [for i in range(var.worker_count) : var.enable_dual_nic ? "${var.storage_subnet_prefix}.${11 + i}" : ""]
+    ssh_user           = var.ssh_user
+    ssh_key            = var.ssh_private_key_path
   })
   filename = "${path.module}/../../ansible/inventory.ini"
 }
