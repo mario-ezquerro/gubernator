@@ -275,7 +275,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Live Update Progress Screen:** Redesigned the Web UI `UpdateDialog` to remain open during updates with interactive multi-step progress tracking (1. Download release binary from GitHub, 2. Install binary on Manager & Centurion workers, 3. Restart Gubernator cluster daemon, 4. Reconnect and verify updated state) with automatic UI reload upon completion.
 * **Release Asset Retry & Backoff Engine:** Implemented 15-attempt (45-second) exponential backoff polling in `updater.go` to handle GitHub Actions build latency when new releases are published, preventing 404 download errors.
 * **Safe Binary Replacement & Daemon Restart:** Replaced basic atomic copy with `sudo install -m 755` across `/usr/local/bin/gbnt`, `/app/gbnt`, and active executable paths with automated worker SSH propagation and fallback systemd restart.
-* **Live Status Endpoint (`GET /api/system/update/status`):** Real-time update phase telemetry streaming status (`downloading`, `installing`, `restarting`, `success`, `failed`), progress messages, and error diagnostics directly to the client.
+### 38. Multi-NIC Localhost Discovery & GlusterFS Brick Auto-Provisioning (`v2.39.7`)
+* **Multi-NIC `IsLocalHost` Discovery:** Enhanced host identification in `internal/storage/remote.go` to dynamically inspect all local network interfaces (`net.Interfaces()` -> `iface.Addrs()`), correctly recognizing secondary storage NIC IPs (`10.10.100.27`) and bridge addresses as local rather than mistaking them for remote SSH targets.
+* **Elevated Brick Provisioning with Sudo (`sudo mkdir -p`):** Guaranteed brick directory creation and permission enforcement (`0777`) across both local storage interfaces and remote Centurion worker nodes via SSH key discovery.
+* **Zero-Error GlusterFS Replicated Volume Provisioning:** Verified clean end-to-end volume creation, automatic peer sync, and multi-node brick preparation across Dual-NIC storage topologies.
+
 
 
 

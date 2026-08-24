@@ -3,8 +3,10 @@ package storage
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 
 // IsLocalHost checks whether the given IP address corresponds to the local host/manager.
 func IsLocalHost(ip string) bool {
+	ip = strings.TrimSpace(ip)
 	if ip == "" || ip == "localhost" || ip == "127.0.0.1" || ip == "::1" || ip == "local" || ip == "manager" {
 		return true
 	}
@@ -20,6 +23,30 @@ func IsLocalHost(ip string) bool {
 	if managerIP != "" && ip == managerIP {
 		return true
 	}
+
+	// Check against all local interface IPs (e.g. secondary storage NICs, docker bridges)
+	ifaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range ifaces {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+			for _, addr := range addrs {
+				var currentIP string
+				switch v := addr.(type) {
+				case *net.IPNet:
+					currentIP = v.IP.String()
+				case *net.IPAddr:
+					currentIP = v.IP.String()
+				}
+				if currentIP != "" && currentIP == ip {
+					return true
+				}
+			}
+		}
+	}
+
 	return false
 }
 
@@ -66,8 +93,15 @@ func GetTargetHostIPs(targetNode string) []string {
 // ExecuteRemoteScript runs a bash shell script either locally or remotely on a Centurion node via SSH.
 func ExecuteRemoteScript(targetIP string, script string) (string, error) {
 	if IsLocalHost(targetIP) {
-		cmd := exec.Command("sh", "-c", script)
+		cmd := exec.Command("sudo", "sh", "-c", script)
 		out, err := cmd.CombinedOutput()
+		if err != nil {
+			cmd2 := exec.Command("sh", "-c", script)
+			out2, err2 := cmd2.CombinedOutput()
+			if err2 == nil {
+				return strings.TrimSpace(string(out2)), nil
+			}
+		}
 		return strings.TrimSpace(string(out)), err
 	}
 
@@ -78,6 +112,8 @@ func ExecuteRemoteScript(targetIP string, script string) (string, error) {
 	}
 
 	keyCandidates := []string{
+		"/home/ubuntu/.ssh/id_ed25519",
+		"/home/ubuntu/.ssh/id_rsa",
 		"/root/.ssh/id_ed25519",
 		"/root/.ssh/id_rsa",
 		"/data/id_ed25519",
@@ -85,6 +121,13 @@ func ExecuteRemoteScript(targetIP string, script string) (string, error) {
 		"/data/ssh/id_ed25519",
 		"/data/ssh/id_rsa",
 	}
+	if home := os.Getenv("HOME"); home != "" {
+		keyCandidates = append([]string{
+			filepath.Join(home, ".ssh", "id_ed25519"),
+			filepath.Join(home, ".ssh", "id_rsa"),
+		}, keyCandidates...)
+	}
+
 	for _, k := range keyCandidates {
 		if _, err := os.Stat(k); err == nil {
 			sshArgs = append(sshArgs, "-i", k)

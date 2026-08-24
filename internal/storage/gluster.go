@@ -620,11 +620,15 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 			if IsLocalHost(host) {
 				slog.Info("preparing and cleaning local gluster brick directory", "host", host, "path", brickPath)
-				_ = exec.Command("sh", "-c", cleanScript).Run()
+				_ = exec.Command("sudo", "mkdir", "-p", brickPath).Run()
+				_ = exec.Command("sudo", "chmod", "0777", brickPath).Run()
+				_ = exec.Command("sudo", "sh", "-c", cleanScript).Run()
 				_ = os.MkdirAll(brickPath, 0777)
 			} else {
 				slog.Info("preparing and cleaning remote gluster brick directory", "host", host, "path", brickPath)
-				_, _ = ExecuteRemoteScript(host, cleanScript)
+				if out, err := ExecuteRemoteScript(host, cleanScript); err != nil {
+					slog.Warn("failed to prepare remote brick directory via SSH", "host", host, "path", brickPath, "err", err, "out", out)
+				}
 			}
 		}
 	}
@@ -802,7 +806,7 @@ func DeleteGlusterVolume(name string, unmountCluster ...bool) error {
 			brickPath := strings.TrimSpace(parts[1])
 			cleanScript := fmt.Sprintf("sudo rm -rf %s/.glusterfs && sudo setfattr -x trusted.gfid %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.volume-id %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.dht %s 2>/dev/null; true", brickPath, brickPath, brickPath, brickPath)
 			if IsLocalHost(host) {
-				_ = exec.Command("sh", "-c", cleanScript).Run()
+				_ = exec.Command("sudo", "sh", "-c", cleanScript).Run()
 			} else {
 				_, _ = ExecuteRemoteScript(host, cleanScript)
 			}
