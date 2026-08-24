@@ -298,6 +298,43 @@ var glusterMountCmd = &cobra.Command{
 	},
 }
 
+// gbnt gluster volume option <name> <key> [value] [--reset]
+var glusterOptionReset bool
+
+var glusterVolumeOptionCmd = &cobra.Command{
+	Use:   "option [volume-name] [key] [value]",
+	Short: "Configure or reset volume tuning, network isolation (auth.allow), and performance options",
+	Long:  `Set or reset options like auth.allow, auth.reject, network.ping-timeout, and performance.write-behind on a GlusterFS volume.`,
+	Args:  cobra.RangeArgs(2, 3),
+	Run: func(cmd *cobra.Command, args []string) {
+		volName := args[0]
+		key := args[1]
+
+		if glusterOptionReset {
+			err := storage.ResetGlusterVolumeOption(volName, key)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error resetting option %s on %s: %v\n", key, volName, err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Option '%s' reset to default on volume '%s'\n", key, volName)
+			return
+		}
+
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "Error: value required when setting an option (e.g. gbnt gluster volume option gv_contenedores auth.allow '10.10.100.*')")
+			os.Exit(1)
+		}
+		val := args[2]
+
+		err := storage.SetGlusterVolumeOption(volName, key, val)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error setting option %s=%s on %s: %v\n", key, val, volName, err)
+			os.Exit(1)
+		}
+		fmt.Printf("✓ Successfully configured '%s=%s' on volume '%s'\n", key, val, volName)
+	},
+}
+
 func init() {
 	// Flags for volume create
 	glusterVolumeCreateCmd.Flags().IntVarP(&glusterReplicaCount, "replica", "r", 3, "Replica count (default: 3 for 3-way mirror)")
@@ -308,6 +345,7 @@ func init() {
 	glusterVolumeCreateCmd.Flags().StringVarP(&glusterMountPoint, "mount-point", "p", "/var/contenedores", "Target mount point for containers")
 
 	glusterMountCmd.Flags().StringVarP(&glusterMountPoint, "target", "t", "/var/contenedores", "Target mount point on cluster nodes")
+	glusterVolumeOptionCmd.Flags().BoolVar(&glusterOptionReset, "reset", false, "Reset the specified option to its default value")
 
 	// Assemble subcommands
 	glusterCmd.AddCommand(glusterStatusCmd)
@@ -320,5 +358,6 @@ func init() {
 	glusterCmd.AddCommand(glusterVolumeStopCmd)
 	glusterCmd.AddCommand(glusterVolumeRmCmd)
 	glusterCmd.AddCommand(glusterVolumeHealCmd)
+	glusterCmd.AddCommand(glusterVolumeOptionCmd)
 	glusterCmd.AddCommand(glusterMountCmd)
 }

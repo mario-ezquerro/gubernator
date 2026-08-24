@@ -261,6 +261,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Cloud Terraform Storage Network Bridge:** Enhanced Terraform modules across **Hetzner Cloud**, **AWS**, **Proxmox VE**, **Google Cloud Platform (GCP)**, and **DigitalOcean** to configure secondary network interfaces / private storage subnets and export dedicated `storage_ip` attributes directly into `ansible/inventory.ini`.
 * **Ansible GlusterFS Dual-NIC Automation (`storage_ip`):** Updated `ansible/glusterfs.yml` and variable templates (`group_vars/all.yml`, `inventory.example.ini`, `inventory.example.yml`) to automatically route peer probing (`gluster peer probe <storage_ip>`), brick topology (`<storage_ip>:<brick>`), and FUSE mount failovers over the dedicated storage network (`10.10.100.0/24` or private VPC).
 
+### 35. GlusterFS Network Security Options & Interactive Configuration Suite (`v2.39.4`)
+* **Interactive Network Security & Isolation Subtab:** Redesigned the **GlusterFS Options / Tuning** panel in the Flutter Dashboard into two organized cards: **Storage Network & Security Isolation** (`auth.allow`, `auth.reject`, `network.ping-timeout`, `transport.socket.bind-address`) and **Container Performance & Cache Acceleration** (`performance.write-behind`, `performance.stat-prefetch`, `performance.quick-read`, `cluster.favorite-child-policy`).
+* **Dynamic Option Configuration Modal:** Added interactive **Configure / Edit** action buttons on every option tile and a **+ Set Custom Option** header button with quick preset chips (`auth.allow (10.10.100.*)`, `auth.allow (*)`, `network.ping-timeout (10)`, `write-behind (on)`), allowing instant volume option application and defaults reset with automatic UI synchronization.
+* **Full CLI Parity (`gbnt gluster volume option`):** Implemented dedicated CLI command `gbnt gluster volume option <volume-name> <key> [value] [--reset]` for configuring and resetting volume tuning and subnet isolation parameters.
+
+
 
 
 

@@ -5643,7 +5643,12 @@ volumes:
   }
 
   // ── Advanced Tuning Options Sub-Tab ───────────────────────────────────────
+  // ── Advanced Tuning Options Sub-Tab ───────────────────────────────────────
   Widget _buildGlusterOptionsSubTab(bool isDark) {
+    final activeVolName = _selectedGlusterVolumeForProfile.isNotEmpty
+        ? _selectedGlusterVolumeForProfile
+        : (_glusterVolumes.isNotEmpty ? _glusterVolumes.first.name : 'gv_contenedores');
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -5658,57 +5663,312 @@ volumes:
             children: [
               const Icon(Icons.tune, color: Color(0xFF10B981), size: 20),
               const SizedBox(width: 8),
-              const Text('Container-Grade Performance Options', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Text('Volume Tuning & Network Access Options', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const Spacer(),
               if (_glusterVolumes.isNotEmpty)
                 DropdownButton<String>(
-                  value: _selectedGlusterVolumeForProfile.isNotEmpty ? _selectedGlusterVolumeForProfile : _glusterVolumes.first.name,
+                  value: activeVolName,
                   items: _glusterVolumes.map((v) => DropdownMenuItem(value: v.name, child: Text('Volume: ${v.name}'))).toList(),
                   onChanged: (val) {
                     if (val != null) setState(() => _selectedGlusterVolumeForProfile = val);
                   },
                 ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Set Custom Option', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () => _showSetOptionDialog(activeVolName),
+              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          _buildOptionToggleTile('performance.write-behind', 'Asynchronous write aggregation and flush for container workloads', 'on', true, isDark),
-          _buildOptionToggleTile('performance.stat-prefetch', 'Aggressive directory traversal and metadata caching', 'on', true, isDark),
-          _buildOptionToggleTile('performance.quick-read', 'Inlines small container file reads directly in lookups', 'on', true, isDark),
-          _buildOptionToggleTile('network.ping-timeout', 'Failover network timeout for fast node crash recovery', '10', false, isDark),
-          _buildOptionToggleTile('cluster.favorite-child-policy', 'Automatic conflict resolution based on modified timestamp (mtime)', 'mtime', false, isDark),
+          // Section 1: Storage Network & Access Security Isolation
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.security, size: 16, color: Color(0xFF0284C7)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Storage Network & Security Isolation',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0284C7)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _buildOptionToggleTile(
+                  'auth.allow',
+                  'Restricts volume access strictly to dedicated storage subnet (e.g. 10.10.100.*, 10.0.1.* or *)',
+                  '10.10.100.*',
+                  activeVolName,
+                  isDark,
+                  icon: Icons.lan,
+                  isNetwork: true,
+                ),
+                _buildOptionToggleTile(
+                  'auth.reject',
+                  'Subnet / IP Deny List: Rejects connections from unwanted public/management subnets',
+                  'NONE',
+                  activeVolName,
+                  isDark,
+                  icon: Icons.block,
+                  isNetwork: true,
+                ),
+                _buildOptionToggleTile(
+                  'network.ping-timeout',
+                  'Failover network timeout (seconds) before marking an unreachable node/brick disconnected',
+                  '10',
+                  activeVolName,
+                  isDark,
+                  icon: Icons.timer,
+                  isNetwork: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Section 2: Container Workload & Performance Acceleration
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.speed, size: 16, color: Color(0xFF10B981)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Container Performance & Cache Acceleration',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF10B981)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _buildOptionToggleTile(
+                  'performance.write-behind',
+                  'Asynchronous write aggregation and background flush for container storage workloads',
+                  'on',
+                  activeVolName,
+                  isDark,
+                ),
+                _buildOptionToggleTile(
+                  'performance.stat-prefetch',
+                  'Aggressive directory traversal and POSIX metadata caching',
+                  'on',
+                  activeVolName,
+                  isDark,
+                ),
+                _buildOptionToggleTile(
+                  'performance.quick-read',
+                  'Inlines small container file reads directly in directory lookups',
+                  'on',
+                  activeVolName,
+                  isDark,
+                ),
+                _buildOptionToggleTile(
+                  'cluster.favorite-child-policy',
+                  'Automatic conflict resolution based on modified timestamp (mtime)',
+                  'mtime',
+                  activeVolName,
+                  isDark,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildOptionToggleTile(String key, String description, String value, bool isToggle, bool isDark) {
+  Widget _buildOptionToggleTile(
+    String key,
+    String description,
+    String value,
+    String volumeName,
+    bool isDark, {
+    IconData? icon,
+    bool isNetwork = false,
+  }) {
+    final badgeColor = isNetwork ? const Color(0xFF0284C7) : const Color(0xFF10B981);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey[300]!),
       ),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Courier New')),
-              const SizedBox(height: 2),
-              Text(description, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
-            ],
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: badgeColor),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Courier New')),
+                const SizedBox(height: 2),
+                Text(description, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+              ],
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              color: badgeColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text('VALUE: $value', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF10B981))),
+            child: Text('VALUE: $value', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: badgeColor)),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(60, 30),
+              side: BorderSide(color: badgeColor.withValues(alpha: 0.5)),
+            ),
+            onPressed: () => _showSetOptionDialog(volumeName, key, value),
+            child: Text('Configure', style: TextStyle(fontSize: 11, color: badgeColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSetOptionDialog(String volumeName, [String? initialKey, String? initialVal]) {
+    final keyCtrl = TextEditingController(text: initialKey ?? 'auth.allow');
+    final valCtrl = TextEditingController(text: initialVal ?? '10.10.100.*');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.tune, color: Color(0xFF10B981), size: 20),
+            const SizedBox(width: 8),
+            Text('Configure Option: $volumeName', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 440,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Configure storage network isolation, subnet access restrictions or container performance parameters on this volume.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: keyCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Option Key',
+                  hintText: 'e.g. auth.allow, auth.reject, network.ping-timeout',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.key, size: 18),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: valCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Option Value',
+                  hintText: 'e.g. 10.10.100.*, on, off, 10, mtime',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.data_object, size: 18),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  ActionChip(
+                    label: const Text('auth.allow (10.10.100.*)', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      keyCtrl.text = 'auth.allow';
+                      valCtrl.text = '10.10.100.*';
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('auth.allow (*)', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      keyCtrl.text = 'auth.allow';
+                      valCtrl.text = '*';
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('network.ping-timeout (10)', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      keyCtrl.text = 'network.ping-timeout';
+                      valCtrl.text = '10';
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('write-behind (on)', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      keyCtrl.text = 'performance.write-behind';
+                      valCtrl.text = 'on';
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.amber),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiService.setGlusterVolumeOption(volumeName, keyCtrl.text.trim(), '', reset: true);
+                _showSnackBar('Option ${keyCtrl.text.trim()} reset to default on $volumeName');
+                _loadAllData();
+              } catch (e) {
+                _showSnackBar('Failed to reset option: $e', isError: true);
+              }
+            },
+            child: const Text('Reset to Default'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ApiService.setGlusterVolumeOption(volumeName, keyCtrl.text.trim(), valCtrl.text.trim());
+                _showSnackBar('Option ${keyCtrl.text.trim()}=${valCtrl.text.trim()} applied successfully on $volumeName');
+                _loadAllData();
+              } catch (e) {
+                _showSnackBar('Failed to set option: $e', isError: true);
+              }
+            },
+            child: const Text('Apply Option'),
           ),
         ],
       ),
