@@ -275,10 +275,10 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Live Update Progress Screen:** Redesigned the Web UI `UpdateDialog` to remain open during updates with interactive multi-step progress tracking (1. Download release binary from GitHub, 2. Install binary on Manager & Centurion workers, 3. Restart Gubernator cluster daemon, 4. Reconnect and verify updated state) with automatic UI reload upon completion.
 * **Release Asset Retry & Backoff Engine:** Implemented 15-attempt (45-second) exponential backoff polling in `updater.go` to handle GitHub Actions build latency when new releases are published, preventing 404 download errors.
 * **Safe Binary Replacement & Daemon Restart:** Replaced basic atomic copy with `sudo install -m 755` across `/usr/local/bin/gbnt`, `/app/gbnt`, and active executable paths with automated worker SSH propagation and fallback systemd restart.
-### 39. GlusterFS Ghost Volume Purge & Force Recreate Engine (`v2.39.8`)
-* **Ghost Volume Auto-Purge & Force Recreate:** Added `force_recreate` capability in `internal/storage/gluster.go` and the Web UI creation dialog, safely stopping, deleting, and wiping brick xattrs for pre-existing or stale volumes before provisioning.
-* **Dynamic Brick Discovery in `DeleteGlusterVolume`:** Enhanced volume deletion to discover brick specs directly from Gluster CLI (`GetGlusterVolumes()`) even if the volume was not registered in the SQLite DB, guaranteeing complete filesystem and xattr cleanup across all Centurions.
-* **Friendly Collision Diagnostics:** Replaced generic CLI exit status errors with actionable guidance and 1-click purge switches directly inside the creation dialog.
+### 40. Storage & Backups Navigation Spacing & TabBar Refinements (`v2.39.9`)
+* **Spacious TabBar Breathing Room:** Redesigned the primary Storage & Backups `TabBar` with custom 5px outer container padding, 12px container radius, 8px pill indicator radius, soft ambient green elevation shadow (`offset: (0, 2), blur: 6`), and generous 12x8px text and icon padding.
+* **Refined Gluster Sub-Navigation Tabs:** Enhanced Cockpit sub-tab items with 16x10px inner padding, 10px rounded borders, active indicator borders, and subtle glow effects for optimal legibility and visual hierarchy.
+
 
 
 

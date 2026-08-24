@@ -2745,77 +2745,119 @@ volumes:
 
             // Tab Bar
             Container(
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: TabBar(
                 controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   color: const Color(0xFF10B981),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 labelColor: Colors.white,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.2),
                 unselectedLabelColor: isDark ? Colors.grey[400] : Colors.grey[700],
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                 tabs: [
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.inventory_2_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Volumes (${_volumes.length})'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.inventory_2_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Volumes (${_volumes.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.backup_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Backups & Snapshots (${_backups.length})'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.backup_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Backups & Snapshots (${_backups.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.schedule_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Schedules (${_schedules.length})'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.schedule_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Schedules (${_schedules.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   const Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.folder_shared_outlined, size: 18),
-                        SizedBox(width: 6),
-                        Text('Storage Pools'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.folder_shared_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Storage Pools'),
+                        ],
+                      ),
                     ),
                   ),
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.dns_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Network Mounts & fstab (${_mounts.length})'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.dns_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Network Mounts & fstab (${_mounts.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.hub_outlined, size: 18),
-                        const SizedBox(width: 6),
-                        Text('GlusterFS Cluster (${_glusterVolumes.length})'),
-                      ],
+                    height: 44,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.hub_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('GlusterFS Cluster (${_glusterVolumes.length})'),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -4995,19 +5037,29 @@ volumes:
           _fetchQuotasData(_selectedGlusterVolumeForProfile);
         }
       },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+              ? const Color(0xFF10B981).withValues(alpha: 0.18)
               : (isDark ? const Color(0xFF1E293B) : Colors.white),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF10B981)
                 : (isDark ? const Color(0xFF334155) : Colors.grey[300]!),
+            width: isSelected ? 1.5 : 1.0,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -5017,8 +5069,8 @@ volumes:
             Text(
               label,
               style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 color: isSelected ? const Color(0xFF10B981) : (isDark ? Colors.grey[300] : Colors.grey[800]),
               ),
             ),
