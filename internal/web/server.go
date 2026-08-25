@@ -386,6 +386,8 @@ func StartDashboard() {
 		api.POST("/storage/gluster/volumes/:name/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStartHandler)
 		api.POST("/storage/gluster/volumes/:name/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeStopHandler)
 		api.GET("/storage/gluster/volumes/:name/heal", glusterVolumeHealHandler)
+		api.POST("/storage/gluster/volumes/:name/heal", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeTriggerHealHandler)
+		api.POST("/storage/gluster/volumes/:name/mount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), glusterVolumeMountClusterHandler)
 		api.GET("/storage/gluster/diagnostics", glusterDiagnosticsHandler)
 		api.GET("/storage/gluster/network", glusterNetworkReportHandler)
 		api.GET("/storage/gluster/volumes/:name/profile", glusterVolumeProfileHandler)
@@ -3021,9 +3023,9 @@ func coreDNSDigHandler(c *gin.Context) {
 
 
 func queryPrometheusMetric(query string) (float64, error) {
-	resp, err := http.Get(fmt.Sprintf("http://localhost:9090/api/v1/query?query=%s", query))
-	if err != nil {
-		return 0, err
+	resp, getErr := http.Get(fmt.Sprintf("http://localhost:9090/api/v1/query?query=%s", query))
+	if getErr != nil {
+		return 0, getErr
 	}
 	defer resp.Body.Close()
 
@@ -3936,7 +3938,7 @@ func fetchLogsInternal(query, container, node, stack, stream, level, timeRange s
 			} `json:"data"`
 		}
 
-		if err := json.NewDecoder(resp.Body).Decode(&lokiRes); err == nil && len(lokiRes.Data.Result) > 0 {
+		if decErr := json.NewDecoder(resp.Body).Decode(&lokiRes); decErr == nil && len(lokiRes.Data.Result) > 0 {
 			var logs []LokiLogItem
 			for _, streamItem := range lokiRes.Data.Result {
 				labels := streamItem.Stream
@@ -3971,7 +3973,7 @@ func fetchLogsInternal(query, container, node, stack, stream, level, timeRange s
 						rawMsg := strings.TrimRight(val[1], "\r\n")
 
 						var tsFormatted string
-						if nsInt, err := strconv.ParseInt(tsNs, 10, 64); err == nil {
+						if nsInt, parseErr := strconv.ParseInt(tsNs, 10, 64); parseErr == nil {
 							t := time.Unix(0, nsInt)
 							tsFormatted = t.Format("2006-01-02 15:04:05.000")
 						} else {
@@ -4453,14 +4455,14 @@ func backupUploadHandler(c *gin.Context) {
 		return
 	}
 
-	if err := storage.EnsureBackupDir(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if dirErr := storage.EnsureBackupDir(); dirErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": dirErr.Error()})
 		return
 	}
 
 	destPath := filepath.Join(storage.BackupDir(), file.Filename)
-	if err := c.SaveUploadedFile(file, destPath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if saveErr := c.SaveUploadedFile(file, destPath); saveErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": saveErr.Error()})
 		return
 	}
 

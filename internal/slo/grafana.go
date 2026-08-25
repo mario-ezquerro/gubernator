@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
@@ -28,10 +27,6 @@ func GenerateGrafanaDashboardJSON(gormDB *gorm.DB) (string, error) {
 			continue
 		}
 
-		targetVal, _ := strconv.ParseFloat(cmap["gbnt.slo.target"], 64)
-		if targetVal <= 0 {
-			targetVal = 99.9
-		}
 
 		// Panel 1: Error Budget Gauge
 		panels = append(panels, map[string]interface{}{

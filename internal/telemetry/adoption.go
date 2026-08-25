@@ -122,10 +122,10 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 	if err == nil {
 		reqRel.Header.Set("User-Agent", "Gubernator-Adoption-Telemetry")
 		reqRel.Header.Set("Accept", "application/vnd.github.v3+json")
-		if resp, err := client.Do(reqRel); err == nil && resp.StatusCode == http.StatusOK {
+		if resp, doErr := client.Do(reqRel); doErr == nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()
 			var releases []ghReleaseItem
-			if err := json.NewDecoder(resp.Body).Decode(&releases); err == nil {
+			if decErr := json.NewDecoder(resp.Body).Decode(&releases); decErr == nil {
 				stats.TotalReleases = len(releases)
 				if len(releases) > 0 {
 					stats.LatestReleaseTag = releases[0].TagName

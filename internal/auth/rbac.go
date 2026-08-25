@@ -52,8 +52,6 @@ func GetPermissions(r Role) Permissions {
 			CanManageSecurity:    false,
 			CanViewObservability: true,
 		}
-	case RoleReadOnly:
-		fallthrough
 	default:
 		return Permissions{
 			CanDeployStacks:      false,

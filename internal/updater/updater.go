@@ -109,10 +109,9 @@ func fallbackInfo(current string) *UpdateInfo {
 	}
 }
 
-func parseSemver(v string) (int, int, int) {
+func parseSemver(v string) (major, minor, patch int) {
 	v = strings.TrimPrefix(v, "v")
 	parts := strings.Split(v, ".")
-	var major, minor, patch int
 	if len(parts) > 0 {
 		fmt.Sscanf(parts[0], "%d", &major)
 	}

@@ -49,8 +49,8 @@ func EnsureSSHKeys() error {
 		return fmt.Errorf("failed to marshal private key: %w", err)
 	}
 
-	if err := os.WriteFile(privPath, pem.EncodeToMemory(privBytes), 0600); err != nil {
-		return fmt.Errorf("failed to write private key: %w", err)
+	if writePrivErr := os.WriteFile(privPath, pem.EncodeToMemory(privBytes), 0600); writePrivErr != nil {
+		return fmt.Errorf("failed to write private key: %w", writePrivErr)
 	}
 
 	// Marshal public key to authorized_keys format
@@ -60,8 +60,8 @@ func EnsureSSHKeys() error {
 	}
 	pubKeyStr := string(ssh.MarshalAuthorizedKey(sshPub))
 
-	if err := os.WriteFile(pubPath, []byte(pubKeyStr), 0644); err != nil {
-		return fmt.Errorf("failed to write public key: %w", err)
+	if writePubErr := os.WriteFile(pubPath, []byte(pubKeyStr), 0644); writePubErr != nil {
+		return fmt.Errorf("failed to write public key: %w", writePubErr)
 	}
 
 	slog.Info("SSH keys generated successfully", "path", SSHDir)

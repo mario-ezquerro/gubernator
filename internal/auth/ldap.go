@@ -47,7 +47,7 @@ func ConnectLDAP(cfg db.LDAPConfig) (*ldap.Conn, error) {
 
 	switch strings.ToLower(cfg.Security) {
 	case "tls", "ldaps", "ssl":
-		conn, err = ldap.DialTLS("tcp", addr, tlsConfig)
+		conn, err = ldap.DialURL(fmt.Sprintf("ldaps://%s", addr), ldap.DialWithTLSConfig(tlsConfig))
 	case "starttls":
 		conn, err = ldap.DialURL(fmt.Sprintf("ldap://%s", addr))
 		if err == nil {
@@ -80,8 +80,8 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 
 	// 1. Initial Bind (using Service Account BindDN if specified, otherwise anonymous)
 	if cfg.BindDN != "" && cfg.BindPassword != "" {
-		if err := conn.Bind(cfg.BindDN, cfg.BindPassword); err != nil {
-			return nil, fmt.Errorf("LDAP service account bind failed: %w", err)
+		if bindErr := conn.Bind(cfg.BindDN, cfg.BindPassword); bindErr != nil {
+			return nil, fmt.Errorf("LDAP service account bind failed: %w", bindErr)
 		}
 	}
 

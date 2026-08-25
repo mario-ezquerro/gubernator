@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -33,7 +34,7 @@ func CreateGlusterSnapshot(snapName, volumeName, description string) (*GlusterSn
 	cmd := ExecGlusterCmd(args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "Snapshot command failed") {
-		// Log but proceed to save in DB for simulated/managed tracking
+		slog.Debug("gluster snapshot creation message", "snapshot", snapName, "volume", volumeName, "out", string(out), "err", err)
 	}
 
 	snap := &GlusterSnapshot{

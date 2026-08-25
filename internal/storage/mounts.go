@@ -89,10 +89,8 @@ func ListStorageMounts() ([]db.StorageMount, error) {
 		mp := filepath.Clean(mounts[i].MountPoint)
 		if _, isMounted := activeMounts[mp]; isMounted {
 			mounts[i].Status = "mounted"
-		} else {
-			if mounts[i].Status == "mounted" && mounts[i].FSType != "glusterfs" {
-				mounts[i].Status = "unmounted"
-			}
+		} else if mounts[i].Status == "mounted" && mounts[i].FSType != "glusterfs" {
+			mounts[i].Status = "unmounted"
 		}
 	}
 

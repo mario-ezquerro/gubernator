@@ -238,7 +238,7 @@ func GetGlusterDiagnostics() (*GlusterClusterDiagnostics, error) {
 func GetGlusterPeers() ([]GlusterPeer, error) {
 	installed, running, _ := CheckGlusterInstalled()
 	if !installed || !running {
-		return []GlusterPeer{}, nil
+		return getFallbackClusterPeers(), nil
 	}
 
 	cmd := ExecGlusterCmd("peer", "status")

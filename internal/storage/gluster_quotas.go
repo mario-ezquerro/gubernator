@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -64,7 +65,7 @@ func SetGlusterQuotaLimit(volumeName, path, limitSize string) (*GlusterVolumeQuo
 	cmd := ExecGlusterCmd("--mode=script", "volume", "quota", volumeName, "limit-usage", path, limitSize)
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "success") {
-		// Log but persist in DB for managed state
+		slog.Debug("gluster quota limit-usage non-critical message", "volume", volumeName, "out", string(out), "err", err)
 	}
 
 	quota := &GlusterVolumeQuota{

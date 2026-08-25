@@ -460,16 +460,16 @@ func EnsureRootCA() ([]byte, error) {
 		return out, nil
 	}
 	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
-	if b, err := os.ReadFile(certPath); err == nil && len(b) > 0 {
+	if b, readErr := os.ReadFile(certPath); readErr == nil && len(b) > 0 {
 		return b, nil
 	}
 	home, _ := os.UserHomeDir()
 	if home != "" {
-		if b, err := os.ReadFile(filepath.Join(home, ".gbnt", "caddy-root.crt")); err == nil && len(b) > 0 {
+		if b, homeReadErr := os.ReadFile(filepath.Join(home, ".gbnt", "caddy-root.crt")); homeReadErr == nil && len(b) > 0 {
 			return b, nil
 		}
 	}
-	if b, err := os.ReadFile("caddy-root.crt"); err == nil && len(b) > 0 {
+	if b, localReadErr := os.ReadFile("caddy-root.crt"); localReadErr == nil && len(b) > 0 {
 		return b, nil
 	}
 
@@ -540,7 +540,7 @@ func EnsureRootCA() ([]byte, error) {
 func EnsureDomainCertificate(domain string) ([]byte, error) {
 	// 1. Check if already exists in custom certs dir
 	customPath := filepath.Join(CertsDir(), domain+".crt")
-	if b, err := os.ReadFile(customPath); err == nil && len(b) > 0 {
+	if b, customErr := os.ReadFile(customPath); customErr == nil && len(b) > 0 {
 		return b, nil
 	}
 
@@ -548,7 +548,7 @@ func EnsureDomainCertificate(domain string) ([]byte, error) {
 	out, err := exec.Command("docker", "exec", ContainerName, "find", "/data/caddy/certificates", "-name", domain+".crt").Output()
 	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
 		certPath := strings.TrimSpace(strings.Split(string(out), "\n")[0])
-		if certBytes, err := exec.Command("docker", "exec", ContainerName, "cat", certPath).Output(); err == nil && len(certBytes) > 0 {
+		if certBytes, catErr := exec.Command("docker", "exec", ContainerName, "cat", certPath).Output(); catErr == nil && len(certBytes) > 0 {
 			return certBytes, nil
 		}
 	}
@@ -672,8 +672,8 @@ func RenewCertificate(domain string) error {
 }
 
 // SyncCertificatesToNodes broadcasts all certificates (custom + Root CA) to all active cluster nodes.
-func SyncCertificatesToNodes() ([]string, int, error) {
-	syncedNodes := []string{"node-local-manager"}
+func SyncCertificatesToNodes() (syncedNodes []string, totalCerts int, err error) {
+	syncedNodes = []string{"node-local-manager"}
 
 	// Read all certs in ~/.gbnt/caddy/certs/
 	customDir := CertsDir()
@@ -700,7 +700,7 @@ func SyncCertificatesToNodes() ([]string, int, error) {
 		fileMap["caddy-root.crt"] = rootCrt
 	}
 
-	totalCerts := len(fileMap)
+	totalCerts = len(fileMap)
 
 	// Ensure local Caddy is up to date
 	_ = populateConfigVolume()

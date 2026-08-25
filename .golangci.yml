@@ -34,6 +34,9 @@ linters-settings:
       - ifElseChain
       - httpNoBody
       - appendAssign
+      - nestingReduce
+      - unnamedResult
+      - sloppyReassign
 
 issues:
   # Show all issues, not just the first 3 per linter

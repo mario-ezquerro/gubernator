@@ -148,7 +148,7 @@ func ExecuteRemoteScript(targetIP string, script string) (string, error) {
 }
 
 // GetHostFstab retrieves the raw /etc/fstab content from the specified Centurion node.
-func GetHostFstab(targetNode string) (string, string, error) {
+func GetHostFstab(targetNode string) (fstabPath string, content string, err error) {
 	ips := GetTargetHostIPs(targetNode)
 	targetIP := "127.0.0.1"
 	if len(ips) > 0 {
@@ -156,8 +156,8 @@ func GetHostFstab(targetNode string) (string, string, error) {
 	}
 
 	if IsLocalHost(targetIP) {
-		content, err := GetRawFstab()
-		return FstabPath(), content, err
+		rawContent, rawErr := GetRawFstab()
+		return FstabPath(), rawContent, rawErr
 	}
 
 	script := "cat /etc/fstab"

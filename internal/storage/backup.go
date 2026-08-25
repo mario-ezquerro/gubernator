@@ -186,17 +186,17 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 			return walkErr
 		}
 
-		relPath, err := filepath.Rel(sourcePath, path)
-		if err != nil {
-			return err
+		relPath, relErr := filepath.Rel(sourcePath, path)
+		if relErr != nil {
+			return relErr
 		}
 		if relPath == "." {
 			return nil
 		}
 
-		header, err := tar.FileInfoHeader(info, info.Name())
-		if err != nil {
-			return err
+		header, headErr := tar.FileInfoHeader(info, info.Name())
+		if headErr != nil {
+			return headErr
 		}
 
 		header.Name = filepath.ToSlash(relPath)
@@ -204,19 +204,19 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 			header.Name += "/"
 		}
 
-		if err := tw.WriteHeader(header); err != nil {
-			return err
+		if writeHeadErr := tw.WriteHeader(header); writeHeadErr != nil {
+			return writeHeadErr
 		}
 
 		if info.Mode().IsRegular() {
-			f, err := os.Open(path)
-			if err != nil {
-				return err
+			f, openErr := os.Open(path)
+			if openErr != nil {
+				return openErr
 			}
 			defer f.Close()
 
-			if _, err := io.Copy(tw, f); err != nil {
-				return err
+			if _, copyErr := io.Copy(tw, f); copyErr != nil {
+				return copyErr
 			}
 		}
 
@@ -230,13 +230,13 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		return nil, fmt.Errorf("failed during tar compression: %w", err)
 	}
 
-	if err := tw.Close(); err != nil {
+	if closeErr := tw.Close(); closeErr != nil {
 		os.Remove(destFilePath)
-		return nil, fmt.Errorf("failed to close tar writer: %w", err)
+		return nil, fmt.Errorf("failed to close tar writer: %w", closeErr)
 	}
-	if err := gw.Close(); err != nil {
+	if closeGzErr := gw.Close(); closeGzErr != nil {
 		os.Remove(destFilePath)
-		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
+		return nil, fmt.Errorf("failed to close gzip writer: %w", closeGzErr)
 	}
 
 	// Calculate final file stats
