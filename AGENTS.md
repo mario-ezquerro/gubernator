@@ -275,9 +275,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Live Update Progress Screen:** Redesigned the Web UI `UpdateDialog` to remain open during updates with interactive multi-step progress tracking (1. Download release binary from GitHub, 2. Install binary on Manager & Centurion workers, 3. Restart Gubernator cluster daemon, 4. Reconnect and verify updated state) with automatic UI reload upon completion.
 * **Release Asset Retry & Backoff Engine:** Implemented 15-attempt (45-second) exponential backoff polling in `updater.go` to handle GitHub Actions build latency when new releases are published, preventing 404 download errors.
 * **Safe Binary Replacement & Daemon Restart:** Replaced basic atomic copy with `sudo install -m 755` across `/usr/local/bin/gbnt`, `/app/gbnt`, and active executable paths with automated worker SSH propagation and fallback systemd restart.
-### 40. Storage & Backups Navigation Spacing & TabBar Refinements (`v2.39.9`)
-* **Spacious TabBar Breathing Room:** Redesigned the primary Storage & Backups `TabBar` with custom 5px outer container padding, 12px container radius, 8px pill indicator radius, soft ambient green elevation shadow (`offset: (0, 2), blur: 6`), and generous 12x8px text and icon padding.
-* **Refined Gluster Sub-Navigation Tabs:** Enhanced Cockpit sub-tab items with 16x10px inner padding, 10px rounded borders, active indicator borders, and subtle glow effects for optimal legibility and visual hierarchy.
+### 41. LLM Training & Fine-Tuning Suites on Gubernator (`v2.40.0`)
+* **LLaMA-Factory Visual Fine-Tuning Studio (`examples/example-llama-factory`):** Production blueprint for LLaMA-Factory WebUI (`llama-factory.gbnt.local`), enabling no-code/low-code fine-tuning (LoRA, QLoRA, SFT) across Llama-3, Qwen2.5, DeepSeek, and SmolLM models with real-time loss tracking and GGUF quantization.
+* **JupyterLab PyTorch LLM Lab (`examples/example-jupyter-llm`):** Interactive AI workspace with PyTorch, Hugging Face `TRL` (SFTTrainer), `PEFT`, `datasets`, and a ready-to-run notebook (`llm_lora_finetuning.ipynb`) with headless script execution (`train_script.py`) targeting cluster shared storage (`/var/contenedores`).
+* **Domain Dataset & Distributed Storage Integration:** Seeded Gubernator DevOps Q&A training datasets into distributed shared pools (`/var/contenedores/jupyter-llm` and `/var/contenedores/llama-factory/data`).
+
 
 
 

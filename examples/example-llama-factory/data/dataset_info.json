@@ -1,0 +1,10 @@
+{
+  "gubernator_qa": {
+    "file_name": "gubernator_train.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output"
+    }
+  }
+}

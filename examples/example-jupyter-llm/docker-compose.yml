@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  jupyter-llm:
+    image: quay.io/jupyter/pytorch-notebook:latest
+    container_name: jupyter_llm_lab
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1::8888"
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+      - PIP_INDEX_URL=https://pypi.org/simple
+    volumes:
+      - /var/contenedores/jupyter-llm/work:/home/jovyan/work
+      - /var/contenedores/jupyter-llm/hf_cache:/home/jovyan/.cache/huggingface
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+      placement:
+        constraints:
+          - stack.name == jupyter-llm-stack
+          - ingress.host == jupyter-llm.gbnt.local
+          - gbnt.caddy.port == 8888
+          - node.labels.gbnt.node.role == worker

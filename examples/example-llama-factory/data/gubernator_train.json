@@ -1,0 +1,32 @@
+[
+  {
+    "instruction": "¿Qué es Gubernator (gbnt) y cuáles son sus características principales?",
+    "input": "",
+    "output": "Gubernator (gbnt) es un orquestador de contenedores ligero y de alto rendimiento que combina la simplicidad de Docker Swarm con la flexibilidad y el control basado en tareas de Nomad. Sus características clave incluyen: soporte nativo de Docker Compose, API REST segura en el puerto 4000, Dashboard web en Flutter (puerto 4001), suite de observabilidad completa (Prometheus, Grafana, Loki, Jaeger) en el puerto 4002, Ingress multihost automático con Caddy, resolución DNS interna con CoreDNS, almacenamiento distribuido móvil con GlusterFS (/var/contenedores) y control de acceso basado en roles (RBAC) con integración Active Directory / LDAP."
+  },
+  {
+    "instruction": "¿Cómo se inicializa un cluster de Gubernator en el nodo Manager?",
+    "input": "",
+    "output": "Para inicializar un clúster de Gubernator en el nodo Manager, se ejecuta el comando:\n`gbnt legion init --api-token <TU_TOKEN_SECRETO>`\n\nEste comando inicializa la base de datos central SQLite, arranca la API REST en el puerto 4000, despliega el Dashboard Web en el puerto 4001 y genera el token de unión (`join-token`) para que los nodos Centuriones (Workers) puedan unirse al clúster."
+  },
+  {
+    "instruction": "¿Cómo se une un nodo Worker (Centurion) al clúster de Gubernator?",
+    "input": "",
+    "output": "Para unir un nodo Centurion al clúster, se ejecuta en el worker:\n`gbnt legion join --manager <IP_MANAGER>:4000 --token <JOIN_TOKEN> --api-token <API_TOKEN>`\n\nEl nodo registrará sus especificaciones de hardware (CPU, RAM, arquitectura, etiquetas) y comenzará a enviar heartbeats periódicos al Manager."
+  },
+  {
+    "instruction": "¿Cómo se despliega un stack de microservicios usando Docker Compose en Gubernator?",
+    "input": "",
+    "output": "Para desplegar un stack, se ejecuta:\n`gbnt stack deploy -c docker-compose.yml mi-stack`\n\nGubernator analiza las restricciones de placement (`deploy.placement.constraints`), programa los contenedores en los nodos más adecuados usando algoritmos Spread/Least-Loaded, y configura automáticamente las rutas Ingress en Caddy y los registros DNS en CoreDNS."
+  },
+  {
+    "instruction": "¿Cómo funciona el almacenamiento persistente distribuido (The Granaries) en Gubernator?",
+    "input": "",
+    "output": "El subsistema 'The Granaries' de Gubernator utiliza un punto de montaje compartido en `/var/contenedores` respaldado por GlusterFS o NFS. Esto permite que los datos persistentes de bases de datos y aplicaciones (ej. Postgres, MySQL, checkpoints de LLM) se muevan automáticamente entre nodos del clúster si una tarea es reprogramada, garantizando cero pérdida de datos."
+  },
+  {
+    "instruction": "¿Cómo se realiza un snapshot o copia de seguridad en caliente de un volumen en Gubernator?",
+    "input": "",
+    "output": "Se puede crear un snapshot comprimido con comprobación de integridad SHA-256 desde la CLI con:\n`gbnt backup create --name backup-db --source /var/contenedores/mi-db --pause`\n\nLa opción `--pause` congela temporalmente las escrituras del contenedor mediante `docker pause` durante la creación del archivo `.tar.gz` para garantizar 100% de consistencia transaccional."
+  }
+]
