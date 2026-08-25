@@ -127,5 +127,30 @@ This page is your index to the progressive tutorials included with Gubernator. E
 - Ingress constraints (`ingress.host`, `ingress.email`) and label equivalents
 - Background certificate auto-renewal before expiration
 
+---
 
+## Example LLaMA-Factory — Visual LLM Fine-Tuning Studio
 
+**Target**: Advanced / AI  
+**Goal**: Deploy a visual no-code/low-code fine-tuning suite for Llama 3, Qwen 2.5, DeepSeek, and SmolLM with LoRA/QLoRA and GGUF export
+
+[Start Example LLaMA-Factory →](example-llama-factory.md)
+
+- Visual training web interface (`llama-factory.gbnt.local:7860`)
+- Multi-dataset support (Alpaca, ShareGPT, custom JSON)
+- Real-time loss tracking and stdout streaming in Loki Logs
+- One-click GGUF quantization and model export
+
+---
+
+## Example JupyterLab PyTorch — LLM Training & Fine-Tuning Lab
+
+**Target**: Advanced / AI  
+**Goal**: Deploy an interactive PyTorch data science environment with SFTTrainer, LoRA adapters, and persistent cluster storage
+
+[Start Example JupyterLab LLM Lab →](example-jupyter-llm.md)
+
+- Step-by-step interactive notebook (`llm_lora_finetuning.ipynb`)
+- Pre-configured Hugging Face `transformers`, `peft`, `trl`, and `datasets`
+- Headless automated training script (`train_script.py`)
+- Persistent shared storage mobility in `/var/contenedores/jupyter-llm`

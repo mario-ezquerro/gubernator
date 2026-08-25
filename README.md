@@ -405,7 +405,13 @@ Configuration files are auto-generated in `~/.gbnt/monitor/` and can be customiz
 
 ---
 
-## 🔐 Security & Environment Variables
+## 🧠 AI & LLM Training Suites (v2.40.0)
+
+Gubernator provides enterprise-grade AI training blueprints with distributed storage mobility (`/var/contenedores`):
+
+* **🦙 LLaMA-Factory Visual Fine-Tuning Studio (`examples/example-llama-factory`)**: No-code / low-code web interface on `llama-factory.gbnt.local:7860` for fine-tuning Llama-3, Qwen2.5, DeepSeek, and SmolLM with LoRA/QLoRA and GGUF quantization export.
+* **🧪 JupyterLab PyTorch LLM Lab (`examples/example-jupyter-llm`)**: Interactive data science workspace on `jupyter-llm.gbnt.local:8888` featuring Hugging Face `TRL` (SFTTrainer), `PEFT`, interactive notebook (`llm_lora_finetuning.ipynb`), and automated batch script (`train_script.py`).
+
 
 ### Credentials (auto-generated on first boot)
 
