@@ -4,7 +4,6 @@ go 1.26.0
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-ldap/ldap/v3 v3.4.14
@@ -12,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/prometheus v0.311.3
+	github.com/prometheus/prometheus v0.310.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/slok/sloth v0.16.0
 	github.com/spf13/cobra v1.10.2
@@ -20,7 +19,6 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	golang.org/x/crypto v0.55.0
-	golang.org/x/oauth2 v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.31.1
 )
