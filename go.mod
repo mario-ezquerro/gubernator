@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/prometheus v0.310.0
+	github.com/prometheus/prometheus v0.311.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/slok/sloth v0.16.0
 	github.com/spf13/cobra v1.10.2
