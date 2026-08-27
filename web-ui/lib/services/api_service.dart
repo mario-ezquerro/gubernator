@@ -82,8 +82,22 @@ class ApiService {
 
   /// Stops/removes a single task.
   static Future<bool> deleteTask(String id) async {
-    final response = await http.delete(Uri.parse('/api/task/$id'));
+    final response = await http.delete(Uri.parse('/api/task/$id'), headers: authHeaders);
     return response.statusCode == 200;
+  }
+
+  /// Fetches container output logs or diagnostics for a given task ID.
+  static Future<String> getTaskLogs(String taskId) async {
+    try {
+      final response = await http.get(Uri.parse('/api/task/$taskId/logs'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['logs'] ?? '';
+      }
+      return 'Failed to load container logs (HTTP ${response.statusCode})';
+    } catch (e) {
+      return 'Error loading logs: $e';
+    }
   }
 
   /// Migrates a stack to a target node.

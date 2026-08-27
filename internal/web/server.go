@@ -906,13 +906,55 @@ func taskLogsHandler(c *gin.Context) {
 		return
 	}
 	if task.ContainerName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Task has no container assigned"})
+		if task.Error != "" {
+			c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Gubernator Task Diagnostics]\nStatus : %s\nNode   : %s\nMessage: %s", strings.ToUpper(task.Status), task.NodeID, task.Error)})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Gubernator Task Diagnostics]\nStatus : %s\nNode   : %s\nWaiting for container creation...", strings.ToUpper(task.Status), task.NodeID)})
 		return
 	}
 
+	// 1. If container is on manager or local node
+	if task.NodeID == "node-local-manager" || task.NodeID == "" {
+		out, err := exec.Command("docker", "logs", "--tail", "200", task.ContainerName).CombinedOutput()
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Task %s - %s]\nStatus: %s\nOutput: %s\nError: %v", task.ID[:8], task.ContainerName, task.Status, string(out), err)})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"logs": string(out)})
+		return
+	}
+
+	// 2. Container is on a remote worker node -> query via SSH
+	var node db.Node
+	if err := db.DB.First(&node, "id = ?", task.NodeID).Error; err == nil && node.IP != "" && node.IP != "127.0.0.1" {
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/data/id_ed25519", "/data/id_rsa",
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		remoteCmd := fmt.Sprintf("sudo docker logs --tail 200 %s", task.ContainerName)
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
+		out, err := exec.Command("ssh", sshArgs...).CombinedOutput()
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Centurion %s (%s)] Remote container %s\nStatus: %s\nOutput: %s\nError: %v", node.ID, node.IP, task.ContainerName, task.Status, string(out), err)})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"logs": string(out)})
+		return
+	}
+
+	// 3. Fallback to local docker logs
 	out, err := exec.Command("docker", "logs", "--tail", "200", task.ContainerName).CombinedOutput()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get logs: %v", err)})
+		c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Container %s]\nStatus: %s\nError: %v\nOutput: %s", task.ContainerName, task.Status, err, string(out))})
 		return
 	}
 

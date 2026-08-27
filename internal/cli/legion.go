@@ -302,10 +302,15 @@ var legionJoinCmd = &cobra.Command{
 								statusReq.Header.Set("Content-Type", "application/json")
 								if apiToken != "" {
 									statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+								} else if joinToken != "" {
+									statusReq.Header.Set("Authorization", "Bearer "+joinToken)
 								}
 								http.DefaultClient.Do(statusReq)
 							}
 						}
+
+						// 1. Report "pulling" status immediately so manager & dashboard show live progress
+						reportStatus("pulling", "", "", fmt.Sprintf("Pulling image %s...", t.Image))
 
 						fmt.Printf("Pulling image %s...\n", t.Image)
 						if err := docker.PullImage(t.Image); err != nil {
@@ -345,6 +350,9 @@ var legionJoinCmd = &cobra.Command{
 							data.Tasks[i].Task.Status = "running"
 							continue
 						}
+
+						// 2. Report "starting" status
+						reportStatus("starting", "", "", "Starting container...")
 
 						cfg := docker.ContainerConfig{
 							TaskID:  t.Task.ID,

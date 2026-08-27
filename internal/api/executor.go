@@ -22,7 +22,7 @@ func startLocalExecutor(ctx context.Context) {
 		case <-ctx.Done():
 			fmt.Println("[Executor] Shutting down.")
 			return
-		case <-time.After(5 * time.Second):
+		case <-time.After(3 * time.Second):
 		}
 
 		var tasks []db.Task
@@ -31,8 +31,11 @@ func startLocalExecutor(ctx context.Context) {
 		}
 
 		for _, task := range tasks {
-			// Mark as "starting" immediately to avoid double-execution
-			db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "starting")
+			// Mark as "pulling" immediately to avoid double-execution and give user feedback
+			db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+				"status": "pulling",
+				"error":  "Preparing to pull image...",
+			})
 
 			var svc db.Service
 			if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
@@ -49,12 +52,21 @@ func startLocalExecutor(ctx context.Context) {
 // executeTask pulls the image and starts the container for a given task+service.
 func executeTask(task db.Task, svc db.Service) {
 	fmt.Printf("[Executor] Task %s: pulling image %s...\n", task.ID[:8], svc.Image)
+	db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status": "pulling",
+		"error":  fmt.Sprintf("Downloading image %s...", svc.Image),
+	})
 
 	if err := docker.PullImage(svc.Image); err != nil {
 		fmt.Printf("[Executor] Task %s: pull failed: %v\n", task.ID[:8], err)
 		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{"status": "dead", "error": fmt.Sprintf("pull failed: %v", err)})
 		return
 	}
+
+	db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status": "starting",
+		"error":  "Starting container...",
+	})
 
 	cfg := docker.ContainerConfig{
 		TaskID:  task.ID,
@@ -78,6 +90,7 @@ func executeTask(task db.Task, svc db.Service) {
 		"status":         "running",
 		"container_ip":   ip,
 		"container_name": containerName,
+		"error":          "",
 	})
 
 	// Update DNS and Ingress

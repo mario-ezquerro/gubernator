@@ -58,9 +58,10 @@ func NodeTasksHandler(c *gin.Context) {
 }
 
 type TaskStatusRequest struct {
-	Status      string `json:"status" binding:"required"`
-	ContainerIP string `json:"container_ip"`
-	Error       string `json:"error"`
+	Status        string `json:"status" binding:"required"`
+	ContainerIP   string `json:"container_ip"`
+	ContainerName string `json:"container_name"`
+	Error         string `json:"error"`
 }
 
 // @Summary Update task status
@@ -71,7 +72,6 @@ type TaskStatusRequest struct {
 // @Param task_id path string true "Task ID"
 // @Param request body TaskStatusRequest true "Status Update"
 // @Success 200 {object} map[string]string
-// @Router /v1/node/tasks/{task_id}/status [post]
 // @Router /v1/node/tasks/{task_id}/status [post]
 func UpdateTaskStatusHandler(c *gin.Context) {
 	taskID := c.Param("task_id")
@@ -84,12 +84,13 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 
 	updates := map[string]interface{}{
 		"status": req.Status,
+		"error":  req.Error,
 	}
 	if req.ContainerIP != "" {
 		updates["container_ip"] = req.ContainerIP
 	}
-	if req.Error != "" {
-		updates["error"] = req.Error
+	if req.ContainerName != "" {
+		updates["container_name"] = req.ContainerName
 	}
 
 	res := db.DB.Model(&db.Task{}).Where("id = ?", taskID).Updates(updates)
@@ -98,8 +99,10 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 		return
 	}
 
-	// Trigger CoreDNS & Caddy update
-	aqueducts.GenerateAllAsync()
+	// Trigger CoreDNS & Caddy update when running
+	if req.Status == "running" {
+		aqueducts.GenerateAllAsync()
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
 }
