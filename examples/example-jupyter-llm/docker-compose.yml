@@ -14,6 +14,9 @@ services:
     volumes:
       - /var/contenedores/jupyter-llm/work:/home/jovyan/work
       - /var/contenedores/jupyter-llm/hf_cache:/home/jovyan/.cache/huggingface
+    labels:
+      - "ingress.host=jupyter-llm.gbnt.local"
+      - "gbnt.caddy.port=8888"
     deploy:
       resources:
         limits:
@@ -25,4 +28,3 @@ services:
           - stack.name == jupyter-llm-stack
           - ingress.host == jupyter-llm.gbnt.local
           - gbnt.caddy.port == 8888
-          - node.labels.gbnt.node.role == worker

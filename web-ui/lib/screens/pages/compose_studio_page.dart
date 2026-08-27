@@ -112,6 +112,46 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         constraints:
           - "gbnt.node.gpu == nvidia"
 ''',
+    'JupyterLab PyTorch LLM': '''services:
+  jupyter-llm:
+    image: quay.io/jupyter/pytorch-notebook:latest
+    container_name: jupyter_llm_lab
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1::8888"
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - /var/contenedores/jupyter-llm/work:/home/jovyan/work
+      - /var/contenedores/jupyter-llm/hf_cache:/home/jovyan/.cache/huggingface
+    labels:
+      - "ingress.host=jupyter-llm.gbnt.local"
+      - "gbnt.caddy.port=8888"
+    deploy:
+      replicas: 1
+''',
+    'LLaMA-Factory Studio': '''services:
+  llama-factory:
+    image: hiyouga/llama-factory:latest
+    container_name: llama_factory_studio
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1::7860"
+    environment:
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - GRADIO_SERVER_PORT=7860
+    volumes:
+      - /var/contenedores/llama-factory/data:/app/data
+      - /var/contenedores/llama-factory/saves:/app/saves
+      - /var/contenedores/llama-factory/output:/app/output
+      - /var/contenedores/llama-factory/hf_cache:/root/.cache/huggingface
+    labels:
+      - "ingress.host=llama-factory.gbnt.local"
+      - "gbnt.caddy.port=7860"
+    deploy:
+      replicas: 1
+''',
   };
 
   @override

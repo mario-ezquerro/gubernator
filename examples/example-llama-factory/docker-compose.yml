@@ -17,6 +17,9 @@ services:
       - /var/contenedores/llama-factory/saves:/app/saves
       - /var/contenedores/llama-factory/output:/app/output
       - /var/contenedores/llama-factory/hf_cache:/root/.cache/huggingface
+    labels:
+      - "ingress.host=llama-factory.gbnt.local"
+      - "gbnt.caddy.port=7860"
     deploy:
       resources:
         limits:
@@ -28,4 +31,3 @@ services:
           - stack.name == llama-factory-stack
           - ingress.host == llama-factory.gbnt.local
           - gbnt.caddy.port == 7860
-          - node.labels.gbnt.node.role == worker

@@ -119899,7 +119899,7 @@ break
 case 6:case 1:return A.u(q,r)
 case 2:return A.t(o.at(-1),r)}})
 return A.v($async$I8,r)},
-atP(a){var s=null,r=B.vF.h(0,a)
+atP(a){var s=null,r=B.vH.h(0,a)
 if(r!=null){this.E(new A.aW0(this,r))
 this.c.aa(t.J).f.cA(A.er(s,s,s,s,s,B.p,s,A.i("Applied template: "+a,s,s,s,s,s,s,s),s,B.aF,s,s,s,s,s,s,s,s,s,s))}},
 aAN(){var s,r,q=B.e.ap(this.e.a.a)
@@ -120027,7 +120027,7 @@ j=p.a.c.a
 B.b.G(l,new A.V(j,new A.aWb(p),A.T(j).i("V<1,e>")))
 B.b.G(s,l)}if(p.w==="storage")B.b.G(s,A.a([B.aYq,B.aK,B.aQY,B.B,p.i8(B.ed,new A.aWc(p),n,"App Data Shared Mount"),p.i8(B.kB,new A.aWd(p),"/var/contenedores/${STACK_NAME}/db:/var/lib/db","Database Storage Pool")],q))
 if(p.w==="templates"){l=A.a([B.aRg,B.aK,B.aSy,B.B],q)
-j=B.vF.gcY(B.vF)
+j=B.vH.gcY(B.vH)
 B.b.G(l,A.kG(j,new A.aWe(p),A.o(j).i("n.E"),t.l))
 B.b.G(s,l)}return A.a1(o,A.a_(A.a([k,B.bw,r,B.bw,A.ac(A.LV(s,B.aM,o,!1),1,o)],q),B.q,B.f,B.h,B.k),B.l,o,o,new A.a0(m.k2,o,new A.du(B.w,B.w,B.w,new A.aE(a.ch,1,B.F,-1)),o,o,o,B.m),o,o,o,o,o,o,o,400)},
 i8(a,b,c,d){var s,r,q,p,o,n,m,l=null,k=this.c
@@ -120092,7 +120092,7 @@ a=""+a.a.a.split("\n").length+" lines"}c=A.a1(h,A.H(A.a([b,B.bV,m,B.aa,A.i(a,h,h
 f=i.d
 f===$&&A.b()
 if(i.z)b=B.dv
-else{b=A.aqx(e?B.vH:B.vI)
+else{b=A.aqx(e?B.vG:B.vI)
 b=A.bqB(A.cf(A.bqA(i.d,B.dJ),h,B.n,h,h,B.J),b)}return A.F8(h,A.a_(A.a([d,c,A.ac(A.H(A.a([A.ac(A.a_(A.a([new A.wR(f,new A.aWJ(a1),h),A.ac(b,1,h)],s),B.i,B.f,B.h,B.k),1,h),i.aug(g)],s),B.bT,B.f,B.h,0,h),1,h)],s),B.bT,B.f,B.h,B.k))}}
 A.aWq.prototype={
 $0(){var s,r=u.d,q=this.a
@@ -129407,7 +129407,7 @@ s=t.p
 j=A.a1(o,A.H(A.a([l,B.M,A.ac(A.i("Advanced Editor: "+k,o,B.aS,o,o,j,o,o),1,o),A.bf(o,o,o,o,B.dB,o,o,o,new A.aVX(a),o,o,o,o,o)],s),B.i,B.f,B.h,0,o),B.l,o,o,o,o,o,o,o,B.a34,o,o,o)
 k=p.d
 k===$&&A.b()
-l=A.aqx(m.a===B.a9?B.vH:B.vI)
+l=A.aqx(m.a===B.a9?B.vG:B.vI)
 l=A.ac(A.H(A.a([A.ac(A.a_(A.a([new A.wR(k,o,o),A.ac(A.bqB(A.cf(A.bqA(p.d,B.dJ),o,B.n,o,o,B.J),l),1,o)],s),B.i,B.f,B.h,B.k),1,o),p.aww(n)],s),B.bT,B.f,B.h,0,o),1,o)
 k=A.vu(B.a9v,B.Re,new A.aVY(p),o)
 r=p.f
@@ -129605,7 +129605,7 @@ f=(n==null?h.k2:n).D(0.3)
 f=A.a1(j,A.H(A.a([A.i("Docker Compose YAML",j,j,j,j,g?j:s.bZ(B.ax),j,j),A.vu(B.Cq,B.aUX,k.gaMz(),j)],q),B.i,B.bE,B.h,0,j),B.l,f,j,j,j,j,j,j,B.a36,j,j,j)
 s=k.f
 s===$&&A.b()
-g=A.aqx(h.a===B.a9?B.vH:B.vI)
+g=A.aqx(h.a===B.a9?B.vG:B.vI)
 g=A.ac(A.a_(A.a([new A.ah(B.bi,o,j),B.bw,A.ac(A.H(A.a([A.ac(A.a_(A.a([f,B.bw,new A.wR(s,j,j),A.ac(A.bqB(A.cf(A.bqA(s,B.dJ),j,B.n,j,j,B.J),g),1,j)],q),B.i,B.f,B.h,B.k),1,j),k.aJM(i)],q),B.bT,B.f,B.h,0,j),1,j)],q),B.i,B.f,B.h,B.k),1,j)
 f=k.r
 s=A.cj(B.au,j,j,j,f?j:new A.b4A(a),j,j)
@@ -132813,7 +132813,7 @@ a9=a8.b
 if(a9!=null)a3.m(0,a8.a,a9)}f.m(0,"ifd"+a1,a3);++a1
 b0=b6.V()
 if(b0===g)break}for(f=new A.cr(f,f.r,f.e,A.o(f).i("cr<2>"));f.q();){r=f.d
-for(a0=B.vG.gcY(B.vG),a0=a0.ga_(a0);a0.q();){q=a0.gN(a0)
+for(a0=B.vF.gcY(B.vF),a0=a0.ga_(a0);a0.q();){q=a0.gN(a0)
 if(r.a.aH(0,q))try{p=J.k(r,q).C(0)
 b6.d=s+p
 o=new A.oG(A.G(d,c),new A.tX(A.G(b,a)))
@@ -132829,7 +132829,7 @@ if(i.b!=null){b1=i.a
 b2=i.b
 b2.toString
 J.c5(o,b1,b2)}}a2=r.b
-a9=B.vG.h(0,q)
+a9=B.vF.h(0,q)
 a9.toString
 a2.a.m(0,a9,o)}catch(b3){continue}}}b6.e=b4
 return!1},
@@ -162525,8 +162525,6 @@ B.TX=new A.co(3,B.av,B.ev,B.axC,38)
 B.TQ=new A.co(8,B.av,B.dQ,B.Iy,46)
 B.aqv=s([B.TD,B.TX,B.TQ],t.V)
 B.aw6=new A.cB([0,B.DP,1,B.aub,2,B.aob,3,B.atx,4,B.ai3,6,B.aoS,8,B.ajL,9,B.akp,12,B.apA,16,B.apw,24,B.aqv],A.aD("cB<r,I<co>>"))
-B.axm={"Web Ingress":0,"Postgres Storage":1,"SRE Monitored Microservice":2,"Gatekeeper Signed App":3,"GPU / AI Task":4}
-B.vF=new A.d_(B.axm,['services:\n  web:\n    image: nginx:alpine\n    ports:\n      - "80:80"\n    labels:\n      - "ingress.host=web.gbnt.local"\n      - "gbnt.caddy.port=80"\n    deploy:\n      replicas: 2\n',"services:\n  db:\n    image: postgres:16-alpine\n    environment:\n      POSTGRES_DB: appdb\n      POSTGRES_USER: gubernator\n      POSTGRES_PASSWORD: secretpassword\n    volumes:\n      - /var/contenedores/${STACK_NAME}/pgdata:/var/lib/postgresql/data\n    deploy:\n      replicas: 1\n",'services:\n  api:\n    image: python:3.11-slim\n    command: python -m http.server 8080\n    ports:\n      - "8080:8080"\n    labels:\n      - "ingress.host=api.gbnt.local"\n      - "gbnt.caddy.port=8080"\n      - "gbnt.slo.enable=true"\n      - "gbnt.slo.target=99.9"\n      - "gbnt.slo.window=30d"\n      - "gbnt.slo.indicator=latency"\n      - "gbnt.slo.latency.threshold=200ms"\n    deploy:\n      replicas: 2\n','services:\n  secure-app:\n    image: redis:alpine\n    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n    deploy:\n      replicas: 1\n','services:\n  llm-worker:\n    image: ollama/ollama:latest\n    ports:\n      - "11434:11434"\n    volumes:\n      - /var/contenedores/${STACK_NAME}/models:/root/.ollama\n    deploy:\n      replicas: 1\n      placement:\n        constraints:\n          - "gbnt.node.gpu == nvidia"\n'],t.li)
 B.wM=new A.b7(B.dj,!1,!1,!0,!1,B.Y)
 B.wJ=new A.b7(B.dk,!1,!1,!0,!1,B.Y)
 B.wK=new A.b7(B.dl,!1,!1,!0,!1,B.Y)
@@ -162800,7 +162798,7 @@ B.awo=new A.d_(B.Iw,[B.Fq,B.Fr,B.Eq,B.Ex,B.u2,B.EG,B.EH,B.nJ,B.GH,B.dj,B.dk,B.dl
 B.awp=new A.d_(B.Iw,[4294970632,4294970633,4294967553,4294968577,4294968578,4294969089,4294969090,4294967555,4294971393,4294968065,4294968066,4294968067,4294968068,4294968579,4294970625,4294970626,4294970627,4294970882,4294970628,4294970629,4294970630,4294970631,4294970884,4294970885,4294969871,4294969873,4294969872,4294967304,4294968833,4294968834,4294970369,4294970370,4294970371,4294970372,4294970373,4294970374,4294970375,4294971394,4294968835,4294971395,4294968580,4294967556,4294970634,4294970635,4294968321,4294969857,4294970642,4294969091,4294970636,4294970637,4294970638,4294970639,4294970640,4294970641,4294969092,4294968581,4294969093,4294968322,4294968323,4294968324,4294970703,4294967423,4294970643,4294970644,4294969108,4294968836,4294968069,4294971396,4294967309,4294968325,4294967323,4294967323,4294968326,4294968582,4294970645,4294969345,4294969354,4294969355,4294969356,4294969357,4294969358,4294969359,4294969360,4294969361,4294969362,4294969363,4294969346,4294969364,4294969365,4294969366,4294969367,4294969368,4294969347,4294969348,4294969349,4294969350,4294969351,4294969352,4294969353,4294970646,4294970647,4294970648,4294970649,4294970650,4294970651,4294970652,4294970653,4294970654,4294970655,4294970656,4294970657,4294969094,4294968583,4294967558,4294967559,4294971397,4294971398,4294969095,4294969096,4294969097,4294969098,4294970658,4294970659,4294970660,4294969105,4294969106,4294969109,4294971399,4294968584,4294968841,4294969110,4294969111,4294968070,4294967560,4294970661,4294968327,4294970662,4294969107,4294969112,4294969113,4294969114,4294971905,4294971906,4294971400,4294970118,4294970113,4294970126,4294970114,4294970124,4294970127,4294970115,4294970116,4294970117,4294970125,4294970119,4294970120,4294970121,4294970122,4294970123,4294970663,4294970664,4294970665,4294970666,4294968837,4294969858,4294969859,4294969860,4294971402,4294970667,4294970704,4294970715,4294970668,4294970669,4294970670,4294970671,4294969861,4294970672,4294970673,4294970674,4294970705,4294970706,4294970707,4294970708,4294969863,4294970709,4294969864,4294969865,4294970886,4294970887,4294970889,4294970888,4294969099,4294970710,4294970711,4294970712,4294970713,4294969866,4294969100,4294970675,4294970676,4294969101,4294971401,4294967562,4294970677,4294969867,4294968071,4294968072,4294970714,4294968328,4294968585,4294970678,4294970679,4294970680,4294970681,4294968586,4294970682,4294970683,4294970684,4294968838,4294968839,4294969102,4294969868,4294968840,4294969103,4294968587,4294970685,4294970686,4294970687,4294968329,4294970688,4294969115,4294970693,4294970694,4294969869,4294970689,4294970690,4294967564,4294968588,4294970691,4294967569,4294969104,4294969601,4294969602,4294969603,4294969604,4294969605,4294969606,4294969607,4294969608,4294971137,4294971138,4294969870,4294970692,4294968842,4294970695,4294967566,4294967567,4294967568,4294970697,4294971649,4294971650,4294971651,4294971652,4294971653,4294971654,4294971655,4294970698,4294971656,4294971657,4294971658,4294971659,4294971660,4294971661,4294971662,4294971663,4294971664,4294971665,4294971666,4294971667,4294970699,4294971668,4294971669,4294971670,4294971671,4294971672,4294971673,4294971674,4294971675,4294967305,4294970696,4294968330,4294967297,4294970700,4294971403,4294968843,4294970701,4294969116,4294969117,4294968589,4294968590,4294970702],t.eL)
 B.axs={alias:0,allScroll:1,basic:2,cell:3,click:4,contextMenu:5,copy:6,forbidden:7,grab:8,grabbing:9,help:10,move:11,none:12,noDrop:13,precise:14,progress:15,text:16,resizeColumn:17,resizeDown:18,resizeDownLeft:19,resizeDownRight:20,resizeLeft:21,resizeLeftRight:22,resizeRight:23,resizeRow:24,resizeUp:25,resizeUpDown:26,resizeUpLeft:27,resizeUpRight:28,resizeUpLeftDownRight:29,resizeUpRightDownLeft:30,verticalText:31,wait:32,zoomIn:33,zoomOut:34}
 B.awq=new A.d_(B.axs,["alias","all-scroll","default","cell","pointer","context-menu","copy","not-allowed","grab","grabbing","help","move","none","no-drop","crosshair","progress","text","col-resize","s-resize","sw-resize","se-resize","w-resize","ew-resize","e-resize","row-resize","n-resize","ns-resize","nw-resize","ne-resize","nwse-resize","nesw-resize","vertical-text","wait","zoom-in","zoom-out"],t.li)
-B.vG=new A.cB([34665,"exif",40965,"interop",34853,"gps"],t.TM)
+B.vF=new A.cB([34665,"exif",40965,"interop",34853,"gps"],t.TM)
 B.aG7=new A.b7(B.cz,!1,!1,!1,!1,B.Y)
 B.aFD=new A.b7(B.cz,!1,!0,!1,!1,B.Y)
 B.Nu=new A.b7(B.co,!1,!1,!1,!1,B.Y)
@@ -162832,10 +162830,12 @@ B.Xp=new A.y(1,0.9019607843137255,0.8588235294117647,0.4549019607843137,B.j)
 B.eO=new A.A(!0,B.Xp,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.ZV=new A.y(1,0.4588235294117647,0.44313725490196076,0.3686274509803922,B.j)
 B.xr=new A.A(!0,B.ZV,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.vH=new A.d_(B.axp,[B.aOw,B.xq,B.xq,B.aOT,B.aNA,B.jA,B.jA,B.jA,B.jA,B.jA,B.jA,B.oY,B.oY,B.oY,B.oY,B.oW,B.oW,B.oW,B.oW,B.QB,B.QB,B.xq,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.xr,B.xr,B.xr],t.pZ)
+B.vG=new A.d_(B.axp,[B.aOw,B.xq,B.xq,B.aOT,B.aNA,B.jA,B.jA,B.jA,B.jA,B.jA,B.jA,B.oY,B.oY,B.oY,B.oY,B.oW,B.oW,B.oW,B.oW,B.QB,B.QB,B.xq,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.eO,B.xr,B.xr,B.xr],t.pZ)
 B.axt={"iso_8859-1:1987":0,"iso-ir-100":1,"iso_8859-1":2,"iso-8859-1":3,latin1:4,l1:5,ibm819:6,cp819:7,csisolatin1:8,"iso-ir-6":9,"ansi_x3.4-1968":10,"ansi_x3.4-1986":11,"iso_646.irv:1991":12,"iso646-us":13,"us-ascii":14,us:15,ibm367:16,cp367:17,csascii:18,ascii:19,csutf8:20,"utf-8":21}
 B.e8=new A.Yk()
 B.awr=new A.d_(B.axt,[B.dt,B.dt,B.dt,B.dt,B.dt,B.dt,B.dt,B.dt,B.dt,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.e8,B.an,B.an],A.aD("d_<q,xa>"))
+B.axl={"Web Ingress":0,"Postgres Storage":1,"SRE Monitored Microservice":2,"Gatekeeper Signed App":3,"GPU / AI Task":4,"JupyterLab PyTorch LLM":5,"LLaMA-Factory Studio":6}
+B.vH=new A.d_(B.axl,['services:\n  web:\n    image: nginx:alpine\n    ports:\n      - "80:80"\n    labels:\n      - "ingress.host=web.gbnt.local"\n      - "gbnt.caddy.port=80"\n    deploy:\n      replicas: 2\n',"services:\n  db:\n    image: postgres:16-alpine\n    environment:\n      POSTGRES_DB: appdb\n      POSTGRES_USER: gubernator\n      POSTGRES_PASSWORD: secretpassword\n    volumes:\n      - /var/contenedores/${STACK_NAME}/pgdata:/var/lib/postgresql/data\n    deploy:\n      replicas: 1\n",'services:\n  api:\n    image: python:3.11-slim\n    command: python -m http.server 8080\n    ports:\n      - "8080:8080"\n    labels:\n      - "ingress.host=api.gbnt.local"\n      - "gbnt.caddy.port=8080"\n      - "gbnt.slo.enable=true"\n      - "gbnt.slo.target=99.9"\n      - "gbnt.slo.window=30d"\n      - "gbnt.slo.indicator=latency"\n      - "gbnt.slo.latency.threshold=200ms"\n    deploy:\n      replicas: 2\n','services:\n  secure-app:\n    image: redis:alpine\n    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n    deploy:\n      replicas: 1\n','services:\n  llm-worker:\n    image: ollama/ollama:latest\n    ports:\n      - "11434:11434"\n    volumes:\n      - /var/contenedores/${STACK_NAME}/models:/root/.ollama\n    deploy:\n      replicas: 1\n      placement:\n        constraints:\n          - "gbnt.node.gpu == nvidia"\n','services:\n  jupyter-llm:\n    image: quay.io/jupyter/pytorch-notebook:latest\n    container_name: jupyter_llm_lab\n    restart: unless-stopped\n    ports:\n      - "127.0.0.1::8888"\n    environment:\n      - JUPYTER_TOKEN=gubernator-secret\n      - JUPYTER_ENABLE_LAB=yes\n    volumes:\n      - /var/contenedores/jupyter-llm/work:/home/jovyan/work\n      - /var/contenedores/jupyter-llm/hf_cache:/home/jovyan/.cache/huggingface\n    labels:\n      - "ingress.host=jupyter-llm.gbnt.local"\n      - "gbnt.caddy.port=8888"\n    deploy:\n      replicas: 1\n','services:\n  llama-factory:\n    image: hiyouga/llama-factory:latest\n    container_name: llama_factory_studio\n    restart: unless-stopped\n    ports:\n      - "127.0.0.1::7860"\n    environment:\n      - GRADIO_SERVER_NAME=0.0.0.0\n      - GRADIO_SERVER_PORT=7860\n    volumes:\n      - /var/contenedores/llama-factory/data:/app/data\n      - /var/contenedores/llama-factory/saves:/app/saves\n      - /var/contenedores/llama-factory/output:/app/output\n      - /var/contenedores/llama-factory/hf_cache:/root/.cache/huggingface\n    labels:\n      - "ingress.host=llama-factory.gbnt.local"\n      - "gbnt.caddy.port=7860"\n    deploy:\n      replicas: 1\n'],t.li)
 B.axv={type:0}
 B.aws=new A.d_(B.axv,["line"],t.li)
 B.aww=new A.d_(B.ch,[],A.aD("d_<nk,a4>"))
@@ -163077,8 +163077,8 @@ B.Oo=new A.a3(128,"select")
 B.PT=new A.a3(8,"sleep")
 B.OG=new A.a3(181,"exit")
 B.awz=new A.cB(["Escape",B.Pv,"Tab",B.Pw,"Backtab",B.aJM,"Backspace",B.x5,"Return",B.aJN,"Enter",B.x4,"NumEnter",B.Q3,"Insert",B.PW,"Delete",B.PY,"Pause",B.PV,"Print",B.OU,"Clear",B.aIE,"Home",B.PX,"End",B.PZ,"Left",B.Q1,"Up",B.x9,"Right",B.Q_,"Down",B.x8,"PageUp",B.x6,"PageDown",B.x7,"PgUp",B.x6,"PgDown",B.x7,"Shift",B.P3,"Control",B.P7,"Meta",B.P4,"Alt",B.P5,"CapsLock",B.PG,"NumLock",B.Q2,"ScrollLock",B.PU,"F1",B.PH,"F2",B.PI,"F3",B.PJ,"F4",B.PK,"F5",B.PL,"F6",B.PM,"F7",B.PN,"F8",B.PO,"F9",B.PP,"F10",B.PQ,"F11",B.PR,"F12",B.PS,"F13",B.Oa,"F14",B.Ob,"F15",B.Oc,"F16",B.Od,"F17",B.Oe,"F18",B.Of,"F19",B.Og,"F20",B.Oh,"F21",B.Oi,"F22",B.Oj,"F23",B.Ok,"F24",B.Ol,"Help",B.On,"Space",B.Px,"ParenLeft",B.Ox,"ParenRight",B.Oy,"Comma",B.PD,"Minus",B.Py,"Period",B.PE,"Slash",B.PF,"0",B.Pu,"1",B.Pl,"2",B.Pm,"3",B.Pn,"4",B.Po,"5",B.Pp,"6",B.Pq,"7",B.Pr,"8",B.Ps,"9",B.Pt,"Semicolon",B.PC,"A",B.Ow,"B",B.Oz,"C",B.OA,"D",B.OF,"E",B.OM,"F",B.OQ,"G",B.OR,"H",B.OV,"I",B.P_,"J",B.P0,"K",B.P1,"L",B.P2,"M",B.P6,"N",B.P8,"O",B.P9,"P",B.Pa,"Q",B.Pb,"R",B.Pc,"S",B.Pd,"T",B.Pe,"U",B.Pf,"V",B.Pg,"W",B.Ph,"X",B.Pi,"Y",B.Pj,"Z",B.Pk,"BracketLeft",B.Pz,"Backslash",B.PB,"BracketRight",B.PA,"VolumeDown",B.Ov,"VolumeMute",B.Ot,"VolumeUp",B.Ou,"BassBoost",B.aIU,"MediaPlay",B.OJ,"MediaStop",B.ON,"MediaRecord",B.OL,"MediaPause",B.OK,"MediaTogglePlayPause",B.OP,"HomePage",B.OW,"MonBrightnessUp",B.OC,"MonBrightnessDown",B.OD,"PowerOff",B.O9,"WakeUp",B.Q0,"Eject",B.OO,"Close",B.OS,"Copy",B.Or,"Cut",B.Oq,"Save",B.OT,"ZoomIn",B.OX,"ZoomOut",B.OY,"ChannelUp",B.OH,"ChannelDown",B.OI,"Info",B.OB,"Open",B.Om,"Find",B.Os,"Undo",B.Op,"Redo",B.OZ,"MediaLast",B.OE,"Select",B.Oo,"Sleep",B.PT,"Exit",B.OG],A.aD("cB<q,a3>"))
-B.axl={KeyA:0,KeyB:1,KeyC:2,KeyD:3,KeyE:4,KeyF:5,KeyG:6,KeyH:7,KeyI:8,KeyJ:9,KeyK:10,KeyL:11,KeyM:12,KeyN:13,KeyO:14,KeyP:15,KeyQ:16,KeyR:17,KeyS:18,KeyT:19,KeyU:20,KeyV:21,KeyW:22,KeyX:23,KeyY:24,KeyZ:25,Digit1:26,Digit2:27,Digit3:28,Digit4:29,Digit5:30,Digit6:31,Digit7:32,Digit8:33,Digit9:34,Digit0:35,Minus:36,Equal:37,BracketLeft:38,BracketRight:39,Backslash:40,Semicolon:41,Quote:42,Backquote:43,Comma:44,Period:45,Slash:46}
-B.vJ=new A.d_(B.axl,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","-","=","[","]","\\",";","'","`",",",".","/"],t.li)
+B.axm={KeyA:0,KeyB:1,KeyC:2,KeyD:3,KeyE:4,KeyF:5,KeyG:6,KeyH:7,KeyI:8,KeyJ:9,KeyK:10,KeyL:11,KeyM:12,KeyN:13,KeyO:14,KeyP:15,KeyQ:16,KeyR:17,KeyS:18,KeyT:19,KeyU:20,KeyV:21,KeyW:22,KeyX:23,KeyY:24,KeyZ:25,Digit1:26,Digit2:27,Digit3:28,Digit4:29,Digit5:30,Digit6:31,Digit7:32,Digit8:33,Digit9:34,Digit0:35,Minus:36,Equal:37,BracketLeft:38,BracketRight:39,Backslash:40,Semicolon:41,Quote:42,Backquote:43,Comma:44,Period:45,Slash:46}
+B.vJ=new A.d_(B.axm,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","-","=","[","]","\\",";","'","`",",",".","/"],t.li)
 B.a3T=new A.qr(2.5)
 B.a3R=new A.qr(3.5)
 B.a3Q=new A.qr(1.2)

@@ -281,13 +281,23 @@ func scheduleService(service *db.Service, targetNode string) {
 					parts := strings.Split(constraint, "==")
 					if len(parts) == 2 {
 						leftSide := strings.TrimSpace(parts[0])
-						if !strings.HasPrefix(leftSide, "node.labels.") {
-							// Skip non-node-placement constraints (like ingress.host)
-							continue
-						}
-						key := strings.TrimPrefix(leftSide, "node.labels.")
 						val := strings.TrimSpace(parts[1])
 
+						// Support node.role == worker / node.role == manager directly
+						if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+							if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
+								matchesAll = false
+								break
+							}
+							continue
+						}
+
+						if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+							// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
+							continue
+						}
+
+						key := strings.TrimPrefix(leftSide, "node.labels.")
 						if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
 							matchesAll = false
 							break
