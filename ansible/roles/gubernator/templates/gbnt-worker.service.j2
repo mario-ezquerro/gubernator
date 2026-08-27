@@ -6,8 +6,7 @@ Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-WorkingDirectory={{ gbnt_data_dir }}
-ExecStart={{ gbnt_install_path }} agent --manager http://{{ hostvars[groups['manager'][0]]['ansible_host'] | default(groups['manager'][0]) }}:{{ gbnt_api_port }} --token {{ hostvars[groups['manager'][0]]['cluster_join_token'] | default(gbnt_join_secret) }} {% if gbnt_zone is defined %}--label gbnt.node.zone={{ gbnt_zone }}{% endif %} {% if gbnt_gpu is defined %}--label gbnt.node.gpu={{ gbnt_gpu }}{% endif %}
+ExecStart={{ gbnt_install_path }} legion join --manager http://{{ hostvars[groups['manager'][0]]['ansible_host'] | default(groups['manager'][0]) }}:{{ gbnt_api_port }} --token {{ hostvars[groups['manager'][0]]['cluster_join_token'] | default(gbnt_join_secret) }} {% if hostvars[groups['manager'][0]]['gbnt_api_token'] is defined %}--api-token {{ hostvars[groups['manager'][0]]['gbnt_api_token'] }}{% endif %}
 Restart=always
 RestartSec=5s
 LimitNOFILE=65536

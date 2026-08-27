@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
@@ -33,8 +34,22 @@ type TaskWithImage struct {
 func NodeTasksHandler(c *gin.Context) {
 	nodeID := c.Param("node_id")
 
+	var matchedNodeIDs = []string{nodeID}
+	var node db.Node
+	clientIP := c.ClientIP()
+
+	// Try finding canonical node in DB
+	cleanID := strings.TrimPrefix(nodeID, "node-")
+	if err := db.DB.Where("id = ? OR ip = ? OR id LIKE ? OR id LIKE ?", nodeID, nodeID, "%"+nodeID+"%", "%"+cleanID+"%").First(&node).Error; err == nil {
+		matchedNodeIDs = append(matchedNodeIDs, node.ID, node.IP)
+	} else if clientIP != "" && clientIP != "127.0.0.1" {
+		if err := db.DB.Where("ip = ?", clientIP).First(&node).Error; err == nil {
+			matchedNodeIDs = append(matchedNodeIDs, node.ID, node.IP)
+		}
+	}
+
 	var tasks []db.Task
-	if err := db.DB.Where("node_id = ? AND status != ?", nodeID, "dead").Find(&tasks).Error; err != nil {
+	if err := db.DB.Where("node_id IN ? AND status != ?", matchedNodeIDs, "dead").Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return
 	}

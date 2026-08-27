@@ -287,7 +287,14 @@ var legionJoinCmd = &cobra.Command{
 				}
 
 				for i, t := range data.Tasks {
-					if t.Task.Status == "pending" {
+					if t.Task.Status == "pending" || t.Task.Status == "pulling" || t.Task.Status == "starting" {
+						// If container is already running locally on this worker, report running and continue
+						containerName := "gbnt-" + t.Task.ID
+						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+						if out, err := inspectCmd.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
+							continue
+						}
+
 						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
 
 						reportStatus := func(status, ip, containerName, errMsg string) {
@@ -495,6 +502,17 @@ func init() {
 	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Join token provided by the Manager (gbnt legion join-token)")
 	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000 or http://192.168.1.100:4000)")
 	legionJoinCmd.Flags().StringVar(&apiToken, "api-token", "", "Bearer API token for the Manager REST API (GBNT_API_TOKEN)")
+
+	// Register `gbnt agent` alias for systemd / script compatibility
+	agentCmd := &cobra.Command{
+		Use:   "agent",
+		Short: "Start worker agent and join cluster (alias for gbnt legion join)",
+		Run:   legionJoinCmd.Run,
+	}
+	agentCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Join token provided by the Manager")
+	agentCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address")
+	agentCmd.Flags().StringVar(&apiToken, "api-token", "", "Bearer API token for Manager REST API")
+	rootCmd.AddCommand(agentCmd)
 
 	legionCmd.AddCommand(legionJoinTokenCmd)
 	legionCmd.AddCommand(legionLeaveCmd)

@@ -3,6 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
@@ -12,10 +16,10 @@ import (
 
 const localManagerNodeID = "node-local-manager"
 
-// startLocalExecutor polls for pending tasks on the local node and executes them.
+// startLocalExecutor polls for pending tasks on the local node and remote workers, executing them reliably.
 // Exits cleanly when ctx is cancelled.
 func startLocalExecutor(ctx context.Context) {
-	fmt.Println("[Executor] Local executor started. Watching for pending tasks on node:", localManagerNodeID)
+	fmt.Println("[Executor] Cluster task executor started. Watching for pending tasks across nodes...")
 
 	for {
 		select {
@@ -25,17 +29,15 @@ func startLocalExecutor(ctx context.Context) {
 		case <-time.After(3 * time.Second):
 		}
 
-		var tasks []db.Task
-		if err := db.DB.Where("node_id = ? AND status = ?", localManagerNodeID, "pending").Find(&tasks).Error; err != nil {
+		var pendingTasks []db.Task
+		if err := db.DB.Where("status = ?", "pending").Find(&pendingTasks).Error; err != nil {
 			continue
 		}
 
-		for _, task := range tasks {
-			// Mark as "pulling" immediately to avoid double-execution and give user feedback
-			db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
-				"status": "pulling",
-				"error":  "Preparing to pull image...",
-			})
+		for _, task := range pendingTasks {
+			if task.NodeID == "none" || task.NodeID == "" {
+				continue
+			}
 
 			var svc db.Service
 			if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
@@ -44,9 +46,115 @@ func startLocalExecutor(ctx context.Context) {
 				continue
 			}
 
-			go executeTask(task, svc)
+			if task.NodeID == localManagerNodeID {
+				// Local Manager Execution
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+					"status": "pulling",
+					"error":  fmt.Sprintf("Downloading image %s...", svc.Image),
+				})
+				go executeTask(task, svc)
+			} else {
+				// Remote Worker Node Execution
+				var targetNode db.Node
+				if err := db.DB.Where("id = ? OR ip = ?", task.NodeID, task.NodeID).First(&targetNode).Error; err == nil && targetNode.IP != "" && targetNode.IP != "127.0.0.1" {
+					db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+						"status": "pulling",
+						"error":  fmt.Sprintf("Worker node %s (%s): pulling image %s...", targetNode.ID, targetNode.IP, svc.Image),
+					})
+					go executeRemoteWorkerTask(task, svc, targetNode)
+				}
+			}
 		}
 	}
+}
+
+// executeRemoteWorkerTask connects via SSH to the Centurion worker and starts the container.
+func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
+	containerName := "gbnt-" + task.ID
+	slog.Info("proactively dispatching container to worker via SSH", "task_id", task.ID[:8], "node", node.ID, "ip", node.IP, "image", svc.Image)
+
+	sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=10"}
+	keyCandidates := []string{
+		"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+		"/data/id_ed25519", "/data/id_rsa",
+		"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+	}
+	for _, k := range keyCandidates {
+		if _, err := os.Stat(k); err == nil {
+			sshArgs = append(sshArgs, "-i", k)
+			break
+		}
+	}
+
+	// 1. Pull image on remote worker
+	pullCmd := fmt.Sprintf("sudo docker pull %s", svc.Image)
+	pullSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), pullCmd)
+	_ = exec.Command("ssh", pullSSHArgs...).Run()
+
+	db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status": "starting",
+		"error":  fmt.Sprintf("Worker node %s: starting container...", node.ID),
+	})
+
+	// 2. Build docker run arguments
+	var dockerArgs []string
+	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--name", containerName, "-l", "gbnt.task.id="+task.ID)
+
+	for _, p := range svc.Ports {
+		dockerArgs = append(dockerArgs, "-p", p)
+	}
+	for _, e := range svc.Env {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'%s'", strings.ReplaceAll(e, "'", "'\\''")))
+	}
+	for _, v := range svc.Volumes {
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", v))
+	}
+	dockerArgs = append(dockerArgs, svc.Image)
+	if svc.Command != "" {
+		dockerArgs = append(dockerArgs, svc.Command)
+	}
+
+	remoteDockerCmd := strings.Join(dockerArgs, " ")
+
+	// Ensure network, remove existing stale container if any, and run
+	prepCmd := fmt.Sprintf("sudo docker network create gbnt-net 2>/dev/null || true; sudo docker rm -f %s 2>/dev/null || true; %s", containerName, remoteDockerCmd)
+	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), prepCmd)
+	runOut, runErr := exec.Command("ssh", runSSHArgs...).CombinedOutput()
+	if runErr != nil {
+		slog.Warn("remote task start failed", "task", task.ID[:8], "node", node.ID, "err", runErr, "out", string(runOut))
+		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+			"status": "dead",
+			"error":  fmt.Sprintf("Remote start failed on node %s: %v (%s)", node.ID, runErr, strings.TrimSpace(string(runOut))),
+		})
+		return
+	}
+
+	// 3. Connect to gbnt-net and inspect IP
+	connectCmd := fmt.Sprintf("sudo docker network connect gbnt-net %s 2>/dev/null || true; sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' %s", containerName, containerName)
+	inspectSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), connectCmd)
+	inspectOut, _ := exec.Command("ssh", inspectSSHArgs...).CombinedOutput()
+	containerIP := strings.TrimSpace(string(inspectOut))
+	parts := strings.Fields(containerIP)
+	if len(parts) > 0 {
+		containerIP = parts[0]
+	}
+	if containerIP == "" {
+		containerIP = node.IP
+	}
+
+	slog.Info("remote container started successfully on worker node", "task_id", task.ID[:8], "container", containerName, "ip", containerIP)
+
+	db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+		"status":         "running",
+		"container_ip":   containerIP,
+		"container_name": containerName,
+		"error":          "",
+	})
+
+	go func() {
+		aqueducts.GenerateHostsFile()
+		aqueducts.GenerateCaddyfile()
+	}()
 }
 
 // executeTask pulls the image and starts the container for a given task+service.
