@@ -661,6 +661,7 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                           DataColumn(label: const Text('IP'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
                                           DataColumn(label: const Text('ROLE'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
                                           DataColumn(label: const Text('STATUS'), onSort: (col, asc) => setState(() { _sortColumnIndex = col; _sortAscending = asc; })),
+                                          const DataColumn(label: Text('SCHEDULING (STACKS)')),
                                           const DataColumn(label: Text('CPU')),
                                           const DataColumn(label: Text('MEMORY (USED / TOTAL)')),
                                           const DataColumn(label: Text('HOST DISK (USED / TOTAL)')),
@@ -721,7 +722,40 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                               ],
                                             ],
                                           )),
-                                          DataCell(SizedBox(width: 90, child: _buildMiniThermometer(theme, '${n.cpuPercent.toStringAsFixed(1)}%', n.cpuPercent, const Color(0xFF3B82F6)))),
+                                           DataCell(
+                                             Tooltip(
+                                               message: n.status == 'no_schedule'
+                                                   ? 'Deployments blocked on this host. Click switch to enable scheduling.'
+                                                   : 'Host active for stack deployments. Click switch to block (NoSchedule).',
+                                               child: Row(
+                                                 mainAxisSize: MainAxisSize.min,
+                                                 children: [
+                                                   Transform.scale(
+                                                     scale: 0.8,
+                                                     child: Switch(
+                                                       value: n.status != 'no_schedule',
+                                                       activeColor: const Color(0xFF10B981),
+                                                       inactiveThumbColor: Colors.deepOrange,
+                                                       inactiveTrackColor: Colors.deepOrange.withValues(alpha: 0.2),
+                                                       onChanged: (enabled) {
+                                                         final targetStatus = enabled ? 'active' : 'no_schedule';
+                                                         _updateNodeAvailability(n.id, targetStatus, n);
+                                                       },
+                                                     ),
+                                                   ),
+                                                   Text(
+                                                     n.status == 'no_schedule' ? 'BLOCKED' : 'ENABLED',
+                                                     style: TextStyle(
+                                                       fontSize: 10.5,
+                                                       fontWeight: FontWeight.bold,
+                                                       color: n.status == 'no_schedule' ? Colors.deepOrange : const Color(0xFF10B981),
+                                                     ),
+                                                   ),
+                                                 ],
+                                               ),
+                                             ),
+                                           ),
+                                           DataCell(SizedBox(width: 90, child: _buildMiniThermometer(theme, '${n.cpuPercent.toStringAsFixed(1)}%', n.cpuPercent, const Color(0xFF3B82F6)))),
                                           DataCell(SizedBox(width: 170, child: _buildMiniThermometer(theme, '${_formatBytes(n.memUsedBytes)} / ${_formatBytes(n.memTotalBytes)}', n.memPercent, const Color(0xFF10B981)))),
                                           DataCell(SizedBox(
                                             width: 170,

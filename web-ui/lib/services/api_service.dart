@@ -217,7 +217,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('/api/node/$id/availability'),
-        headers: {'Content-Type': 'application/json'},
+        headers: authHeaders,
         body: jsonEncode({'availability': availability}),
       );
       if (response.statusCode == 200) {
