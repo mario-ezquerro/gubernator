@@ -178,26 +178,53 @@ func webScheduleService(service *db.Service, targetNode string) {
 		if targetNode != "" && targetNode != "auto" {
 			var n db.Node
 			if err := db.DB.First(&n, "id = ? OR ip = ?", targetNode, targetNode).Error; err == nil {
-				selectedNode = &n
+				if n.Status == "active" || n.Status == "ready" {
+					selectedNode = &n
+				}
 			}
 		}
 
 		if selectedNode == nil {
 			var allNodes []db.Node
-			db.DB.Where("status = ?", "active").Find(&allNodes)
+			db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
 
-			for _, node := range allNodes {
+			// Sort nodes: Workers first, Manager last
+			var workers []db.Node
+			var managers []db.Node
+
+			for _, n := range allNodes {
+				if strings.ToLower(n.Role) == "manager" {
+					managers = append(managers, n)
+				} else {
+					workers = append(workers, n)
+				}
+			}
+
+			orderedNodes := append(workers, managers...)
+
+			for _, node := range orderedNodes {
 				matchesAll := true
 				for _, constraint := range service.Constraints {
 					parts := strings.Split(constraint, "==")
 					if len(parts) == 2 {
 						leftSide := strings.TrimSpace(parts[0])
-						if !strings.HasPrefix(leftSide, "node.labels.") {
-							// Skip non-node-placement constraints (like ingress.host)
+						val := strings.TrimSpace(parts[1])
+
+						// Support node.role == worker / node.role == manager directly
+						if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+							if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
+								matchesAll = false
+								break
+							}
 							continue
 						}
+
+						if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+							// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
+							continue
+						}
+
 						key := strings.TrimPrefix(leftSide, "node.labels.")
-						val := strings.TrimSpace(parts[1])
 						if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
 							matchesAll = false
 							break
