@@ -947,10 +947,25 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                             ? const Center(child: CircularProgressIndicator())
                             : CodeTheme(
                                 data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                                child: SingleChildScrollView(
-                                  child: CodeField(
-                                    controller: _codeController,
-                                    textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                child: Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                  child: SingleChildScrollView(
+                                    physics: const ClampingScrollPhysics(),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const ClampingScrollPhysics(),
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(minWidth: 800),
+                                        child: SelectionArea(
+                                          child: CodeField(
+                                            controller: _codeController,
+                                            textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
