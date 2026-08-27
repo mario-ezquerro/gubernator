@@ -108,8 +108,8 @@ func NodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	// Trigger node task draining if status is drain or maintenance
-	if status == "drain" || status == "maintenance" {
+	// Trigger node task draining if status is drain, maintenance, pause or no_schedule
+	if status == "drain" || status == "maintenance" || status == "pause" || status == "no_schedule" {
 		go drainNodeTasks(id)
 	}
 

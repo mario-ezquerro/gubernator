@@ -1561,8 +1561,8 @@ func nodeAvailabilityHandler(c *gin.Context) {
 		return
 	}
 
-	// Trigger node task draining if status is maintenance, drain or pause
-	if status == "drain" || status == "maintenance" || status == "pause" {
+	// Trigger node task draining if status is maintenance, drain, pause or no_schedule
+	if status == "drain" || status == "maintenance" || status == "pause" || status == "no_schedule" {
 		go webDrainNodeTasks(id)
 	} else if status == "active" {
 		// When reactivating node, reschedule missing replicas and re-evaluate services
