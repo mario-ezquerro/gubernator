@@ -51,7 +51,6 @@ services:
   # 1. MinIO S3 Storage (Artifacts & Datasets)
   minio:
     image: minio/minio:latest
-    container_name: gbnt_mlops_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -73,46 +72,46 @@ services:
           memory: 512M
       placement:
         constraints:
-          - stack.name == kubeflow-stack
-          - ingress.host == minio.kubeflow.gbnt.local
-          - gbnt.caddy.port == 9001
+          - node.role == manager
 
   # 2. MinIO Auto-Bucket Initializer
   minio-init:
     image: minio/mc:latest
-    container_name: gbnt_mlops_minio_init
-    restart: "no"
+    restart: unless-stopped
     entrypoint: >
       /bin/sh -c "
-      sleep 3;
-      /usr/bin/mc alias set s3 http://minio:9000 kubeflow gubernator123;
+      sleep 4;
+      /usr/bin/mc alias set s3 http://127.0.0.1:9000 kubeflow gubernator123;
       /usr/bin/mc mb --ignore-existing s3/mlflow-artifacts;
       /usr/bin/mc mb --ignore-existing s3/datasets;
+      /usr/bin/mc mb --ignore-existing s3/checkpoints;
       /usr/bin/mc anonymous set download s3/mlflow-artifacts;
       echo '✅ MinIO MLOps buckets initialized successfully!';
-      exit 0;
+      tail -f /dev/null;
       "
     deploy:
       placement:
         constraints:
-          - stack.name == kubeflow-stack
+          - node.role == manager
 
   # 3. MLflow Tracking Server & Model Registry
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
-    container_name: gbnt_mlops_mlflow
     restart: unless-stopped
     command: >
       mlflow server
       --host 0.0.0.0
       --port 5000
+      --workers 1
+      --allowed-hosts "*"
       --backend-store-uri sqlite:////data/mlflow.db
       --default-artifact-root s3://mlflow-artifacts/
     environment:
       - AWS_ACCESS_KEY_ID=kubeflow
       - AWS_SECRET_ACCESS_KEY=gubernator123
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local
       - MLFLOW_S3_IGNORE_TLS=true
+      - MLFLOW_ALLOWED_HOSTS=*
     ports:
       - "5000:5000"
     volumes:
@@ -120,6 +119,7 @@ services:
     labels:
       - "ingress.host=mlflow.kubeflow.gbnt.local"
       - "gbnt.caddy.port=5000"
+      - "gbnt.service.name=mlflow-tracking"
     deploy:
       resources:
         limits:
@@ -128,22 +128,19 @@ services:
           memory: 1G
       placement:
         constraints:
-          - stack.name == kubeflow-stack
-          - ingress.host == mlflow.kubeflow.gbnt.local
-          - gbnt.caddy.port == 5000
+          - node.role == manager
 
-  # 4. Interactive JupyterLab & PyTorch Workspace
+  # 4. Interactive JupyterLab & PyTorch Workspaces
   jupyter-workspace:
-    image: quay.io/jupyter/scipy-notebook:latest
-    container_name: gbnt_mlops_jupyter
+    image: quay.io/jupyter/pytorch-notebook:latest
     restart: unless-stopped
     environment:
       - JUPYTER_TOKEN=gubernator-secret
       - JUPYTER_ENABLE_LAB=yes
       - AWS_ACCESS_KEY_ID=kubeflow
       - AWS_SECRET_ACCESS_KEY=gubernator123
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - MLFLOW_TRACKING_URI=http://mlflow.kubeflow.gbnt.local
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local
     ports:
       - "8888:8888"
     volumes:
@@ -152,6 +149,7 @@ services:
     labels:
       - "ingress.host=notebooks.kubeflow.gbnt.local"
       - "gbnt.caddy.port=8888"
+      - "gbnt.service.name=jupyterlab"
     deploy:
       resources:
         limits:
@@ -160,14 +158,11 @@ services:
           memory: 1G
       placement:
         constraints:
-          - stack.name == kubeflow-stack
-          - ingress.host == notebooks.kubeflow.gbnt.local
-          - gbnt.caddy.port == 8888
+          - node.role == manager
 
   # 5. Model Serving & Inference Gateway
   inference-engine:
     image: ollama/ollama:latest
-    container_name: gbnt_mlops_inference
     restart: unless-stopped
     ports:
       - "11434:11434"
@@ -176,17 +171,16 @@ services:
     labels:
       - "ingress.host=inference.kubeflow.gbnt.local"
       - "gbnt.caddy.port=11434"
+      - "gbnt.service.name=model-serving"
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 4G
         reservations:
-          memory: 2G
+          memory: 1G
       placement:
         constraints:
-          - stack.name == kubeflow-stack
-          - ingress.host == inference.kubeflow.gbnt.local
-          - gbnt.caddy.port == 11434
+          - node.role == manager
 ```
 
 ---

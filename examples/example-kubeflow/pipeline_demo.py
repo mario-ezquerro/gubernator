@@ -36,6 +36,8 @@ def main():
     try:
         import mlflow
         import mlflow.sklearn
+        import boto3
+        from botocore.client import Config
         from sklearn.datasets import load_iris
         from sklearn.model_selection import train_test_split
         from sklearn.ensemble import RandomForestClassifier
@@ -44,6 +46,24 @@ def main():
         print("\n⚠️  Missing required packages. Install with:")
         print("   pip install mlflow scikit-learn numpy boto3")
         sys.exit(1)
+
+    # Ensure S3 Buckets exist in MinIO
+    try:
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=S3_ENDPOINT,
+            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+            config=Config(signature_version='s3v4')
+        )
+        for bucket in ["mlflow-artifacts", "datasets", "checkpoints"]:
+            try:
+                s3_client.create_bucket(Bucket=bucket)
+                print(f"📦 MinIO S3 Bucket ready: s3://{bucket}")
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"ℹ️  MinIO S3 bucket notice: {e}")
 
     # 1. Connect to MLflow
     mlflow.set_tracking_uri(MLFLOW_URI)

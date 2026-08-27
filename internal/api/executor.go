@@ -86,8 +86,8 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		}
 	}
 
-	// 1. Pull image on remote worker
-	pullCmd := fmt.Sprintf("sudo docker pull %s", svc.Image)
+	// 1. Pull image on remote worker (with context timeout)
+	pullCmd := fmt.Sprintf("sudo docker pull '%s'", strings.ReplaceAll(svc.Image, "'", "'\\''"))
 	pullSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), pullCmd)
 	_ = exec.Command("ssh", pullSSHArgs...).Run()
 
@@ -96,28 +96,46 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		"error":  fmt.Sprintf("Worker node %s: starting container...", node.ID),
 	})
 
-	// 2. Build docker run arguments
+	// 2. Build docker run arguments with safe single quoting
 	var dockerArgs []string
-	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--name", containerName, "-l", "gbnt.task.id="+task.ID)
+	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--name", fmt.Sprintf("'%s'", containerName), "-l", fmt.Sprintf("'gbnt.task.id=%s'", task.ID))
 
 	for _, p := range svc.Ports {
-		dockerArgs = append(dockerArgs, "-p", p)
+		dockerArgs = append(dockerArgs, "-p", fmt.Sprintf("'%s'", strings.ReplaceAll(p, "'", "'\\''")))
 	}
 	for _, e := range svc.Env {
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'%s'", strings.ReplaceAll(e, "'", "'\\''")))
 	}
 	for _, v := range svc.Volumes {
-		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", v))
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "'\\''")))
 	}
-	dockerArgs = append(dockerArgs, svc.Image)
+	dockerArgs = append(dockerArgs, fmt.Sprintf("'%s'", strings.ReplaceAll(svc.Image, "'", "'\\''")))
 	if svc.Command != "" {
-		dockerArgs = append(dockerArgs, svc.Command)
+		for _, tok := range docker.SplitCommand(svc.Command) {
+			dockerArgs = append(dockerArgs, fmt.Sprintf("'%s'", strings.ReplaceAll(tok, "'", "'\\''")))
+		}
 	}
 
 	remoteDockerCmd := strings.Join(dockerArgs, " ")
 
+	// Free any old containers holding the same published host ports on the target worker
+	var portCleanups []string
+	for _, p := range svc.Ports {
+		parts := strings.Split(p, ":")
+		if len(parts) >= 2 && parts[0] != "" && parts[0] != "127.0.0.1" {
+			hostPort := parts[0]
+			if len(parts) == 3 {
+				hostPort = parts[1]
+			}
+			if hostPort != "" {
+				portCleanups = append(portCleanups, fmt.Sprintf("sudo docker ps -q --filter 'publish=%s' | xargs -r sudo docker rm -f 2>/dev/null || true;", hostPort))
+			}
+		}
+	}
+	portCleanStr := strings.Join(portCleanups, " ")
+
 	// Ensure network, remove existing stale container if any, and run
-	prepCmd := fmt.Sprintf("sudo docker network create gbnt-net 2>/dev/null || true; sudo docker rm -f %s 2>/dev/null || true; %s", containerName, remoteDockerCmd)
+	prepCmd := fmt.Sprintf("sudo docker network create gbnt-net 2>/dev/null || true; sudo docker rm -f '%s' 2>/dev/null || true; %s %s", containerName, portCleanStr, remoteDockerCmd)
 	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), prepCmd)
 	runOut, runErr := exec.Command("ssh", runSSHArgs...).CombinedOutput()
 	if runErr != nil {

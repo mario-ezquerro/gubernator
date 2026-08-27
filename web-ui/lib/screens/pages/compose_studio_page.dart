@@ -168,18 +168,28 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     labels:
       - "ingress.host=minio.kubeflow.gbnt.local"
       - "gbnt.caddy.port=9001"
+      - "gbnt.service.name=minio-s3"
     deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == manager
       replicas: 1
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     restart: unless-stopped
-    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////data/mlflow.db --default-artifact-root s3://mlflow-artifacts/
+    command: mlflow server --host 0.0.0.0 --port 5000 --workers 1 --allowed-hosts "*" --backend-store-uri sqlite:////data/mlflow.db --default-artifact-root s3://mlflow-artifacts/
     environment:
       - AWS_ACCESS_KEY_ID=kubeflow
       - AWS_SECRET_ACCESS_KEY=gubernator123
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local
       - MLFLOW_S3_IGNORE_TLS=true
+      - MLFLOW_ALLOWED_HOSTS=*
     ports:
       - "5000:5000"
     volumes:
@@ -187,27 +197,46 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     labels:
       - "ingress.host=mlflow.kubeflow.gbnt.local"
       - "gbnt.caddy.port=5000"
+      - "gbnt.service.name=mlflow-tracking"
     deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == manager
       replicas: 1
 
   jupyter-workspace:
-    image: quay.io/jupyter/scipy-notebook:latest
+    image: quay.io/jupyter/pytorch-notebook:latest
     restart: unless-stopped
     environment:
       - JUPYTER_TOKEN=gubernator-secret
       - JUPYTER_ENABLE_LAB=yes
       - AWS_ACCESS_KEY_ID=kubeflow
       - AWS_SECRET_ACCESS_KEY=gubernator123
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - MLFLOW_TRACKING_URI=http://mlflow.kubeflow.gbnt.local
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local
     ports:
       - "8888:8888"
     volumes:
       - /var/contenedores/kubeflow/workspaces:/home/jovyan/work
+      - /var/contenedores/kubeflow/cache:/home/jovyan/.cache
     labels:
       - "ingress.host=notebooks.kubeflow.gbnt.local"
       - "gbnt.caddy.port=8888"
+      - "gbnt.service.name=jupyterlab"
     deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == manager
       replicas: 1
 
   inference-engine:
@@ -220,7 +249,16 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     labels:
       - "ingress.host=inference.kubeflow.gbnt.local"
       - "gbnt.caddy.port=11434"
+      - "gbnt.service.name=model-serving"
     deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == manager
       replicas: 1
 ''',
   };

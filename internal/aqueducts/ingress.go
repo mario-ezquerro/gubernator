@@ -36,6 +36,7 @@ func GenerateCaddyfile() {
 		var ingressHost string
 		var ingressEmail string
 		var ingressTLS string
+		var caddyPort string
 
 		for _, constraint := range svc.Constraints {
 			var key, val string
@@ -60,6 +61,8 @@ func GenerateCaddyfile() {
 				ingressEmail = val
 			case "ingress.tls", "node.labels.gbnt.ingress.tls", "gbnt.ingress.tls":
 				ingressTLS = strings.ToLower(val)
+			case "gbnt.caddy.port", "ingress.port":
+				caddyPort = strings.TrimSpace(val)
 			}
 		}
 
@@ -67,33 +70,62 @@ func GenerateCaddyfile() {
 			continue
 		}
 
-		// Only include running tasks with a real IP.
+		// Only include running tasks with a real IP or status running.
 		var tasks []db.Task
 		if err := db.DB.Where(
-			"service_id = ? AND status = ? AND container_ip != ?",
-			svc.ID, "running", "",
+			"service_id = ? AND status = ?",
+			svc.ID, "running",
 		).Find(&tasks).Error; err != nil || len(tasks) == 0 {
-			// Skip — no fallback DNS block to avoid duplicates/conflicts.
+			// Skip if no running instances
 			continue
 		}
 
-		port := "80"
+		defaultPort := "80"
 		if len(svc.Ports) > 0 {
 			p := svc.Ports[0]
 			parts := strings.Split(p, ":")
 			lastPart := parts[len(parts)-1]
 			cleaned := strings.TrimSpace(strings.Split(lastPart, "/")[0])
 			if cleaned != "" {
-				port = cleaned
+				defaultPort = cleaned
 			}
 		}
 
 		for _, t := range tasks {
-			if t.NodeID != "node-local-manager" {
+			var targetIP string
+			targetPort := defaultPort
+			if caddyPort != "" {
+				targetPort = caddyPort
+			}
+
+			if t.NodeID == "node-local-manager" || t.NodeID == "" {
+				targetIP = t.ContainerIP
+			} else {
+				// Remote worker task: lookup worker node IP
+				var node db.Node
+				if err := db.DB.Where("id = ?", t.NodeID).First(&node).Error; err == nil && node.IP != "" {
+					targetIP = node.IP
+				} else if t.ContainerIP != "" {
+					targetIP = t.ContainerIP
+				}
+				// If no explicit caddyPort, route to published host port on worker
+				if caddyPort == "" && len(svc.Ports) > 0 {
+					parts := strings.Split(svc.Ports[0], ":")
+					if len(parts) >= 2 {
+						hostPort := parts[0]
+						if len(parts) == 3 {
+							hostPort = parts[1]
+						}
+						if hostPort != "" {
+							targetPort = hostPort
+						}
+					}
+				}
+			}
+
+			if targetIP == "" || targetIP == "invalid" || targetPort == "" {
 				continue
 			}
-			targetIP := t.ContainerIP
-			targetPort := port
 
 			if _, seen := hostUpstreams[ingressHost]; !seen {
 				hostOrder = append(hostOrder, ingressHost)
