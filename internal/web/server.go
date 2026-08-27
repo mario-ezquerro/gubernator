@@ -1544,7 +1544,7 @@ func nodeAvailabilityHandler(c *gin.Context) {
 	}
 
 	status := req.Availability
-	if status != "active" && status != "maintenance" && status != "pause" && status != "drain" {
+	if status != "active" && status != "maintenance" && status != "pause" && status != "drain" && status != "no_schedule" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid availability"})
 		return
 	}
