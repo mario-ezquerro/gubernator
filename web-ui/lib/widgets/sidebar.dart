@@ -28,6 +28,7 @@ class GubernatorSidebar extends StatefulWidget {
   final String version;
   final bool updateAvailable;
   final String latestVersion;
+  final VoidCallback? onVersionCheckPressed;
   final VoidCallback? onUpdatePressed;
   final VoidCallback onSettingsPressed;
   final List<SidebarItem> items;
@@ -44,6 +45,7 @@ class GubernatorSidebar extends StatefulWidget {
     required this.version,
     this.updateAvailable = false,
     this.latestVersion = '',
+    this.onVersionCheckPressed,
     this.onUpdatePressed,
     required this.onSettingsPressed,
     required this.items,
@@ -325,23 +327,37 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                   else
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                        Tooltip(
+                          message: 'Click to scan GitHub for new releases',
+                          child: InkWell(
+                            onTap: widget.onVersionCheckPressed,
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: sidebarActiveIndicator.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Text(
-                            'MANAGER ${widget.version}',
-                            style: const TextStyle(
-                              color: sidebarActiveIndicator,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: sidebarActiveIndicator.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: sidebarActiveIndicator.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'MANAGER ${widget.version}',
+                                    style: const TextStyle(
+                                      color: sidebarActiveIndicator,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  const Icon(Icons.search, size: 10, color: sidebarActiveIndicator),
+                                ],
+                              ),
                             ),
                           ),
                         ),

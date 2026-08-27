@@ -122,6 +122,16 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  void _showVersionCheckModal() {
+    showDialog(
+      context: context,
+      builder: (context) => VersionCheckModal(
+        currentVersion: _state.version,
+        onUpdateTriggered: _fetchData,
+      ),
+    );
+  }
+
   String _formatTime(DateTime dt) {
     final hour = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
@@ -316,6 +326,7 @@ class _AppShellState extends State<AppShell> {
             version: _state.version,
             updateAvailable: _state.updateAvailable,
             latestVersion: _state.latestVersion,
+            onVersionCheckPressed: _showVersionCheckModal,
             onUpdatePressed: _showUpdateDialog,
             onSettingsPressed: _openSettings,
             items: _buildSidebarItems(),

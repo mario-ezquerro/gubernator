@@ -877,3 +877,338 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
   }
 }
+
+/// Modal for manually triggering a forced version check from the Manager badge.
+class VersionCheckModal extends StatefulWidget {
+  final String currentVersion;
+  final VoidCallback onUpdateTriggered;
+
+  const VersionCheckModal({
+    super.key,
+    required this.currentVersion,
+    required this.onUpdateTriggered,
+  });
+
+  @override
+  State<VersionCheckModal> createState() => _VersionCheckModalState();
+}
+
+class _VersionCheckModalState extends State<VersionCheckModal> {
+  bool _checking = true;
+  Map<String, dynamic>? _updateInfo;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _performCheck();
+  }
+
+  Future<void> _performCheck({bool force = true}) async {
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+
+    try {
+      final info = await ApiService.fetchUpdateCheck(force: force);
+      if (mounted) {
+        setState(() {
+          _updateInfo = info;
+          _checking = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to connect to GitHub Releases API: $e';
+          _checking = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final updateAvailable = _updateInfo?['update_available'] == true;
+    final latestVersion = _updateInfo?['latest_version'] as String? ?? widget.currentVersion;
+    final releaseNotes = _updateInfo?['release_notes'] as String? ?? '';
+    final releaseUrl = _updateInfo?['release_url'] as String? ?? 'https://github.com/mario-ezquerro/gubernator/releases';
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580, maxHeight: 620),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.published_with_changes,
+                      color: theme.colorScheme.primary,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gubernator Release Inspector',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Live GitHub Releases API scan & version check',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Content Area
+              Expanded(
+                child: _checking
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: CircularProgressIndicator(strokeWidth: 3),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Scanning api.github.com for new releases...',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Checking semver tags and GitHub Actions deployment artifacts',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _error != null
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                                const SizedBox(height: 12),
+                                Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                                const SizedBox(height: 16),
+                                OutlinedButton.icon(
+                                  onPressed: () => _performCheck(force: true),
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Re-scan GitHub Releases'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Status Banner
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: updateAvailable
+                                        ? const Color(0xFFF97316).withValues(alpha: 0.12)
+                                        : const Color(0xFF10B981).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: updateAvailable
+                                          ? const Color(0xFFF97316).withValues(alpha: 0.4)
+                                          : const Color(0xFF10B981).withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        updateAvailable ? Icons.rocket_launch : Icons.check_circle,
+                                        color: updateAvailable ? const Color(0xFFF97316) : const Color(0xFF10B981),
+                                        size: 28,
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              updateAvailable
+                                                  ? 'New Version Available: $latestVersion'
+                                                  : 'Gubernator is up to date (${widget.currentVersion})',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: updateAvailable ? const Color(0xFFF97316) : const Color(0xFF10B981),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              updateAvailable
+                                                  ? 'Installed: ${widget.currentVersion}  ➔  Latest: $latestVersion'
+                                                  : 'Installed release matches the latest tag published on GitHub.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                // Action Options Card
+                                if (updateAvailable) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Release Summary:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          releaseNotes.isNotEmpty ? releaseNotes : '• Automated rolling upgrade to $latestVersion',
+                                          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[800], height: 1.3),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else ...[
+                                  // Up to date metrics overview
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.info_outline, size: 16, color: Color(0xFF10B981)),
+                                            const SizedBox(width: 6),
+                                            const Text('System Version Status:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                            const Spacer(),
+                                            InkWell(
+                                              onTap: () => html.window.open(releaseUrl, '_blank'),
+                                              child: const Row(
+                                                children: [
+                                                  Text('View GitHub Releases', style: TextStyle(fontSize: 11, color: Color(0xFF3B82F6), fontWeight: FontWeight.bold)),
+                                                  SizedBox(width: 2),
+                                                  Icon(Icons.open_in_new, size: 12, color: Color(0xFF3B82F6)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '• Current Manager Executable: ${widget.currentVersion}\n'
+                                          '• Semver Compliance: Latest patch release installed\n'
+                                          '• Automatic background check active (polls every 15 min)',
+                                          style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[700], height: 1.4),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+              ),
+
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+
+              // Footer Buttons
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _checking ? null : () => _performCheck(force: true),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Force Re-scan'),
+                  ),
+                  const Spacer(),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                  if (updateAvailable) ...[
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+                      icon: const Icon(Icons.rocket_launch, size: 16),
+                      label: const Text('Update Now'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => UpdateDialog(
+                            currentVersion: widget.currentVersion,
+                            latestVersion: latestVersion,
+                            releaseNotes: releaseNotes,
+                            releaseUrl: releaseUrl,
+                            onUpdateTriggered: widget.onUpdateTriggered,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

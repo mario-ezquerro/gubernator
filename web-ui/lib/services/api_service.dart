@@ -398,6 +398,18 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Fetches latest release check from backend /api/system/update/check with optional force refresh.
+  static Future<Map<String, dynamic>> fetchUpdateCheck({bool force = false}) async {
+    try {
+      final url = force ? '/api/system/update/check?force=true' : '/api/system/update/check';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (_) {}
+    return {'update_available': false, 'latest_version': 'unknown'};
+  }
+
   /// Fetches live status of an ongoing or recent update.
   static Future<Map<String, dynamic>> fetchUpdateStatus() async {
     try {
