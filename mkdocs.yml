@@ -79,6 +79,7 @@ nav:
     - AI Development (Jupyter): example-jupyter.md
     - LLM Visual Fine-Tuning (LLaMA-Factory): example-llama-factory.md
     - JupyterLab PyTorch LLM Lab: example-jupyter-llm.md
+    - Kubeflow MLOps Platform: example-kubeflow.md
     - Public Domain HTTPS (Let's Encrypt): example-public-https.md
 
 markdown_extensions:

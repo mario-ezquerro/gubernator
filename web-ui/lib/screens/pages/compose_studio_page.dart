@@ -152,6 +152,77 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     deploy:
       replicas: 1
 ''',
+    'Kubeflow MLOps Platform': '''services:
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=kubeflow
+      - MINIO_ROOT_PASSWORD=gubernator123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - /var/contenedores/kubeflow/minio_data:/data
+    labels:
+      - "ingress.host=minio.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=9001"
+    deploy:
+      replicas: 1
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    restart: unless-stopped
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////data/mlflow.db --default-artifact-root s3://mlflow-artifacts/
+    environment:
+      - AWS_ACCESS_KEY_ID=kubeflow
+      - AWS_SECRET_ACCESS_KEY=gubernator123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - MLFLOW_S3_IGNORE_TLS=true
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/contenedores/kubeflow/mlflow_data:/data
+    labels:
+      - "ingress.host=mlflow.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=5000"
+    deploy:
+      replicas: 1
+
+  jupyter-workspace:
+    image: quay.io/jupyter/scipy-notebook:latest
+    restart: unless-stopped
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+      - AWS_ACCESS_KEY_ID=kubeflow
+      - AWS_SECRET_ACCESS_KEY=gubernator123
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    ports:
+      - "8888:8888"
+    volumes:
+      - /var/contenedores/kubeflow/workspaces:/home/jovyan/work
+    labels:
+      - "ingress.host=notebooks.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=8888"
+    deploy:
+      replicas: 1
+
+  inference-engine:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - /var/contenedores/kubeflow/models:/root/.ollama
+    labels:
+      - "ingress.host=inference.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=11434"
+    deploy:
+      replicas: 1
+''',
   };
 
   @override
