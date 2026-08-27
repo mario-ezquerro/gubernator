@@ -246,41 +246,60 @@ func scheduleService(service *db.Service, targetNode string) {
 		if targetNode != "" && targetNode != "auto" {
 			var n db.Node
 			if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
-				selectedNode = &n
+				// Check if targeted node is not in pause/drain/no_schedule status
+				if n.Status == "active" || n.Status == "ready" {
+					selectedNode = &n
+				}
 			}
 		}
 
 		if selectedNode == nil {
 			var allNodes []db.Node
-			db.DB.Where("status = ?", "active").Find(&allNodes)
+			// Fetch all active or ready nodes (excluding drain, pause, no_schedule, maintenance)
+			db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
 
-			// MVP constraint matching
-			for _, node := range allNodes {
-			matchesAll := true
-			for _, constraint := range service.Constraints {
-				// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
-				parts := strings.Split(constraint, "==")
-				if len(parts) == 2 {
-					leftSide := strings.TrimSpace(parts[0])
-					if !strings.HasPrefix(leftSide, "node.labels.") {
-						// Skip non-node-placement constraints (like ingress.host)
-						continue
-					}
-					key := strings.TrimPrefix(leftSide, "node.labels.")
-					val := strings.TrimSpace(parts[1])
+			// Sort nodes: Workers first, Manager last; then by fewest assigned running/pending tasks
+			var workers []db.Node
+			var managers []db.Node
 
-					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
-						matchesAll = false
-						break
-					}
+			for _, n := range allNodes {
+				if strings.ToLower(n.Role) == "manager" {
+					managers = append(managers, n)
+				} else {
+					workers = append(workers, n)
 				}
 			}
 
-			if matchesAll {
-				selectedNode = &node
-				break // Found a matching node (MVP: picks the first one)
+			// Prioritize Workers over Manager
+			orderedNodes := append(workers, managers...)
+
+			// MVP constraint matching with Worker-First priority
+			for _, node := range orderedNodes {
+				matchesAll := true
+				for _, constraint := range service.Constraints {
+					// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
+					parts := strings.Split(constraint, "==")
+					if len(parts) == 2 {
+						leftSide := strings.TrimSpace(parts[0])
+						if !strings.HasPrefix(leftSide, "node.labels.") {
+							// Skip non-node-placement constraints (like ingress.host)
+							continue
+						}
+						key := strings.TrimPrefix(leftSide, "node.labels.")
+						val := strings.TrimSpace(parts[1])
+
+						if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+							matchesAll = false
+							break
+						}
+					}
+				}
+
+				if matchesAll {
+					selectedNode = &node
+					break // Found a matching node (Workers prioritized first, Manager last)
+				}
 			}
-		}
 		}
 
 		if selectedNode != nil {
