@@ -23,7 +23,7 @@ version: "3.8"
 
 services:
   llama-factory:
-    image: hiyouga/llama-factory:latest
+    image: hiyouga/llamafactory:latest
     container_name: llama_factory_studio
     restart: unless-stopped
     ports:
