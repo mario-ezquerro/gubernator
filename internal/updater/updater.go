@@ -51,7 +51,8 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 	}
 	cacheMutex.Unlock()
 
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/mario-ezquerro/gubernator/releases/latest", nil)
+	// Query the releases list first to bypass GitHub CDN propagation delay on /releases/latest
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/mario-ezquerro/gubernator/releases?per_page=5", nil)
 	if err != nil {
 		return fallbackInfo(currentVersion), nil
 	}
@@ -60,20 +61,39 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return fallbackInfo(currentVersion), nil
-	}
-	defer resp.Body.Close()
-
 	var rel githubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+	found := false
+
+	if err == nil && resp.StatusCode == http.StatusOK {
+		var releases []githubRelease
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&releases); decodeErr == nil && len(releases) > 0 {
+			rel = releases[0]
+			found = true
+		}
+		resp.Body.Close()
+	}
+
+	if !found {
+		// Fallback to /releases/latest
+		reqLatest, _ := http.NewRequest("GET", "https://api.github.com/repos/mario-ezquerro/gubernator/releases/latest", nil)
+		if reqLatest != nil {
+			reqLatest.Header.Set("User-Agent", "Gubernator-AutoUpdater")
+			reqLatest.Header.Set("Accept", "application/vnd.github.v3+json")
+			if respLatest, errLatest := client.Do(reqLatest); errLatest == nil && respLatest.StatusCode == http.StatusOK {
+				_ = json.NewDecoder(respLatest.Body).Decode(&rel)
+				respLatest.Body.Close()
+				if rel.TagName != "" {
+					found = true
+				}
+			}
+		}
+	}
+
+	if !found || strings.TrimSpace(rel.TagName) == "" {
 		return fallbackInfo(currentVersion), nil
 	}
 
 	latest := strings.TrimSpace(rel.TagName)
-	if latest == "" {
-		return fallbackInfo(currentVersion), nil
-	}
 
 	notes := strings.TrimSpace(rel.Body)
 	if notes == "" {
