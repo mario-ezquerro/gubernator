@@ -129,6 +129,7 @@ class Task {
   final String status;
   final String containerName;
   final String containerIp;
+  final String error;
   final String createdAt;
 
   Task({
@@ -138,6 +139,7 @@ class Task {
     required this.status,
     this.containerName = '',
     this.containerIp = '',
+    this.error = '',
     this.createdAt = '',
   });
 
@@ -149,6 +151,7 @@ class Task {
       status: json['status'] ?? '',
       containerName: json['container_name'] ?? '',
       containerIp: json['container_ip'] ?? '',
+      error: json['error'] ?? '',
       createdAt: json['created_at'] ?? '',
     );
   }

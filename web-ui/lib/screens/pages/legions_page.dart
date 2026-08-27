@@ -150,6 +150,145 @@ class _LegionsPageState extends State<LegionsPage> {
     }
   }
 
+  Future<void> _showStackLogsDialog(StackModel s) async {
+    final stackTasks = widget.state.tasks.where((t) {
+      final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+      return svc?.stackId == s.id;
+    }).toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.receipt_long, color: Color(0xFF8B5CF6)),
+            const SizedBox(width: 8),
+            Text('Stack Logs & Diagnostics: ${s.name}'),
+          ],
+        ),
+        content: SizedBox(
+          width: 750,
+          height: 480,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Container task events, scheduler errors, and deployment logs for stack "${s.name}".',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: stackTasks.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No tasks registered for stack ${s.name}',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: stackTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = stackTasks[index];
+                          final service = widget.state.services.where((sv) => sv.id == task.serviceId).firstOrNull;
+                          final isDead = task.status == 'dead' || task.status == 'failed';
+                          final isRunning = task.status == 'running';
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            color: isDead ? Colors.red.withValues(alpha: 0.08) : null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isRunning
+                                            ? Icons.check_circle
+                                            : (isDead ? Icons.error : Icons.sync),
+                                        color: isRunning
+                                            ? const Color(0xFF10B981)
+                                            : (isDead ? Colors.redAccent : Colors.orangeAccent),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Service: ${service?.name ?? task.serviceId}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isRunning
+                                              ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                              : (isDead ? Colors.red.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15)),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          task.status.toUpperCase(),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isRunning
+                                                ? const Color(0xFF10B981)
+                                                : (isDead ? Colors.redAccent : Colors.orangeAccent),
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        'Host Node: ${task.nodeId}',
+                                        style: const TextStyle(fontSize: 11, fontFamily: 'Courier New', color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                  if (task.containerName.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text('Container: ${task.containerName}', style: const TextStyle(fontSize: 11, fontFamily: 'Courier New')),
+                                  ],
+                                  if (task.error != null && task.error!.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                                      ),
+                                      child: SelectableText(
+                                        '⚠️ Placement Error: ${task.error}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontFamily: 'Courier New',
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMigrateStackDialog(StackModel s) {
     final activeNodes = widget.state.nodes
         .where((n) => n.status == 'active' || n.status == 'ready')
@@ -450,6 +589,8 @@ class _LegionsPageState extends State<LegionsPage> {
                                 DataCell(Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    _actionBtn(Icons.receipt_long, 'View Stack Logs & Placement Errors',
+                                        const Color(0xFF8B5CF6), () => _showStackLogsDialog(s)),
                                     _actionBtn(Icons.schema_outlined, 'View Schema',
                                         const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
                                     _actionBtn(Icons.code, 'Edit YAML',
