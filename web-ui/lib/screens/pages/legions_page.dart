@@ -10,11 +10,13 @@ import '../../utils/clipboard_service.dart';
 class LegionsPage extends StatefulWidget {
   final DashboardState state;
   final VoidCallback onRefresh;
+  final ValueChanged<String>? onViewContainerLogs;
 
   const LegionsPage({
     super.key,
     required this.state,
     required this.onRefresh,
+    this.onViewContainerLogs,
   });
 
   @override
@@ -245,8 +247,45 @@ class _LegionsPageState extends State<LegionsPage> {
                                     ],
                                   ),
                                   if (task.containerName.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text('Container: ${task.containerName}', style: const TextStyle(fontSize: 11, fontFamily: 'Courier New')),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Text('Container: ${task.containerName}', style: const TextStyle(fontSize: 11, fontFamily: 'Courier New')),
+                                        const SizedBox(width: 12),
+                                        InkWell(
+                                          onTap: () {
+                                            Navigator.of(ctx).pop();
+                                            if (widget.onViewContainerLogs != null) {
+                                              widget.onViewContainerLogs!(task.containerName);
+                                            }
+                                          },
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: const Color(0xFF8B5CF6)),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.receipt_long, size: 12, color: Color(0xFF8B5CF6)),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'View Live Loki Logs',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF8B5CF6),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                   if (task.error != null && task.error!.isNotEmpty) ...[
                                     const SizedBox(height: 8),

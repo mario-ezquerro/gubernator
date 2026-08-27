@@ -7,7 +7,9 @@ import '../../services/api_service.dart';
 
 /// Dedicated Loki Logs Explorer Page for cluster-wide container and node log inspection.
 class LokiLogsPage extends StatefulWidget {
-  const LokiLogsPage({super.key});
+  final String? initialContainer;
+
+  const LokiLogsPage({super.key, this.initialContainer});
 
   @override
   State<LokiLogsPage> createState() => _LokiLogsPageState();
@@ -45,6 +47,9 @@ class _LokiLogsPageState extends State<LokiLogsPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialContainer != null && widget.initialContainer!.isNotEmpty) {
+      _selectedContainer = widget.initialContainer!;
+    }
     _loadLabelsAndStatus();
     _fetchLogs();
   }

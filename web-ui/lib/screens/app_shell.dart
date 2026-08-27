@@ -53,6 +53,7 @@ class _AppShellState extends State<AppShell> {
   DateTime? _lastRefresh;
   Timer? _timer;
   int _selectedIndex = 0;
+  String? _lokiFilterContainer;
   bool _sidebarCollapsed = false;
 
   @override
@@ -266,7 +267,16 @@ class _AppShellState extends State<AppShell> {
       case 1:
         return CenturionsPage(state: _state, onRefresh: _fetchData);
       case 2:
-        return LegionsPage(state: _state, onRefresh: _fetchData);
+        return LegionsPage(
+          state: _state,
+          onRefresh: _fetchData,
+          onViewContainerLogs: (containerName) {
+            setState(() {
+              _lokiFilterContainer = containerName;
+              _selectedIndex = 10; // Navigate to Loki Logs Explorer
+            });
+          },
+        );
       case 3:
         return TasksPage(state: _state, onRefresh: _fetchData);
       case 4:
@@ -282,7 +292,7 @@ class _AppShellState extends State<AppShell> {
       case 9:
         return const GrafanaPage();
       case 10:
-        return const LokiLogsPage();
+        return LokiLogsPage(initialContainer: _lokiFilterContainer);
       case 11:
         return const NetworkPage();
       case 12:
