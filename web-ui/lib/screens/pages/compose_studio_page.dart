@@ -356,6 +356,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                _tabBtn('Docker', 'docker', Icons.view_in_ar),
                 _tabBtn('Caddy', 'caddy', Icons.public),
                 _tabBtn('SLO', 'slo', Icons.show_chart),
                 _tabBtn('Security', 'security', Icons.security),
@@ -372,6 +373,77 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_activeCopilotTab == 'docker') ...[
+                  const Text('Docker Copilot Options', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  const Text('Inject essential Docker Compose blocks: ports, volumes, resource limits, restart policies, and environment overrides.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  _buildSnippetCard(
+                    title: 'HTTP & HTTPS Ports (80, 443)',
+                    subtitle: 'Standard web ingress port bindings',
+                    icon: Icons.input,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    ports:\n      - "80:80"\n      - "443:443"\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Database Port 5432 (Postgres)',
+                    subtitle: 'Expose PostgreSQL database port',
+                    icon: Icons.storage,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    ports:\n      - "5432:5432"\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Persistent Volume Mount',
+                    subtitle: '/var/contenedores/\${STACK_NAME}/data:/data',
+                    icon: Icons.folder_special,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - /var/contenedores/\${STACK_NAME}/data:/data\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Read-Only Config Mount',
+                    subtitle: './config.yml:/etc/app/config.yml:ro',
+                    icon: Icons.insert_drive_file,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - ./config.yml:/etc/app/config.yml:ro\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Resource Limits (RAM 1GB / CPU 1.5)',
+                    subtitle: 'Prevent container from starving host resources',
+                    icon: Icons.speed,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "1.5"\n          memory: 1G\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Restart Policy: unless-stopped',
+                    subtitle: 'Auto-restart container on host reboot',
+                    icon: Icons.autorenew,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    restart: unless-stopped\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Environment Variables Block',
+                    subtitle: 'Define NODE_ENV, LOG_LEVEL, and credentials',
+                    icon: Icons.tune,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    environment:\n      - NODE_ENV=production\n      - LOG_LEVEL=info\n      - DB_HOST=db\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Container Healthcheck Probe',
+                    subtitle: 'HTTP healthcheck every 10 seconds',
+                    icon: Icons.favorite,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    healthcheck:\n      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]\n      interval: 10s\n      timeout: 5s\n      retries: 3\n');
+                    },
+                  ),
+                ],
+
                 if (_activeCopilotTab == 'caddy') ...[
                   const Text('Caddy Ingress Suite', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),

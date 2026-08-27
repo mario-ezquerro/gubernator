@@ -99,27 +99,48 @@ class ComposeAutocomplete {
       snippet: '      - /var/contenedores/\${STACK_NAME}/data:/data\n',
     ),
 
-    // Core Compose
+    // Docker Core & Ports
     ComposeSnippet(
-      label: 'healthcheck',
-      category: 'Compose',
-      description: 'Container healthcheck command and interval',
-      icon: Icons.favorite,
-      snippet: '    healthcheck:\n      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]\n      interval: 10s\n      timeout: 5s\n      retries: 3\n',
+      label: 'ports.80',
+      category: 'Docker',
+      description: 'Expose HTTP port 80',
+      icon: Icons.input,
+      snippet: '    ports:\n      - "80:80"\n',
     ),
     ComposeSnippet(
-      label: 'deploy.replicas',
-      category: 'Compose',
-      description: 'Scale service replicas',
-      icon: Icons.control_point_duplicate,
-      snippet: '    deploy:\n      replicas: 2\n',
+      label: 'ports.443',
+      category: 'Docker',
+      description: 'Expose HTTPS port 443',
+      icon: Icons.lock,
+      snippet: '    ports:\n      - "443:443"\n',
     ),
     ComposeSnippet(
-      label: 'environment',
-      category: 'Compose',
-      description: 'Environment variables section',
-      icon: Icons.tune,
-      snippet: '    environment:\n      - NODE_ENV=production\n      - LOG_LEVEL=info\n',
+      label: 'ports.8080',
+      category: 'Docker',
+      description: 'Expose web app port 8080',
+      icon: Icons.input,
+      snippet: '    ports:\n      - "8080:8080"\n',
+    ),
+    ComposeSnippet(
+      label: 'restart.unless-stopped',
+      category: 'Docker',
+      description: 'Always restart container unless explicitly stopped',
+      icon: Icons.autorenew,
+      snippet: '    restart: unless-stopped\n',
+    ),
+    ComposeSnippet(
+      label: 'deploy.resources.limits',
+      category: 'Docker',
+      description: 'Set hard memory and CPU limits',
+      icon: Icons.speed,
+      snippet: '    deploy:\n      resources:\n        limits:\n          cpus: "1.5"\n          memory: 1G\n',
+    ),
+    ComposeSnippet(
+      label: 'networks.custom',
+      category: 'Docker',
+      description: 'Attach container to custom network overlay',
+      icon: Icons.hub,
+      snippet: '    networks:\n      - custom_net\n',
     ),
   ];
 
@@ -136,8 +157,8 @@ class ComposeAutocomplete {
   }
 }
 
-/// Horizontal interactive suggestion bar that filters snippets based on the active word.
-class ComposeSuggestionBar extends StatelessWidget {
+/// Horizontal interactive suggestion bar that filters snippets based on the active word with smooth scrolling.
+class ComposeSuggestionBar extends StatefulWidget {
   final CodeController controller;
   final ValueChanged<String>? onSnippetInserted;
 
@@ -148,14 +169,34 @@ class ComposeSuggestionBar extends StatelessWidget {
   });
 
   @override
+  State<ComposeSuggestionBar> createState() => _ComposeSuggestionBarState();
+}
+
+class _ComposeSuggestionBarState extends State<ComposeSuggestionBar> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scroll(double offset) {
+    _scrollController.animateTo(
+      (_scrollController.offset + offset).clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
+      valueListenable: widget.controller,
       builder: (context, value, _) {
-        // Detect current word before cursor
         final pos = value.selection.baseOffset;
         String query = '';
         if (pos > 0 && pos <= value.text.length) {
@@ -175,7 +216,7 @@ class ComposeSuggestionBar extends StatelessWidget {
 
         return Container(
           height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF161B22) : const Color(0xFFF1F5F9),
             border: Border(
@@ -190,7 +231,7 @@ class ComposeSuggestionBar extends StatelessWidget {
                 size: 16,
                 color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF2563EB),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 'Suggestions:',
                 style: TextStyle(
@@ -199,29 +240,49 @@ class ComposeSuggestionBar extends StatelessWidget {
                   color: isDark ? const Color(0xFF8B949E) : const Color(0xFF64748B),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                tooltip: 'Scroll left',
+                onPressed: () => _scroll(-180),
+              ),
               Expanded(
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (context, index) {
-                    final item = filtered[index];
-                    return ActionChip(
-                      avatar: Icon(item.icon, size: 14, color: theme.colorScheme.primary),
-                      label: Text(item.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                      tooltip: '${item.category}: ${item.description}',
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-                      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      onPressed: () {
-                        ComposeAutocomplete.insertSnippet(controller, item.snippet);
-                        onSnippetInserted?.call(item.label);
-                      },
-                    );
-                  },
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  thickness: 3,
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    itemBuilder: (context, index) {
+                      final item = filtered[index];
+                      return ActionChip(
+                        avatar: Icon(item.icon, size: 14, color: theme.colorScheme.primary),
+                        label: Text(item.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                        tooltip: '${item.category}: ${item.description}',
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+                        onPressed: () {
+                          ComposeAutocomplete.insertSnippet(widget.controller, item.snippet);
+                          widget.onSnippetInserted?.call(item.label);
+                        },
+                      );
+                    },
+                  ),
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                tooltip: 'Scroll right',
+                onPressed: () => _scroll(180),
               ),
             ],
           ),
