@@ -70,9 +70,6 @@ services:
           memory: 2G
         reservations:
           memory: 512M
-      placement:
-        constraints:
-          - node.role == manager
 
   # 2. MinIO Auto-Bucket Initializer
   minio-init:
@@ -89,10 +86,6 @@ services:
       echo '✅ MinIO MLOps buckets initialized successfully!';
       tail -f /dev/null;
       "
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager
 
   # 3. MLflow Tracking Server & Model Registry
   mlflow:
@@ -126,9 +119,6 @@ services:
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   # 4. Interactive JupyterLab & PyTorch Workspaces
   jupyter-workspace:
@@ -156,9 +146,6 @@ services:
           memory: 6G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   # 5. Model Serving & Inference Gateway
   inference-engine:
@@ -178,9 +165,6 @@ services:
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 ```
 
 ---

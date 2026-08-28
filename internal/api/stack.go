@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -258,22 +259,44 @@ func scheduleService(service *db.Service, targetNode string) {
 			// Fetch all active or ready nodes (excluding drain, pause, no_schedule, maintenance)
 			db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
 
-			// Sort nodes: Workers first, Manager last; then by fewest assigned running/pending tasks
-			var workers []db.Node
-			var managers []db.Node
+			// Calculate real-time task load per node (Workers prioritized first, Manager last)
+			type nodeWithLoad struct {
+				node db.Node
+				load int64
+			}
+			var workerLoads []nodeWithLoad
+			var managerLoads []nodeWithLoad
 
 			for _, n := range allNodes {
+				var count int64
+				db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", n.ID, []string{"running", "pending", "pulling", "starting"}).Count(&count)
+				nl := nodeWithLoad{node: n, load: count}
 				if strings.ToLower(n.Role) == "manager" {
-					managers = append(managers, n)
+					managerLoads = append(managerLoads, nl)
 				} else {
-					workers = append(workers, n)
+					workerLoads = append(workerLoads, nl)
 				}
 			}
 
-			// Prioritize Workers over Manager
-			orderedNodes := append(workers, managers...)
+			// Sort workers by active task load ascending (least-loaded worker first)
+			sort.SliceStable(workerLoads, func(a, b int) bool {
+				return workerLoads[a].load < workerLoads[b].load
+			})
+			// Sort managers by active task load ascending
+			sort.SliceStable(managerLoads, func(a, b int) bool {
+				return managerLoads[a].load < managerLoads[b].load
+			})
 
-			// MVP constraint matching with Worker-First priority
+			// Workers ALWAYS prioritized over Manager
+			var orderedNodes []db.Node
+			for _, wl := range workerLoads {
+				orderedNodes = append(orderedNodes, wl.node)
+			}
+			for _, ml := range managerLoads {
+				orderedNodes = append(orderedNodes, ml.node)
+			}
+
+			// Constraint matching with Worker-First priority and Least-Loaded Spread
 			for _, node := range orderedNodes {
 				matchesAll := true
 				for _, constraint := range service.Constraints {

@@ -177,9 +177,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           memory: 2G
         reservations:
           memory: 512M
-      placement:
-        constraints:
-          - node.role == manager
       replicas: 1
 
   mlflow:
@@ -206,9 +203,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
       replicas: 1
 
   jupyter-workspace:
@@ -236,9 +230,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           memory: 6G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
       replicas: 1
 
   inference-engine:
@@ -258,9 +249,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
       replicas: 1
 ''',
   };

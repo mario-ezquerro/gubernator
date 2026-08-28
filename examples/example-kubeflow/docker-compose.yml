@@ -32,9 +32,6 @@ services:
           memory: 2G
         reservations:
           memory: 512M
-      placement:
-        constraints:
-          - node.role == manager
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. MLflow Tracking Server & Model Registry (Metadata & Katib Equivalent)
@@ -70,9 +67,6 @@ services:
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Interactive JupyterLab & PyTorch Workspaces (Notebook Controller Equivalent)
@@ -102,9 +96,6 @@ services:
           memory: 6G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 4. Model Serving & Inference Gateway (KServe & vLLM Equivalent)
@@ -126,6 +117,3 @@ services:
           memory: 4G
         reservations:
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
