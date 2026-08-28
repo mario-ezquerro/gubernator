@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 
 import 'compose_autocomplete.dart';
-
 import '../models/models.dart';
+import '../utils/clipboard_service.dart';
 
 class ComposeEditorDialog extends StatefulWidget {
   final String stackName;
@@ -269,6 +270,17 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Copy YAML to clipboard',
+                    icon: const Icon(Icons.copy, size: 20),
+                    onPressed: () {
+                      ClipboardService.copy(_controller.text);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('YAML copied to clipboard'), duration: Duration(seconds: 2)),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -290,10 +302,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                         Expanded(
                           child: CodeTheme(
                             data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                            child: SingleChildScrollView(
+                            child: Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
                               child: CodeField(
                                 controller: _controller,
                                 textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                expands: true,
                               ),
                             ),
                           ),

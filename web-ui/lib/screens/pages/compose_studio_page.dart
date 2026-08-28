@@ -1,5 +1,6 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
@@ -7,6 +8,7 @@ import 'package:highlight/languages/yaml.dart';
 
 import '../../models/models.dart' as models;
 import '../../services/api_service.dart';
+import '../../utils/clipboard_service.dart';
 import '../../widgets/compose_autocomplete.dart';
 
 class ComposeStudioPage extends StatefulWidget {
@@ -941,6 +943,19 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   icon: const Icon(Icons.download),
                   onPressed: _exportFile,
                 ),
+                IconButton(
+                  tooltip: 'Copy YAML to clipboard',
+                  icon: const Icon(Icons.copy),
+                  onPressed: () {
+                    ClipboardService.copy(_codeController.text);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('YAML copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(width: 8),
 
                 // Reset Button
@@ -1060,21 +1075,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                   width: double.infinity,
                                   height: double.infinity,
                                   color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                                  child: SingleChildScrollView(
-                                    physics: const ClampingScrollPhysics(),
-                                    child: SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      physics: const ClampingScrollPhysics(),
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(minWidth: 800),
-                                        child: SelectionArea(
-                                          child: CodeField(
-                                            controller: _codeController,
-                                            textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                  child: CodeField(
+                                    controller: _codeController,
+                                    textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                    expands: true,
                                   ),
                                 ),
                               ),

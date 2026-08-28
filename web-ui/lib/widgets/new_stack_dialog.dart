@@ -1,11 +1,13 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 import 'compose_autocomplete.dart';
 import '../models/models.dart' as models;
+import '../utils/clipboard_service.dart';
 
 /// A dialog to define and deploy a new Docker Compose stack, featuring the Gubernator Copilot.
 class NewStackDialog extends StatefulWidget {
@@ -399,10 +401,24 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text('Docker Compose YAML', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                                      TextButton.icon(
-                                        onPressed: _pickFile,
-                                        icon: const Icon(Icons.upload_file, size: 16),
-                                        label: const Text('Load from file'),
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            tooltip: 'Copy YAML to clipboard',
+                                            icon: const Icon(Icons.copy, size: 16),
+                                            onPressed: () {
+                                              ClipboardService.copy(_yamlController.text);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('YAML copied to clipboard'), duration: Duration(seconds: 2)),
+                                              );
+                                            },
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: _pickFile,
+                                            icon: const Icon(Icons.upload_file, size: 16),
+                                            label: const Text('Load from file'),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -412,10 +428,14 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                 Expanded(
                                   child: CodeTheme(
                                     data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                                    child: SingleChildScrollView(
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
                                       child: CodeField(
                                         controller: _yamlController,
                                         textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                        expands: true,
                                       ),
                                     ),
                                   ),

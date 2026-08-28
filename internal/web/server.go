@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.40.0"
+var Version = "v2.57.1"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -527,13 +527,24 @@ func StartDashboard() {
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
 		path := c.Request.URL.Path
-		// Try to serve the exact file
-		if f, err := flutterContent.Open(strings.TrimPrefix(path, "/")); err == nil {
-			f.Close()
-			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
-			fileServer.ServeHTTP(c.Writer, c.Request)
-			return
+
+		relPath := strings.TrimPrefix(path, "/")
+		relPath = strings.TrimPrefix(relPath, "dashboard/")
+		if relPath == "dashboard" {
+			relPath = ""
 		}
+
+		if relPath != "" {
+			// Try to serve the exact file (e.g. flutter_bootstrap.js, main.dart.js, assets/...)
+			if f, err := flutterContent.Open(relPath); err == nil {
+				f.Close()
+				c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+				c.Request.URL.Path = "/" + relPath
+				fileServer.ServeHTTP(c.Writer, c.Request)
+				return
+			}
+		}
+
 		// For SPA routing, serve index.html
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Request.URL.Path = "/"
