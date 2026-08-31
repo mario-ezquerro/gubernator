@@ -8,7 +8,9 @@ Every container deployed by Gubernator receives transparent `--dns <CoreDNS_IP>`
 
 ## 🎯 Key Features
 
-- **Transparent Container Service Discovery**: Automatically maps running services to `<service>.<stack>.gbnt.local`, `<service>.gbnt.local`, and `<service>.<stack>.gbnt` without manual hosts configuration.
+- **Host-Qualified Service Discovery (`<node>.<service>.gbnt`)**: Eliminates multi-node service collisions by dynamically generating node-scoped domains (e.g. `worker-1.caddy.gbnt`, `manager.caddy.gbnt`, `worker-2.app.gbnt`) and `.gbnt.local` aliases for every container.
+- **Multi-Tier Addressing Hierarchy**: Generates 5 addressing layers for each container task: Node + Service, Node + Service + Stack, Task ID + Service + Stack, Service + Stack, and Global Service alias.
+- **RFC 1123 DNS Label Sanitization**: Automatically normalizes stack and task identifiers (converting brackets, parentheses, and spaces to hyphens) into strictly valid DNS domain labels.
 - **Custom Static DNS Records**: Add, edit, and delete custom static DNS records (`A`, `AAAA`, `CNAME`, `TXT`, `PTR`) stored in SQLite and synced into `/etc/coredns/gubernator.hosts`.
 - **Interactive DNS Playground (`Dig / Nslookup`)**: Perform real-time DNS query testing directly against `127.0.0.1:5354`, benchmark query latency in milliseconds, and inspect raw DNS answers.
 - **Upstream DNS Forwarders**: Configure external DNS resolution servers with quick presets for Cloudflare (`1.1.1.1`), Google (`8.8.8.8`), Quad9 (`9.9.9.9`), or custom upstream DNS servers.
@@ -31,7 +33,8 @@ Every container deployed by Gubernator receives transparent `--dns <CoreDNS_IP>`
 
 ## 🖥️ Web Dashboard Suite (`CoreDnsPage`)
 
-1. **Tab 1: Auto-Discovered Stacks (`*.gbnt`)**: Live table of container IPs automatically mapped to `<service>.<stack>.gbnt` with copyable `curl` commands.
+1. **Tab 1: Auto-Discovered Stacks & Host-Qualified Scheme (`*.gbnt`)**: Live table of container IPs mapped to `<node>.<service>.gbnt`, `<service>.<stack>.gbnt`, and task aliases with copyable `curl` commands.
 2. **Tab 2: Custom Static Records**: Table for managing static A/AAAA/CNAME/TXT entries with modal dialogs and live search.
 3. **Tab 3: DNS Playground (`Dig / Nslookup`)**: Console for running interactive DNS resolution benchmarks.
 4. **Tab 4: Upstream & Corefile**: Upstream forwarders configuration with one-click presets and raw Corefile editor.
+

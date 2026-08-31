@@ -118,7 +118,13 @@ Stored in Gubernator's SQLite relational database on the Manager node:
 
 ## 5. Web UI 4-Tab Suite (`CoreDnsPage`)
 
-1. **Tab 1: Auto-Discovered Stacks (`*.gbnt`)**: Real-time table of container IPs automatically mapped to `<service>.<stack>.gbnt.local` and `<service>.<stack>.gbnt`.
+1. **Tab 1: Auto-Discovered Stacks & Host-Qualified Scheme (`*.gbnt`)**: Real-time table of container IPs automatically mapped to:
+   - `<node>.<service>.gbnt` and `<node>.<service>.gbnt.local` (e.g. `worker-1.caddy.gbnt`, `manager.caddy.gbnt`)
+   - `<node>.<service>.<stack>.gbnt` and `<node>.<service>.<stack>.gbnt.local`
+   - `<task_id>.<service>.<stack>.gbnt` and `<task_id>.<service>.<stack>.gbnt.local`
+   - `<service>.<stack>.gbnt` and `<service>.<stack>.gbnt.local`
+   - `<service>.gbnt` and `<service>.gbnt.local` (cluster-wide service aliases)
 2. **Tab 2: Custom Static DNS Records**: Interactive table with `+ Add Static Record` modal dialog, status badges, and action buttons.
 3. **Tab 3: DNS Playground (`Dig / Nslookup`)**: Terminal-like interactive console for running DNS queries, testing response latency (ms), and viewing raw DNS answers.
 4. **Tab 4: Upstream Forwarders & Corefile Editor**: Quick forwarders input with Cloudflare/Google/Quad9 quick-select buttons, and raw Corefile editor.
+

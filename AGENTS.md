@@ -280,6 +280,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **JupyterLab PyTorch LLM Lab (`examples/example-jupyter-llm`):** Interactive AI workspace with PyTorch, Hugging Face `TRL` (SFTTrainer), `PEFT`, `datasets`, and a ready-to-run notebook (`llm_lora_finetuning.ipynb`) with headless script execution (`train_script.py`) targeting cluster shared storage (`/var/contenedores`).
 * **Domain Dataset & Distributed Storage Integration:** Seeded Gubernator DevOps Q&A training datasets into distributed shared pools (`/var/contenedores/jupyter-llm` and `/var/contenedores/llama-factory/data`).
 
+### 42. CoreDNS Node-Aware DNS Records & Host-Qualified Scheme (`v2.58.0`)
+* **Host-Qualified Service Discovery (`<node>.<service>.gbnt`):** Eliminates multi-node service name collisions by registering node-specific hostnames (`worker-1.caddy.gbnt`, `manager.caddy.gbnt`, `worker-2.web.gbnt`) alongside `.gbnt.local` across all cluster hosts.
+* **Full RFC 1123 DNS Label Sanitization:** Automatically converts spaces, parentheses, brackets, underscores, and special characters in stack and task names (`CORE-GBNT (worker-1)` -> `core-gbnt-worker-1`, `[SRE] Monitor (Manager)` -> `sre-monitor-manager`) into strictly compliant DNS domain labels.
+* **Multi-Tier Domain Hierarchy & Deduplication:** Generates structured records across 5 addressing levels (Node + Service, Node + Service + Stack, Task ID + Service + Stack, Service + Stack, and Global Service) with atomic record deduplication in `gubernator.hosts`.
+
+
 
 
 

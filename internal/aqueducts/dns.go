@@ -27,6 +27,103 @@ func GenerateAllAsync() {
 	}()
 }
 
+// SanitizeDNSLabel converts a string into an RFC 1123 compliant DNS subdomain label.
+// Allowed characters are lowercase [a-z0-9] and hyphens '-'.
+// Spaces, brackets, parentheses, underscores, slashes, colons, and dots are converted to hyphens.
+func SanitizeDNSLabel(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var sb strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			sb.WriteRune(r)
+		} else if r == ' ' || r == '_' || r == '.' || r == '(' || r == ')' || r == '[' || r == ']' || r == '/' || r == ':' {
+			sb.WriteRune('-')
+		}
+	}
+	res := sb.String()
+	for strings.Contains(res, "--") {
+		res = strings.ReplaceAll(res, "--", "-")
+	}
+	return strings.Trim(res, "-")
+}
+
+// GetNodeSlugs extracts clean DNS host prefixes for a given cluster node.
+func GetNodeSlugs(nodeID string, labels map[string]string) []string {
+	var slugs []string
+	seen := make(map[string]bool)
+
+	addSlug := func(slug string) {
+		clean := SanitizeDNSLabel(slug)
+		if clean != "" && !seen[clean] {
+			seen[clean] = true
+			slugs = append(slugs, clean)
+		}
+	}
+
+	cleanID := SanitizeDNSLabel(nodeID)
+	if cleanID == "" || cleanID == "node-local-manager" || cleanID == "manager" {
+		addSlug("manager")
+		addSlug("node-local-manager")
+	} else {
+		addSlug(cleanID)
+		if strings.HasPrefix(cleanID, "node-") {
+			addSlug(strings.TrimPrefix(cleanID, "node-"))
+		}
+		if strings.HasPrefix(cleanID, "gbnt-") {
+			addSlug(strings.TrimPrefix(cleanID, "gbnt-"))
+		}
+	}
+
+	if labels != nil {
+		if h, ok := labels["hostname"]; ok && h != "" {
+			addSlug(h)
+		}
+		if n, ok := labels["gbnt.node.name"]; ok && n != "" {
+			addSlug(n)
+		}
+	}
+
+	return slugs
+}
+
+// GetStackSlugs returns sanitized stack slugs, including full and base names.
+func GetStackSlugs(stackName string) []string {
+	var slugs []string
+	seen := make(map[string]bool)
+
+	addSlug := func(slug string) {
+		clean := SanitizeDNSLabel(slug)
+		if clean != "" && !seen[clean] {
+			seen[clean] = true
+			slugs = append(slugs, clean)
+		}
+	}
+
+	fullClean := SanitizeDNSLabel(stackName)
+	addSlug(fullClean)
+
+	// If stackName has parentheses or brackets (e.g. "CORE-GBNT (worker-1)" or "[SRE] Monitor (Manager)"),
+	// also extract the base stack name (e.g. "core-gbnt" or "sre-monitor").
+	idx := strings.IndexAny(stackName, "([")
+	if idx > 0 {
+		base := strings.TrimSpace(stackName[:idx])
+		addSlug(base)
+	} else if strings.HasPrefix(stackName, "[") {
+		endBracket := strings.Index(stackName, "]")
+		if endBracket != -1 {
+			rem := stackName[endBracket+1:]
+			parenIdx := strings.Index(rem, "(")
+			if parenIdx != -1 {
+				addSlug(rem[:parenIdx])
+			} else {
+				addSlug(rem)
+			}
+		}
+	}
+
+	return slugs
+}
+
 // GenerateHostsFile queries the DB for all running tasks and regenerates the CoreDNS hosts file.
 // After writing, it signals CoreDNS to reload the new records.
 func GenerateHostsFile() {
@@ -47,35 +144,83 @@ func GenerateHostsFile() {
 	}
 
 	content := "# Gubernator Auto-Generated CoreDNS Hosts File\n"
+	content += "# Format: <IP> <domain>\n\n"
+
+	seenRecords := make(map[string]bool)
+	addRecord := func(ip, domain string) {
+		ip = strings.TrimSpace(ip)
+		domain = strings.TrimSpace(domain)
+		if ip == "" || domain == "" {
+			return
+		}
+		key := fmt.Sprintf("%s\t%s", ip, domain)
+		if !seenRecords[key] {
+			seenRecords[key] = true
+			content += key + "\n"
+		}
+	}
 
 	for _, t := range tasks {
 		var svc db.Service
-		if err := db.DB.First(&svc, "id = ?", t.ServiceID).Error; err == nil {
-			var stack db.Stack
-			if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err == nil {
-				targetIP := t.ContainerIP
-				if t.NodeID != "node-local-manager" {
-					var taskNode db.Node
-					if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil && taskNode.IP != "" {
-						targetIP = taskNode.IP
-					}
+		if err := db.DB.First(&svc, "id = ?", t.ServiceID).Error; err != nil {
+			continue
+		}
+		var stack db.Stack
+		if err := db.DB.First(&stack, "id = ?", svc.StackID).Error; err != nil {
+			continue
+		}
+
+		targetIP := t.ContainerIP
+		var nodeSlugs []string
+
+		if t.NodeID == "node-local-manager" || t.NodeID == "" {
+			nodeSlugs = GetNodeSlugs("node-local-manager", nil)
+		} else {
+			var taskNode db.Node
+			if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil {
+				if taskNode.IP != "" {
+					targetIP = taskNode.IP
 				}
-
-				// Format: IP task.service.stack.gbnt.local and aliases
-				domainLocal := fmt.Sprintf("%s.%s.%s.gbnt.local", t.ID, svc.Name, stack.Name)
-				domainShortLocal := fmt.Sprintf("%s.%s.gbnt.local", svc.Name, stack.Name)
-				domainSvcLocal := fmt.Sprintf("%s.gbnt.local", svc.Name)
-
-				content += fmt.Sprintf("%s\t%s\n", targetIP, domainLocal)
-				content += fmt.Sprintf("%s\t%s\n", targetIP, domainShortLocal)
-				content += fmt.Sprintf("%s\t%s\n", targetIP, domainSvcLocal)
-
-				// Backward compatibility aliases (.gbnt)
-				content += fmt.Sprintf("%s\t%s.%s.%s.gbnt\n", targetIP, t.ID, svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s.%s.gbnt\n", targetIP, svc.Name, stack.Name)
-				content += fmt.Sprintf("%s\t%s.gbnt\n", targetIP, svc.Name)
+				nodeSlugs = GetNodeSlugs(taskNode.ID, taskNode.Labels)
+			} else {
+				nodeSlugs = GetNodeSlugs(t.NodeID, nil)
 			}
 		}
+
+		cleanSvc := SanitizeDNSLabel(svc.Name)
+		if cleanSvc == "" {
+			continue
+		}
+		cleanTaskID := SanitizeDNSLabel(t.ID)
+		stackSlugs := GetStackSlugs(stack.Name)
+
+		// 1. Host-Specific Scheme (<node>.<service>.gbnt and <node>.<service>.gbnt.local)
+		for _, nodeSlug := range nodeSlugs {
+			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", nodeSlug, cleanSvc))
+			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", nodeSlug, cleanSvc))
+
+			// 2. Node + Service + Stack Scheme (<node>.<service>.<stack>.gbnt)
+			for _, stSlug := range stackSlugs {
+				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt.local", nodeSlug, cleanSvc, stSlug))
+				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt", nodeSlug, cleanSvc, stSlug))
+			}
+		}
+
+		// 3. Task Specific Scheme (<task_id>.<service>.<stack>.gbnt)
+		for _, stSlug := range stackSlugs {
+			if cleanTaskID != "" {
+				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt.local", cleanTaskID, cleanSvc, stSlug))
+				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt", cleanTaskID, cleanSvc, stSlug))
+			}
+
+			// 4. Service + Stack Scheme (<service>.<stack>.gbnt)
+			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanSvc, stSlug))
+			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanSvc, stSlug))
+		}
+
+		// 5. Generic Service Aliases (<service>.gbnt)
+		addRecord(targetIP, fmt.Sprintf("%s.gbnt.local", cleanSvc))
+		addRecord(targetIP, fmt.Sprintf("%s.gbnt", cleanSvc))
 	}
 
 	// Add records for ingress.host to point to the correct node IPs where the tasks are running
@@ -100,13 +245,13 @@ func GenerateHostsFile() {
 								}
 							}
 							for ip := range nodeIPs {
-								content += fmt.Sprintf("%s\t%s\n", ip, val)
+								addRecord(ip, val)
 							}
 							seenHosts[val] = true
 						} else if !seenHosts[val] {
 							// Fallback if no tasks are running yet, point to Manager IP
 							seenHosts[val] = true
-							content += fmt.Sprintf("%s\t%s\n", hostIP, val)
+							addRecord(hostIP, val)
 						}
 					}
 				}
@@ -119,7 +264,7 @@ func GenerateHostsFile() {
 	if err := db.DB.Find(&customRecords).Error; err == nil && len(customRecords) > 0 {
 		content += "\n# Custom User-Defined Static DNS Records\n"
 		for _, rec := range customRecords {
-			content += fmt.Sprintf("%s\t%s\n", rec.IP, rec.Domain)
+			addRecord(rec.IP, rec.Domain)
 		}
 	}
 
