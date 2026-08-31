@@ -47,85 +47,21 @@ func SanitizeDNSLabel(s string) string {
 	return strings.Trim(res, "-")
 }
 
-// GetNodeSlugs extracts clean DNS host prefixes for a given cluster node.
-func GetNodeSlugs(nodeID string, labels map[string]string) []string {
-	var slugs []string
-	seen := make(map[string]bool)
-
-	addSlug := func(slug string) {
-		clean := SanitizeDNSLabel(slug)
-		if clean != "" && !seen[clean] {
-			seen[clean] = true
-			slugs = append(slugs, clean)
-		}
-	}
-
-	cleanID := SanitizeDNSLabel(nodeID)
-	if cleanID == "" || cleanID == "node-local-manager" || cleanID == "manager" {
-		addSlug("manager")
-		addSlug("node-local-manager")
-	} else {
-		addSlug(cleanID)
-		if strings.HasPrefix(cleanID, "node-") {
-			addSlug(strings.TrimPrefix(cleanID, "node-"))
-		}
-		if strings.HasPrefix(cleanID, "gbnt-") {
-			addSlug(strings.TrimPrefix(cleanID, "gbnt-"))
-		}
-	}
-
-	if labels != nil {
-		if h, ok := labels["hostname"]; ok && h != "" {
-			addSlug(h)
-		}
-		if n, ok := labels["gbnt.node.name"]; ok && n != "" {
-			addSlug(n)
-		}
-	}
-
-	return slugs
-}
-
-// GetStackSlugs returns sanitized stack slugs, including full and base names.
-func GetStackSlugs(stackName string) []string {
-	var slugs []string
-	seen := make(map[string]bool)
-
-	addSlug := func(slug string) {
-		clean := SanitizeDNSLabel(slug)
-		if clean != "" && !seen[clean] {
-			seen[clean] = true
-			slugs = append(slugs, clean)
-		}
-	}
-
-	fullClean := SanitizeDNSLabel(stackName)
-	addSlug(fullClean)
-
-	// If stackName has parentheses or brackets (e.g. "CORE-GBNT (worker-1)" or "[SRE] Monitor (Manager)"),
-	// also extract the base stack name (e.g. "core-gbnt" or "sre-monitor").
-	idx := strings.IndexAny(stackName, "([")
-	if idx > 0 {
-		base := strings.TrimSpace(stackName[:idx])
-		addSlug(base)
-	} else if strings.HasPrefix(stackName, "[") {
-		endBracket := strings.Index(stackName, "]")
-		if endBracket != -1 {
-			rem := stackName[endBracket+1:]
-			parenIdx := strings.Index(rem, "(")
-			if parenIdx != -1 {
-				addSlug(rem[:parenIdx])
-			} else {
-				addSlug(rem)
-			}
-		}
-	}
-
-	return slugs
+// isSystemStack checks if a stack represents an internal Gubernator infrastructure stack.
+func isSystemStack(stackID, stackName string) bool {
+	sID := strings.ToLower(stackID)
+	sName := strings.ToLower(stackName)
+	return strings.Contains(sID, "core-gbnt") ||
+		strings.Contains(sID, "core-stack") ||
+		strings.Contains(sID, "sre-monitor") ||
+		strings.Contains(sID, "sre-stack") ||
+		strings.Contains(sName, "core-gbnt") ||
+		strings.Contains(sName, "monitor")
 }
 
 // GenerateHostsFile queries the DB for all running tasks and regenerates the CoreDNS hosts file.
-// After writing, it signals CoreDNS to reload the new records.
+// Emits clean, minimal, host-qualified DNS entries (<node>.<service>.gbnt.local and <node>.<service>.gbnt)
+// and stack-scoped entries for user applications (<service>.<stack>.gbnt.local).
 func GenerateHostsFile() {
 	aqueductMutex.Lock()
 	defer aqueductMutex.Unlock()
@@ -171,19 +107,17 @@ func GenerateHostsFile() {
 		}
 
 		targetIP := t.ContainerIP
-		var nodeSlugs []string
+		cleanNode := "manager"
 
-		if t.NodeID == "node-local-manager" || t.NodeID == "" {
-			nodeSlugs = GetNodeSlugs("node-local-manager", nil)
-		} else {
+		if t.NodeID != "node-local-manager" && t.NodeID != "" {
 			var taskNode db.Node
 			if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil {
 				if taskNode.IP != "" {
 					targetIP = taskNode.IP
 				}
-				nodeSlugs = GetNodeSlugs(taskNode.ID, taskNode.Labels)
+				cleanNode = SanitizeDNSLabel(taskNode.ID)
 			} else {
-				nodeSlugs = GetNodeSlugs(t.NodeID, nil)
+				cleanNode = SanitizeDNSLabel(t.NodeID)
 			}
 		}
 
@@ -191,36 +125,25 @@ func GenerateHostsFile() {
 		if cleanSvc == "" {
 			continue
 		}
-		cleanTaskID := SanitizeDNSLabel(t.ID)
-		stackSlugs := GetStackSlugs(stack.Name)
 
-		// 1. Host-Specific Scheme (<node>.<service>.gbnt and <node>.<service>.gbnt.local)
-		for _, nodeSlug := range nodeSlugs {
-			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", nodeSlug, cleanSvc))
-			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", nodeSlug, cleanSvc))
+		// 1. Host-Qualified Domain (<node>.<service>.gbnt.local and <node>.<service>.gbnt)
+		addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanNode, cleanSvc))
+		addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanNode, cleanSvc))
 
-			// 2. Node + Service + Stack Scheme (<node>.<service>.<stack>.gbnt)
-			for _, stSlug := range stackSlugs {
-				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt.local", nodeSlug, cleanSvc, stSlug))
-				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt", nodeSlug, cleanSvc, stSlug))
-			}
+		// If manager node is identified as node-local-manager, also alias manager
+		if t.NodeID == "node-local-manager" && cleanNode != "manager" {
+			addRecord(targetIP, fmt.Sprintf("manager.%s.gbnt.local", cleanSvc))
+			addRecord(targetIP, fmt.Sprintf("manager.%s.gbnt", cleanSvc))
 		}
 
-		// 3. Task Specific Scheme (<task_id>.<service>.<stack>.gbnt)
-		for _, stSlug := range stackSlugs {
-			if cleanTaskID != "" {
-				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt.local", cleanTaskID, cleanSvc, stSlug))
-				addRecord(targetIP, fmt.Sprintf("%s.%s.%s.gbnt", cleanTaskID, cleanSvc, stSlug))
+		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.gbnt.local and <service>.<stack>.gbnt)
+		if !isSystemStack(stack.ID, stack.Name) {
+			cleanStack := SanitizeDNSLabel(stack.Name)
+			if cleanStack != "" {
+				addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanSvc, cleanStack))
+				addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanSvc, cleanStack))
 			}
-
-			// 4. Service + Stack Scheme (<service>.<stack>.gbnt)
-			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanSvc, stSlug))
-			addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanSvc, stSlug))
 		}
-
-		// 5. Generic Service Aliases (<service>.gbnt)
-		addRecord(targetIP, fmt.Sprintf("%s.gbnt.local", cleanSvc))
-		addRecord(targetIP, fmt.Sprintf("%s.gbnt", cleanSvc))
 	}
 
 	// Add records for ingress.host to point to the correct node IPs where the tasks are running
@@ -276,7 +199,7 @@ func GenerateHostsFile() {
 		return
 	}
 
-	slog.Info("aqueducts: generated new gubernator.hosts file")
+	slog.Info("aqueducts: generated clean gubernator.hosts file")
 
 	// Signal CoreDNS to reload the updated hosts file
 	if err := coredns.ReloadConfig(); err != nil {

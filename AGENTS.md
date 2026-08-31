@@ -290,6 +290,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Aggressive Cache-Busting & Dynamic TTL:** Added unique query timestamps (`_cb=<nanoseconds>`) and `Cache-Control: no-cache, no-store` headers to bypass GitHub Fastly edge CDN caching, reduced background TTL to 30s, and ensured "Force Re-scan" completely purges in-memory caches.
 * **Dynamic Local Version Resolution:** Auto-detects local running version from active runtime binaries and disk `VERSION` files (`/app/VERSION`, `/data/VERSION`, `VERSION`), ensuring accurate SemVer comparison and upgrade notifications across Manager and Workers.
 
+### 44. Streamlined & Minimal CoreDNS Hosts Generator (`v2.58.2`)
+* **Zero-Spam Host-Qualified Discovery:** Streamlined `gubernator.hosts` generation to strictly emit clean, canonical `<node>.<service>.gbnt.local` (and `.gbnt`) host-scoped records for system containers, completely eliminating duplicate un-scoped `caddy.gbnt.local` or `loki.gbnt.local` entries across multi-node cluster IPs.
+* **Minimalist Stack-Scoped Isolation:** User application containers are mapped strictly to `<service>.<stack>.gbnt.local` and `<node>.<service>.gbnt.local`, reducing total generated DNS entries per container from 28 down to 2-4 pristine records.
+
+
 
 
 

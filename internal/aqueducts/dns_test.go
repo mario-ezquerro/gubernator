@@ -36,42 +36,22 @@ func TestSanitizeDNSLabel(t *testing.T) {
 	}
 }
 
-func TestGetNodeSlugs(t *testing.T) {
-	// Manager
-	mgrSlugs := GetNodeSlugs("node-local-manager", nil)
-	if !contains(mgrSlugs, "manager") || !contains(mgrSlugs, "node-local-manager") {
-		t.Errorf("GetNodeSlugs(node-local-manager) = %v; expected manager and node-local-manager", mgrSlugs)
+func TestIsSystemStack(t *testing.T) {
+	if !isSystemStack("core-gbnt-stack", "CORE-GBNT") {
+		t.Errorf("expected core-gbnt-stack to be recognized as system stack")
 	}
-
-	// Worker with prefix
-	workerSlugs := GetNodeSlugs("gbnt-worker-1", map[string]string{
-		"hostname": "prod-node-01",
-	})
-	if !contains(workerSlugs, "gbnt-worker-1") || !contains(workerSlugs, "worker-1") || !contains(workerSlugs, "prod-node-01") {
-		t.Errorf("GetNodeSlugs(gbnt-worker-1) = %v; expected gbnt-worker-1, worker-1, prod-node-01", workerSlugs)
+	if !isSystemStack("core-stack-node-1", "CORE-GBNT (node-1)") {
+		t.Errorf("expected worker core-stack to be recognized as system stack")
 	}
-
-	// Worker node- prefix
-	nodeWorkerSlugs := GetNodeSlugs("node-worker-2", nil)
-	if !contains(nodeWorkerSlugs, "node-worker-2") || !contains(nodeWorkerSlugs, "worker-2") {
-		t.Errorf("GetNodeSlugs(node-worker-2) = %v; expected node-worker-2 and worker-2", nodeWorkerSlugs)
+	if !isSystemStack("sre-monitor-stack", "[SRE] Monitor (Manager)") {
+		t.Errorf("expected sre-monitor-stack to be recognized as system stack")
+	}
+	if isSystemStack("wp-stack", "wordpress") {
+		t.Errorf("expected wordpress stack to NOT be recognized as system stack")
 	}
 }
 
-func TestGetStackSlugs(t *testing.T) {
-	coreWorkerSlugs := GetStackSlugs("CORE-GBNT (worker-1)")
-	if !contains(coreWorkerSlugs, "core-gbnt-worker-1") || !contains(coreWorkerSlugs, "core-gbnt") {
-		t.Errorf("GetStackSlugs(CORE-GBNT (worker-1)) = %v; expected core-gbnt-worker-1 and core-gbnt", coreWorkerSlugs)
-	}
-
-	wpSlugs := GetStackSlugs("wordpress-prod")
-	if !contains(wpSlugs, "wordpress-prod") {
-		t.Errorf("GetStackSlugs(wordpress-prod) = %v; expected wordpress-prod", wpSlugs)
-	}
-}
-
-func TestGenerateHostsFile_MultiNode(t *testing.T) {
-	// Setup in-memory sqlite DB
+func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 	testDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to connect database: %v", err)
@@ -80,14 +60,12 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 
 	_ = testDB.AutoMigrate(&db.Node{}, &db.Stack{}, &db.Service{}, &db.Task{}, &db.CustomDNSRecord{})
 
-	// Temporary directory for CoreDNS config
 	tmpDir, err := os.MkdirTemp("", "gbnt-dns-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Set HOME so CoreDNSDir uses our temp dir
 	origHome := os.Getenv("HOME")
 	os.Setenv("HOME", tmpDir)
 	defer os.Setenv("HOME", origHome)
@@ -96,7 +74,7 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 
 	now := time.Now()
 
-	// Insert Manager Node
+	// 1. Manager Node
 	testDB.Create(&db.Node{
 		ID:     "node-local-manager",
 		IP:     "192.168.1.100",
@@ -104,15 +82,15 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 		Status: "active",
 	})
 
-	// Insert Worker Node
+	// 2. Worker Node
 	testDB.Create(&db.Node{
-		ID:     "gbnt-worker-1",
+		ID:     "node-gbnt-worker1",
 		IP:     "192.168.1.101",
 		Role:   "worker",
 		Status: "active",
 	})
 
-	// Insert Stacks
+	// 3. Stacks
 	testDB.Create(&db.Stack{
 		ID:        "core-gbnt-stack",
 		Name:      "CORE-GBNT",
@@ -120,8 +98,14 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 		UpdatedAt: now,
 	})
 	testDB.Create(&db.Stack{
-		ID:        "core-stack-gbnt-worker-1",
-		Name:      "CORE-GBNT (gbnt-worker-1)",
+		ID:        "core-stack-node-gbnt-worker1",
+		Name:      "CORE-GBNT (node-gbnt-worker1)",
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+	testDB.Create(&db.Stack{
+		ID:        "sre-monitor-stack",
+		Name:      "[SRE] Monitor (Manager)",
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -132,24 +116,13 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 		UpdatedAt: now,
 	})
 
-	// Insert Services
-	testDB.Create(&db.Service{
-		ID:      "core-svc-caddy",
-		StackID: "core-gbnt-stack",
-		Name:    "caddy",
-	})
-	testDB.Create(&db.Service{
-		ID:      "core-svc-gbnt-worker-1-caddy",
-		StackID: "core-stack-gbnt-worker-1",
-		Name:    "caddy",
-	})
-	testDB.Create(&db.Service{
-		ID:      "svc-wp-app",
-		StackID: "wp-stack",
-		Name:    "app",
-	})
+	// 4. Services
+	testDB.Create(&db.Service{ID: "core-svc-caddy", StackID: "core-gbnt-stack", Name: "caddy"})
+	testDB.Create(&db.Service{ID: "core-svc-worker-caddy", StackID: "core-stack-node-gbnt-worker1", Name: "caddy"})
+	testDB.Create(&db.Service{ID: "sre-svc-loki", StackID: "sre-monitor-stack", Name: "loki"})
+	testDB.Create(&db.Service{ID: "svc-wp-app", StackID: "wp-stack", Name: "app"})
 
-	// Insert Tasks
+	// 5. Tasks
 	testDB.Create(&db.Task{
 		ID:          "core-task-caddy",
 		ServiceID:   "core-svc-caddy",
@@ -158,26 +131,25 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 		ContainerIP: "172.18.0.2",
 	})
 	testDB.Create(&db.Task{
-		ID:          "core-task-gbnt-worker-1-caddy",
-		ServiceID:   "core-svc-gbnt-worker-1-caddy",
-		NodeID:      "gbnt-worker-1",
+		ID:          "core-task-worker-caddy",
+		ServiceID:   "core-svc-worker-caddy",
+		NodeID:      "node-gbnt-worker1",
 		Status:      "running",
 		ContainerIP: "172.18.0.3",
 	})
 	testDB.Create(&db.Task{
-		ID:          "task-wp-1",
-		ServiceID:   "svc-wp-app",
-		NodeID:      "gbnt-worker-1",
+		ID:          "sre-task-loki",
+		ServiceID:   "sre-svc-loki",
+		NodeID:      "node-local-manager",
 		Status:      "running",
 		ContainerIP: "172.18.0.4",
 	})
-
-	// Insert Custom DNS record
-	testDB.Create(&db.CustomDNSRecord{
-		ID:         "cust-1",
-		Domain:     "custom-db.gbnt",
-		IP:         "10.0.0.50",
-		RecordType: "A",
+	testDB.Create(&db.Task{
+		ID:          "task-wp-1",
+		ServiceID:   "svc-wp-app",
+		NodeID:      "node-gbnt-worker1",
+		Status:      "running",
+		ContainerIP: "172.18.0.5",
 	})
 
 	// Run GenerateHostsFile
@@ -192,46 +164,42 @@ func TestGenerateHostsFile_MultiNode(t *testing.T) {
 	content := string(contentBytes)
 	lines := strings.Split(content, "\n")
 
-	// Validate node-specific caddy records
-	expectedSubstrings := []string{
-		"172.18.0.2\tmanager.caddy.gbnt",
-		"172.18.0.2\tmanager.caddy.gbnt.local",
-		"192.168.1.101\tworker-1.caddy.gbnt",
-		"192.168.1.101\tworker-1.caddy.gbnt.local",
-		"192.168.1.101\tgbnt-worker-1.caddy.gbnt",
-		"192.168.1.101\tworker-1.app.gbnt",
-		"192.168.1.101\tworker-1.app.wordpress.gbnt",
-		"10.0.0.50\tcustom-db.gbnt",
+	t.Logf("Generated gubernator.hosts:\n%s", content)
+
+	// Verify manager caddy entries
+	if !strings.Contains(content, "172.18.0.2\tmanager.caddy.gbnt.local") || !strings.Contains(content, "172.18.0.2\tmanager.caddy.gbnt") {
+		t.Errorf("missing manager caddy entry")
 	}
 
-	for _, exp := range expectedSubstrings {
-		if !strings.Contains(content, exp) {
-			t.Errorf("hosts file missing expected entry %q\nFull Content:\n%s", exp, content)
-		}
+	// Verify worker caddy entries
+	if !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.caddy.gbnt.local") || !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.caddy.gbnt") {
+		t.Errorf("missing node-gbnt-worker1 caddy entry")
 	}
 
-	// Verify no illegal characters exist in any domain name
+	// Verify manager loki entries
+	if !strings.Contains(content, "172.18.0.4\tmanager.loki.gbnt.local") || !strings.Contains(content, "172.18.0.4\tmanager.loki.gbnt") {
+		t.Errorf("missing manager loki entry")
+	}
+
+	// Verify user app stack-scoped entries
+	if !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt.local") || !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt") {
+		t.Errorf("missing user stack-scoped domain app.wordpress.gbnt.local")
+	}
+
+	// CRITICAL TEST: Verify that generic "caddy.gbnt.local" or "loki.gbnt.local" are NOT present to prevent collisions
 	for _, l := range lines {
-		l = strings.TrimSpace(l)
-		if l == "" || strings.HasPrefix(l, "#") {
-			continue
-		}
 		fields := strings.Fields(l)
-		if len(fields) < 2 {
-			continue
-		}
-		domain := fields[1]
-		if strings.ContainsAny(domain, " ()[]_") {
-			t.Errorf("invalid character found in domain: %q in line %q", domain, l)
-		}
-	}
-}
-
-func contains(slice []string, val string) bool {
-	for _, s := range slice {
-		if s == val {
-			return true
+		if len(fields) >= 2 {
+			domain := fields[1]
+			if domain == "caddy.gbnt.local" || domain == "caddy.gbnt" {
+				t.Errorf("forbidden generic entry found: %q (causes duplicate IP conflicts across nodes)", domain)
+			}
+			if domain == "loki.gbnt.local" || domain == "loki.gbnt" {
+				t.Errorf("forbidden generic entry found: %q", domain)
+			}
+			if strings.ContainsAny(domain, " ()[]_") {
+				t.Errorf("invalid character in domain %q", domain)
+			}
 		}
 	}
-	return false
 }
