@@ -30,12 +30,14 @@ class _SettingsDialogState extends State<SettingsDialog>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late TextEditingController _nameCtrl;
+  final _domainCtrl = TextEditingController(text: 'gbnt.local');
   final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
   bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+  bool _savingDomain = false;
 
   AdoptionStatsModel? _adoptionStats;
   bool _loadingStats = false;
@@ -46,6 +48,14 @@ class _SettingsDialogState extends State<SettingsDialog>
     _tabController = TabController(length: 4, vsync: this);
     _nameCtrl = TextEditingController(text: widget.displayName);
     _loadStats();
+    _loadDomain();
+  }
+
+  Future<void> _loadDomain() async {
+    final d = await ApiService.fetchClusterDomain();
+    if (mounted) {
+      setState(() => _domainCtrl.text = d);
+    }
   }
 
   Future<void> _loadStats({bool force = false}) async {
@@ -69,6 +79,7 @@ class _SettingsDialogState extends State<SettingsDialog>
   void dispose() {
     _tabController.dispose();
     _nameCtrl.dispose();
+    _domainCtrl.dispose();
     _currentPassCtrl.dispose();
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
@@ -228,6 +239,78 @@ class _SettingsDialogState extends State<SettingsDialog>
               icon: const Icon(Icons.save, size: 18),
               label: const Text('Save Profile'),
             ),
+          ),
+          const SizedBox(height: 24),
+
+          // ─── Cluster Base Domain Section ──────────────────────────────
+          const Divider(),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.language, color: Colors.cyanAccent, size: 20),
+              const SizedBox(width: 8),
+              Text('Cluster Base Domain (Internal DNS)',
+                  style: theme.textTheme.labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Base internal DNS suffix for multi-node container discovery (*.<domain>).',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _domainCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. gbnt.local, acme.corp, internal.banco.es',
+                    prefixIcon: Icon(Icons.dns),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _savingDomain
+                    ? null
+                    : () async {
+                        final newDomain = _domainCtrl.text.trim().toLowerCase();
+                        if (newDomain.isEmpty) return;
+                        setState(() => _savingDomain = true);
+                        final ok = await ApiService.updateClusterDomain(newDomain);
+                        if (mounted) {
+                          setState(() => _savingDomain = false);
+                          if (ok) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Cluster domain updated to $newDomain and CoreDNS reloaded.'),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to update cluster domain.'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                icon: _savingDomain
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check, size: 18),
+                label: const Text('Save Domain'),
+              ),
+            ],
           ),
         ],
       ),
