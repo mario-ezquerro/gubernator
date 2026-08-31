@@ -1,8 +1,6 @@
 package db
 
 import (
-	"time"
-	"golang.org/x/crypto/bcrypt"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -10,8 +8,11 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/glebarez/sqlite"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -90,15 +91,24 @@ func ensureClusterConfig() error {
 			apiToken = hex.EncodeToString(apiBytes)
 		}
 
+		domain := os.Getenv("GBNT_CLUSTER_DOMAIN")
+		if domain == "" {
+			domain = os.Getenv("GBNT_DOMAIN")
+		}
+		if domain == "" {
+			domain = "gbnt.local"
+		}
+
 		config = ClusterConfig{
-			ID:        "global",
-			JoinToken: hex.EncodeToString(joinBytes),
-			APIToken:  apiToken,
+			ID:            "global",
+			JoinToken:     hex.EncodeToString(joinBytes),
+			APIToken:      apiToken,
+			ClusterDomain: domain,
 		}
 		if err := DB.Create(&config).Error; err != nil {
 			return fmt.Errorf("save cluster config: %w", err)
 		}
-		slog.Info("generated new cluster join token and API token")
+		slog.Info("generated new cluster join token and API token", "cluster_domain", domain)
 	}
 
 	// ── SUBSEQUENT BOOTS: row already exists ────────────────────────────────
@@ -113,6 +123,16 @@ func ensureClusterConfig() error {
 		// Load persisted token into env so the API middleware can read it
 		os.Setenv("GBNT_API_TOKEN", config.APIToken)
 		slog.Info("API token loaded from database")
+	}
+
+	// Check domain override or empty state
+	if envDomain := os.Getenv("GBNT_CLUSTER_DOMAIN"); envDomain != "" && envDomain != config.ClusterDomain {
+		DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("cluster_domain", envDomain)
+		config.ClusterDomain = envDomain
+		slog.Info("Cluster domain updated from GBNT_CLUSTER_DOMAIN env var", "domain", envDomain)
+	} else if config.ClusterDomain == "" {
+		DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("cluster_domain", "gbnt.local")
+		config.ClusterDomain = "gbnt.local"
 	}
 
 	// ── STARTUP & TOKEN INFO BANNER ─────────────────────────────────────────
@@ -203,6 +223,47 @@ func GetJoinToken() string {
 		return ""
 	}
 	return config.JoinToken
+}
+
+// GetClusterDomain returns the configured cluster base domain (e.g. "gbnt.local", "corp.internal").
+func GetClusterDomain() string {
+	if env := os.Getenv("GBNT_CLUSTER_DOMAIN"); env != "" {
+		return strings.TrimSpace(env)
+	}
+	if env := os.Getenv("GBNT_DOMAIN"); env != "" {
+		return strings.TrimSpace(env)
+	}
+	if DB != nil {
+		var config ClusterConfig
+		if err := DB.First(&config, "id = ?", "global").Error; err == nil {
+			if config.ClusterDomain != "" {
+				return strings.TrimSpace(config.ClusterDomain)
+			}
+		}
+	}
+	return "gbnt.local"
+}
+
+// SetClusterDomain updates the persisted cluster base domain in the database.
+func SetClusterDomain(domain string) error {
+	domain = strings.TrimSpace(domain)
+	if domain == "" {
+		domain = "gbnt.local"
+	}
+	if DB != nil {
+		var config ClusterConfig
+		if err := DB.First(&config, "id = ?", "global").Error; err != nil {
+			config = ClusterConfig{
+				ID:            "global",
+				JoinToken:     "test-join-token",
+				APIToken:      "test-api-token",
+				ClusterDomain: domain,
+			}
+			return DB.Create(&config).Error
+		}
+		return DB.Model(&ClusterConfig{}).Where("id = ?", "global").Update("cluster_domain", domain).Error
+	}
+	return nil
 }
 
 // GetManagerIP returns the IP address of the cluster manager node.

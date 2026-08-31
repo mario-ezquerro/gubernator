@@ -38,6 +38,7 @@ class StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color? valueColor;
+  final Widget? trailing;
 
   const StatCard({
     super.key,
@@ -45,6 +46,7 @@ class StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.valueColor,
+    this.trailing,
   });
 
   @override
@@ -61,17 +63,22 @@ class StatCard extends StatelessWidget {
                 Icon(icon, size: 18,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                 const SizedBox(width: 8),
-                Text(label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w600,
-                    )),
+                Expanded(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w600,
+                      )),
+                ),
+                if (trailing != null) trailing!,
               ],
             ),
             const SizedBox(height: 12),
             Text(value,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: 26,
                   fontWeight: FontWeight.w700,
                   color: valueColor ?? theme.colorScheme.onSurface,
                 )),

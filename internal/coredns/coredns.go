@@ -87,19 +87,35 @@ func EnsureConfigDir() error {
 	return nil
 }
 
-// defaultCorefile returns the CoreDNS configuration.
-// Uses the 'hosts' plugin to serve *.gbnt and *.gbnt.local from gubernator.hosts,
+// DefaultCorefile returns the CoreDNS configuration with active cluster domain.
+// Uses the 'hosts' plugin to serve *.gbnt, *.gbnt.local, and configured cluster domain from gubernator.hosts,
 // falling back to templated host IP, and forwarding other queries to public DNS.
-func defaultCorefile() string {
+func DefaultCorefile() string {
 	forwarders := os.Getenv("GBNT_DNS_FORWARDERS")
 	if forwarders == "" {
 		forwarders = "8.8.8.8 1.1.1.1"
 	}
 	hostIP := detectLocalIP()
+	clusterDomain := db.GetClusterDomain()
+
+	zones := []string{clusterDomain}
+	if clusterDomain != "gbnt.local" && clusterDomain != "gbnt" {
+		zones = append(zones, "gbnt.local", "gbnt")
+	} else if clusterDomain == "gbnt.local" {
+		zones = append(zones, "gbnt")
+	}
+	zoneStr := strings.Join(zones, " ")
+
+	templateZones := make([]string, len(zones))
+	for i, z := range zones {
+		templateZones[i] = z + ":1053"
+	}
+	templateZoneStr := strings.Join(templateZones, " ")
+
 	return fmt.Sprintf(`# Gubernator CoreDNS Configuration
 # Managed automatically — do not edit manually.
 
-gbnt gbnt.local {
+%s {
     hosts /etc/coredns/gubernator.hosts {
         ttl 5
         reload 3s
@@ -110,7 +126,7 @@ gbnt gbnt.local {
     errors
 }
 
-gbnt:1053 gbnt.local:1053 {
+%s {
     template IN A {
         match "^.*$"
         answer "{{ .Name }} 60 IN A %s"
@@ -125,19 +141,32 @@ gbnt:1053 gbnt.local:1053 {
     log
     errors
 }
-`, hostIP, forwarders)
+`, zoneStr, templateZoneStr, hostIP, forwarders)
 }
 
-// EnsureRunningWorker starts the CoreDNS container in worker mode (forwarding gbnt queries to the manager).
+func defaultCorefile() string {
+	return DefaultCorefile()
+}
+
+// EnsureRunningWorker starts the CoreDNS container in worker mode (forwarding cluster domains to the manager).
 func EnsureRunningWorker(managerIP string) error {
 	dir := CoreDNSDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create coredns config dir: %w", err)
 	}
 
-	// Write Corefile that forwards gbnt to the manager
+	clusterDomain := db.GetClusterDomain()
+	zones := []string{clusterDomain}
+	if clusterDomain != "gbnt.local" && clusterDomain != "gbnt" {
+		zones = append(zones, "gbnt.local", "gbnt")
+	} else if clusterDomain == "gbnt.local" {
+		zones = append(zones, "gbnt")
+	}
+	zoneStr := strings.Join(zones, " ")
+
+	// Write Corefile that forwards cluster domains to the manager
 	corefileContent := fmt.Sprintf(`# Gubernator CoreDNS Worker Configuration
-gbnt gbnt.local {
+%s {
     forward . %s:5354
     log
     errors
@@ -149,7 +178,7 @@ gbnt gbnt.local {
     log
     errors
 }
-`, managerIP)
+`, zoneStr, managerIP)
 
 	corefilePath := CorefilePath()
 	if err := os.WriteFile(corefilePath, []byte(corefileContent), 0644); err != nil {

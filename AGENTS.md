@@ -294,6 +294,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Zero-Spam Host-Qualified Discovery:** Streamlined `gubernator.hosts` generation to strictly emit clean, canonical `<node>.<service>.gbnt.local` (and `.gbnt`) host-scoped records for system containers, completely eliminating duplicate un-scoped `caddy.gbnt.local` or `loki.gbnt.local` entries across multi-node cluster IPs.
 * **Minimalist Stack-Scoped Isolation:** User application containers are mapped strictly to `<service>.<stack>.gbnt.local` and `<node>.<service>.gbnt.local`, reducing total generated DNS entries per container from 28 down to 2-4 pristine records.
 
+### 45. Dynamic & Customizable Enterprise Cluster Base Domain (`v2.59.0`)
+* **Enterprise Custom Base Domain (`GBNT_CLUSTER_DOMAIN`):** Replaced hardcoded `gbnt.local` with a fully dynamic cluster domain subsystem configurable via environment variables (`GBNT_CLUSTER_DOMAIN=acme.corp`), persisted centrally in SQLite (`ClusterConfig.ClusterDomain`), and synchronized across all Centurion nodes.
+* **Dynamic CoreDNS Zone Generation:** Corefile automatically provisions active DNS zones for `<cluster_domain>` (e.g. `acme.corp`, `internal.banco.es`, `dev.gbnt.local`), serving auto-generated container hostnames `<node>.<service>.<cluster_domain>` and stack records `<service>.<stack>.<cluster_domain>`.
+* **Zero-Downtime Hot Domain Updates:** Full REST API (`GET /v1/cluster/domain`, `PUT /v1/cluster/domain`) and Web Dashboard UI management with one-click domain modal in the CoreDNS Management Suite, instantly rewriting Corefile, regenerating `gubernator.hosts`, and reloading CoreDNS via SIGHUP.
+
+
 
 
 

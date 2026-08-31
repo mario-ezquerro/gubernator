@@ -215,11 +215,113 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
     }
   }
 
+  void _showEditClusterDomainDialog(String currentDomain) {
+    final controller = TextEditingController(text: currentDomain);
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.language, color: Colors.cyanAccent),
+              SizedBox(width: 10),
+              Text('Edit Cluster Base Domain'),
+            ],
+          ),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Set the base DNS domain for internal service resolution across all Centurion nodes. '
+                  'Gubernator will automatically regenerate container hostnames and reload CoreDNS without downtime.',
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Cluster Domain',
+                    hintText: 'e.g. gbnt.local, acme.corp, internal.banco.es',
+                    prefixIcon: Icon(Icons.dns),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.cyan.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.cyan.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 18, color: Colors.cyanAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Example: node-1.caddy.${controller.text.isNotEmpty ? controller.text.trim() : "domain"}',
+                          style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: saving
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.save, size: 16),
+              label: const Text('Save & Reload DNS'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final newDomain = controller.text.trim().toLowerCase();
+                      if (newDomain.isEmpty) return;
+                      setDialogState(() => saving = true);
+                      final ok = await ApiService.updateClusterDomain(newDomain);
+                      if (mounted) {
+                        Navigator.of(ctx).pop();
+                        if (ok) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Cluster base domain updated to $newDomain and CoreDNS reloaded.')),
+                          );
+                          widget.onRefresh();
+                          _loadSuiteData();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to update cluster domain.')),
+                          );
+                        }
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSummaryCards(ThemeData theme) {
     final status = _statusInfo?.status ?? 'running';
     final totalRecords = _statusInfo?.totalRecords ?? widget.state.dnsRecords.length;
     final forwardersCount = _statusInfo?.forwarders.length ?? 2;
     final listeningPort = _statusInfo?.listeningPort ?? 5354;
+    final clusterDomain = widget.state.clusterDomain.isNotEmpty ? widget.state.clusterDomain : 'gbnt.local';
+    final canEdit = widget.state.currentUser?.role == 'admin';
 
     return Row(
       children: [
@@ -229,6 +331,22 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
             value: status.toUpperCase(),
             icon: Icons.dns,
             valueColor: status == 'running' ? Colors.green : Colors.red,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: StatCard(
+            label: 'CLUSTER DOMAIN',
+            value: clusterDomain,
+            icon: Icons.language,
+            valueColor: Colors.cyanAccent,
+            trailing: canEdit
+                ? IconButton(
+                    icon: const Icon(Icons.edit, size: 16),
+                    tooltip: 'Edit Base Domain',
+                    onPressed: () => _showEditClusterDomainDialog(clusterDomain),
+                  )
+                : null,
           ),
         ),
         const SizedBox(width: 16),

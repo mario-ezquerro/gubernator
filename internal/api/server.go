@@ -166,6 +166,8 @@ func Start(ctx context.Context) error {
 		{
 			cluster.GET("/token", ClusterTokenHandler)
 			cluster.GET("/info", ClusterInfoHandler)
+			cluster.GET("/domain", ClusterDomainGetHandler)
+			cluster.PUT("/domain", authMiddleware, ClusterDomainPutHandler)
 			cluster.GET("/ssh-pubkey", clusterSSHPubKeyHandler)
 		}
 

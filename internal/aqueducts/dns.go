@@ -126,22 +126,21 @@ func GenerateHostsFile() {
 			continue
 		}
 
-		// 1. Host-Qualified Domain (<node>.<service>.gbnt.local and <node>.<service>.gbnt)
-		addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanNode, cleanSvc))
-		addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanNode, cleanSvc))
+		clusterDomain := db.GetClusterDomain()
+
+		// 1. Host-Qualified Domain (<node>.<service>.<clusterDomain>)
+		addRecord(targetIP, fmt.Sprintf("%s.%s.%s", cleanNode, cleanSvc, clusterDomain))
 
 		// If manager node is identified as node-local-manager, also alias manager
 		if t.NodeID == "node-local-manager" && cleanNode != "manager" {
-			addRecord(targetIP, fmt.Sprintf("manager.%s.gbnt.local", cleanSvc))
-			addRecord(targetIP, fmt.Sprintf("manager.%s.gbnt", cleanSvc))
+			addRecord(targetIP, fmt.Sprintf("manager.%s.%s", cleanSvc, clusterDomain))
 		}
 
-		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.gbnt.local and <service>.<stack>.gbnt)
+		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.<clusterDomain>)
 		if !isSystemStack(stack.ID, stack.Name) {
 			cleanStack := SanitizeDNSLabel(stack.Name)
 			if cleanStack != "" {
-				addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt.local", cleanSvc, cleanStack))
-				addRecord(targetIP, fmt.Sprintf("%s.%s.gbnt", cleanSvc, cleanStack))
+				addRecord(targetIP, fmt.Sprintf("%s.%s.%s", cleanSvc, cleanStack, clusterDomain))
 			}
 		}
 	}

@@ -363,6 +363,28 @@ class ApiService {
     return DNSDigResult(domain: domain, recordType: recordType, status: 'ERROR', queryTimeMs: 0.0, server: '127.0.0.1:5354', answers: [], rawOutput: 'Error connecting to server');
   }
 
+  /// Fetches the configured base cluster domain.
+  static Future<String> fetchClusterDomain() async {
+    try {
+      final response = await http.get(Uri.parse('/api/cluster/domain'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['cluster_domain'] ?? 'gbnt.local';
+      }
+    } catch (_) {}
+    return 'gbnt.local';
+  }
+
+  /// Updates the base cluster domain.
+  static Future<bool> updateClusterDomain(String domain) async {
+    final response = await http.put(
+      Uri.parse('/api/cluster/domain'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'cluster_domain': domain}),
+    );
+    return response.statusCode == 200;
+  }
+
   /// Fetches status of Weave Scope Network Topology superpower.
   static Future<Map<String, dynamic>> fetchScopeStatus() async {
     final response = await http.get(Uri.parse('/api/scope/status'));

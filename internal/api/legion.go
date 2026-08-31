@@ -1,11 +1,15 @@
 package api
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -194,9 +198,55 @@ func ClusterInfoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"join_token":      config.JoinToken,
 		"api_token":       config.APIToken,
+		"cluster_domain":  db.GetClusterDomain(),
 		"manager_ip_hint": managerIP,
 		"join_command":    "gbnt legion join --token " + config.JoinToken + " --manager <MANAGER-IP>:4000",
 		"config_command":  "gbnt config add-context myserver --server http://<MANAGER-IP>:4000 --token " + config.APIToken,
+	})
+}
+
+// ClusterDomainGetHandler returns the active cluster domain.
+func ClusterDomainGetHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"cluster_domain": db.GetClusterDomain(),
+	})
+}
+
+// ClusterDomainPutHandler updates the cluster domain and triggers DNS reload.
+func ClusterDomainPutHandler(c *gin.Context) {
+	var req struct {
+		ClusterDomain string `json:"cluster_domain"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	domain := strings.TrimSpace(req.ClusterDomain)
+	if domain == "" {
+		domain = "gbnt.local"
+	}
+	domain = strings.ToLower(domain)
+	for _, r := range domain {
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '-') {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "domain can only contain lowercase letters, numbers, hyphens, and dots"})
+			return
+		}
+	}
+
+	if err := db.SetClusterDomain(domain); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to save cluster domain: %v", err)})
+		return
+	}
+
+	// Update Corefile and regenerate hosts
+	_ = os.WriteFile(coredns.CorefilePath(), []byte(coredns.DefaultCorefile()), 0644)
+	aqueducts.GenerateHostsFile()
+	_ = coredns.ReloadConfig()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Cluster domain updated successfully",
+		"cluster_domain": domain,
 	})
 }
 

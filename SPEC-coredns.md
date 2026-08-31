@@ -118,13 +118,21 @@ Stored in Gubernator's SQLite relational database on the Manager node:
 
 ## 5. Web UI 4-Tab Suite (`CoreDnsPage`)
 
-1. **Tab 1: Auto-Discovered Stacks & Host-Qualified Scheme (`*.gbnt`)**: Real-time table of container IPs automatically mapped to:
-   - `<node>.<service>.gbnt` and `<node>.<service>.gbnt.local` (e.g. `worker-1.caddy.gbnt`, `manager.caddy.gbnt`)
-   - `<node>.<service>.<stack>.gbnt` and `<node>.<service>.<stack>.gbnt.local`
-   - `<task_id>.<service>.<stack>.gbnt` and `<task_id>.<service>.<stack>.gbnt.local`
-   - `<service>.<stack>.gbnt` and `<service>.<stack>.gbnt.local`
-   - `<service>.gbnt` and `<service>.gbnt.local` (cluster-wide service aliases)
+1. **Tab 1: Auto-Discovered Stacks & Host-Qualified Scheme (`*.<cluster_domain>`)**: Real-time table of container IPs automatically mapped to:
+   - `<node>.<service>.<cluster_domain>` (e.g. `node-gbnt-worker1.caddy.gbnt.local`, `manager.caddy.acme.corp`)
+   - `<service>.<stack>.<cluster_domain>` (e.g. `app.wordpress.gbnt.local`, `db.wordpress.acme.corp`)
 2. **Tab 2: Custom Static DNS Records**: Interactive table with `+ Add Static Record` modal dialog, status badges, and action buttons.
 3. **Tab 3: DNS Playground (`Dig / Nslookup`)**: Terminal-like interactive console for running DNS queries, testing response latency (ms), and viewing raw DNS answers.
 4. **Tab 4: Upstream Forwarders & Corefile Editor**: Quick forwarders input with Cloudflare/Google/Quad9 quick-select buttons, and raw Corefile editor.
+
+---
+
+## 6. Dynamic Cluster Base Domain (`GBNT_CLUSTER_DOMAIN` / `ClusterConfig`)
+
+Gubernator supports custom enterprise base domain suffixes (e.g. `acme.corp`, `internal.banco.es`, `dev.mycompany.local`):
+- **Environment Variable / Startup**: `GBNT_CLUSTER_DOMAIN=acme.corp` (or `GBNT_DOMAIN=acme.corp`).
+- **Database Persistence**: Saved in SQLite `ClusterConfig.ClusterDomain`.
+- **Dynamic Corefile Generation**: CoreDNS automatically serves zones for `<cluster_domain> gbnt.local { ... }`.
+- **Hot Updates**: Administrators can update the base domain via REST API (`PUT /v1/cluster/domain`) or the Web Dashboard, instantly regenerating `gubernator.hosts` and reloading CoreDNS with zero downtime.
+
 

@@ -48,7 +48,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.58.2"
+var Version = "v2.59.0"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -63,7 +63,7 @@ func GetVersion() string {
 	if Version != "" && Version != "dev" {
 		return Version
 	}
-	return "v2.58.2"
+	return "v2.59.0"
 }
 
 
@@ -343,6 +343,7 @@ func StartDashboard() {
 		api.GET("/scope/status", scopeStatusHandler)
 		api.GET("/update/check", updateCheckHandler)
 		api.GET("/update/status", updateStatusHandler)
+		api.GET("/cluster/domain", getClusterDomainHandler)
 		api.GET("/system/adoption", systemAdoptionHandler)
 		api.GET("/slo", sloListHandler)
 		api.GET("/slo/journeys", sloJourneysHandler)
@@ -381,6 +382,7 @@ func StartDashboard() {
 		// Admin-only operations (Security, Nodes, Caddy TLS, CoreDNS config, Update, SLO edit)
 		api.PUT("/settings", auth.RequireRole(auth.RoleAdmin), updateSettingsHandler)
 		api.PUT("/settings/password", auth.RequireRole(auth.RoleAdmin), changePasswordHandler)
+		api.PUT("/cluster/domain", auth.RequireRole(auth.RoleAdmin), updateClusterDomainHandler)
 		api.POST("/node/:id/role", auth.RequireRole(auth.RoleAdmin), nodeRoleHandler)
 		api.POST("/node/:id/availability", auth.RequireRole(auth.RoleAdmin), nodeAvailabilityHandler)
 		api.POST("/node/:id/reboot", auth.RequireRole(auth.RoleAdmin), nodeRebootHandler)
@@ -668,6 +670,7 @@ func stateHandler(c *gin.Context) {
 		"caddy_status":       caddy.Status(),
 		"caddyfile":          caddyfileContent,
 		"version":            GetVersion(),
+		"cluster_domain":     db.GetClusterDomain(),
 		"cluster_join_token": joinToken,
 		"active_api_token":   apiToken,
 		"manager_ip":         managerIP,
@@ -676,6 +679,62 @@ func stateHandler(c *gin.Context) {
 		"latest_version":     upInfo.LatestVersion,
 		"release_notes":      upInfo.ReleaseNotes,
 		"release_url":        upInfo.ReleaseURL,
+	})
+}
+
+// --- Cluster Domain Endpoints ---
+
+func getClusterDomainHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"cluster_domain": db.GetClusterDomain(),
+	})
+}
+
+type updateClusterDomainRequest struct {
+	ClusterDomain string `json:"cluster_domain"`
+}
+
+func updateClusterDomainHandler(c *gin.Context) {
+	user := auth.ExtractUserSession(c)
+	if user == nil || user.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "admin role required to modify cluster domain"})
+		return
+	}
+
+	var req updateClusterDomainRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	domain := strings.TrimSpace(req.ClusterDomain)
+	if domain == "" {
+		domain = "gbnt.local"
+	}
+	domain = strings.ToLower(domain)
+	for _, r := range domain {
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '-') {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "domain can only contain lowercase letters, numbers, hyphens, and dots"})
+			return
+		}
+	}
+
+	if err := db.SetClusterDomain(domain); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to save cluster domain: %v", err)})
+		return
+	}
+
+	// Update Corefile and regenerate hosts
+	_ = os.WriteFile(coredns.CorefilePath(), []byte(coredns.DefaultCorefile()), 0644)
+	aqueducts.GenerateHostsFile()
+	_ = coredns.ReloadConfig()
+
+	// Log audit event
+	logAudit(c, user.Username, "local", "update_cluster_domain", "success", fmt.Sprintf("Updated cluster base domain to %s", domain))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Cluster domain updated successfully",
+		"cluster_domain": domain,
 	})
 }
 

@@ -58,7 +58,7 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 	}
 	db.DB = testDB
 
-	_ = testDB.AutoMigrate(&db.Node{}, &db.Stack{}, &db.Service{}, &db.Task{}, &db.CustomDNSRecord{})
+	_ = testDB.AutoMigrate(&db.Node{}, &db.Stack{}, &db.Service{}, &db.Task{}, &db.CustomDNSRecord{}, &db.ClusterConfig{})
 
 	tmpDir, err := os.MkdirTemp("", "gbnt-dns-test-*")
 	if err != nil {
@@ -167,22 +167,22 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 	t.Logf("Generated gubernator.hosts:\n%s", content)
 
 	// Verify manager caddy entries
-	if !strings.Contains(content, "172.18.0.2\tmanager.caddy.gbnt.local") || !strings.Contains(content, "172.18.0.2\tmanager.caddy.gbnt") {
+	if !strings.Contains(content, "172.18.0.2\tmanager.caddy.gbnt.local") {
 		t.Errorf("missing manager caddy entry")
 	}
 
 	// Verify worker caddy entries
-	if !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.caddy.gbnt.local") || !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.caddy.gbnt") {
+	if !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.caddy.gbnt.local") {
 		t.Errorf("missing node-gbnt-worker1 caddy entry")
 	}
 
 	// Verify manager loki entries
-	if !strings.Contains(content, "172.18.0.4\tmanager.loki.gbnt.local") || !strings.Contains(content, "172.18.0.4\tmanager.loki.gbnt") {
+	if !strings.Contains(content, "172.18.0.4\tmanager.loki.gbnt.local") {
 		t.Errorf("missing manager loki entry")
 	}
 
 	// Verify user app stack-scoped entries
-	if !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt.local") || !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt") {
+	if !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt.local") {
 		t.Errorf("missing user stack-scoped domain app.wordpress.gbnt.local")
 	}
 
@@ -201,5 +201,26 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 				t.Errorf("invalid character in domain %q", domain)
 			}
 		}
+	}
+
+	// ── TEST CUSTOM CLUSTER DOMAIN (e.g. acme.corp) ─────────────────────────
+	_ = db.SetClusterDomain("acme.corp")
+	GenerateHostsFile()
+
+	customBytes, err := os.ReadFile(hostsFile)
+	if err != nil {
+		t.Fatalf("failed to read custom domain hosts file: %v", err)
+	}
+	customContent := string(customBytes)
+	t.Logf("Generated custom domain gubernator.hosts:\n%s", customContent)
+
+	if !strings.Contains(customContent, "manager.caddy.acme.corp") {
+		t.Errorf("missing manager.caddy.acme.corp")
+	}
+	if !strings.Contains(customContent, "node-gbnt-worker1.caddy.acme.corp") {
+		t.Errorf("missing node-gbnt-worker1.caddy.acme.corp")
+	}
+	if !strings.Contains(customContent, "app.wordpress.acme.corp") {
+		t.Errorf("missing app.wordpress.acme.corp")
 	}
 }

@@ -184,6 +184,7 @@ class DashboardState {
   final String caddyStatus;
   final String caddyfile;
   final String version;
+  final String clusterDomain;
   final String clusterJoinToken;
   final String activeApiToken;
   final String managerIp;
@@ -203,6 +204,7 @@ class DashboardState {
     this.caddyStatus = 'not running',
     this.caddyfile = '',
     this.version = 'dev',
+    this.clusterDomain = 'gbnt.local',
     this.clusterJoinToken = '',
     this.activeApiToken = '',
     this.managerIp = '',
@@ -234,6 +236,7 @@ class DashboardState {
       caddyStatus: json['caddy_status'] ?? 'not running',
       caddyfile: json['caddyfile'] ?? '',
       version: json['version'] ?? 'dev',
+      clusterDomain: json['cluster_domain'] ?? 'gbnt.local',
       clusterJoinToken: json['cluster_join_token'] ?? '',
       activeApiToken: json['active_api_token'] ?? '',
       managerIp: json['manager_ip'] ?? '',
