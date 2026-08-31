@@ -299,6 +299,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Dynamic CoreDNS Zone Generation:** Corefile automatically provisions active DNS zones for `<cluster_domain>` (e.g. `acme.corp`, `internal.banco.es`, `dev.gbnt.local`), serving auto-generated container hostnames `<node>.<service>.<cluster_domain>` and stack records `<service>.<stack>.<cluster_domain>`.
 * **Zero-Downtime Hot Domain Updates:** Full REST API (`GET /v1/cluster/domain`, `PUT /v1/cluster/domain`) and Web Dashboard UI management with one-click domain modal in the CoreDNS Management Suite, instantly rewriting Corefile, regenerating `gubernator.hosts`, and reloading CoreDNS via SIGHUP.
 
+### 46. Compose Studio Robust Text Selection & Infallible Cross-Platform Clipboard (`v2.59.1`)
+* **Continuous Selection Preservation:** Eliminated pointer event race conditions in Flutter Web code editors by maintaining real-time selection listeners (`_onSelectionChanged`), capturing `_lastSelectedText` and `_lastSelection` so that mouse clicks or right-clicks do not collapse or corrupt highlighted text blocks.
+* **Editor Quick Action Bar & Real-Time Metrics:** Added a dedicated toolbar ribbon directly above the YAML editor rendering real-time line/char counters, dynamic selected char metrics, and one-click actions: "Copy Selection (Ctrl+C)", "Copy All YAML", "Paste (Ctrl+V)", and "Select All (Ctrl+A)".
+* **Cross-Platform Shortcut Bindings (`CallbackShortcuts`):** Bound native keyboard combinations (`Ctrl+C`, `Cmd+C`, `Ctrl+V`, `Cmd+V`, `Ctrl+X`, `Cmd+X`, `Ctrl+A`, `Cmd+A`) hooked into `ClipboardService` with synchronous `execCommand` fallbacks, `Clipboard.setData()`, and `navigator.clipboard.writeText()` for 100% reliable copy/paste across all browsers.
+* **Universal Editor Parity:** Applied identical clipboard resilience, selection tracking, and quick toolbar controls across both the full-screen **Compose Studio** and the **Compose Editor Dialog** modal.
+
 
 
 

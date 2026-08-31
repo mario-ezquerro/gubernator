@@ -35,6 +35,9 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   bool _saving = false;
   bool _redeploying = false;
   String _activeTab = 'caddy';
+  final FocusNode _editorFocusNode = FocusNode();
+  String _lastSelectedText = '';
+  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
   @override
   void initState() {
@@ -44,11 +47,133 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
       text: widget.composeYaml,
       language: yaml,
     );
+    _controller.addListener(_onSelectionChanged);
+  }
+
+  void _onSelectionChanged() {
+    final sel = _controller.selection;
+    if (!sel.isCollapsed && sel.start >= 0 && sel.end <= _controller.text.length) {
+      final text = _controller.text.substring(sel.start, sel.end);
+      if (text.isNotEmpty) {
+        _lastSelection = sel;
+        _lastSelectedText = text;
+        if (mounted) setState(() {});
+      }
+    }
+  }
+
+  void _handleCopy({bool forceAll = false}) {
+    String textToCopy = '';
+    final sel = _controller.selection;
+    if (!forceAll && !sel.isCollapsed && sel.start >= 0 && sel.end <= _controller.text.length) {
+      textToCopy = _controller.text.substring(sel.start, sel.end);
+    } else if (!forceAll && _lastSelectedText.isNotEmpty) {
+      textToCopy = _lastSelectedText;
+    } else {
+      textToCopy = _controller.text;
+    }
+
+    if (textToCopy.isEmpty) return;
+
+    ClipboardService.copy(textToCopy);
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  textToCopy == _controller.text
+                      ? 'Copied entire YAML (${textToCopy.length} chars) to clipboard'
+                      : 'Copied selection (${textToCopy.length} chars) to clipboard',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          width: 420,
+        ),
+      );
+    }
+  }
+
+  void _handleCut() {
+    final sel = (!_controller.selection.isCollapsed && _controller.selection.isValid)
+        ? _controller.selection
+        : (_lastSelection.isValid && !_lastSelection.isCollapsed ? _lastSelection : null);
+
+    if (sel != null && sel.start >= 0 && sel.end <= _controller.text.length) {
+      final selected = _controller.text.substring(sel.start, sel.end);
+      ClipboardService.copy(selected);
+      final text = _controller.text;
+      final newText = text.substring(0, sel.start) + text.substring(sel.end);
+      _controller.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: sel.start),
+      );
+      _lastSelectedText = '';
+      _lastSelection = const TextSelection.collapsed(offset: -1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cut selection to clipboard'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 280,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handlePaste() async {
+    final pasted = await ClipboardService.paste();
+    if (pasted != null && pasted.isNotEmpty) {
+      final sel = _controller.selection;
+      final text = _controller.text;
+      final start = sel.start >= 0 ? sel.start : text.length;
+      final end = sel.end >= 0 ? sel.end : text.length;
+      final newText = text.substring(0, start) + pasted + text.substring(end);
+      _controller.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: start + pasted.length),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pasted ${pasted.length} characters'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 260,
+          ),
+        );
+      }
+    }
+  }
+
+  void _handleSelectAll() {
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _controller.text.length,
+    );
+    _lastSelection = _controller.selection;
+    _lastSelectedText = _controller.text;
+    _editorFocusNode.requestFocus();
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onSelectionChanged);
     _controller.dispose();
+    _editorFocusNode.dispose();
     super.dispose();
   }
 
@@ -298,18 +423,93 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   Expanded(
                     child: Column(
                       children: [
+                        // Editor Quick Toolbar
+                        Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E2228) : const Color(0xFFE2E8F0),
+                            border: Border(
+                              bottom: BorderSide(color: isDark ? const Color(0xFF30363D) : const Color(0xFFCBD5E1)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              if ((!_controller.selection.isCollapsed && _controller.selection.isValid) || _lastSelectedText.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: FilledButton.tonalIcon(
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      visualDensity: VisualDensity.compact,
+                                      backgroundColor: Colors.cyan.withValues(alpha: 0.2),
+                                      foregroundColor: Colors.cyanAccent,
+                                    ),
+                                    icon: const Icon(Icons.content_copy, size: 14),
+                                    label: const Text('Copy Selection (Ctrl+C)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    onPressed: () => _handleCopy(forceAll: false),
+                                  ),
+                                ),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.copy_all, size: 14),
+                                label: const Text('Copy All YAML', style: TextStyle(fontSize: 11)),
+                                onPressed: () => _handleCopy(forceAll: true),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.paste, size: 14),
+                                label: const Text('Paste (Ctrl+V)', style: TextStyle(fontSize: 11)),
+                                onPressed: _handlePaste,
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.select_all, size: 14),
+                                label: const Text('Select All (Ctrl+A)', style: TextStyle(fontSize: 11)),
+                                onPressed: _handleSelectAll,
+                              ),
+                            ],
+                          ),
+                        ),
                         ComposeSuggestionBar(controller: _controller),
                         Expanded(
-                          child: CodeTheme(
-                            data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                            child: Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                              child: CodeField(
-                                controller: _controller,
-                                textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                expands: true,
+                          child: CallbackShortcuts(
+                            bindings: <ShortcutActivator, VoidCallback>{
+                              const SingleActivator(LogicalKeyboardKey.keyC, control: true): () => _handleCopy(forceAll: false),
+                              const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () => _handleCopy(forceAll: false),
+                              const SingleActivator(LogicalKeyboardKey.keyV, control: true): _handlePaste,
+                              const SingleActivator(LogicalKeyboardKey.keyV, meta: true): _handlePaste,
+                              const SingleActivator(LogicalKeyboardKey.keyX, control: true): _handleCut,
+                              const SingleActivator(LogicalKeyboardKey.keyX, meta: true): _handleCut,
+                              const SingleActivator(LogicalKeyboardKey.keyA, control: true): _handleSelectAll,
+                              const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _handleSelectAll,
+                            },
+                            child: Focus(
+                              focusNode: _editorFocusNode,
+                              child: CodeTheme(
+                                data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                                child: Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                  child: CodeField(
+                                    controller: _controller,
+                                    focusNode: _editorFocusNode,
+                                    textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                    expands: true,
+                                  ),
+                                ),
                               ),
                             ),
                           ),

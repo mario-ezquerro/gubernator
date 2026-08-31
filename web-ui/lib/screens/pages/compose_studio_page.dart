@@ -253,6 +253,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 ''',
   };
 
+  final FocusNode _editorFocusNode = FocusNode();
+  String _lastSelectedText = '';
+  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
+
   @override
   void initState() {
     super.initState();
@@ -261,12 +265,134 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       text: _defaultTemplate,
       language: yaml,
     );
+    _codeController.addListener(_onSelectionChanged);
+  }
+
+  void _onSelectionChanged() {
+    final sel = _codeController.selection;
+    if (!sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length) {
+      final text = _codeController.text.substring(sel.start, sel.end);
+      if (text.isNotEmpty) {
+        _lastSelection = sel;
+        _lastSelectedText = text;
+        if (mounted) setState(() {});
+      }
+    }
+  }
+
+  void _handleCopy({bool forceAll = false}) {
+    String textToCopy = '';
+    final sel = _codeController.selection;
+    if (!forceAll && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length) {
+      textToCopy = _codeController.text.substring(sel.start, sel.end);
+    } else if (!forceAll && _lastSelectedText.isNotEmpty) {
+      textToCopy = _lastSelectedText;
+    } else {
+      textToCopy = _codeController.text;
+    }
+
+    if (textToCopy.isEmpty) return;
+
+    ClipboardService.copy(textToCopy);
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  textToCopy == _codeController.text
+                      ? 'Copied entire YAML (${textToCopy.length} chars) to clipboard'
+                      : 'Copied selection (${textToCopy.length} chars) to clipboard',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          width: 420,
+        ),
+      );
+    }
+  }
+
+  void _handleCut() {
+    final sel = (!_codeController.selection.isCollapsed && _codeController.selection.isValid)
+        ? _codeController.selection
+        : (_lastSelection.isValid && !_lastSelection.isCollapsed ? _lastSelection : null);
+
+    if (sel != null && sel.start >= 0 && sel.end <= _codeController.text.length) {
+      final selected = _codeController.text.substring(sel.start, sel.end);
+      ClipboardService.copy(selected);
+      final text = _codeController.text;
+      final newText = text.substring(0, sel.start) + text.substring(sel.end);
+      _codeController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: sel.start),
+      );
+      _lastSelectedText = '';
+      _lastSelection = const TextSelection.collapsed(offset: -1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cut selection to clipboard'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 280,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handlePaste() async {
+    final pasted = await ClipboardService.paste();
+    if (pasted != null && pasted.isNotEmpty) {
+      final sel = _codeController.selection;
+      final text = _codeController.text;
+      final start = sel.start >= 0 ? sel.start : text.length;
+      final end = sel.end >= 0 ? sel.end : text.length;
+      final newText = text.substring(0, start) + pasted + text.substring(end);
+      _codeController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: start + pasted.length),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pasted ${pasted.length} characters'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            width: 260,
+          ),
+        );
+      }
+    }
+  }
+
+  void _handleSelectAll() {
+    _codeController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _codeController.text.length,
+    );
+    _lastSelection = _codeController.selection;
+    _lastSelectedText = _codeController.text;
+    _editorFocusNode.requestFocus();
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _codeController.removeListener(_onSelectionChanged);
     _codeController.dispose();
     _nameController.dispose();
+    _editorFocusNode.dispose();
     super.dispose();
   }
 
@@ -819,6 +945,116 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     );
   }
 
+  Widget _buildEditorActionBar(ThemeData theme, bool isDark) {
+    final hasSelection = (!_codeController.selection.isCollapsed && _codeController.selection.isValid) || _lastSelectedText.isNotEmpty;
+    final linesCount = '\n'.allMatches(_codeController.text).length + 1;
+    final charsCount = _codeController.text.length;
+    final selLength = !_codeController.selection.isCollapsed
+        ? (_codeController.selection.end - _codeController.selection.start)
+        : _lastSelectedText.length;
+
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2228) : const Color(0xFFE2E8F0),
+        border: Border(
+          bottom: BorderSide(color: isDark ? const Color(0xFF30363D) : const Color(0xFFCBD5E1)),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Metrics chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.black38 : Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.code, size: 13, color: Colors.cyanAccent),
+                const SizedBox(width: 6),
+                Text(
+                  'YAML: $linesCount lines | $charsCount chars',
+                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600),
+                ),
+                if (hasSelection) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'Selected: $selLength chars',
+                      style: const TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Spacer(),
+
+          // Copy Selection button (highlighted when text is selected)
+          if (hasSelection)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: Colors.cyan.withValues(alpha: 0.2),
+                  foregroundColor: Colors.cyanAccent,
+                ),
+                icon: const Icon(Icons.content_copy, size: 14),
+                label: const Text('Copy Selection (Ctrl+C)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                onPressed: () => _handleCopy(forceAll: false),
+              ),
+            ),
+
+          // Copy All YAML
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.copy_all, size: 14),
+            label: const Text('Copy All YAML', style: TextStyle(fontSize: 11)),
+            onPressed: () => _handleCopy(forceAll: true),
+          ),
+          const SizedBox(width: 4),
+
+          // Paste
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.paste, size: 14),
+            label: const Text('Paste (Ctrl+V)', style: TextStyle(fontSize: 11)),
+            onPressed: _handlePaste,
+          ),
+          const SizedBox(width: 4),
+
+          // Select All
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.select_all, size: 14),
+            label: const Text('Select All (Ctrl+A)', style: TextStyle(fontSize: 11)),
+            onPressed: _handleSelectAll,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -878,26 +1114,27 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ),
                 const Spacer(),
 
-                // Stack Selector
+                // Stack Selector Dropdown
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: theme.dividerColor),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _selectedStackId,
-                      icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                      icon: const Icon(Icons.arrow_drop_down, size: 20),
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                       items: [
                         const DropdownMenuItem(
                           value: 'new',
                           child: Row(
                             children: [
-                              Icon(Icons.add_circle, color: Color(0xFF2EA043), size: 16),
+                              Icon(Icons.add_box, size: 16, color: Colors.blueAccent),
                               SizedBox(width: 8),
-                              Text('➕ Create New Stack', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('✨ Create New Stack'),
                             ],
                           ),
                         ),
@@ -905,9 +1142,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           value: s.id,
                           child: Row(
                             children: [
-                              const Icon(Icons.layers, size: 16, color: Color(0xFF58A6FF)),
+                              const Icon(Icons.layers, size: 16, color: Colors.orangeAccent),
                               const SizedBox(width: 8),
-                              Text(s.name, style: const TextStyle(fontSize: 13)),
+                              Text('Stack: ${s.name}'),
                             ],
                           ),
                         )),
@@ -918,69 +1155,85 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
 
-                // Import / Export
-                IconButton(
-                  tooltip: 'Load from file (.yml)',
-                  icon: const Icon(Icons.upload_file),
-                  onPressed: _importFile,
+                // Starters Templates Menu
+                PopupMenuButton<String>(
+                  tooltip: 'Load Blueprint Template',
+                  onSelected: _applyTemplate,
+                  itemBuilder: (context) => _starterTemplates.keys.map((title) => PopupMenuItem(
+                    value: title,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 16, color: Colors.cyanAccent),
+                        const SizedBox(width: 8),
+                        Text(title),
+                      ],
+                    ),
+                  )).toList(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.widgets_outlined, size: 16),
+                        SizedBox(width: 6),
+                        Text('Blueprints', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Icon(Icons.arrow_drop_down, size: 18),
+                      ],
+                    ),
+                  ),
                 ),
-                IconButton(
-                  tooltip: 'Export as YAML file',
-                  icon: const Icon(Icons.download),
-                  onPressed: _exportFile,
-                ),
-                IconButton(
-                  tooltip: 'Copy YAML to clipboard',
-                  icon: const Icon(Icons.copy),
+                const SizedBox(width: 10),
+
+                // Reset YAML Button
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Reset'),
                   onPressed: () {
-                    ClipboardService.copy(_codeController.text);
+                    setState(() {
+                      _codeController.text = _originalYaml;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('YAML copied to clipboard'),
-                        duration: Duration(seconds: 2),
-                      ),
+                      const SnackBar(content: Text('YAML reset to original'), duration: Duration(seconds: 1)),
                     );
                   },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
 
-                // Reset Button
+                // Save Stack Button
                 OutlinedButton.icon(
-                  onPressed: () => _codeController.text = _originalYaml,
-                  icon: const Icon(Icons.restore, size: 16),
-                  label: const Text('Reset'),
-                ),
-                const SizedBox(width: 8),
-
-                // Save Compose
-                FilledButton.icon(
-                  onPressed: _saving ? null : _saveCompose,
                   icon: _saving
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.save, size: 16),
-                  label: const Text('Save Compose'),
+                  label: const Text('Save Stack'),
+                  onPressed: _saving ? null : _saveCompose,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
 
-                // Save & Deploy
+                // Save & Deploy Button
                 FilledButton.icon(
-                  onPressed: _deploying ? null : _saveAndDeploy,
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD29922)),
                   icon: _deploying
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.rocket_launch, size: 16),
                   label: Text(_selectedStackId == 'new' ? 'Deploy Stack' : 'Save & Redeploy'),
+                  onPressed: _deploying ? null : _saveAndDeploy,
                 ),
               ],
             ),
           ),
 
-          // ─── Stack Parameters Bar ──────────────────────────
+          // Secondary Bar: Stack Name & Node Placement
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF8FAFC),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+              border: Border(bottom: BorderSide(color: theme.dividerColor)),
+            ),
             child: Row(
               children: [
                 SizedBox(
@@ -990,7 +1243,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     controller: _nameController,
                     decoration: const InputDecoration(
                       labelText: 'Stack Name',
-                      prefixIcon: Icon(Icons.tag, size: 16),
+                      prefixIcon: Icon(Icons.label_outline, size: 16),
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                     ),
@@ -1022,11 +1275,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     },
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  _loadingYaml ? 'Loading YAML...' : '${_codeController.text.split('\n').length} lines',
-                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                ),
               ],
             ),
           ),
@@ -1036,10 +1284,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Left: Editor with Suggestion Bar
+                // Left: Editor with Action Bar & Suggestion Bar
                 Expanded(
                   child: Column(
                     children: [
+                      // Editor Action Bar
+                      _buildEditorActionBar(theme, isDark),
+
                       // Suggestion Bar
                       ComposeSuggestionBar(
                         controller: _codeController,
@@ -1053,20 +1304,36 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         },
                       ),
 
-                      // CodeField Area
+                      // CodeField Area with Shortcuts
                       Expanded(
                         child: _loadingYaml
                             ? const Center(child: CircularProgressIndicator())
-                            : CodeTheme(
-                                data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                                child: Container(
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                                  child: CodeField(
-                                    controller: _codeController,
-                                    textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                    expands: true,
+                            : CallbackShortcuts(
+                                bindings: <ShortcutActivator, VoidCallback>{
+                                  const SingleActivator(LogicalKeyboardKey.keyC, control: true): () => _handleCopy(forceAll: false),
+                                  const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () => _handleCopy(forceAll: false),
+                                  const SingleActivator(LogicalKeyboardKey.keyV, control: true): _handlePaste,
+                                  const SingleActivator(LogicalKeyboardKey.keyV, meta: true): _handlePaste,
+                                  const SingleActivator(LogicalKeyboardKey.keyX, control: true): _handleCut,
+                                  const SingleActivator(LogicalKeyboardKey.keyX, meta: true): _handleCut,
+                                  const SingleActivator(LogicalKeyboardKey.keyA, control: true): _handleSelectAll,
+                                  const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _handleSelectAll,
+                                },
+                                child: Focus(
+                                  focusNode: _editorFocusNode,
+                                  child: CodeTheme(
+                                    data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                      child: CodeField(
+                                        controller: _codeController,
+                                        focusNode: _editorFocusNode,
+                                        textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                        expands: true,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
