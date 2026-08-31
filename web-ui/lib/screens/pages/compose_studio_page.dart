@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -257,6 +258,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
+  // Raw browser DOM event subscriptions — bypasses Flutter's event system
+  StreamSubscription<html.KeyboardEvent>? _keyDownSub;
+  StreamSubscription<html.Event>? _contextMenuSub;
+
   @override
   void initState() {
     super.initState();
@@ -266,9 +271,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       language: yaml,
     );
     _codeController.addListener(_onCodeChanged);
-    _editorFocusNode.onKeyEvent = _handleEditorKeyEvent;
+
+    // Intercept keyboard events at the browser DOM level
+    _keyDownSub = html.window.onKeyDown.listen(_onBrowserKeyDown);
+    // Intercept right-click context menu at the browser DOM level
+    _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
 
+  /// Captures selection changes into memory WITHOUT calling setState.
   void _onCodeChanged() {
     final sel = _codeController.selection;
     if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length && sel.start < sel.end) {
@@ -277,26 +287,122 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     }
   }
 
-  KeyEventResult _handleEditorKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent) {
-      final isControlOrMeta = HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
-      if (isControlOrMeta) {
-        if (event.logicalKey == LogicalKeyboardKey.keyC) {
-          _handleCopy(forceAll: false);
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyV) {
-          _handlePaste();
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyX) {
-          _handleCut();
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyA) {
-          _handleSelectAll();
-          return KeyEventResult.handled;
-        }
-      }
+  /// Raw browser DOM keydown handler — fires BEFORE Flutter's EditableText consumes the event.
+  void _onBrowserKeyDown(html.KeyboardEvent event) {
+    if (!mounted || !_editorFocusNode.hasFocus) return;
+
+    final isCtrlOrMeta = event.ctrlKey || event.metaKey;
+    if (!isCtrlOrMeta) return;
+
+    final key = event.key?.toLowerCase() ?? '';
+    switch (key) {
+      case 'c':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleCopy(forceAll: false);
+        break;
+      case 'x':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleCut();
+        break;
+      case 'v':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handlePaste();
+        break;
+      case 'a':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleSelectAll();
+        break;
     }
-    return KeyEventResult.ignored;
+  }
+
+  /// Browser right-click: prevent native context menu and show custom Flutter popup.
+  void _onBrowserContextMenu(html.Event event) {
+    if (!mounted || !_editorFocusNode.hasFocus) return;
+    event.preventDefault();
+    final mouseEvent = event as html.MouseEvent;
+    _showEditorContextMenu(Offset(
+      mouseEvent.client.x.toDouble(),
+      mouseEvent.client.y.toDouble(),
+    ));
+  }
+
+  void _showEditorContextMenu(Offset position) {
+    final RenderBox? overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+
+    final hasSelection = _lastSelectedText.isNotEmpty ||
+        (_codeController.selection.isValid && !_codeController.selection.isCollapsed);
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(position.dx, position.dy, 1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'copy',
+          enabled: hasSelection,
+          child: const Row(children: [
+            Icon(Icons.content_copy, size: 16),
+            SizedBox(width: 8),
+            Text('Copy Selection'),
+            Spacer(),
+            Text('Ctrl+C', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+        PopupMenuItem<String>(
+          value: 'copy_all',
+          child: const Row(children: [
+            Icon(Icons.copy_all, size: 16),
+            SizedBox(width: 8),
+            Text('Copy All YAML'),
+          ]),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'paste',
+          child: const Row(children: [
+            Icon(Icons.paste, size: 16),
+            SizedBox(width: 8),
+            Text('Paste'),
+            Spacer(),
+            Text('Ctrl+V', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'select_all',
+          child: const Row(children: [
+            Icon(Icons.select_all, size: 16),
+            SizedBox(width: 8),
+            Text('Select All'),
+            Spacer(),
+            Text('Ctrl+A', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      switch (value) {
+        case 'copy':
+          _handleCopy(forceAll: false);
+          break;
+        case 'copy_all':
+          _handleCopy(forceAll: true);
+          break;
+        case 'paste':
+          _handlePaste();
+          break;
+        case 'select_all':
+          _handleSelectAll();
+          break;
+      }
+    });
   }
 
   void _handleCopy({bool forceAll = false}) {
@@ -313,7 +419,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
     if (textToCopy.isEmpty) return;
 
+    // Use synchronous DOM execCommand directly for maximum reliability
+    ClipboardService.copySync(textToCopy);
+    // Also write via async APIs as fallback
     ClipboardService.copy(textToCopy);
+
     if (mounted) {
       final preview = textToCopy.length > 25 ? '${textToCopy.substring(0, 25)}...' : textToCopy;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -326,8 +436,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
               Expanded(
                 child: Text(
                   textToCopy == _codeController.text
-                      ? 'Copied entire YAML (${textToCopy.length} chars)'
-                      : 'Copied selection (${textToCopy.length} chars): "$preview"',
+                      ? '✓ Copied entire YAML (${textToCopy.length} chars)'
+                      : '✓ Copied selection (${textToCopy.length} chars): "$preview"',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -352,6 +462,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
     if (targetSel != null) {
       final selected = _codeController.text.substring(targetSel.start, targetSel.end);
+      ClipboardService.copySync(selected);
       ClipboardService.copy(selected);
       final text = _codeController.text;
       final start = targetSel.start <= targetSel.end ? targetSel.start : targetSel.end;
@@ -367,7 +478,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cut selection to clipboard'),
+            content: Text('✓ Cut selection to clipboard'),
             duration: Duration(milliseconds: 1200),
             behavior: SnackBarBehavior.floating,
             width: 280,
@@ -397,7 +508,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pasted ${pasted.length} characters'),
+            content: Text('✓ Pasted ${pasted.length} characters'),
             duration: const Duration(milliseconds: 1000),
             behavior: SnackBarBehavior.floating,
             width: 260,
@@ -419,6 +530,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
   @override
   void dispose() {
+    _keyDownSub?.cancel();
+    _contextMenuSub?.cancel();
     _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();
     _nameController.dispose();
@@ -1309,33 +1422,21 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         },
                       ),
 
-                      // CodeField Area with Shortcuts
+                      // CodeField Area — keyboard shortcuts handled via raw browser DOM listeners
                       Expanded(
                         child: _loadingYaml
                             ? const Center(child: CircularProgressIndicator())
-                            : CallbackShortcuts(
-                                bindings: <ShortcutActivator, VoidCallback>{
-                                  const SingleActivator(LogicalKeyboardKey.keyC, control: true): () => _handleCopy(forceAll: false),
-                                  const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () => _handleCopy(forceAll: false),
-                                  const SingleActivator(LogicalKeyboardKey.keyV, control: true): _handlePaste,
-                                  const SingleActivator(LogicalKeyboardKey.keyV, meta: true): _handlePaste,
-                                  const SingleActivator(LogicalKeyboardKey.keyX, control: true): _handleCut,
-                                  const SingleActivator(LogicalKeyboardKey.keyX, meta: true): _handleCut,
-                                  const SingleActivator(LogicalKeyboardKey.keyA, control: true): _handleSelectAll,
-                                  const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _handleSelectAll,
-                                },
-                                child: CodeTheme(
-                                  data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                                  child: Container(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                                    child: CodeField(
-                                      controller: _codeController,
-                                      focusNode: _editorFocusNode,
-                                      textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                      expands: true,
-                                    ),
+                            : CodeTheme(
+                                data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                                child: Container(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                  child: CodeField(
+                                    controller: _codeController,
+                                    focusNode: _editorFocusNode,
+                                    textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                    expands: true,
                                   ),
                                 ),
                               ),

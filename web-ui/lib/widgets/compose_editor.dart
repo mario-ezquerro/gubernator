@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
@@ -39,6 +41,10 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
+  // Raw browser DOM event subscriptions
+  StreamSubscription<html.KeyboardEvent>? _keyDownSub;
+  StreamSubscription<html.Event>? _contextMenuSub;
+
   @override
   void initState() {
     super.initState();
@@ -48,7 +54,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
       language: yaml,
     );
     _controller.addListener(_onCodeChanged);
-    _editorFocusNode.onKeyEvent = _handleEditorKeyEvent;
+    _keyDownSub = html.window.onKeyDown.listen(_onBrowserKeyDown);
+    _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
 
   void _onCodeChanged() {
@@ -59,26 +66,119 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
     }
   }
 
-  KeyEventResult _handleEditorKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent) {
-      final isControlOrMeta = HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
-      if (isControlOrMeta) {
-        if (event.logicalKey == LogicalKeyboardKey.keyC) {
-          _handleCopy(forceAll: false);
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyV) {
-          _handlePaste();
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyX) {
-          _handleCut();
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.keyA) {
-          _handleSelectAll();
-          return KeyEventResult.handled;
-        }
-      }
+  void _onBrowserKeyDown(html.KeyboardEvent event) {
+    if (!mounted || !_editorFocusNode.hasFocus) return;
+    final isCtrlOrMeta = event.ctrlKey || event.metaKey;
+    if (!isCtrlOrMeta) return;
+
+    final key = event.key?.toLowerCase() ?? '';
+    switch (key) {
+      case 'c':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleCopy(forceAll: false);
+        break;
+      case 'x':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleCut();
+        break;
+      case 'v':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handlePaste();
+        break;
+      case 'a':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        _handleSelectAll();
+        break;
     }
-    return KeyEventResult.ignored;
+  }
+
+  void _onBrowserContextMenu(html.Event event) {
+    if (!mounted || !_editorFocusNode.hasFocus) return;
+    event.preventDefault();
+    final mouseEvent = event as html.MouseEvent;
+    _showEditorContextMenu(Offset(
+      mouseEvent.client.x.toDouble(),
+      mouseEvent.client.y.toDouble(),
+    ));
+  }
+
+  void _showEditorContextMenu(Offset position) {
+    final RenderBox? overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+
+    final hasSelection = _lastSelectedText.isNotEmpty ||
+        (_controller.selection.isValid && !_controller.selection.isCollapsed);
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(position.dx, position.dy, 1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'copy',
+          enabled: hasSelection,
+          child: const Row(children: [
+            Icon(Icons.content_copy, size: 16),
+            SizedBox(width: 8),
+            Text('Copy Selection'),
+            Spacer(),
+            Text('Ctrl+C', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+        PopupMenuItem<String>(
+          value: 'copy_all',
+          child: const Row(children: [
+            Icon(Icons.copy_all, size: 16),
+            SizedBox(width: 8),
+            Text('Copy All YAML'),
+          ]),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'paste',
+          child: const Row(children: [
+            Icon(Icons.paste, size: 16),
+            SizedBox(width: 8),
+            Text('Paste'),
+            Spacer(),
+            Text('Ctrl+V', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'select_all',
+          child: const Row(children: [
+            Icon(Icons.select_all, size: 16),
+            SizedBox(width: 8),
+            Text('Select All'),
+            Spacer(),
+            Text('Ctrl+A', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ]),
+        ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      switch (value) {
+        case 'copy':
+          _handleCopy(forceAll: false);
+          break;
+        case 'copy_all':
+          _handleCopy(forceAll: true);
+          break;
+        case 'paste':
+          _handlePaste();
+          break;
+        case 'select_all':
+          _handleSelectAll();
+          break;
+      }
+    });
   }
 
   void _handleCopy({bool forceAll = false}) {
@@ -95,6 +195,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
     if (textToCopy.isEmpty) return;
 
+    ClipboardService.copySync(textToCopy);
     ClipboardService.copy(textToCopy);
     if (mounted) {
       final preview = textToCopy.length > 25 ? '${textToCopy.substring(0, 25)}...' : textToCopy;
@@ -108,8 +209,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
               Expanded(
                 child: Text(
                   textToCopy == _controller.text
-                      ? 'Copied entire YAML (${textToCopy.length} chars)'
-                      : 'Copied selection (${textToCopy.length} chars): "$preview"',
+                      ? '✓ Copied entire YAML (${textToCopy.length} chars)'
+                      : '✓ Copied selection (${textToCopy.length} chars): "$preview"',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -134,6 +235,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
     if (targetSel != null) {
       final selected = _controller.text.substring(targetSel.start, targetSel.end);
+      ClipboardService.copySync(selected);
       ClipboardService.copy(selected);
       final text = _controller.text;
       final start = targetSel.start <= targetSel.end ? targetSel.start : targetSel.end;
@@ -149,7 +251,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cut selection to clipboard'),
+            content: Text('✓ Cut selection to clipboard'),
             duration: Duration(milliseconds: 1200),
             behavior: SnackBarBehavior.floating,
             width: 280,
@@ -179,7 +281,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pasted ${pasted.length} characters'),
+            content: Text('✓ Pasted ${pasted.length} characters'),
             duration: const Duration(milliseconds: 1000),
             behavior: SnackBarBehavior.floating,
             width: 260,
@@ -201,6 +303,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
   @override
   void dispose() {
+    _keyDownSub?.cancel();
+    _contextMenuSub?.cancel();
     _controller.removeListener(_onCodeChanged);
     _controller.dispose();
     _editorFocusNode.dispose();
@@ -511,29 +615,17 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                         ),
                         ComposeSuggestionBar(controller: _controller),
                         Expanded(
-                          child: CallbackShortcuts(
-                            bindings: <ShortcutActivator, VoidCallback>{
-                              const SingleActivator(LogicalKeyboardKey.keyC, control: true): () => _handleCopy(forceAll: false),
-                              const SingleActivator(LogicalKeyboardKey.keyC, meta: true): () => _handleCopy(forceAll: false),
-                              const SingleActivator(LogicalKeyboardKey.keyV, control: true): _handlePaste,
-                              const SingleActivator(LogicalKeyboardKey.keyV, meta: true): _handlePaste,
-                              const SingleActivator(LogicalKeyboardKey.keyX, control: true): _handleCut,
-                              const SingleActivator(LogicalKeyboardKey.keyX, meta: true): _handleCut,
-                              const SingleActivator(LogicalKeyboardKey.keyA, control: true): _handleSelectAll,
-                              const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _handleSelectAll,
-                            },
-                            child: CodeTheme(
-                              data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                              child: Container(
-                                width: double.infinity,
-                                height: double.infinity,
-                                color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                                child: CodeField(
-                                  controller: _controller,
-                                  focusNode: _editorFocusNode,
-                                  textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                  expands: true,
-                                ),
+                          child: CodeTheme(
+                            data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                            child: Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                              child: CodeField(
+                                controller: _controller,
+                                focusNode: _editorFocusNode,
+                                textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                expands: true,
                               ),
                             ),
                           ),
