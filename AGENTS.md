@@ -285,6 +285,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Full RFC 1123 DNS Label Sanitization:** Automatically converts spaces, parentheses, brackets, underscores, and special characters in stack and task names (`CORE-GBNT (worker-1)` -> `core-gbnt-worker-1`, `[SRE] Monitor (Manager)` -> `sre-monitor-manager`) into strictly compliant DNS domain labels.
 * **Multi-Tier Domain Hierarchy & Deduplication:** Generates structured records across 5 addressing levels (Node + Service, Node + Service + Stack, Task ID + Service + Stack, Service + Stack, and Global Service) with atomic record deduplication in `gubernator.hosts`.
 
+### 43. Multi-Source Release Propagation & Instant Version Detection (`v2.58.1`)
+* **Multi-Source Detection Cascade (Releases ➔ Tags ➔ Raw Content):** Solved GitHub propagation latency and rate limits by querying GitHub Releases, GitHub Git Tags, and `raw.githubusercontent.com/main/VERSION` concurrently to detect newly pushed versions instantly, even before GitHub Actions finishes compiling assets.
+* **Aggressive Cache-Busting & Dynamic TTL:** Added unique query timestamps (`_cb=<nanoseconds>`) and `Cache-Control: no-cache, no-store` headers to bypass GitHub Fastly edge CDN caching, reduced background TTL to 30s, and ensured "Force Re-scan" completely purges in-memory caches.
+* **Dynamic Local Version Resolution:** Auto-detects local running version from active runtime binaries and disk `VERSION` files (`/app/VERSION`, `/data/VERSION`, `VERSION`), ensuring accurate SemVer comparison and upgrade notifications across Manager and Workers.
+
+
 
 
 

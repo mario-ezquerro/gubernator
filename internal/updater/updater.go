@@ -31,18 +31,27 @@ type githubRelease struct {
 	HTMLURL     string `json:"html_url"`
 	Body        string `json:"body"`
 	PublishedAt string `json:"published_at"`
+	Draft       bool   `json:"draft"`
+	Prerelease  bool   `json:"prerelease"`
+}
+
+type githubTag struct {
+	Name string `json:"name"`
 }
 
 var (
 	cachedInfo *UpdateInfo
 	cacheMutex sync.Mutex
-	cacheTTL   = 15 * time.Minute
+	cacheTTL   = 30 * time.Second
 )
 
-// CheckLatestRelease queries GitHub Releases API for the latest Gubernator tag.
+// CheckLatestRelease queries GitHub Releases, Tags, and raw repository metadata
+// using a multi-source cascade to ensure zero CDN caching delay and rate limit resilience.
 func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, error) {
 	cacheMutex.Lock()
-	if !forceRefresh && cachedInfo != nil && time.Since(parseTime(cachedInfo.CheckedAt)) < cacheTTL {
+	if forceRefresh {
+		cachedInfo = nil
+	} else if cachedInfo != nil && time.Since(parseTime(cachedInfo.CheckedAt)) < cacheTTL {
 		info := *cachedInfo
 		info.CurrentVersion = currentVersion
 		info.UpdateAvailable = isNewerVersion(currentVersion, info.LatestVersion)
@@ -51,53 +60,124 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 	}
 	cacheMutex.Unlock()
 
-	// Query the releases list first to bypass GitHub CDN propagation delay on /releases/latest
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/mario-ezquerro/gubernator/releases?per_page=5", nil)
-	if err != nil {
-		return fallbackInfo(currentVersion), nil
+	client := &http.Client{Timeout: 6 * time.Second}
+	cb := time.Now().UnixNano()
+
+	authHeader := os.Getenv("GBNT_GITHUB_TOKEN")
+	if authHeader == "" {
+		authHeader = os.Getenv("GITHUB_TOKEN")
 	}
-	req.Header.Set("User-Agent", "Gubernator-AutoUpdater")
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
-	var rel githubRelease
-	found := false
-
-	if err == nil && resp.StatusCode == http.StatusOK {
-		var releases []githubRelease
-		if decodeErr := json.NewDecoder(resp.Body).Decode(&releases); decodeErr == nil && len(releases) > 0 {
-			rel = releases[0]
-			found = true
+	prepareReq := func(req *http.Request) {
+		req.Header.Set("User-Agent", "Gubernator-AutoUpdater")
+		req.Header.Set("Accept", "application/vnd.github.v3+json")
+		req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		req.Header.Set("Pragma", "no-cache")
+		if authHeader != "" {
+			req.Header.Set("Authorization", "Bearer "+authHeader)
 		}
-		resp.Body.Close()
 	}
 
-	if !found {
-		// Fallback to /releases/latest
-		reqLatest, _ := http.NewRequest("GET", "https://api.github.com/repos/mario-ezquerro/gubernator/releases/latest", nil)
-		if reqLatest != nil {
-			reqLatest.Header.Set("User-Agent", "Gubernator-AutoUpdater")
-			reqLatest.Header.Set("Accept", "application/vnd.github.v3+json")
-			if respLatest, errLatest := client.Do(reqLatest); errLatest == nil && respLatest.StatusCode == http.StatusOK {
-				_ = json.NewDecoder(respLatest.Body).Decode(&rel)
-				respLatest.Body.Close()
-				if rel.TagName != "" {
-					found = true
+	type candidate struct {
+		version string
+		notes   string
+		url     string
+	}
+	var candidates []candidate
+
+	// Source 1: GitHub Releases API (Primary source for rich changelogs)
+	relURL := fmt.Sprintf("https://api.github.com/repos/mario-ezquerro/gubernator/releases?per_page=15&_cb=%d", cb)
+	if req, err := http.NewRequest("GET", relURL, nil); err == nil {
+		prepareReq(req)
+		if resp, err := client.Do(req); err == nil {
+			if resp.StatusCode == http.StatusOK {
+				var releases []githubRelease
+				if err := json.NewDecoder(resp.Body).Decode(&releases); err == nil {
+					for _, r := range releases {
+						tag := strings.TrimSpace(r.TagName)
+						if tag != "" && !r.Draft {
+							candidates = append(candidates, candidate{
+								version: tag,
+								notes:   strings.TrimSpace(r.Body),
+								url:     r.HTMLURL,
+							})
+						}
+					}
 				}
+			}
+			resp.Body.Close()
+		}
+	}
+
+	// Source 2: GitHub Tags API (Immediate discovery right after git push, before CI completes)
+	tagURL := fmt.Sprintf("https://api.github.com/repos/mario-ezquerro/gubernator/tags?per_page=15&_cb=%d", cb)
+	if req, err := http.NewRequest("GET", tagURL, nil); err == nil {
+		prepareReq(req)
+		if resp, err := client.Do(req); err == nil {
+			if resp.StatusCode == http.StatusOK {
+				var tags []githubTag
+				if err := json.NewDecoder(resp.Body).Decode(&tags); err == nil {
+					for _, t := range tags {
+						tag := strings.TrimSpace(t.Name)
+						if tag != "" {
+							candidates = append(candidates, candidate{
+								version: tag,
+								notes:   "",
+								url:     fmt.Sprintf("https://github.com/mario-ezquerro/gubernator/releases/tag/%s", tag),
+							})
+						}
+					}
+				}
+			}
+			resp.Body.Close()
+		}
+	}
+
+	// Source 3: GitHub Raw Content VERSION (Zero rate limit, instantly available on main branch)
+	rawURL := fmt.Sprintf("https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/VERSION?_cb=%d", cb)
+	if req, err := http.NewRequest("GET", rawURL, nil); err == nil {
+		prepareReq(req)
+		if resp, err := client.Do(req); err == nil {
+			if resp.StatusCode == http.StatusOK {
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				rawV := strings.TrimSpace(string(bodyBytes))
+				if rawV != "" && strings.HasPrefix(rawV, "v") {
+					candidates = append(candidates, candidate{
+						version: rawV,
+						notes:   "",
+						url:     fmt.Sprintf("https://github.com/mario-ezquerro/gubernator/releases/tag/%s", rawV),
+					})
+				}
+			}
+			resp.Body.Close()
+		}
+	}
+
+	// Select the highest SemVer candidate
+	var best candidate
+	for _, c := range candidates {
+		if best.version == "" || isNewerVersion(best.version, c.version) {
+			best = c
+		} else if best.version == c.version && best.notes == "" && c.notes != "" {
+			best.notes = c.notes
+			if c.url != "" {
+				best.url = c.url
 			}
 		}
 	}
 
-	if !found || strings.TrimSpace(rel.TagName) == "" {
+	if best.version == "" {
 		return fallbackInfo(currentVersion), nil
 	}
 
-	latest := strings.TrimSpace(rel.TagName)
-
-	notes := strings.TrimSpace(rel.Body)
+	latest := best.version
+	notes := best.notes
 	if notes == "" {
 		notes = fmt.Sprintf("• Automated cluster rolling upgrade to %s\n• Container core image updates & dependency sync\n• Performance, security and state resilience improvements", latest)
+	}
+	relURLOut := best.url
+	if relURLOut == "" {
+		relURLOut = fmt.Sprintf("https://github.com/mario-ezquerro/gubernator/releases/tag/%s", latest)
 	}
 
 	updateAvailable := isNewerVersion(currentVersion, latest)
@@ -107,7 +187,7 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 		LatestVersion:   latest,
 		UpdateAvailable: updateAvailable,
 		ReleaseNotes:    notes,
-		ReleaseURL:      rel.HTMLURL,
+		ReleaseURL:      relURLOut,
 		CheckedAt:       time.Now().Format(time.RFC3339),
 	}
 
