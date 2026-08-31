@@ -2,23 +2,22 @@ import 'dart:html' as html;
 import 'package:flutter/services.dart';
 
 class ClipboardService {
-  /// Copies text to browser clipboard synchronously via execCommand (works on HTTP & HTTPS),
-  /// falling back to Flutter Clipboard & Web Navigator APIs.
+  /// Copies text to browser clipboard with multiple fallbacks:
+  /// 1. Synchronous execCommand via DOM textarea
+  /// 2. Flutter Clipboard API
+  /// 3. Modern Web Navigator Clipboard API
   static Future<bool> copy(String text) async {
     if (text.isEmpty) return false;
 
-    // 1. Try synchronous execCommand FIRST before any async gap!
-    if (copySync(text)) {
-      return true;
-    }
+    // 1. Try DOM execCommand FIRST (most reliable on plain HTTP / self-hosted IPs)
+    final syncSuccess = copySync(text);
 
-    // 2. Fallback to Flutter Clipboard API
+    // 2. Also write to Flutter Clipboard engine
     try {
       await Clipboard.setData(ClipboardData(text: text));
-      return true;
     } catch (_) {}
 
-    // 3. Fallback to Web Navigator Clipboard API
+    // 3. Also write to Navigator Clipboard if available
     try {
       if (html.window.navigator.clipboard != null) {
         await html.window.navigator.clipboard!.writeText(text);
@@ -26,27 +25,35 @@ class ClipboardService {
       }
     } catch (_) {}
 
-    return false;
+    return syncSuccess;
   }
 
-  /// Synchronous copy using document.execCommand (must be called inside user gesture)
+  /// Synchronous copy using document.execCommand
   static bool copySync(String text) {
     if (text.isEmpty) return false;
     try {
       final textarea = html.TextAreaElement()
         ..value = text
+        ..setAttribute('readonly', '')
         ..style.position = 'fixed'
-        ..style.left = '-9999px'
-        ..style.top = '-9999px'
-        ..style.opacity = '0';
+        ..style.top = '0'
+        ..style.left = '0'
+        ..style.width = '2em'
+        ..style.height = '2em'
+        ..style.padding = '0'
+        ..style.border = 'none'
+        ..style.outline = 'none'
+        ..style.boxShadow = 'none'
+        ..style.background = 'transparent';
       html.document.body?.append(textarea);
-      textarea.focus();
       textarea.select();
+      textarea.setSelectionRange(0, text.length);
       final success = html.document.execCommand('copy');
       textarea.remove();
-      if (success == true) return true;
-    } catch (_) {}
-    return false;
+      return success == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Reads text from browser clipboard with web API & Flutter fallback.
@@ -69,4 +76,3 @@ class ClipboardService {
     return null;
   }
 }
-

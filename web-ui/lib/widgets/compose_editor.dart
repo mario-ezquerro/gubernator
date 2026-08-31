@@ -36,6 +36,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   bool _redeploying = false;
   String _activeTab = 'caddy';
   final FocusNode _editorFocusNode = FocusNode();
+  String _lastSelectedText = '';
+  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
   @override
   void initState() {
@@ -45,13 +47,48 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
       text: widget.composeYaml,
       language: yaml,
     );
+    _controller.addListener(_onCodeChanged);
+    _editorFocusNode.onKeyEvent = _handleEditorKeyEvent;
+  }
+
+  void _onCodeChanged() {
+    final sel = _controller.selection;
+    if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _controller.text.length && sel.start < sel.end) {
+      _lastSelection = sel;
+      _lastSelectedText = _controller.text.substring(sel.start, sel.end);
+    }
+  }
+
+  KeyEventResult _handleEditorKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final isControlOrMeta = HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
+      if (isControlOrMeta) {
+        if (event.logicalKey == LogicalKeyboardKey.keyC) {
+          _handleCopy(forceAll: false);
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.keyV) {
+          _handlePaste();
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.keyX) {
+          _handleCut();
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.keyA) {
+          _handleSelectAll();
+          return KeyEventResult.handled;
+        }
+      }
+    }
+    return KeyEventResult.ignored;
   }
 
   void _handleCopy({bool forceAll = false}) {
     String textToCopy = '';
     final sel = _controller.selection;
-    if (!forceAll && !sel.isCollapsed && sel.isValid && sel.start >= 0 && sel.end <= _controller.text.length) {
+
+    if (!forceAll && sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _controller.text.length && sel.start < sel.end) {
       textToCopy = _controller.text.substring(sel.start, sel.end);
+    } else if (!forceAll && _lastSelectedText.isNotEmpty) {
+      textToCopy = _lastSelectedText;
     } else {
       textToCopy = _controller.text;
     }
@@ -60,6 +97,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
     ClipboardService.copy(textToCopy);
     if (mounted) {
+      final preview = textToCopy.length > 25 ? '${textToCopy.substring(0, 25)}...' : textToCopy;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -70,16 +108,16 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
               Expanded(
                 child: Text(
                   textToCopy == _controller.text
-                      ? 'Copied entire YAML (${textToCopy.length} chars) to clipboard'
-                      : 'Copied selection (${textToCopy.length} chars) to clipboard',
+                      ? 'Copied entire YAML (${textToCopy.length} chars)'
+                      : 'Copied selection (${textToCopy.length} chars): "$preview"',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          duration: const Duration(milliseconds: 1200),
+          duration: const Duration(milliseconds: 1400),
           behavior: SnackBarBehavior.floating,
-          width: 400,
+          width: 440,
         ),
       );
     }
@@ -87,15 +125,26 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
   void _handleCut() {
     final sel = _controller.selection;
-    if (!sel.isCollapsed && sel.isValid && sel.start >= 0 && sel.end <= _controller.text.length) {
-      final selected = _controller.text.substring(sel.start, sel.end);
+    TextSelection? targetSel;
+    if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _controller.text.length && sel.start < sel.end) {
+      targetSel = sel;
+    } else if (_lastSelection.isValid && !_lastSelection.isCollapsed && _lastSelection.start >= 0 && _lastSelection.end <= _controller.text.length) {
+      targetSel = _lastSelection;
+    }
+
+    if (targetSel != null) {
+      final selected = _controller.text.substring(targetSel.start, targetSel.end);
       ClipboardService.copy(selected);
       final text = _controller.text;
-      final newText = text.substring(0, sel.start) + text.substring(sel.end);
+      final start = targetSel.start <= targetSel.end ? targetSel.start : targetSel.end;
+      final end = targetSel.start <= targetSel.end ? targetSel.end : targetSel.start;
+      final newText = text.substring(0, start) + text.substring(end);
       _controller.value = TextEditingValue(
         text: newText,
-        selection: TextSelection.collapsed(offset: sel.start),
+        selection: TextSelection.collapsed(offset: start),
       );
+      _lastSelectedText = '';
+      _lastSelection = const TextSelection.collapsed(offset: -1);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -115,13 +164,17 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
     if (pasted != null && pasted.isNotEmpty) {
       final sel = _controller.selection;
       final text = _controller.text;
-      final start = (sel.isValid && sel.start >= 0) ? sel.start : text.length;
-      final end = (sel.isValid && sel.end >= 0) ? sel.end : text.length;
+      final rawStart = (sel.isValid && sel.start >= 0) ? sel.start : ((_lastSelection.isValid && _lastSelection.start >= 0) ? _lastSelection.start : text.length);
+      final rawEnd = (sel.isValid && sel.end >= 0) ? sel.end : ((_lastSelection.isValid && _lastSelection.end >= 0) ? _lastSelection.end : text.length);
+      final start = rawStart <= rawEnd ? rawStart : rawEnd;
+      final end = rawStart <= rawEnd ? rawEnd : rawStart;
       final newText = text.substring(0, start) + pasted + text.substring(end);
       _controller.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: start + pasted.length),
       );
+      _lastSelectedText = '';
+      _lastSelection = const TextSelection.collapsed(offset: -1);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -141,11 +194,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
       baseOffset: 0,
       extentOffset: _controller.text.length,
     );
+    _lastSelection = _controller.selection;
+    _lastSelectedText = _controller.text;
     _editorFocusNode.requestFocus();
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onCodeChanged);
     _controller.dispose();
     _editorFocusNode.dispose();
     super.dispose();

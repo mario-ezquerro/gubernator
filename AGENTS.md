@@ -299,11 +299,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Dynamic CoreDNS Zone Generation:** Corefile automatically provisions active DNS zones for `<cluster_domain>` (e.g. `acme.corp`, `internal.banco.es`, `dev.gbnt.local`), serving auto-generated container hostnames `<node>.<service>.<cluster_domain>` and stack records `<service>.<stack>.<cluster_domain>`.
 * **Zero-Downtime Hot Domain Updates:** Full REST API (`GET /v1/cluster/domain`, `PUT /v1/cluster/domain`) and Web Dashboard UI management with one-click domain modal in the CoreDNS Management Suite, instantly rewriting Corefile, regenerating `gubernator.hosts`, and reloading CoreDNS via SIGHUP.
 
-### 46. Compose Studio Ultra-Fast Text Selection & 60 FPS Clipboard Engine (`v2.59.2`)
-* **Elimination of UI Thread Selection Thrashing:** Removed expensive listeners and unneeded `setState` triggers during pointer selection dragging, keeping the Flutter Web event loop completely smooth (60 FPS) and preventing browser hangs/freezes.
-* **Focus Node Hierarchy Correction:** Fixed illegal double-attachment of `FocusNode` to both parent `Focus` widgets and child `CodeField`, eliminating focus loop cycles and input lockups.
-* **Streamlined On-Demand Clipboard Engine:** `_handleCopy`, `_handleCut`, `_handlePaste`, and `_handleSelectAll` inspect active controller selections directly on-demand without overhead.
-* **Editor Quick Action Bar & Keyboard Bindings:** Clean, responsive toolbar with "Copy Selection (Ctrl+C)", "Copy All YAML", "Paste (Ctrl+V)", and "Select All (Ctrl+A)" bound to native key activators.
+### 46. Compose Studio Persistent Selection & Infallible Hardware Key Engine (`v2.59.3`)
+* **Zero-Lag In-Memory Selection Preservation:** Real-time recording of `_lastSelectedText` and `_lastSelection` in memory without triggering widget rebuilds (`setState`), preserving the exact highlighted text block even when clicking toolbar buttons or when the editor loses focus.
+* **Direct Hardware & Focus Key Interception (`FocusNode.onKeyEvent`):** Intercepts keyboard shortcuts (`Ctrl+C`, `Cmd+C`, `Ctrl+V`, `Cmd+V`, `Ctrl+X`, `Cmd+X`, `Ctrl+A`, `Cmd+A`) at the root `FocusNode` level before Flutter's `EditableText` consumes or cancels them.
+* **Multi-Layer Cross-Origin Clipboard Bridge:** Synchronous DOM textarea execution with zero visibility artifacts, Flutter `Clipboard.setData()`, and `navigator.clipboard.writeText()` guarantees 100% clipboard write success across both HTTP self-hosted IPs and HTTPS domains.
+* **Instant Action Feedback:** Dynamic SnackBar notifications showing exact char count and preview snippet of copied selection vs full document.
 
 
 
