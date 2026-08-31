@@ -828,6 +828,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dynamic-base-domain-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 Dynamic Base Domain Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rest-api-endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1046,6 +1057,8 @@
       
         
       
+        
+      
     
     
     
@@ -1113,21 +1126,46 @@
 
 
 <h1 id="coredns-service-discovery-management-suite">CoreDNS Service Discovery &amp; Management Suite</h1>
-<p>Gubernator features a native <strong>CoreDNS</strong> management engine that powers internal service discovery (<code>*.gbnt</code> and <code>*.gbnt.local</code>), custom static DNS record management (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>), an interactive <strong>DNS Dig Playground</strong>, and upstream DNS forwarder configuration.</p>
+<p>Gubernator features a native <strong>CoreDNS</strong> management engine that powers internal service discovery (<code>*.&lt;cluster_domain&gt;</code> and <code>*.gbnt.local</code>), dynamic base domain configuration (<code>GBNT_CLUSTER_DOMAIN</code>), custom static DNS record management (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>), an interactive <strong>DNS Dig Playground</strong>, and upstream DNS forwarder configuration.</p>
 <p>Every container deployed by Gubernator receives transparent <code>--dns &lt;CoreDNS_IP&gt;</code> injection, enabling zero-config inter-service communication across multi-node clusters.</p>
 <hr />
 <h2 id="key-features">🎯 Key Features</h2>
 <ul>
-<li><strong>Transparent Container Service Discovery</strong>: Automatically maps running services to <code>&lt;service&gt;.&lt;stack&gt;.gbnt.local</code>, <code>&lt;service&gt;.gbnt.local</code>, and <code>&lt;service&gt;.&lt;stack&gt;.gbnt</code> without manual hosts configuration.</li>
+<li><strong>Dynamic Enterprise Cluster Base Domain (<code>GBNT_CLUSTER_DOMAIN</code>)</strong>: Configurable base domain suffix (e.g. <code>acme.corp</code>, <code>internal.banco.es</code>, <code>dev.company.local</code>, or <code>gbnt.local</code>) persisted centrally in SQLite (<code>ClusterConfig.ClusterDomain</code>) and synchronized across all Centurions.</li>
+<li><strong>Streamlined Host-Qualified DNS Scheme (<code>&lt;node&gt;.&lt;service&gt;.&lt;cluster_domain&gt;</code>)</strong>: Eliminates multi-node service collisions by cleanly mapping system and infrastructure containers strictly to their host (e.g. <code>manager.caddy.acme.corp</code>, <code>node-gbnt-worker1.caddy.acme.corp</code>, <code>manager.loki.acme.corp</code>).</li>
+<li><strong>Stack-Scoped Isolation for Applications (<code>&lt;service&gt;.&lt;stack&gt;.&lt;cluster_domain&gt;</code>)</strong>: User application containers are accessible via <code>&lt;service&gt;.&lt;stack&gt;.&lt;cluster_domain&gt;</code> (e.g. <code>app.wordpress.acme.corp</code>, <code>db.wordpress.acme.corp</code>) and <code>&lt;node&gt;.&lt;service&gt;.&lt;cluster_domain&gt;</code>.</li>
+<li><strong>Zero-Spam &amp; Zero-Collision Architecture</strong>: Streamlined generation prevents duplicate un-scoped records across multi-worker deployments, reducing DNS entries per container to 2–4 pristine records.</li>
+<li><strong>RFC 1123 DNS Label Sanitization</strong>: Automatically normalizes stack and task identifiers (converting brackets, parentheses, and spaces to hyphens) into strictly valid DNS domain labels.</li>
 <li><strong>Custom Static DNS Records</strong>: Add, edit, and delete custom static DNS records (<code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, <code>PTR</code>) stored in SQLite and synced into <code>/etc/coredns/gubernator.hosts</code>.</li>
 <li><strong>Interactive DNS Playground (<code>Dig / Nslookup</code>)</strong>: Perform real-time DNS query testing directly against <code>127.0.0.1:5354</code>, benchmark query latency in milliseconds, and inspect raw DNS answers.</li>
 <li><strong>Upstream DNS Forwarders</strong>: Configure external DNS resolution servers with quick presets for Cloudflare (<code>1.1.1.1</code>), Google (<code>8.8.8.8</code>), Quad9 (<code>9.9.9.9</code>), or custom upstream DNS servers.</li>
-<li><strong>Raw Corefile Visual Editor</strong>: View, edit, validate, and reload CoreDNS configurations on demand with automatic container restart.</li>
-<li><strong>4-Tab Flutter Web Suite</strong>: Rich Material Design 3 dashboard page (<code>CoreDnsPage</code>) with real-time status gauges, record counters, search filters, and copyable <code>curl</code> testing chips.</li>
+<li><strong>Raw Corefile Visual Editor &amp; Hot Reload</strong>: View, edit, validate, and reload CoreDNS configurations on demand with zero downtime via SIGHUP.</li>
+<li><strong>5-KPI Dashboard Suite (<code>CoreDnsPage</code>)</strong>: Rich Material Design 3 dashboard page with live server status, cluster base domain card with edit modal, listener port, record counters, and search filters.</li>
 </ul>
+<hr />
+<h2 id="dynamic-base-domain-configuration">🌐 Dynamic Base Domain Configuration</h2>
+<p>You can configure the base cluster domain at startup using environment variables:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Set custom corporate domain at initial boot</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GBNT_CLUSTER_DOMAIN</span><span class="o">=</span><span class="s2">&quot;acme.corp&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># or</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GBNT_DOMAIN</span><span class="o">=</span><span class="s2">&quot;internal.banco.es&quot;</span>
+</span></code></pre></div>
+<p>Or modify it in real-time via REST API or the Web Dashboard:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Query active cluster base domain</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$GBNT_API_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">     </span>http://localhost:4000/v1/cluster/domain
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Update cluster base domain (automatically rewrites Corefile and reloads CoreDNS)</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$GBNT_API_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">     </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">     </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;cluster_domain&quot;: &quot;corp.internal&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">     </span>http://localhost:4000/v1/cluster/domain
+</span></code></pre></div>
 <hr />
 <h2 id="rest-api-endpoints">🌐 REST API Endpoints</h2>
 <ul>
+<li><code>GET /v1/cluster/domain</code>: Returns the active cluster base domain (<code>{"cluster_domain": "acme.corp"}</code>).</li>
+<li><code>PUT /v1/cluster/domain</code>: Updates cluster base domain, updates SQLite, rewrites Corefile, regenerates <code>gubernator.hosts</code>, and triggers CoreDNS reload.</li>
 <li><code>GET /v1/coredns/status</code>: Returns container health, uptime, listening port (<code>5354</code>), forwarders, and total DNS records count.</li>
 <li><code>GET /v1/coredns/custom-records</code>: Lists all user-configured static DNS records.</li>
 <li><code>POST /v1/coredns/custom-records</code>: Creates a new static DNS record and triggers CoreDNS hosts reload.</li>
@@ -1139,7 +1177,13 @@
 <hr />
 <h2 id="web-dashboard-suite-corednspage">🖥️ Web Dashboard Suite (<code>CoreDnsPage</code>)</h2>
 <ol>
-<li><strong>Tab 1: Auto-Discovered Stacks (<code>*.gbnt</code>)</strong>: Live table of container IPs automatically mapped to <code>&lt;service&gt;.&lt;stack&gt;.gbnt</code> with copyable <code>curl</code> commands.</li>
+<li><strong>KPI Summary Cards</strong>:</li>
+<li><strong>SERVER STATUS</strong>: Real-time status indicator (<code>RUNNING</code> / <code>STOPPED</code>).</li>
+<li><strong>CLUSTER DOMAIN</strong>: Active base domain with an <strong>Edit Modal Dialog</strong> for changing the domain on the fly.</li>
+<li><strong>LISTENER PORT</strong>: Host &amp; container DNS ports (<code>53 / 5354</code>).</li>
+<li><strong>TOTAL DNS RECORDS</strong>: Total active auto-discovered and custom static DNS records.</li>
+<li><strong>FORWARDERS</strong>: Count of active upstream resolvers (<code>Cloudflare</code>, <code>Google</code>, etc.).</li>
+<li><strong>Tab 1: Auto-Discovered Stacks &amp; Host-Qualified Scheme (<code>*.&lt;cluster_domain&gt;</code>)</strong>: Live table of container IPs mapped to <code>&lt;node&gt;.&lt;service&gt;.&lt;cluster_domain&gt;</code> and <code>&lt;service&gt;.&lt;stack&gt;.&lt;cluster_domain&gt;</code> with copyable <code>curl</code> commands.</li>
 <li><strong>Tab 2: Custom Static Records</strong>: Table for managing static A/AAAA/CNAME/TXT entries with modal dialogs and live search.</li>
 <li><strong>Tab 3: DNS Playground (<code>Dig / Nslookup</code>)</strong>: Console for running interactive DNS resolution benchmarks.</li>
 <li><strong>Tab 4: Upstream &amp; Corefile</strong>: Upstream forwarders configuration with one-click presets and raw Corefile editor.</li>

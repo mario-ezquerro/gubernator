@@ -432,6 +432,7 @@ Both tokens are generated with `crypto/rand` and stored in the `/data/gubernator
 | `GBNT_WEB_USER` | — | Username for the Web Dashboard Basic Auth |
 | `GBNT_WEB_PASSWORD` | — | Password for the Web Dashboard Basic Auth |
 | `GBNT_MONITOR` | `false` | Set to `true` to auto-deploy the SRE monitoring stack on startup |
+| `GBNT_CLUSTER_DOMAIN` | `gbnt.local` | Base internal DNS domain for container discovery (e.g. `acme.corp`, `internal.banco.es`) |
 | `GBNT_DNS_FORWARDERS` | `8.8.8.8 1.1.1.1` | Space-separated list of external DNS servers for CoreDNS to use for internet resolution |
 
 ### Full Docker run example (all features)
@@ -559,8 +560,9 @@ Gubernator values **openness, privacy, and full transparency**. You can view liv
 
 ## 🗺 Current Roadmap State
 
-Gubernator's development is divided into "Campaigns". We've completed up to **Phase 23**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, built-in SRE Monitoring Stack, Google SRE Sloth SLO Engine, Enterprise Active Directory / LDAP Authentication + RBAC (`v2.20.0`), Dedicated Loki Logs Explorer (`v2.21.0`), Multi-Distro Ansible Automation (`v2.22.0`), Multi-Cloud Terraform Suite (`v2.23.0`), Persistent Storage & Backups ("The Granaries") (`v2.24.0`), Image Security, SBOM & Cosign Signing ("The Imperial Seal") (`v2.25.0`), Dedicated Compose Studio & Copilot (`v2.27.0`), Network Mounts & `/etc/fstab` Management (`v2.28.0`), Transparent Adoption Metrics & Privacy (`v2.29.0`), GlusterFS Cluster Storage Subsystem (`v2.30.0`), and Host & Cluster Disk Monitoring, SLO Alerting & Storage Dashboarding (`v2.31.0`).
+Gubernator's development is divided into "Campaigns". We've completed up to **Phase 45**, including full CLI parity, Native Docker Engine execution, CoreDNS/Caddy Ingress Automation, Asymmetric Port Security, Flutter Web Dashboard, built-in SRE Monitoring Stack, Google SRE Sloth SLO Engine, Enterprise Active Directory / LDAP Authentication + RBAC (`v2.20.0`), Dedicated Loki Logs Explorer (`v2.21.0`), Multi-Distro Ansible Automation (`v2.22.0`), Multi-Cloud Terraform Suite (`v2.23.0`), Persistent Storage & Backups ("The Granaries") (`v2.24.0`), Image Security, SBOM & Cosign Signing ("The Imperial Seal") (`v2.25.0`), Dedicated Compose Studio & Copilot (`v2.27.0`), Network Mounts & `/etc/fstab` Management (`v2.28.0`), Transparent Adoption Metrics & Privacy (`v2.29.0`), GlusterFS Cluster Storage Subsystem (`v2.30.0`), Host & Cluster Disk Monitoring (`v2.31.0`), Streamlined Host-Qualified DNS (`v2.58.2`), and Dynamic & Customizable Enterprise Cluster Base Domain (`v2.59.0`).
 
 **[View the complete Roadmap and completed features here](https://mario-ezquerro.github.io/gubernator/roadmap/)**
+
 
 

@@ -151,12 +151,15 @@ Lists all container instances with:
 
 ---
 
-### CoreDNS (Internal DNS)
+### CoreDNS Management Suite (`CoreDnsPage`)
 
-Displays the active internal DNS records and allows you to configure external forwarders.
+The dashboard features a full-featured **4-Tab CoreDNS Management Suite** with real-time status telemetry and zero-downtime hot reloading:
 
-- **Records Tab:** View all dynamically generated internal DNS records (e.g. `web.mystack.gbnt -> 10.0.0.5`).
-- **Configuration Tab:** Add one or more External DNS Forwarders (e.g. `8.8.8.8 1.1.1.1`) separated by spaces. The raw JSON-like `Corefile` configuration is updated automatically.
+- **5 KPI Summary Cards:** Live **Server Status**, **Cluster Base Domain** (with interactive one-click edit dialog), **Listener Port** (`53 / 5354`), **Total DNS Records**, and **Active Upstream Forwarders**.
+- **Tab 1: Auto-Discovered DNS Records:** Real-time host-qualified internal service discovery mapping container IPs to `<node>.<service>.<cluster_domain>` (e.g. `node-gbnt-worker1.caddy.acme.corp`) and stack records `<service>.<stack>.<cluster_domain>` with copyable `curl` testing chips.
+- **Tab 2: Custom Static DNS Records:** Create, edit, and delete custom static `A`, `AAAA`, `CNAME`, `TXT`, and `PTR` records with instant synchronization into `/etc/coredns/gubernator.hosts`.
+- **Tab 3: Interactive DNS Playground (`Dig / Nslookup`):** Execute live DNS queries directly from the browser against CoreDNS (`127.0.0.1:5354`) with latency benchmarking (ms) and raw answer inspection.
+- **Tab 4: Upstream Forwarders & Corefile Editor:** Quick-select upstream DNS providers (Cloudflare, Google, Quad9) or edit and save raw `Corefile` configurations with automatic SIGHUP reloads.
 
 ---
 

@@ -777,10 +777,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#coredns-internal-dns" class="md-nav__link">
+  <a href="#coredns-management-suite-corednspage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CoreDNS (Internal DNS)
+        CoreDNS Management Suite (CoreDnsPage)
       
     </span>
   </a>
@@ -1318,6 +1318,8 @@
       
         
       
+        
+      
     
     
     
@@ -1604,11 +1606,14 @@
 </tbody>
 </table>
 <hr />
-<h3 id="coredns-internal-dns">CoreDNS (Internal DNS)</h3>
-<p>Displays the active internal DNS records and allows you to configure external forwarders.</p>
+<h3 id="coredns-management-suite-corednspage">CoreDNS Management Suite (<code>CoreDnsPage</code>)</h3>
+<p>The dashboard features a full-featured <strong>4-Tab CoreDNS Management Suite</strong> with real-time status telemetry and zero-downtime hot reloading:</p>
 <ul>
-<li><strong>Records Tab:</strong> View all dynamically generated internal DNS records (e.g. <code>web.mystack.gbnt -&gt; 10.0.0.5</code>).</li>
-<li><strong>Configuration Tab:</strong> Add one or more External DNS Forwarders (e.g. <code>8.8.8.8 1.1.1.1</code>) separated by spaces. The raw JSON-like <code>Corefile</code> configuration is updated automatically.</li>
+<li><strong>5 KPI Summary Cards:</strong> Live <strong>Server Status</strong>, <strong>Cluster Base Domain</strong> (with interactive one-click edit dialog), <strong>Listener Port</strong> (<code>53 / 5354</code>), <strong>Total DNS Records</strong>, and <strong>Active Upstream Forwarders</strong>.</li>
+<li><strong>Tab 1: Auto-Discovered DNS Records:</strong> Real-time host-qualified internal service discovery mapping container IPs to <code>&lt;node&gt;.&lt;service&gt;.&lt;cluster_domain&gt;</code> (e.g. <code>node-gbnt-worker1.caddy.acme.corp</code>) and stack records <code>&lt;service&gt;.&lt;stack&gt;.&lt;cluster_domain&gt;</code> with copyable <code>curl</code> testing chips.</li>
+<li><strong>Tab 2: Custom Static DNS Records:</strong> Create, edit, and delete custom static <code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, and <code>PTR</code> records with instant synchronization into <code>/etc/coredns/gubernator.hosts</code>.</li>
+<li><strong>Tab 3: Interactive DNS Playground (<code>Dig / Nslookup</code>):</strong> Execute live DNS queries directly from the browser against CoreDNS (<code>127.0.0.1:5354</code>) with latency benchmarking (ms) and raw answer inspection.</li>
+<li><strong>Tab 4: Upstream Forwarders &amp; Corefile Editor:</strong> Quick-select upstream DNS providers (Cloudflare, Google, Quad9) or edit and save raw <code>Corefile</code> configurations with automatic SIGHUP reloads.</li>
 </ul>
 <hr />
 <h3 id="observability-grafana-metrics-network-monitor-jaeger-traces">Observability: Grafana Metrics, Network Monitor &amp; Jaeger Traces</h3>

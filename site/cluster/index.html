@@ -765,6 +765,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-enterprise-base-domain-configuration-gbnt_cluster_domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 8. Enterprise Base Domain Configuration (GBNT_CLUSTER_DOMAIN)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1065,6 +1076,8 @@
       
         
       
+        
+      
     
     
     
@@ -1286,6 +1299,17 @@ Output:
    - Activating the node or clicking the badge opens the <strong>Token Desincronizado</strong> dialog.
    - Displays the exact <code>gbnt legion join</code> update command with current active tokens.
    - Provides a <strong>"Auto-Sync vía SSH"</strong> button that executes <code>POST /api/node/:id/sync-token</code>, updating the worker daemon and restarting the container remotely over SSH without manual terminal intervention.</p>
+<hr />
+<h2 id="8-enterprise-base-domain-configuration-gbnt_cluster_domain">🌐 8. Enterprise Base Domain Configuration (<code>GBNT_CLUSTER_DOMAIN</code>)</h2>
+<p>In enterprise environments, organizations typically require internal containers and services to resolve under their corporate DNS namespace (e.g. <code>acme.corp</code>, <code>internal.banco.es</code>, <code>dev.company.local</code>, or <code>cluster.internal</code>):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Initialize Manager with custom enterprise base domain</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nv">GBNT_CLUSTER_DOMAIN</span><span class="o">=</span>acme.corp<span class="w"> </span>gbnt<span class="w"> </span>serve
+</span></code></pre></div>
+<p>When configured:
+* All container hostnames automatically resolve as <code>&lt;node&gt;.&lt;service&gt;.acme.corp</code> (e.g. <code>node-gbnt-worker1.caddy.acme.corp</code>, <code>manager.loki.acme.corp</code>).
+* Stack services communicate using <code>&lt;service&gt;.&lt;stack&gt;.acme.corp</code> (e.g. <code>app.wordpress.acme.corp</code>).
+* CoreDNS automatically creates and serves DNS zone blocks for <code>acme.corp</code> and <code>gbnt.local</code>.
+* The base domain can be updated on the fly via REST API (<code>PUT /v1/cluster/domain</code>) or the Web Dashboard CoreDNS Suite with zero downtime.</p>
 
 
 

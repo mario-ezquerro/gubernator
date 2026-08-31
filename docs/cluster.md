@@ -198,3 +198,21 @@ When rotating the cluster's `GBNT_API_TOKEN` or when worker daemons attempt to h
    - Displays the exact `gbnt legion join` update command with current active tokens.
    - Provides a **"Auto-Sync vía SSH"** button that executes `POST /api/node/:id/sync-token`, updating the worker daemon and restarting the container remotely over SSH without manual terminal intervention.
 
+---
+
+## 🌐 8. Enterprise Base Domain Configuration (`GBNT_CLUSTER_DOMAIN`)
+
+In enterprise environments, organizations typically require internal containers and services to resolve under their corporate DNS namespace (e.g. `acme.corp`, `internal.banco.es`, `dev.company.local`, or `cluster.internal`):
+
+```bash
+# Initialize Manager with custom enterprise base domain
+GBNT_CLUSTER_DOMAIN=acme.corp gbnt serve
+```
+
+When configured:
+* All container hostnames automatically resolve as `<node>.<service>.acme.corp` (e.g. `node-gbnt-worker1.caddy.acme.corp`, `manager.loki.acme.corp`).
+* Stack services communicate using `<service>.<stack>.acme.corp` (e.g. `app.wordpress.acme.corp`).
+* CoreDNS automatically creates and serves DNS zone blocks for `acme.corp` and `gbnt.local`.
+* The base domain can be updated on the fly via REST API (`PUT /v1/cluster/domain`) or the Web Dashboard CoreDNS Suite with zero downtime.
+
+
