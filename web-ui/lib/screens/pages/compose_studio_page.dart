@@ -254,8 +254,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   };
 
   final FocusNode _editorFocusNode = FocusNode();
-  String _lastSelectedText = '';
-  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
   @override
   void initState() {
@@ -265,28 +263,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       text: _defaultTemplate,
       language: yaml,
     );
-    _codeController.addListener(_onSelectionChanged);
-  }
-
-  void _onSelectionChanged() {
-    final sel = _codeController.selection;
-    if (!sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length) {
-      final text = _codeController.text.substring(sel.start, sel.end);
-      if (text.isNotEmpty) {
-        _lastSelection = sel;
-        _lastSelectedText = text;
-        if (mounted) setState(() {});
-      }
-    }
   }
 
   void _handleCopy({bool forceAll = false}) {
     String textToCopy = '';
     final sel = _codeController.selection;
-    if (!forceAll && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length) {
+    if (!forceAll && !sel.isCollapsed && sel.isValid && sel.start >= 0 && sel.end <= _codeController.text.length) {
       textToCopy = _codeController.text.substring(sel.start, sel.end);
-    } else if (!forceAll && _lastSelectedText.isNotEmpty) {
-      textToCopy = _lastSelectedText;
     } else {
       textToCopy = _codeController.text;
     }
@@ -312,20 +295,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
               ),
             ],
           ),
-          duration: const Duration(seconds: 2),
+          duration: const Duration(milliseconds: 1200),
           behavior: SnackBarBehavior.floating,
-          width: 420,
+          width: 400,
         ),
       );
     }
   }
 
   void _handleCut() {
-    final sel = (!_codeController.selection.isCollapsed && _codeController.selection.isValid)
-        ? _codeController.selection
-        : (_lastSelection.isValid && !_lastSelection.isCollapsed ? _lastSelection : null);
-
-    if (sel != null && sel.start >= 0 && sel.end <= _codeController.text.length) {
+    final sel = _codeController.selection;
+    if (!sel.isCollapsed && sel.isValid && sel.start >= 0 && sel.end <= _codeController.text.length) {
       final selected = _codeController.text.substring(sel.start, sel.end);
       ClipboardService.copy(selected);
       final text = _codeController.text;
@@ -334,14 +314,12 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         text: newText,
         selection: TextSelection.collapsed(offset: sel.start),
       );
-      _lastSelectedText = '';
-      _lastSelection = const TextSelection.collapsed(offset: -1);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Cut selection to clipboard'),
-            duration: Duration(seconds: 1),
+            duration: Duration(milliseconds: 1200),
             behavior: SnackBarBehavior.floating,
             width: 280,
           ),
@@ -355,8 +333,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     if (pasted != null && pasted.isNotEmpty) {
       final sel = _codeController.selection;
       final text = _codeController.text;
-      final start = sel.start >= 0 ? sel.start : text.length;
-      final end = sel.end >= 0 ? sel.end : text.length;
+      final start = (sel.isValid && sel.start >= 0) ? sel.start : text.length;
+      final end = (sel.isValid && sel.end >= 0) ? sel.end : text.length;
       final newText = text.substring(0, start) + pasted + text.substring(end);
       _codeController.value = TextEditingValue(
         text: newText,
@@ -367,7 +345,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Pasted ${pasted.length} characters'),
-            duration: const Duration(seconds: 1),
+            duration: const Duration(milliseconds: 1000),
             behavior: SnackBarBehavior.floating,
             width: 260,
           ),
@@ -381,15 +359,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       baseOffset: 0,
       extentOffset: _codeController.text.length,
     );
-    _lastSelection = _codeController.selection;
-    _lastSelectedText = _codeController.text;
     _editorFocusNode.requestFocus();
-    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _codeController.removeListener(_onSelectionChanged);
     _codeController.dispose();
     _nameController.dispose();
     _editorFocusNode.dispose();
@@ -946,13 +920,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   }
 
   Widget _buildEditorActionBar(ThemeData theme, bool isDark) {
-    final hasSelection = (!_codeController.selection.isCollapsed && _codeController.selection.isValid) || _lastSelectedText.isNotEmpty;
-    final linesCount = '\n'.allMatches(_codeController.text).length + 1;
-    final charsCount = _codeController.text.length;
-    final selLength = !_codeController.selection.isCollapsed
-        ? (_codeController.selection.end - _codeController.selection.start)
-        : _lastSelectedText.length;
-
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -964,7 +931,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       ),
       child: Row(
         children: [
-          // Metrics chip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
@@ -972,49 +938,32 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
               borderRadius: BorderRadius.circular(4),
               border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.code, size: 13, color: Colors.cyanAccent),
-                const SizedBox(width: 6),
+                Icon(Icons.code, size: 13, color: Colors.cyanAccent),
+                SizedBox(width: 6),
                 Text(
-                  'YAML: $linesCount lines | $charsCount chars',
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600),
+                  'YAML Editor',
+                  style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600),
                 ),
-                if (hasSelection) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.cyan.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'Selected: $selLength chars',
-                      style: const TextStyle(fontSize: 10, color: Colors.cyanAccent, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
           const Spacer(),
 
-          // Copy Selection button (highlighted when text is selected)
-          if (hasSelection)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: FilledButton.tonalIcon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: Colors.cyan.withValues(alpha: 0.2),
-                  foregroundColor: Colors.cyanAccent,
-                ),
-                icon: const Icon(Icons.content_copy, size: 14),
-                label: const Text('Copy Selection (Ctrl+C)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                onPressed: () => _handleCopy(forceAll: false),
-              ),
+          // Copy Selection button
+          FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              backgroundColor: Colors.cyan.withValues(alpha: 0.2),
+              foregroundColor: Colors.cyanAccent,
             ),
+            icon: const Icon(Icons.content_copy, size: 14),
+            label: const Text('Copy Selection (Ctrl+C)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            onPressed: () => _handleCopy(forceAll: false),
+          ),
+          const SizedBox(width: 6),
 
           // Copy All YAML
           TextButton.icon(
@@ -1319,20 +1268,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                   const SingleActivator(LogicalKeyboardKey.keyA, control: true): _handleSelectAll,
                                   const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _handleSelectAll,
                                 },
-                                child: Focus(
-                                  focusNode: _editorFocusNode,
-                                  child: CodeTheme(
-                                    data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
-                                      child: CodeField(
-                                        controller: _codeController,
-                                        focusNode: _editorFocusNode,
-                                        textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                        expands: true,
-                                      ),
+                                child: CodeTheme(
+                                  data: CodeThemeData(styles: isDark ? monokaiSublimeTheme : githubTheme),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                    child: CodeField(
+                                      controller: _codeController,
+                                      focusNode: _editorFocusNode,
+                                      textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                      expands: true,
                                     ),
                                   ),
                                 ),
