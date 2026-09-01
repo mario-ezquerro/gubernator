@@ -543,57 +543,92 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
 
             // Tab Bar
             Container(
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.withValues(alpha: 0.2),
+                ),
               ),
               child: TabBar(
                 controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
                 indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   color: const Color(0xFFF97316),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF97316).withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 labelColor: Colors.white,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.2),
                 unselectedLabelColor: isDark ? Colors.grey[400] : Colors.grey[700],
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                 tabs: [
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.security, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Vulnerabilities (${_scans.length})'),
-                      ],
+                    height: 42,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.security, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Vulnerabilities (${_scans.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   const Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.inventory, size: 18),
-                        SizedBox(width: 6),
-                        Text('SBOM Explorer'),
-                      ],
+                    height: 42,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inventory, size: 18),
+                          SizedBox(width: 8),
+                          Text('SBOM Explorer'),
+                        ],
+                      ),
                     ),
                   ),
                   Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Signatures & Keys (${_keys.length})'),
-                      ],
+                    height: 42,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.verified, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Signatures & Keys (${_keys.length})'),
+                        ],
+                      ),
                     ),
                   ),
                   const Tab(
-                    icon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.gavel, size: 18),
-                        SizedBox(width: 6),
-                        Text('Gatekeeper Policies'),
-                      ],
+                    height: 42,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.gavel, size: 18),
+                          SizedBox(width: 8),
+                          Text('Gatekeeper Policies'),
+                        ],
+                      ),
                     ),
                   ),
                 ],

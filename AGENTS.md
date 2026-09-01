@@ -316,6 +316,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Programmatic vs Keystroke Copy Segregation:** Filtered native `copy`/`cut` event handlers in Compose Studio and Compose Editor to ignore `TextAreaElement`/`InputElement` targets, preventing programmatic document copies from being overridden by keyboard selection hooks.
 * **100% Reliable Cross-Browser HTTP Clipboard Parity:** Fixes silent copy failures for toolbar buttons across macOS Safari, Chrome, and Firefox on self-hosted HTTP endpoints without SSL requirements.
 
+### 49. Image Security & SBOM Navigation Bar Aesthetics & Pill Indicator Polish (`v2.59.9`)
+* **Refined Sub-Tab Pill Indicator:** Replaced cramped, unpadded `Tab(icon: Row(...))` buttons with generous `Tab(height: 42, child: Padding(...))` widgets and `indicatorSize: TabBarIndicatorSize.tab`.
+* **Elevated Ambient Glow & Geometry:** Styled the selected orange tab indicator with an 8px border radius, 4px inset container margins, and an ambient drop shadow (`BoxShadow(color: Color(0xFFF97316).withValues(alpha: 0.35), blurRadius: 8, offset: Offset(0, 2))`).
+* **Enhanced Typography & Contrast:** Configured bold white text with letter-spacing for active tab state and high-contrast muted text for unselected tabs.
+
+
 
 
 
