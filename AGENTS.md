@@ -305,6 +305,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Layer Cross-Origin Clipboard Bridge:** Synchronous DOM textarea execution with zero visibility artifacts, Flutter `Clipboard.setData()`, and `navigator.clipboard.writeText()` guarantees 100% clipboard write success across both HTTP self-hosted IPs and HTTPS domains.
 * **Instant Action Feedback:** Dynamic SnackBar notifications showing exact char count and preview snippet of copied selection vs full document.
 
+### 47. Native Browser Clipboard Event Interception & macOS Cmd+C/Ctrl+C Engine (`v2.59.7`)
+* **Native Browser DOM Copy/Cut Event Interception:** Bypasses Flutter Web's internal `TextInputPlugin` by intercepting native browser `copy` and `cut` events in DOM capture phase (`addEventListener('copy', ..., true)`).
+* **HTTP-Compliant Clipboard Data Injection:** Injects highlighted text directly via `event.clipboardData.setData('text/plain', text)` during standard `Cmd+C` / `Ctrl+C` gestures, functioning reliably on HTTP without HTTPS or browser permission restrictions.
+* **Custom Context Menu & Selection Retention:** Prevents default browser right-click context menu from clearing text selection, displaying a specialized Flutter popup menu with copy/paste actions.
+* **Synchronous DOM Fallbacks for Toolbar Actions:** Guarantees clipboard parity whether invoked via keyboard shortcuts, custom right-click menu, or toolbar buttons.
+
+
 
 
 
