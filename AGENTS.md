@@ -311,6 +311,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Custom Context Menu & Selection Retention:** Prevents default browser right-click context menu from clearing text selection, displaying a specialized Flutter popup menu with copy/paste actions.
 * **Synchronous DOM Fallbacks for Toolbar Actions:** Guarantees clipboard parity whether invoked via keyboard shortcuts, custom right-click menu, or toolbar buttons.
 
+### 48. Universal Toolbar & Full Document Clipboard Copy Engine (`v2.59.8`)
+* **Infallible Direct Clipboard Injection in `copySync`:** Implements dynamic capture-phase one-time `copy` event listening within `ClipboardService.copySync`, forcing `e.clipboardData.setData('text/plain', text)` on any programmatic copy action (such as "Copy All YAML", "Copy Node ID", "Copy Task ID", and "Copy Logs").
+* **Programmatic vs Keystroke Copy Segregation:** Filtered native `copy`/`cut` event handlers in Compose Studio and Compose Editor to ignore `TextAreaElement`/`InputElement` targets, preventing programmatic document copies from being overridden by keyboard selection hooks.
+* **100% Reliable Cross-Browser HTTP Clipboard Parity:** Fixes silent copy failures for toolbar buttons across macOS Safari, Chrome, and Firefox on self-hosted HTTP endpoints without SSL requirements.
+
+
 
 
 

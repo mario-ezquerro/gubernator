@@ -28,13 +28,25 @@ class ClipboardService {
     return syncSuccess;
   }
 
-  /// Synchronous copy using document.execCommand
+  /// Synchronous copy using document.execCommand with direct clipboardData injection
   static bool copySync(String text) {
     if (text.isEmpty) return false;
     try {
+      bool copyEventHandled = false;
+      void onCopy(html.Event e) {
+        if (e is html.ClipboardEvent) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          e.clipboardData?.setData('text/plain', text);
+          copyEventHandled = true;
+        }
+      }
+
+      // Add a high-priority capture-phase listener to guarantee our exact text is written
+      html.document.addEventListener('copy', onCopy, true);
+
       final textarea = html.TextAreaElement()
         ..value = text
-        ..setAttribute('readonly', '')
         ..style.position = 'fixed'
         ..style.top = '0'
         ..style.left = '0'
@@ -44,13 +56,21 @@ class ClipboardService {
         ..style.border = 'none'
         ..style.outline = 'none'
         ..style.boxShadow = 'none'
-        ..style.background = 'transparent';
+        ..style.background = 'transparent'
+        ..style.opacity = '0'
+        ..style.pointerEvents = 'none';
+
       html.document.body?.append(textarea);
+      textarea.focus();
       textarea.select();
       textarea.setSelectionRange(0, text.length);
-      final success = html.document.execCommand('copy');
+
+      final execResult = html.document.execCommand('copy');
       textarea.remove();
-      return success == true;
+
+      html.document.removeEventListener('copy', onCopy, true);
+
+      return execResult == true || copyEventHandled;
     } catch (_) {
       return false;
     }

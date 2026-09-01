@@ -261,6 +261,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   // Native browser clipboard event handlers — most reliable approach for HTTP
   html.EventListener? _copyHandler;
   html.EventListener? _cutHandler;
+  html.EventListener? _pasteHandler;
   html.EventListener? _keyDownHandler;
   StreamSubscription<html.Event>? _contextMenuSub;
 
@@ -277,6 +278,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     // Intercept native browser 'copy' event — fires when Cmd+C/Ctrl+C is pressed
     // clipboardData.setData() works on HTTP without any permissions
     _copyHandler = (html.Event e) {
+      if (e.target is html.TextAreaElement || e.target is html.InputElement) return;
       if (!mounted || !_editorFocusNode.hasFocus) return;
       e.preventDefault();
       final text = _getTextToCopy(forceAll: false);
@@ -289,13 +291,29 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
     // Intercept native browser 'cut' event
     _cutHandler = (html.Event e) {
+      if (e.target is html.TextAreaElement || e.target is html.InputElement) return;
       if (!mounted || !_editorFocusNode.hasFocus) return;
       e.preventDefault();
       _handleCut(fromEvent: e as html.ClipboardEvent);
     };
     html.document.addEventListener('cut', _cutHandler!, true);
 
-    // Also keep keydown for Ctrl+V (paste) and Ctrl+A (select all)
+    // Intercept native browser 'paste' event — fires when Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
+    // clipboardData.getData('text/plain') works directly on plain HTTP without permissions
+    _pasteHandler = (html.Event e) {
+      if (e.target is html.TextAreaElement || e.target is html.InputElement) return;
+      if (!mounted || !_editorFocusNode.hasFocus) return;
+      final clipboardEvent = e as html.ClipboardEvent;
+      final text = clipboardEvent.clipboardData?.getData('text/plain');
+      if (text != null && text.isNotEmpty) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        _insertPastedText(text);
+      }
+    };
+    html.document.addEventListener('paste', _pasteHandler!, true);
+
+    // Keep keydown for Ctrl+A / Cmd+A (copy/cut/paste are handled by native clipboard events)
     _keyDownHandler = (html.Event e) => _onBrowserKeyDown(e as html.KeyboardEvent);
     html.document.addEventListener('keydown', _keyDownHandler!, true);
 
@@ -346,18 +364,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     );
   }
 
-  /// Keydown handler — only handles Ctrl+V and Ctrl+A (copy/cut are handled by 'copy'/'cut' events).
+  /// Keydown handler — only handles Ctrl+A / Cmd+A (copy/cut/paste are handled by native clipboard events).
   void _onBrowserKeyDown(html.KeyboardEvent event) {
     if (!mounted || !_editorFocusNode.hasFocus) return;
     final isCtrlOrMeta = event.ctrlKey || event.metaKey;
     if (!isCtrlOrMeta) return;
     final key = event.key?.toLowerCase() ?? '';
     switch (key) {
-      case 'v':
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        _handlePaste();
-        break;
       case 'a':
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -503,34 +516,126 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     }
   }
 
+  void _insertPastedText(String pasted) {
+    if (pasted.isEmpty) return;
+    final sel = _codeController.selection;
+    final text = _codeController.text;
+    final rawStart = (sel.isValid && sel.start >= 0) ? sel.start : ((_lastSelection.isValid && _lastSelection.start >= 0) ? _lastSelection.start : text.length);
+    final rawEnd = (sel.isValid && sel.end >= 0) ? sel.end : ((_lastSelection.isValid && _lastSelection.end >= 0) ? _lastSelection.end : text.length);
+    final start = rawStart <= rawEnd ? rawStart : rawEnd;
+    final end = rawStart <= rawEnd ? rawEnd : rawStart;
+    final newText = text.substring(0, start) + pasted + text.substring(end);
+    _codeController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + pasted.length),
+    );
+    _lastSelectedText = '';
+    _lastSelection = const TextSelection.collapsed(offset: -1);
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '✓ Pasted ${pasted.length} characters into editor',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(milliseconds: 1200),
+          behavior: SnackBarBehavior.floating,
+          width: 320,
+        ),
+      );
+    }
+  }
+
   Future<void> _handlePaste() async {
     final pasted = await ClipboardService.paste();
     if (pasted != null && pasted.isNotEmpty) {
-      final sel = _codeController.selection;
-      final text = _codeController.text;
-      final rawStart = (sel.isValid && sel.start >= 0) ? sel.start : ((_lastSelection.isValid && _lastSelection.start >= 0) ? _lastSelection.start : text.length);
-      final rawEnd = (sel.isValid && sel.end >= 0) ? sel.end : ((_lastSelection.isValid && _lastSelection.end >= 0) ? _lastSelection.end : text.length);
-      final start = rawStart <= rawEnd ? rawStart : rawEnd;
-      final end = rawStart <= rawEnd ? rawEnd : rawStart;
-      final newText = text.substring(0, start) + pasted + text.substring(end);
-      _codeController.value = TextEditingValue(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + pasted.length),
-      );
-      _lastSelectedText = '';
-      _lastSelection = const TextSelection.collapsed(offset: -1);
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✓ Pasted ${pasted.length} characters'),
-            duration: const Duration(milliseconds: 1000),
-            behavior: SnackBarBehavior.floating,
-            width: 260,
-          ),
-        );
-      }
+      _insertPastedText(pasted);
+      return;
     }
+
+    // Fallback when browser blocks silent reading on plain HTTP
+    if (mounted) {
+      _showPasteModal();
+    }
+  }
+
+  void _showPasteModal() {
+    final pasteController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2228),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Row(
+          children: [
+            Icon(Icons.paste, color: Colors.cyanAccent, size: 20),
+            SizedBox(width: 8),
+            Text('Paste Content', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Direct clipboard reading via button is restricted on HTTP by browser security.\nPress Cmd+V (Mac) / Ctrl+V (Windows) in the box below:',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pasteController,
+                autofocus: true,
+                maxLines: 8,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Press Cmd+V or Ctrl+V here...',
+                  hintStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  filled: true,
+                  fillColor: const Color(0xFF0D1117),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF30363D)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.cyanAccent),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.cyan),
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Insert into Editor'),
+            onPressed: () {
+              final text = pasteController.text;
+              Navigator.of(ctx).pop();
+              if (text.isNotEmpty) {
+                _insertPastedText(text);
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleSelectAll() {
@@ -552,6 +657,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     if (_cutHandler != null) {
       html.document.removeEventListener('cut', _cutHandler!, true);
       _cutHandler = null;
+    }
+    if (_pasteHandler != null) {
+      html.document.removeEventListener('paste', _pasteHandler!, true);
+      _pasteHandler = null;
     }
     if (_keyDownHandler != null) {
       html.document.removeEventListener('keydown', _keyDownHandler!, true);
