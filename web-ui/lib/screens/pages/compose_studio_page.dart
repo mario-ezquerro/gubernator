@@ -258,8 +258,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
-  // Raw browser DOM event subscriptions — bypasses Flutter's event system
-  StreamSubscription<html.KeyboardEvent>? _keyDownSub;
+  // Raw browser DOM event listeners — CAPTURE PHASE bypasses Flutter's event system
+  html.EventListener? _keyDownHandler;
   StreamSubscription<html.Event>? _contextMenuSub;
 
   @override
@@ -272,8 +272,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     );
     _codeController.addListener(_onCodeChanged);
 
-    // Intercept keyboard events at the browser DOM level
-    _keyDownSub = html.window.onKeyDown.listen(_onBrowserKeyDown);
+    // Intercept keyboard events at browser DOM level in CAPTURE PHASE
+    // This fires BEFORE Flutter's internal TextInputPlugin handler
+    _keyDownHandler = (html.Event e) => _onBrowserKeyDown(e as html.KeyboardEvent);
+    html.document.addEventListener('keydown', _keyDownHandler!, true);
     // Intercept right-click context menu at the browser DOM level
     _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
@@ -530,7 +532,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
   @override
   void dispose() {
-    _keyDownSub?.cancel();
+    if (_keyDownHandler != null) {
+      html.document.removeEventListener('keydown', _keyDownHandler!, true);
+      _keyDownHandler = null;
+    }
     _contextMenuSub?.cancel();
     _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();

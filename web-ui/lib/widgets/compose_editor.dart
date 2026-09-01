@@ -41,8 +41,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
-  // Raw browser DOM event subscriptions
-  StreamSubscription<html.KeyboardEvent>? _keyDownSub;
+  // Raw browser DOM event listeners — CAPTURE PHASE
+  html.EventListener? _keyDownHandler;
   StreamSubscription<html.Event>? _contextMenuSub;
 
   @override
@@ -54,7 +54,8 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
       language: yaml,
     );
     _controller.addListener(_onCodeChanged);
-    _keyDownSub = html.window.onKeyDown.listen(_onBrowserKeyDown);
+    _keyDownHandler = (html.Event e) => _onBrowserKeyDown(e as html.KeyboardEvent);
+    html.document.addEventListener('keydown', _keyDownHandler!, true);
     _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
 
@@ -303,7 +304,10 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
 
   @override
   void dispose() {
-    _keyDownSub?.cancel();
+    if (_keyDownHandler != null) {
+      html.document.removeEventListener('keydown', _keyDownHandler!, true);
+      _keyDownHandler = null;
+    }
     _contextMenuSub?.cancel();
     _controller.removeListener(_onCodeChanged);
     _controller.dispose();
