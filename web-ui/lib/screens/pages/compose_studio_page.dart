@@ -258,7 +258,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
-  // Raw browser DOM event listeners — CAPTURE PHASE bypasses Flutter's event system
+  // Native browser clipboard event handlers — most reliable approach for HTTP
+  html.EventListener? _copyHandler;
+  html.EventListener? _cutHandler;
   html.EventListener? _keyDownHandler;
   StreamSubscription<html.Event>? _contextMenuSub;
 
@@ -272,11 +274,32 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     );
     _codeController.addListener(_onCodeChanged);
 
-    // Intercept keyboard events at browser DOM level in CAPTURE PHASE
-    // This fires BEFORE Flutter's internal TextInputPlugin handler
+    // Intercept native browser 'copy' event — fires when Cmd+C/Ctrl+C is pressed
+    // clipboardData.setData() works on HTTP without any permissions
+    _copyHandler = (html.Event e) {
+      if (!mounted || !_editorFocusNode.hasFocus) return;
+      e.preventDefault();
+      final text = _getTextToCopy(forceAll: false);
+      if (text.isNotEmpty) {
+        (e as html.ClipboardEvent).clipboardData?.setData('text/plain', text);
+        _showCopySnackbar(text);
+      }
+    };
+    html.document.addEventListener('copy', _copyHandler!, true);
+
+    // Intercept native browser 'cut' event
+    _cutHandler = (html.Event e) {
+      if (!mounted || !_editorFocusNode.hasFocus) return;
+      e.preventDefault();
+      _handleCut(fromEvent: e as html.ClipboardEvent);
+    };
+    html.document.addEventListener('cut', _cutHandler!, true);
+
+    // Also keep keydown for Ctrl+V (paste) and Ctrl+A (select all)
     _keyDownHandler = (html.Event e) => _onBrowserKeyDown(e as html.KeyboardEvent);
     html.document.addEventListener('keydown', _keyDownHandler!, true);
-    // Intercept right-click context menu at the browser DOM level
+
+    // Intercept right-click context menu
     _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
 
@@ -289,25 +312,47 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     }
   }
 
-  /// Raw browser DOM keydown handler — fires BEFORE Flutter's EditableText consumes the event.
+  /// Returns the text to copy — current selection or last remembered selection.
+  String _getTextToCopy({bool forceAll = false}) {
+    if (forceAll) return _codeController.text;
+    final sel = _codeController.selection;
+    if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length && sel.start < sel.end) {
+      return _codeController.text.substring(sel.start, sel.end);
+    }
+    if (_lastSelectedText.isNotEmpty) return _lastSelectedText;
+    return _codeController.text;
+  }
+
+  void _showCopySnackbar(String text) {
+    if (!mounted) return;
+    final preview = text.length > 25 ? '${text.substring(0, 25)}...' : text;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(
+            text == _codeController.text
+                ? '✓ Copied entire YAML (${text.length} chars)'
+                : '✓ Copied (${text.length} chars): "$preview"',
+            overflow: TextOverflow.ellipsis,
+          )),
+        ]),
+        duration: const Duration(milliseconds: 1400),
+        behavior: SnackBarBehavior.floating,
+        width: 440,
+      ),
+    );
+  }
+
+  /// Keydown handler — only handles Ctrl+V and Ctrl+A (copy/cut are handled by 'copy'/'cut' events).
   void _onBrowserKeyDown(html.KeyboardEvent event) {
     if (!mounted || !_editorFocusNode.hasFocus) return;
-
     final isCtrlOrMeta = event.ctrlKey || event.metaKey;
     if (!isCtrlOrMeta) return;
-
     final key = event.key?.toLowerCase() ?? '';
     switch (key) {
-      case 'c':
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        _handleCopy(forceAll: false);
-        break;
-      case 'x':
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        _handleCut();
-        break;
       case 'v':
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -408,52 +453,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   }
 
   void _handleCopy({bool forceAll = false}) {
-    String textToCopy = '';
-    final sel = _codeController.selection;
-
-    if (!forceAll && sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length && sel.start < sel.end) {
-      textToCopy = _codeController.text.substring(sel.start, sel.end);
-    } else if (!forceAll && _lastSelectedText.isNotEmpty) {
-      textToCopy = _lastSelectedText;
-    } else {
-      textToCopy = _codeController.text;
-    }
-
+    final textToCopy = _getTextToCopy(forceAll: forceAll);
     if (textToCopy.isEmpty) return;
-
-    // Use synchronous DOM execCommand directly for maximum reliability
+    // Toolbar button copy — use DOM execCommand fallback since no clipboard event available
     ClipboardService.copySync(textToCopy);
-    // Also write via async APIs as fallback
     ClipboardService.copy(textToCopy);
-
-    if (mounted) {
-      final preview = textToCopy.length > 25 ? '${textToCopy.substring(0, 25)}...' : textToCopy;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  textToCopy == _codeController.text
-                      ? '✓ Copied entire YAML (${textToCopy.length} chars)'
-                      : '✓ Copied selection (${textToCopy.length} chars): "$preview"',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          duration: const Duration(milliseconds: 1400),
-          behavior: SnackBarBehavior.floating,
-          width: 440,
-        ),
-      );
-    }
+    _showCopySnackbar(textToCopy);
   }
 
-  void _handleCut() {
+  void _handleCut({html.ClipboardEvent? fromEvent}) {
     final sel = _codeController.selection;
     TextSelection? targetSel;
     if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length && sel.start < sel.end) {
@@ -464,8 +472,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
     if (targetSel != null) {
       final selected = _codeController.text.substring(targetSel.start, targetSel.end);
-      ClipboardService.copySync(selected);
-      ClipboardService.copy(selected);
+      // If triggered from native cut event, inject into event's clipboardData (works on HTTP)
+      if (fromEvent != null) {
+        fromEvent.clipboardData?.setData('text/plain', selected);
+      } else {
+        ClipboardService.copySync(selected);
+        ClipboardService.copy(selected);
+      }
       final text = _codeController.text;
       final start = targetSel.start <= targetSel.end ? targetSel.start : targetSel.end;
       final end = targetSel.start <= targetSel.end ? targetSel.end : targetSel.start;
@@ -532,6 +545,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
   @override
   void dispose() {
+    if (_copyHandler != null) {
+      html.document.removeEventListener('copy', _copyHandler!, true);
+      _copyHandler = null;
+    }
+    if (_cutHandler != null) {
+      html.document.removeEventListener('cut', _cutHandler!, true);
+      _cutHandler = null;
+    }
     if (_keyDownHandler != null) {
       html.document.removeEventListener('keydown', _keyDownHandler!, true);
       _keyDownHandler = null;
