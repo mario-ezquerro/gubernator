@@ -267,6 +267,18 @@ Accessible from **Centurions [Host] ➔ Add Centurion**, the onboarding suite of
 
 ---
 
+## 🛡️ Image Security Auto-Remediation & Safe Rollback (`ImageRemediationDialog`)
+
+Accessible via the **`⚡ Fix Image`** action button on any scanned container image with CVEs or inside the **View CVEs** details modal:
+
+1. **Intelligent Version Recommendations:** Suggests low-risk security patches (same major version, Alpine minimal base) and modern stable releases.
+2. **Operational Risk Assessment:** Displays calculated risk level (`LOW`, `MEDIUM`, `HIGH`) with context on breaking changes, database migrations, and persistent volume requirements.
+3. **Safe Automated Rollback:** Takes an instant cryptographic backup of the `docker-compose.yml` prior to redeploying; automatically reverts to the previous working Compose file if the new container crashes or fails health checks within 20 seconds.
+4. **Live Execution Terminal:** Monospace console streaming real-time logs (`Backup Compose`, `Image Patch`, `Database Update`, `Service Redeploy`, `Health Probe`, `Auto-Rollback`, `Security Re-Scan`).
+5. **Compose Studio Deep Link:** `Open in Compose Studio` button opens the stack directly in the Compose IDE for manual adjustments.
+
+---
+
 ## API Endpoints Used by the Dashboard
 
 The Web UI communicates with the internal `/api` routes (on port 4001, protected by Basic Auth):

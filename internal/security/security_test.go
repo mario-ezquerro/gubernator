@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -27,6 +28,9 @@ func setupTestDB(t *testing.T) {
 		&db.ImageScan{},
 		&db.ImageVulnerability{},
 		&db.ImageSBOM{},
+		&db.Stack{},
+		&db.Service{},
+		&db.Task{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
@@ -155,3 +159,72 @@ func TestAdmissionGatekeeper(t *testing.T) {
 		t.Errorf("expected image to be allowed under audit policy, but got blocked: %s", decision2.Reason)
 	}
 }
+
+func TestReplaceImageInComposeYAML(t *testing.T) {
+	rawCompose := `version: '3.8'
+services:
+  db:
+    image: postgres:13.2 # production database
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: secret
+`
+	newCompose, err := ReplaceImageInComposeYAML(rawCompose, "postgres:13.2", "postgres:16-alpine")
+	if err != nil {
+		t.Fatalf("ReplaceImageInComposeYAML failed: %v", err)
+	}
+
+	if !strings.Contains(newCompose, "postgres:16-alpine") {
+		t.Errorf("expected 'postgres:16-alpine' in updated compose, got: %s", newCompose)
+	}
+	if strings.Contains(newCompose, "postgres:13.2") {
+		t.Errorf("expected 'postgres:13.2' to be removed from compose, got: %s", newCompose)
+	}
+}
+
+func TestRemediationPlanAndRollback(t *testing.T) {
+	setupTestDB(t)
+
+	// Create test stack and service
+	stack := db.Stack{
+		ID:             "stack-app",
+		Name:           "app-stack",
+		RawComposeFile: "version: '3.8'\nservices:\n  redis:\n    image: redis:6.0\n",
+	}
+	db.DB.Create(&stack)
+
+	service := db.Service{
+		ID:              "svc-redis",
+		StackID:         "stack-app",
+		Name:            "redis",
+		Image:           "redis:6.0",
+		DesiredReplicas: 1,
+	}
+	db.DB.Create(&service)
+
+	// 1. Preview suggestions
+	preview, err := PreviewRemediation("redis:6.0")
+	if err != nil {
+		t.Fatalf("PreviewRemediation failed: %v", err)
+	}
+	if len(preview.SuggestedVersions) == 0 {
+		t.Fatal("expected suggested upgrade versions for redis:6.0")
+	}
+	if len(preview.AffectedStacks) == 0 || preview.AffectedStacks[0].StackName != "app-stack" {
+		t.Errorf("expected affected stack 'app-stack', got: %+v", preview.AffectedStacks)
+	}
+
+	// 2. Successful remediation
+	res, err := RemediateImageInStack("stack-app", "redis:6.0", "redis:7.4-alpine", false)
+	if err != nil || res == nil || !res.Success {
+		t.Fatalf("RemediateImageInStack failed: %v, res: %+v", err, res)
+	}
+
+	var updatedStack db.Stack
+	db.DB.First(&updatedStack, "id = ?", "stack-app")
+	if !strings.Contains(updatedStack.RawComposeFile, "redis:7.4-alpine") {
+		t.Errorf("expected updated compose to have redis:7.4-alpine, got: %s", updatedStack.RawComposeFile)
+	}
+}
+

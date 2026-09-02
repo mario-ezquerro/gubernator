@@ -78,6 +78,23 @@ While `./gbnt serve` is running:
 | `GET` | `/v1/caddy/ca.crt` | Download Caddy internal Root CA certificate (`root.crt`) |
 | `GET` | `/v1/caddy/logs` | Stream/tail container access log output |
 | `GET` | `/v1/caddy/metrics` | Get Prometheus metrics (request count, RPS, latency percentiles) |
+
+### Image Security, SBOM & Auto-Remediation
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/security/scans` | List all container vulnerability scan reports across cluster |
+| `GET` | `/v1/security/scans/{id}` | Inspect vulnerability CVE list and CVSS scoring for an image |
+| `POST` | `/v1/security/scans/trigger` | Trigger immediate CVE scan for a container image |
+| `POST` | `/v1/security/scans/sync-all` | Re-scan and synchronize all container images deployed in the cluster |
+| `GET` | `/v1/security/sbom` | Export Software Bill of Materials (CycloneDX JSON / SPDX JSON) |
+| `GET` | `/v1/security/keys` | List trusted Cosign ECDSA public signing keys |
+| `POST` | `/v1/security/keys/generate` | Generate in-cluster ECDSA P-256 signing keypair |
+| `POST` | `/v1/security/sign` | Cryptographically sign image digest |
+| `GET` | `/v1/security/policy` | Get active admission gatekeeper security policy |
+| `POST` | `/v1/security/policy` | Update admission gatekeeper security policy |
+| `GET` | `/api/security/remediate/preview` | Preview upgrade candidate versions, risk assessment, and affected stacks |
+| `POST` | `/api/security/remediate` | Apply atomic image upgrade in a stack with safe automated rollback protection |
 | `POST` | `/v1/caddy/fmt` | Format Caddyfile via `caddy fmt` |
 
 ---

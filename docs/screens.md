@@ -108,3 +108,15 @@ Full 3-tab onboarding dialog accessible from **Centurions [Host] ➔ Add Centuri
 - **📺 Live Monospace Terminal Console**: Real-time progress console streaming SSH connection, hardware discovery, Docker CE verification, agent deployment, and system stacks synchronization.
 - **☁️ Cloud-Init & Automation (IaC)**: Ready-to-copy `#cloud-config` YAML blueprint for automated VM provisioning.
 
+---
+
+## 🛡️ 9. Image Security Auto-Remediation & Safe Rollback (`v2.61.0`)
+
+Interactive remediation modal accessible via **`⚡ Fix Image`** on any vulnerable image card or CVE scan details dialog in **Security & SBOM**:
+- **Risk & Impact Assessment**: Automatic calculation of operational risk levels (`LOW`, `MEDIUM`, `HIGH`) with warnings for database schema migrations and persistent volume checks.
+- **Version Candidate Selector**: Smart recommendation of safe security patches (same major version, Alpine minimal variant) vs modern stable releases.
+- **🛡️ Safe Automated Rollback**: Automatically reverts `docker-compose.yml` to the previous cryptographic backup if updated containers crash or fail healthchecks within 20 seconds.
+- **📺 Live Execution Console**: Real-time monospace terminal displaying backup creation, image patching, rolling redeployment, health probing, and re-scanning progress.
+- **📝 Compose Studio Integration**: Instant deep-link to edit the Compose file manually in Compose Studio.
+
+

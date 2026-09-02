@@ -1576,6 +1576,41 @@ class ApiService {
     throw Exception(err['error'] ?? 'Failed to update policy');
   }
 
+  /// Fetches suggested upgrade versions, affected stacks, and risk analysis for a container image.
+  static Future<RemediationPreviewModel> fetchRemediationPreview(String image) async {
+    final response = await http.get(
+      Uri.parse('/api/security/remediate/preview?image=${Uri.encodeComponent(image)}'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return RemediationPreviewModel.fromJson(data);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to fetch remediation preview');
+  }
+
+  /// Executes automated image upgrade in a stack with rollback protection and live step logs.
+  static Future<RemediationResultModel> executeRemediation({
+    required String stackId,
+    required String currentImage,
+    required String targetImage,
+    bool autoRollback = true,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/security/remediate'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'stack_id': stackId,
+        'current_image': currentImage,
+        'target_image': targetImage,
+        'auto_rollback': autoRollback,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    return RemediationResultModel.fromJson(data);
+  }
+
   /// Fetches transparent GitHub adoption stats & release metrics.
   static Future<AdoptionStatsModel> fetchAdoptionStats({bool force = false}) async {
     final url = force ? '/api/system/adoption?force=true' : '/api/system/adoption';

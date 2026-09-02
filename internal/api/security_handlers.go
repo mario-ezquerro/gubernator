@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -261,4 +262,42 @@ func SecurityAdmissionEvaluateHandler(c *gin.Context) {
 
 	decision := security.EvaluateAdmission(req.Image, req.Labels)
 	c.JSON(http.StatusOK, gin.H{"decision": decision})
+}
+
+// SecurityRemediatePreviewHandler returns suggested upgrade versions and risk analysis.
+func SecurityRemediatePreviewHandler(c *gin.Context) {
+	image := strings.TrimSpace(c.Query("image"))
+	if image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image query parameter is required"})
+		return
+	}
+
+	preview, err := security.PreviewRemediation(image)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, preview)
+}
+
+// SecurityRemediateExecuteHandler applies atomic image upgrade in a stack with automated rollback protection.
+func SecurityRemediateExecuteHandler(c *gin.Context) {
+	var req security.RemediationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.StackID == "" || req.CurrentImage == "" || req.TargetImage == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stack_id, current_image, and target_image are required"})
+		return
+	}
+
+	result, err := security.RemediateImageInStack(req.StackID, req.CurrentImage, req.TargetImage, req.AutoRollback)
+	if err != nil && result == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

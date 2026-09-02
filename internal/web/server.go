@@ -482,6 +482,8 @@ func StartDashboard() {
 		api.GET("/security/policy", securityPolicyGetHandler)
 		api.POST("/security/policy", auth.RequireRole(auth.RoleAdmin), securityPolicySaveHandler)
 		api.POST("/security/evaluate", securityAdmissionEvaluateHandler)
+		api.GET("/security/remediate/preview", securityRemediatePreviewHandler)
+		api.POST("/security/remediate", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityRemediateExecuteHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -5383,6 +5385,42 @@ func securityAdmissionEvaluateHandler(c *gin.Context) {
 
 	decision := security.EvaluateAdmission(req.Image, req.Labels)
 	c.JSON(http.StatusOK, gin.H{"decision": decision})
+}
+
+func securityRemediatePreviewHandler(c *gin.Context) {
+	image := strings.TrimSpace(c.Query("image"))
+	if image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image query parameter is required"})
+		return
+	}
+
+	preview, err := security.PreviewRemediation(image)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, preview)
+}
+
+func securityRemediateExecuteHandler(c *gin.Context) {
+	var req security.RemediationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.StackID == "" || req.CurrentImage == "" || req.TargetImage == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stack_id, current_image, and target_image are required"})
+		return
+	}
+
+	result, err := security.RemediateImageInStack(req.StackID, req.CurrentImage, req.TargetImage, req.AutoRollback)
+	if err != nil && result == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // ─── GlusterFS Cluster Storage Handlers ─────────────────────────────────────

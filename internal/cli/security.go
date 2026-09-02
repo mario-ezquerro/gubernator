@@ -289,6 +289,95 @@ var securityKeyLsCmd = &cobra.Command{
 	},
 }
 
+var (
+	imageToFlag           string
+	imageStackFlag        string
+	imageAutoRollbackFlag bool
+)
+
+var imageFixCmd = &cobra.Command{
+	Use:   "fix <current-image> [--to <target-image>] [--stack <stack-id>]",
+	Short: "Auto-remediate vulnerable container image in a stack with safe rollback",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		currentImg := args[0]
+		if imageToFlag == "" {
+			// Fetch preview and suggestions
+			resp, err := DoAPIRequest("GET", "/v1/security/remediate/preview?image="+currentImg, nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+				os.Exit(1)
+			}
+			defer resp.Body.Close()
+
+			var prev security.RemediationPreview
+			if err := json.NewDecoder(resp.Body).Decode(&prev); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("🔍 Auto-Remediation Assessment for: %s\n", currentImg)
+			fmt.Printf("Risk Level: %s | %s\n\n", strings.ToUpper(prev.RiskLevel), prev.RiskAssessment)
+
+			fmt.Println("Suggested Patched Versions:")
+			for _, v := range prev.SuggestedVersions {
+				rec := ""
+				if v.IsRecommended {
+					rec = " [RECOMMENDED]"
+				}
+				fmt.Printf("  • %-28s (%s RISK)%s - %s\n", v.Version, strings.ToUpper(v.RiskLevel), rec, v.Description)
+			}
+
+			if len(prev.AffectedStacks) > 0 {
+				fmt.Println("\nAffected Stacks:")
+				for _, st := range prev.AffectedStacks {
+					fmt.Printf("  • Stack: %-20s (Service: %s, Replicas: %d)\n", st.StackName, st.ServiceName, st.Replicas)
+				}
+			}
+
+			fmt.Println("\nTo apply remediation, run:")
+			fmt.Printf("  gbnt image fix %s --to <target-image> --stack <stack-id>\n", currentImg)
+			return
+		}
+
+		if imageStackFlag == "" {
+			fmt.Fprintf(os.Stderr, "Error: --stack is required when specifying --to\n")
+			os.Exit(1)
+		}
+
+		reqBody, _ := json.Marshal(security.RemediationRequest{
+			StackID:      imageStackFlag,
+			CurrentImage: currentImg,
+			TargetImage:  imageToFlag,
+			AutoRollback: imageAutoRollbackFlag,
+		})
+
+		resp, err := DoAPIRequest("POST", "/v1/security/remediate", bytes.NewReader(reqBody))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		var result security.RemediationResult
+		json.NewDecoder(resp.Body).Decode(&result)
+
+		fmt.Println("🚀 Executing Image Remediation Workflow:")
+		for _, log := range result.Logs {
+			fmt.Printf("  [%s] %-24s %s\n", log.Timestamp, "["+log.Step+"]", log.Message)
+		}
+
+		if result.Success && !result.RolledBack {
+			fmt.Printf("\n✅ %s\n", result.Message)
+		} else if result.RolledBack {
+			fmt.Printf("\n⚠️ %s\n", result.Message)
+		} else {
+			fmt.Printf("\n❌ Remediation failed: %s\n", result.Message)
+			os.Exit(1)
+		}
+	},
+}
+
 func init() {
 	sbomCmd.Flags().StringVarP(&sbomFormatFlag, "format", "f", "cyclonedx-json", "SBOM format (cyclonedx-json, spdx-json)")
 
@@ -296,6 +385,11 @@ func init() {
 	imageSignCmd.Flags().StringVarP(&imageSignerFlag, "signer", "s", "Cluster Administrator", "Signer identity name")
 	imageCmd.AddCommand(imageSignCmd)
 	imageCmd.AddCommand(imageVerifyCmd)
+
+	imageFixCmd.Flags().StringVarP(&imageToFlag, "to", "t", "", "Target upgraded image tag (e.g. postgres:16-alpine)")
+	imageFixCmd.Flags().StringVarP(&imageStackFlag, "stack", "s", "", "Target Stack ID to modify and redeploy")
+	imageFixCmd.Flags().BoolVar(&imageAutoRollbackFlag, "auto-rollback", true, "Enable automated rollback if updated container fails")
+	imageCmd.AddCommand(imageFixCmd)
 
 	securityKeyCmd.AddCommand(securityKeyLsCmd)
 	securityCmd.AddCommand(securityPolicyCmd)

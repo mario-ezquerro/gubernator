@@ -4,16 +4,21 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../widgets/image_remediation_dialog.dart';
 
 /// Image Security & SBOM (The Imperial Seal / The Armory)
 class ImageSecurityPage extends StatefulWidget {
   final DashboardState state;
   final VoidCallback onRefresh;
+  final Function(int tabIndex)? onNavigateTab;
+  final Function(String stackId)? onOpenInComposeStudio;
 
   const ImageSecurityPage({
     super.key,
     required this.state,
     required this.onRefresh,
+    this.onNavigateTab,
+    this.onOpenInComposeStudio,
   });
 
   @override
@@ -107,6 +112,28 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
         content: Text(message),
         backgroundColor: isError ? Colors.redAccent : const Color(0xFF10B981),
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showRemediationDialog(String imageName, {String? stackId}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ImageRemediationDialog(
+        imageName: imageName,
+        initialStackId: stackId,
+        onRemediationComplete: () {
+          _showSnackBar('✅ Container image successfully remediated and redeployed!');
+          _loadAllData();
+          widget.onRefresh();
+        },
+        onOpenInComposeStudio: (sId) {
+          if (widget.onOpenInComposeStudio != null) {
+            widget.onOpenInComposeStudio!(sId);
+          } else if (widget.onNavigateTab != null) {
+            widget.onNavigateTab!(15); // Compose Studio tab
+          }
+        },
       ),
     );
   }
@@ -237,6 +264,18 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
               ),
             ),
             actions: [
+              if (scan.criticalCount > 0 || scan.highCount > 0)
+                FilledButton.icon(
+                  icon: const Icon(Icons.bolt, size: 16),
+                  label: const Text('⚡ Fix & Upgrade Image'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showRemediationDialog(scan.imageName);
+                  },
+                ),
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
             ],
           );
@@ -945,7 +984,18 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                 _badgeChip('LOW', s.lowCount, s.lowCount > 0 ? Colors.blue : Colors.grey),
                               ],
                             ),
-                            const SizedBox(width: 12),
+                            if (s.criticalCount > 0 || s.highCount > 0) ...[
+                              FilledButton.icon(
+                                icon: const Icon(Icons.bolt, size: 16),
+                                label: const Text('Fix Image'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF97316),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                onPressed: () => _showRemediationDialog(s.imageName),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             OutlinedButton.icon(
                               icon: const Icon(Icons.remove_red_eye, size: 16),
                               label: const Text('View CVEs'),

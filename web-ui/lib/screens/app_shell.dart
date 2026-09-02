@@ -302,7 +302,11 @@ class _AppShellState extends State<AppShell> {
       case 4:
         return StoragePage(state: _state, onRefresh: _fetchData);
       case 5:
-        return ImageSecurityPage(state: _state, onRefresh: _fetchData);
+        return ImageSecurityPage(
+          state: _state,
+          onRefresh: _fetchData,
+          onNavigateTab: (idx) => setState(() => _selectedIndex = idx),
+        );
       case 6:
         return SloPage(state: _state, onRefresh: _fetchData);
       case 7:

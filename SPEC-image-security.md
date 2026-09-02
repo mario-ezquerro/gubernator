@@ -223,3 +223,13 @@ gbnt security policy ls
 # Enforce signature verification cluster-wide
 gbnt security policy set --enforce-signatures true --max-cve critical
 ```
+
+### Auto-Remediation & Safe Rollback (`v2.61.0`)
+```bash
+# Inspect remediation preview, suggested versions, and risk assessment
+gbnt image fix postgres:13
+
+# Apply auto-remediation to a stack with automated rollback on failure
+gbnt image fix postgres:13 --to postgres:16-alpine --stack my-stack --auto-rollback
+```
+

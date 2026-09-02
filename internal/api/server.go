@@ -265,6 +265,8 @@ func Start(ctx context.Context) error {
 			securityRoute.GET("/policy", SecurityPolicyGetHandler)
 			securityRoute.POST("/policy", SecurityPolicySaveHandler)
 			securityRoute.POST("/evaluate", SecurityAdmissionEvaluateHandler)
+			securityRoute.GET("/remediate/preview", SecurityRemediatePreviewHandler)
+			securityRoute.POST("/remediate", SecurityRemediateExecuteHandler)
 		}
 
 		systemRoute := v1.Group("/system")

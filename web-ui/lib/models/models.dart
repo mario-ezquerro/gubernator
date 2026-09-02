@@ -2029,3 +2029,154 @@ class NodeProvisionResult {
     this.node,
   });
 }
+
+/// Image Security Auto-Remediation Candidate Version
+class SuggestedVersionModel {
+  final String version;
+  final String type; // "patch", "alpine_stable", "latest"
+  final String description;
+  final String riskLevel; // "low", "medium", "high"
+  final bool isRecommended;
+
+  SuggestedVersionModel({
+    required this.version,
+    required this.type,
+    required this.description,
+    required this.riskLevel,
+    required this.isRecommended,
+  });
+
+  factory SuggestedVersionModel.fromJson(Map<String, dynamic> json) {
+    return SuggestedVersionModel(
+      version: json['version'] ?? '',
+      type: json['type'] ?? 'patch',
+      description: json['description'] ?? '',
+      riskLevel: json['risk_level'] ?? 'low',
+      isRecommended: json['is_recommended'] == true,
+    );
+  }
+}
+
+/// Affected stack and service for a container image
+class AffectedStackInfoModel {
+  final String stackId;
+  final String stackName;
+  final String serviceName;
+  final int replicas;
+
+  AffectedStackInfoModel({
+    required this.stackId,
+    required this.stackName,
+    required this.serviceName,
+    required this.replicas,
+  });
+
+  factory AffectedStackInfoModel.fromJson(Map<String, dynamic> json) {
+    return AffectedStackInfoModel(
+      stackId: json['stack_id'] ?? '',
+      stackName: json['stack_name'] ?? '',
+      serviceName: json['service_name'] ?? '',
+      replicas: (json['replicas'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+/// Preview and risk assessment for container image remediation
+class RemediationPreviewModel {
+  final String currentImage;
+  final int criticalCount;
+  final int highCount;
+  final int mediumCount;
+  final List<SuggestedVersionModel> suggestedVersions;
+  final List<AffectedStackInfoModel> affectedStacks;
+  final String riskAssessment;
+  final String riskLevel;
+
+  RemediationPreviewModel({
+    required this.currentImage,
+    required this.criticalCount,
+    required this.highCount,
+    required this.mediumCount,
+    required this.suggestedVersions,
+    required this.affectedStacks,
+    required this.riskAssessment,
+    required this.riskLevel,
+  });
+
+  factory RemediationPreviewModel.fromJson(Map<String, dynamic> json) {
+    return RemediationPreviewModel(
+      currentImage: json['current_image'] ?? '',
+      criticalCount: (json['critical_count'] as num?)?.toInt() ?? 0,
+      highCount: (json['high_count'] as num?)?.toInt() ?? 0,
+      mediumCount: (json['medium_count'] as num?)?.toInt() ?? 0,
+      suggestedVersions: (json['suggested_versions'] as List<dynamic>? ?? [])
+          .map((v) => SuggestedVersionModel.fromJson(v as Map<String, dynamic>))
+          .toList(),
+      affectedStacks: (json['affected_stacks'] as List<dynamic>? ?? [])
+          .map((s) => AffectedStackInfoModel.fromJson(s as Map<String, dynamic>))
+          .toList(),
+      riskAssessment: json['risk_assessment'] ?? '',
+      riskLevel: json['risk_level'] ?? 'low',
+    );
+  }
+}
+
+/// Step log entry during automated image remediation & rollback
+class RemediationStepLogModel {
+  final String step;
+  final String message;
+  final String status; // "ok", "warn", "error"
+  final String timestamp;
+
+  RemediationStepLogModel({
+    required this.step,
+    required this.message,
+    required this.status,
+    required this.timestamp,
+  });
+
+  factory RemediationStepLogModel.fromJson(Map<String, dynamic> json) {
+    return RemediationStepLogModel(
+      step: json['step'] ?? '',
+      message: json['message'] ?? '',
+      status: json['status'] ?? 'ok',
+      timestamp: json['timestamp'] ?? '',
+    );
+  }
+}
+
+/// Result of executing an automated image remediation
+class RemediationResultModel {
+  final bool success;
+  final String message;
+  final bool rolledBack;
+  final String stackId;
+  final String newImage;
+  final String oldImage;
+  final List<RemediationStepLogModel> logs;
+
+  RemediationResultModel({
+    required this.success,
+    required this.message,
+    required this.rolledBack,
+    required this.stackId,
+    required this.newImage,
+    required this.oldImage,
+    required this.logs,
+  });
+
+  factory RemediationResultModel.fromJson(Map<String, dynamic> json) {
+    return RemediationResultModel(
+      success: json['success'] == true,
+      message: json['message'] ?? '',
+      rolledBack: json['rolled_back'] == true,
+      stackId: json['stack_id'] ?? '',
+      newImage: json['new_image'] ?? '',
+      oldImage: json['old_image'] ?? '',
+      logs: (json['logs'] as List<dynamic>? ?? [])
+          .map((l) => RemediationStepLogModel.fromJson(l as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
