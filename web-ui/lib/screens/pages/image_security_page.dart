@@ -878,12 +878,18 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
   // ── Tab 1: Vulnerabilities ──────────────────────────────────────────
 
   Widget _buildVulnerabilitiesTab(bool isDark) {
+    final signedCount = _scans.where((s) => s.signatureStatus == 'verified').length;
+    final unsignedCount = _scans.where((s) => s.signatureStatus != 'verified').length;
+    final critCount = _scans.where((s) => s.criticalCount > 0).length;
+    final highCount = _scans.where((s) => s.highCount > 0).length;
+
     final filtered = _scans.where((s) {
       final matchesSearch = _scanSearch.isEmpty || s.imageName.toLowerCase().contains(_scanSearch.toLowerCase());
       final matchesFilter = _severityFilter == 'ALL' ||
+          (_severityFilter == 'SIGNED' && s.signatureStatus == 'verified') ||
+          (_severityFilter == 'UNSIGNED' && s.signatureStatus != 'verified') ||
           (_severityFilter == 'CRITICAL' && s.criticalCount > 0) ||
-          (_severityFilter == 'HIGH' && s.highCount > 0) ||
-          (_severityFilter == 'UNSIGNED' && s.signatureStatus != 'verified');
+          (_severityFilter == 'HIGH' && s.highCount > 0);
       return matchesSearch && matchesFilter;
     }).toList();
 
@@ -909,9 +915,10 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
               value: _severityFilter,
               items: const [
                 DropdownMenuItem(value: 'ALL', child: Text('All Images')),
+                DropdownMenuItem(value: 'SIGNED', child: Text('🟢 Signed Images')),
+                DropdownMenuItem(value: 'UNSIGNED', child: Text('🟠 Unsigned Images')),
                 DropdownMenuItem(value: 'CRITICAL', child: Text('Critical CVEs > 0')),
                 DropdownMenuItem(value: 'HIGH', child: Text('High CVEs > 0')),
-                DropdownMenuItem(value: 'UNSIGNED', child: Text('Unsigned Images')),
               ],
               onChanged: (val) {
                 if (val != null) setState(() => _severityFilter = val);
@@ -970,7 +977,53 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
+        // Quick Filter Chips Bar
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ChoiceChip(
+                label: Text('All (${_scans.length})'),
+                selected: _severityFilter == 'ALL',
+                onSelected: (_) => setState(() => _severityFilter = 'ALL'),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                avatar: const Icon(Icons.verified, size: 14, color: Color(0xFF10B981)),
+                label: Text('Signed ($signedCount)', style: TextStyle(color: _severityFilter == 'SIGNED' ? Colors.white : const Color(0xFF10B981))),
+                selected: _severityFilter == 'SIGNED',
+                selectedColor: const Color(0xFF10B981).withValues(alpha: 0.3),
+                onSelected: (_) => setState(() => _severityFilter = 'SIGNED'),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                avatar: const Icon(Icons.shield_outlined, size: 14, color: Colors.amberAccent),
+                label: Text('Unsigned ($unsignedCount)', style: TextStyle(color: _severityFilter == 'UNSIGNED' ? Colors.white : Colors.amberAccent)),
+                selected: _severityFilter == 'UNSIGNED',
+                selectedColor: Colors.amber.withValues(alpha: 0.3),
+                onSelected: (_) => setState(() => _severityFilter = 'UNSIGNED'),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                avatar: const Icon(Icons.gpp_bad, size: 14, color: Colors.redAccent),
+                label: Text('Critical CVEs ($critCount)', style: TextStyle(color: _severityFilter == 'CRITICAL' ? Colors.white : Colors.redAccent)),
+                selected: _severityFilter == 'CRITICAL',
+                selectedColor: Colors.redAccent.withValues(alpha: 0.3),
+                onSelected: (_) => setState(() => _severityFilter = 'CRITICAL'),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                avatar: const Icon(Icons.warning_amber, size: 14, color: Colors.orangeAccent),
+                label: Text('High CVEs ($highCount)', style: TextStyle(color: _severityFilter == 'HIGH' ? Colors.white : Colors.orangeAccent)),
+                selected: _severityFilter == 'HIGH',
+                selectedColor: Colors.orangeAccent.withValues(alpha: 0.3),
+                onSelected: (_) => setState(() => _severityFilter = 'HIGH'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         Expanded(
           child: filtered.isEmpty
               ? Center(
@@ -1095,19 +1148,19 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.06),
+                                            color: Colors.amber.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.white24),
+                                            border: Border.all(color: Colors.amber.withValues(alpha: 0.45)),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.shield_outlined, size: 13, color: Colors.grey),
+                                              Icon(Icons.shield_outlined, size: 13, color: Colors.amberAccent),
                                               SizedBox(width: 4),
                                               Text(
                                                 'UNSIGNED',
                                                 style: TextStyle(
-                                                  color: Colors.grey,
+                                                  color: Colors.amberAccent,
                                                   fontSize: 10.5,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -1217,11 +1270,29 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                               ),
                             ],
                             const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF10B981)),
-                              label: const Text('Sign', style: TextStyle(color: Color(0xFF10B981))),
-                              onPressed: () => _showSignImageDialog(initialImage: s.imageName),
-                            ),
+                            if (isVerified) ...[
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.edit_document, size: 16, color: Color(0xFF10B981)),
+                                label: const Text('Re-sign', style: TextStyle(color: Color(0xFF10B981))),
+                                onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.remove_moderator, size: 16, color: Colors.orangeAccent),
+                                label: const Text('Unsign', style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                                onPressed: () => _confirmUnsignImage(s.imageName),
+                              ),
+                            ] else ...[
+                              FilledButton.icon(
+                                icon: const Icon(Icons.verified_user_outlined, size: 16),
+                                label: const Text('Sign Image'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                              ),
+                            ],
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.share_location, size: 16, color: Colors.lightBlueAccent),
@@ -1426,6 +1497,7 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
 
   Widget _buildSignaturesTab(bool isDark) {
     final signedScans = _scans.where((s) => s.signatureStatus == 'verified' || s.signatureStatus == 'signed').toList();
+    final unsignedScans = _scans.where((s) => s.signatureStatus != 'verified' && s.signatureStatus != 'signed').toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -1725,6 +1797,144 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                           icon: const Icon(Icons.remove_moderator, size: 15, color: Colors.orangeAccent),
                           label: const Text('Unsign', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
                           onPressed: () => _confirmUnsignImage(s.imageName),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 28),
+
+          // ── Unsigned Images in Cluster ───────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.shield_outlined, color: Colors.amberAccent, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Unsigned Cluster Images (${unsignedScans.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              if (unsignedScans.isNotEmpty)
+                Text(
+                  'Images deployed or stored in cluster without a cryptographic signature',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (unsignedScans.isEmpty)
+            Card(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified, size: 20, color: Color(0xFF10B981)),
+                      SizedBox(width: 8),
+                      Text('All cluster images are cryptographically signed!', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: unsignedScans.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (ctx, i) {
+                final s = unsignedScans[i];
+                return Card(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.shield_outlined, color: Colors.amberAccent, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    s.imageName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                                    ),
+                                    child: const Text('UNSIGNED', style: TextStyle(color: Colors.amberAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Status: Awaiting cryptographic signature',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                  ),
+                                  if (s.hosts.isNotEmpty) ...[
+                                    const SizedBox(width: 12),
+                                    const Icon(Icons.dns, size: 12, color: Colors.tealAccent),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Hosts: ${s.hosts.join(", ")}',
+                                      style: const TextStyle(fontSize: 11, color: Colors.tealAccent, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.share_location, size: 15, color: Colors.lightBlueAccent),
+                          label: const Text('Distribute', style: TextStyle(color: Colors.lightBlueAccent, fontSize: 12)),
+                          onPressed: () => _showDistributeDialog(
+                            s.imageName,
+                            signatureStatus: s.signatureStatus,
+                            signatureSigner: s.signatureSigner,
+                            currentHosts: s.hosts,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.verified_user_outlined, size: 15),
+                          label: const Text('Sign Image', style: TextStyle(fontSize: 12)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          onPressed: () => _showSignImageDialog(initialImage: s.imageName),
                         ),
                       ],
                     ),
