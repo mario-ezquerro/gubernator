@@ -79,7 +79,7 @@ Access **Image Security & SBOM** in the Web Dashboard (Port 4001) to interact wi
 
 ## 🚀 Docker Compose Security Labels Reference
 
-Stacks can declare custom security rules in `docker-compose.yml`:
+Stacks can declare Zero-Trust container security rules directly in `docker-compose.yml`:
 
 ```yaml
 version: '3.8'
@@ -87,30 +87,73 @@ version: '3.8'
 services:
   payment-api:
     image: company/payment-api:2.1.0
+    labels:
+      # Require valid Cosign signature before allowing deployment
+      gbnt.security.require-signature: "true"
+      # Reject deployment if image contains CRITICAL vulnerabilities (CVSS >= 9.0)
+      gbnt.security.max-cve-severity: "critical"
+      # Reject deployment even if no upstream fix is available yet
+      gbnt.security.allow-unfixed-cve: "false"
+      # (Optional) Enforce signature by a specific key identity
+      gbnt.security.signer: "Cluster Administrator"
     deploy:
-      labels:
-        # Require valid Cosign signature before allowing deployment
-        - gbnt.security.require-signature=true
-        # Reject deployment if image contains CRITICAL vulnerabilities
-        - gbnt.security.max-cve-severity=critical
-        # Reject deployment even if no upstream fix is available yet
-        - gbnt.security.allow-unfixed=false
+      replicas: 2
 ```
+
+### Supported Security Labels
+
+| Label | Supported Values | Description |
+| :--- | :--- | :--- |
+| `gbnt.security.require-signature` | `"true"`, `"false"` | Enforces cryptographic Cosign verification before the container can start. |
+| `gbnt.security.max-cve-severity` | `"critical"`, `"high"`, `"medium"`, `"none"` | Threshold above which deployments are rejected by Gatekeeper. |
+| `gbnt.security.allow-unfixed-cve` | `"true"`, `"false"` | Rejects deployment on CVE detection even if unpatched upstream. |
+| `gbnt.security.signer` | `string` | Restricts admission strictly to images signed by this signer identity. |
+
+---
+
+## 🔨 Image Lifecycle, Layer Inspector & The Imperial Forge
+
+Gubernator provides full host image management directly from the dashboard and CLI:
+
+1. **🧹 Host Disk Pruner (`docker image prune -a -f`)**: Removes unused and dangling images across all Centurion nodes, reporting exact reclaimed space.
+2. **📜 Layer History & Dockerfile Reconstruction**: Inspects chronological layer commands (`docker history`), byte sizes, and reverse-engineers a valid `Dockerfile` with 1-click clipboard copy.
+3. **🔨 The Imperial Forge**: In-browser Dockerfile builder with multi-stage blueprints, target Centurion selection, build arguments, and live streaming compilation terminal.
 
 ---
 
 ## 💻 CLI Command Reference
 
-### Scan Images
+### Docker Host Images & Build Forge
+```bash
+# List physical Docker images across cluster nodes
+gbnt image ls [--node <node>]
+
+# Inspect layer history and reverse-engineer Dockerfile
+gbnt image history <image> [--node <node>]
+
+# Remove an image from cluster hosts (docker rmi)
+gbnt image rm <image> [--node <node>] [--force]
+
+# Prune unused images and reclaim cluster disk space
+gbnt image prune [--all] [--node <node>]
+
+# Compile a new image from Dockerfile in The Forge
+gbnt image build -t my-app:v1.0 -f Dockerfile [--node <node>]
+```
+
+### Scan Images & Vulnerabilities
 ```bash
 # List all scanned images and severity metrics
 gbnt scan
 
-# Scan a specific image
+# Scan a specific image on-demand
 gbnt scan postgres:16-alpine
+
+# Prune stale scans for images no longer used in active stacks
+gbnt scan prune
 ```
 
-### Export SBOM
+### Export SBOM (Software Bill of Materials)
 ```bash
 # Export in CycloneDX JSON
 gbnt sbom postgres:16-alpine --format cyclonedx-json
@@ -119,25 +162,16 @@ gbnt sbom postgres:16-alpine --format cyclonedx-json
 gbnt sbom postgres:16-alpine --format spdx-json
 ```
 
-### Sign & Verify Images
+### Cryptographic Signing & Verification (Cosign)
 ```bash
-# Generate a new Cosign signing keypair
-gbnt security key generate --name "production-key"
+# Generate in-cluster ECDSA keypair (private key stored securely in SQLite)
+gbnt security key generate --name "Imperial Cluster Authority"
 
-# Sign an image
-gbnt image sign company/app:1.0 --key /path/to/cosign.key
+# Sign an image using in-cluster key or manual private key
+gbnt image sign company/app:1.0
 
 # Verify image signature against trusted keys
 gbnt image verify company/app:1.0
-```
-
-### Manage Gatekeeper Policies
-```bash
-# View current policy
-gbnt security policy
-
-# List trusted public keys
-gbnt security key ls
 ```
 
 ---
@@ -146,15 +180,20 @@ gbnt security key ls
 
 | Endpoint | Method | Role | Description |
 | :--- | :--- | :--- | :--- |
+| `/v1/images/host-list` | `GET` | `all` | List physical Docker images on Manager and Centurion nodes |
+| `/v1/images/history` | `GET` | `all` | Inspect layer timeline and reconstructed Dockerfile |
+| `/v1/images/host-delete` | `DELETE` | `operator` | Delete physical image from target or all nodes |
+| `/v1/images/prune` | `POST` | `operator` | Prune unused images across hosts and return reclaimed space |
+| `/v1/images/build` | `POST` | `operator` | Compile Dockerfile in The Forge with streaming logs |
 | `/v1/security/scans` | `GET` | `all` | List all image vulnerability scans and summary metrics |
 | `/v1/security/scans/:id` | `GET` | `all` | Get detailed scan report with all CVEs |
 | `/v1/security/scans/trigger` | `POST` | `operator` | Trigger immediate vulnerability scan |
+| `/v1/security/scans/prune-orphans` | `POST` | `operator` | Purge scans for images not used in active stacks |
 | `/v1/security/sbom?image=...` | `GET` | `all` | Retrieve or export image SBOM (CycloneDX / SPDX) |
-| `/v1/security/keys` | `GET` | `all` | List trusted public signing keys |
-| `/v1/security/keys/generate` | `POST` | `admin` | Generate new Cosign ECDSA keypair |
-| `/v1/security/keys` | `POST` | `admin` | Import trusted public key |
-| `/v1/security/keys/:id` | `DELETE` | `admin` | Delete trusted key |
-| `/v1/security/sign` | `POST` | `operator` | Cryptographically sign image digest |
+| `/v1/security/keys` | `GET` | `all` | List trusted signing keys with in-cluster status |
+| `/v1/security/keys/generate` | `POST` | `admin` | Generate new Cosign ECDSA keypair with persistent private key |
+| `/v1/security/sign` | `POST` | `operator` | Cryptographically sign image with in-cluster or manual key |
 | `/v1/security/policy` | `GET` | `all` | Get active cluster admission policy |
 | `/v1/security/policy` | `POST` | `admin` | Update cluster admission policy |
-| `/v1/security/evaluate` | `POST` | `all` | Evaluate image admission against policies |
+| `/v1/security/evaluate` | `POST` | `all` | Evaluate image admission against Gatekeeper rules |
+

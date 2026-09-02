@@ -167,16 +167,99 @@ services:
 
 ---
 
-## 4. Supported Compose Fields
+---
 
-Gubernator's parser focuses on the fields necessary for container scheduling and networking. The following fields are actively parsed and applied:
+## 4. Security Gatekeeper & Image Signing Labels (`gbnt.security.*`)
 
-* `image`: The container image to pull and run.
+Gubernator features a native pre-deployment **Admission Gatekeeper** (*The Imperial Seal*). Stacks can enforce Zero-Trust container security policies directly in their `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  secure-payment-api:
+    image: company/payment-api:2.1.0
+    labels:
+      # 1. Require valid cryptographic Cosign signature
+      gbnt.security.require-signature: "true"
+      
+      # 2. Block deployment if image contains Critical CVEs (CVSS >= 9.0)
+      gbnt.security.max-cve-severity: "critical"
+      
+      # 3. Block deployment even if no upstream patch exists yet
+      gbnt.security.allow-unfixed-cve: "false"
+      
+      # 4. (Optional) Enforce signature from a specific key identity
+      gbnt.security.signer: "Cluster Administrator"
+```
+
+### Security Labels Reference
+
+| Label | Values | Description |
+| :--- | :--- | :--- |
+| `gbnt.security.require-signature` | `true`, `false` | Enforces that the container image must be signed with a trusted ECDSA keypair before deployment. |
+| `gbnt.security.max-cve-severity` | `critical`, `high`, `medium`, `none` | Sets the maximum tolerated CVE vulnerability threshold. Deployments exceeding this will be blocked. |
+| `gbnt.security.allow-unfixed-cve` | `true`, `false` | When `false`, blocks images with CVEs even if no vendor fix/patch is currently available. |
+| `gbnt.security.signer` | `string` | Restricts admission to images signed by a specific signer identity or organization. |
+
+---
+
+## 5. Google SRE SLO Engine Labels (`gbnt.slo.*`)
+
+Gubernator integrates the **Sloth SLO Engine** to automatically translate service labels into Prometheus recording rules and multi-window burn-rate alerts:
+
+```yaml
+version: '3.8'
+
+services:
+  api:
+    image: my-service:latest
+    labels:
+      gbnt.slo.enable: "true"
+      gbnt.slo.target: "99.9"
+      gbnt.slo.window: "30d"
+      gbnt.slo.indicator: "latency"
+      gbnt.slo.latency.threshold: "200ms"
+```
+
+| Label | Description | Example |
+| :--- | :--- | :--- |
+| `gbnt.slo.enable` | Activates SLO tracking for this service | `true` |
+| `gbnt.slo.target` | Target availability objective % | `99.9` (Three Nines), `99.99` |
+| `gbnt.slo.window` | Rolling error budget evaluation window | `30d`, `7d`, `90d` |
+| `gbnt.slo.indicator` | Type of Service Level Indicator | `availability` (HTTP 5xx error rate) or `latency` |
+| `gbnt.slo.latency.threshold` | Maximum latency objective | `200ms`, `500ms`, `1s` |
+
+---
+
+## 6. Granaries & Persistent Shared Storage (`/var/contenedores/`)
+
+For persistent data mobility across Centurion nodes, mount host directories under `/var/contenedores/`:
+
+```yaml
+version: '3.8'
+
+services:
+  database:
+    image: postgres:16-alpine
+    volumes:
+      - /var/contenedores/${STACK_NAME}/pgdata:/var/lib/postgresql/data
+```
+
+---
+
+## 7. Supported Compose Fields
+
+Gubernator's parser focuses on the fields necessary for container scheduling, security admission, and networking:
+
+* `image`: The container image to pull, verify signatures, and run.
+* `labels`: Service-level metadata for Ingress routing, Security Gatekeeper, and Sloth SLOs.
 * `ports`: Ports to expose (also used for Ingress target detection).
 * `environment`: Environment variables (supports both map and array formats).
-* `volumes`: Local and named volume mounts.
+* `volumes`: Local, shared `/var/contenedores/`, and named volume mounts.
 * `command`: Overrides the default container command.
 * `depends_on`: Ensures proper startup ordering of services.
 * `deploy.replicas`: Number of container instances to spawn.
-* `deploy.placement.constraints`: Used for Node affinity (e.g. `node.labels.gpu == nvidia`) and Gubernator features (`ingress.host`, `ingress.email`, `stack.name`).
+* `deploy.placement.constraints`: Node hardware affinity (e.g. `gbnt.node.gpu == nvidia`, `node.role == worker`) and stack constraints.
+
 

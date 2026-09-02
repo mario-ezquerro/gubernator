@@ -383,6 +383,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Interactive Risk & Impact Warning Dialog (`ImageRemediationDialog`):** Material Design 3 modal displaying affected stacks/services, version candidate radio selection, breaking changes and data migration warnings, safe auto-rollback toggle, direct "Open in Compose Studio" link, and a live Linux monospace execution console streaming progress logs (`Backup Compose`, `Image Patch`, `Database Update`, `Service Redeploy`, `Health Probe`, `Auto-Rollback`, `Security Re-Scan`).
 * **REST APIs & CLI Parity:** Added `GET /api/security/remediate/preview?image=<name>`, `POST /api/security/remediate`, and dedicated CLI command `gbnt image fix <image> [--to <tag>] [--stack <id>] [--auto-rollback]`.
 
+### 63. Stack In-Use Validation & Stale Scan Purging Subsystem (`v2.61.2`)
+* **In-Use Stack Relationship Heuristics:** Validates image usage across active `db.Service` records and raw Compose file definitions (`db.Stack.RawComposeFile`) to accurately distinguish in-use images from stale/orphaned container images.
+* **Orphan Warnings & Scan Purge:** Highlights orphaned scan reports with warning badges and adds `🗑️ Purge Stale Scan` and `🧹 Prune Orphans` bulk purge actions in the UI, REST API (`DELETE /api/security/scans/:id`, `POST /api/security/scans/prune-orphans`), and CLI (`gbnt scan prune`, `gbnt scan rm`).
+
+### 64. Docker Host Image Lifecycle, Layer Inspector & The Imperial Forge (`v2.62.0`)
+* **Cluster-Wide Physical Docker Image Management:** Real-time discovery of images stored across Manager and Centurion worker nodes via local Docker CLI and remote SSH bridge, reporting repository tags, physical disk footprints (MB/GB), creation dates, and container utilization.
+* **Cluster Host Image Pruning (`docker image prune -a -f`):** One-click cluster disk reclamation removing unused and dangling container images across all hosts, calculating and displaying exact reclaimed disk space.
+* **Image Construction & Layer History Inspector (`docker history`):** Chronological layer visualization with instruction breakdowns (`FROM`, `RUN`, `ENV`, `COPY`, `EXPOSE`, `ENTRYPOINT`, `WORKDIR`), layer byte sizes, and reverse-engineered `Dockerfile` generation with 1-click clipboard export and "Edit & Rebuild in Forge" bridge.
+* **The Imperial Forge (Image Build Studio):** In-browser Dockerfile IDE with built-in production blueprints (Alpine Minimal Hardened, Go Multi-stage, Node.js Runtime, Python FastAPI), multi-node Centurion build targeting, build arguments (`ARG`), `--no-cache`, and real-time streaming compilation terminal.
+
+### 65. Streamlined In-Cluster Image Signing, Keypair Persistence & Gatekeeper Security Labels (`v2.62.1`)
+* **In-Cluster ECDSA Keypair Persistence:** Stores generated ECDSA P-256 private keys securely inside the cluster database, completely eliminating manual copying and pasting of raw PEM keys for signing operations.
+* **Interactive SignImageDialog & Quick Sign Actions:** Redesigned signing modal featuring a searchable cluster image dropdown, in-cluster keypair selector with status pills, automatic Docker SHA-256 RepoDigest discovery, and 1-click `🔏 Sign` buttons directly on every image card.
+* **Compose Studio Zero-Trust Autocomplete & Security Labels:** Added comprehensive autocomplete snippets and Gubernator Copilot cards for `gbnt.security.require-signature=true`, `gbnt.security.max-cve-severity=critical`, `gbnt.security.allow-unfixed-cve=false`, and `gbnt.security.signer="Cluster Administrator"`.
+
+
 
 
 

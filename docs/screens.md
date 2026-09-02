@@ -119,4 +119,24 @@ Interactive remediation modal accessible via **`⚡ Fix Image`** on any vulnerab
 - **📺 Live Execution Console**: Real-time monospace terminal displaying backup creation, image patching, rolling redeployment, health probing, and re-scanning progress.
 - **📝 Compose Studio Integration**: Instant deep-link to edit the Compose file manually in Compose Studio.
 
+---
+
+## 🔨 10. Docker Host Image Lifecycle, Layer Inspector & The Imperial Forge (`v2.62.0`)
+
+Full container image engineering and host maintenance suite inside **Image Security & SBOM**:
+- **🧹 Cluster Host Image Pruner**: 1-click `docker image prune -a -f` across the Manager and all Centurion worker nodes, calculating reclaimed disk space (MB/GB).
+- **📜 Layer History & Reverse-Engineered Dockerfile (`ImageHistoryDialog`)**: Interactive chronological timeline showing individual layer commands, incremental sizes (+MB), and reverse-engineered `Dockerfile` with 1-click clipboard export and "Edit & Rebuild in Forge" bridge.
+- **🔨 The Imperial Forge — Image Build Studio (`ImageBuildDialog`)**: In-browser Dockerfile builder with built-in production blueprints (Alpine Hardened, Go Multi-stage, Node.js, Python FastAPI), multi-node Centurion build targeting, build args, and real-time streaming compilation terminal.
+
+---
+
+## 🔏 11. Streamlined In-Cluster Image Signing & Keypair Selector (`v2.62.1`)
+
+Interactive cryptographic signing suite accessible from **Image Security & SBOM ➔ `Sign Image`** and 1-click **`🔏 Sign`** buttons:
+- **🔑 In-Cluster Keypair Persistence**: Stores ECDSA P-256 private keys securely inside the cluster database, eliminating manual key copy-pasting.
+- **🖼️ Searchable Image Selector**: Autocompletes across all cluster stacks and host containers.
+- **🛡️ Docker Digest Discovery**: Automatically extracts SHA-256 RepoDigests via Docker engine inspect to sign the exact container bytecode.
+- **⚡ Gatekeeper Admission**: Instant transition to `VERIFIED` status satisfying Zero-Trust admission policies.
+
+
 

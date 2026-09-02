@@ -1288,7 +1288,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   const SizedBox(height: 16),
                   _buildSnippetCard(
                     title: 'Enforce Cryptographic Signatures',
-                    subtitle: 'Blocks deployment if image is not Cosign-signed',
+                    subtitle: 'Blocks deployment if image is not Cosign-signed (Zero-Trust)',
                     icon: Icons.verified_user,
                     onTap: () {
                       ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.require-signature=true"\n');
@@ -1296,10 +1296,29 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   ),
                   _buildSnippetCard(
                     title: 'Block Critical CVE Vulnerabilities',
-                    subtitle: 'Rejects images with unpatched critical CVEs',
+                    subtitle: 'Rejects images with unpatched critical CVEs (CVSS >= 9.0)',
                     icon: Icons.security,
                     onTap: () {
                       ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.max-cve-severity=critical"\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Block High & Critical CVEs',
+                    subtitle: 'Stricter threshold rejecting both High and Critical CVEs',
+                    icon: Icons.shield_outlined,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.max-cve-severity=high"\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Full Zero-Trust Security Suite',
+                    subtitle: 'Signature check + critical CVE block + reject unfixed CVEs',
+                    icon: Icons.verified,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(
+                        _codeController,
+                        '    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n      - "gbnt.security.allow-unfixed-cve=false"\n',
+                      );
                     },
                   ),
                 ],

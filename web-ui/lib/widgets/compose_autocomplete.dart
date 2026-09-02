@@ -69,9 +69,30 @@ class ComposeAutocomplete {
     ComposeSnippet(
       label: 'gbnt.security.max-cve-severity',
       category: 'Security',
-      description: 'Reject images with CVE vulnerabilities above threshold',
+      description: 'Reject images with CVE vulnerabilities above threshold (critical / high)',
       icon: Icons.security,
       snippet: '        - "gbnt.security.max-cve-severity=critical"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.security.allow-unfixed-cve',
+      category: 'Security',
+      description: 'Strictly block images with CVEs even if no upstream patch exists',
+      icon: Icons.gavel,
+      snippet: '        - "gbnt.security.allow-unfixed-cve=false"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.security.signer',
+      category: 'Security',
+      description: 'Require image to be signed by a specific trusted key identity',
+      icon: Icons.verified,
+      snippet: '        - "gbnt.security.signer=Cluster Administrator"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.security.zero-trust-block',
+      category: 'Security',
+      description: 'Complete Zero-Trust Gatekeeper security suite for high-assurance services',
+      icon: Icons.shield,
+      snippet: '    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n      - "gbnt.security.allow-unfixed-cve=false"\n',
     ),
 
     // Node Placement & Labels
