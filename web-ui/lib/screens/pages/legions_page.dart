@@ -11,12 +11,14 @@ class LegionsPage extends StatefulWidget {
   final DashboardState state;
   final VoidCallback onRefresh;
   final ValueChanged<String>? onViewContainerLogs;
+  final ValueChanged<String>? onViewStackContainers;
 
   const LegionsPage({
     super.key,
     required this.state,
     required this.onRefresh,
     this.onViewContainerLogs,
+    this.onViewStackContainers,
   });
 
   @override
@@ -440,27 +442,85 @@ class _LegionsPageState extends State<LegionsPage> {
                                     ),
                                   ],
                                 )),
-                                DataCell(Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600))),
-                                DataCell(Text(_formatDate(s.createdAt))),
-                                DataCell(Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: runningCount == stackTasks.length && stackTasks.isNotEmpty
-                                        ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                        : const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '$runningCount/${stackTasks.length}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: runningCount == stackTasks.length && stackTasks.isNotEmpty
-                                          ? const Color(0xFF10B981)
-                                          : const Color(0xFFF59E0B),
-                                    ),
-                                  ),
-                                )),
+                                DataCell(
+                                   InkWell(
+                                     onTap: () => widget.onViewStackContainers?.call(s.name),
+                                     borderRadius: BorderRadius.circular(4),
+                                     child: Tooltip(
+                                       message: 'Click to view containers for ${s.name}',
+                                       child: Padding(
+                                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                         child: Row(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: [
+                                             Text(
+                                               s.name,
+                                               style: TextStyle(
+                                                 fontWeight: FontWeight.w600,
+                                                 color: Theme.of(context).colorScheme.primary,
+                                                 decoration: TextDecoration.underline,
+                                                 decorationStyle: TextDecorationStyle.dotted,
+                                               ),
+                                             ),
+                                             const SizedBox(width: 4),
+                                             Icon(
+                                               Icons.arrow_forward_rounded,
+                                               size: 13,
+                                               color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     ),
+                                   ),
+                                 ),
+                                 DataCell(Text(_formatDate(s.createdAt))),
+                                 DataCell(
+                                   InkWell(
+                                     onTap: () => widget.onViewStackContainers?.call(s.name),
+                                     borderRadius: BorderRadius.circular(10),
+                                     child: Tooltip(
+                                       message: 'View $runningCount/${stackTasks.length} containers for ${s.name}',
+                                       child: Container(
+                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                         decoration: BoxDecoration(
+                                           color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                               ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                                               : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                           borderRadius: BorderRadius.circular(10),
+                                           border: Border.all(
+                                             color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                                 ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                                                 : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                           ),
+                                         ),
+                                         child: Row(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: [
+                                             Text(
+                                               '$runningCount/${stackTasks.length}',
+                                               style: TextStyle(
+                                                 fontSize: 12,
+                                                 fontWeight: FontWeight.w600,
+                                                 color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                                     ? const Color(0xFF10B981)
+                                                     : const Color(0xFFF59E0B),
+                                               ),
+                                             ),
+                                             const SizedBox(width: 4),
+                                             Icon(
+                                               Icons.visibility_outlined,
+                                               size: 12,
+                                               color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                                   ? const Color(0xFF10B981)
+                                                   : const Color(0xFFF59E0B),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     ),
+                                   ),
+                                 ),
                                 DataCell(Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [

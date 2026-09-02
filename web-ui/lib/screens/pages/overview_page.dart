@@ -11,6 +11,7 @@ class OverviewPage extends StatelessWidget {
   final VoidCallback onViewLegions;
   final VoidCallback onViewCenturions;
   final VoidCallback onViewTasks;
+  final ValueChanged<String>? onViewStackContainers;
 
   const OverviewPage({
     super.key,
@@ -19,6 +20,7 @@ class OverviewPage extends StatelessWidget {
     required this.onViewLegions,
     required this.onViewCenturions,
     required this.onViewTasks,
+    this.onViewStackContainers,
   });
 
   @override
@@ -242,44 +244,50 @@ class OverviewPage extends StatelessWidget {
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.layers_outlined, size: 16,
-                              color: theme.colorScheme.primary.withValues(alpha: 0.7)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(s.name,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    child: InkWell(
+                      onTap: () => onViewStackContainers?.call(s.name),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: runningCount == taskCount
-                                  ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                  : const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.layers_outlined, size: 16,
+                                color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(s.name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                             ),
-                            child: Text(
-                              '$runningCount/$taskCount',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
                                 color: runningCount == taskCount
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFF59E0B),
+                                    ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                                    : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$runningCount/$taskCount',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: runningCount == taskCount
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFFF59E0B),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Icon(Icons.arrow_forward_ios, size: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                          ],
+                        ),
                       ),
                     ),
                   );

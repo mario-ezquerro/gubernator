@@ -12,11 +12,13 @@ import '../../utils/clipboard_service.dart';
 class TasksPage extends StatefulWidget {
   final DashboardState state;
   final VoidCallback onRefresh;
+  final String? initialFilterStack;
 
   const TasksPage({
     super.key,
     required this.state,
     required this.onRefresh,
+    this.initialFilterStack,
   });
 
   @override
@@ -27,6 +29,31 @@ class _TasksPageState extends State<TasksPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   PlutoGridStateManager? _gridStateManager;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFilterStack != null && widget.initialFilterStack!.isNotEmpty) {
+      _searchQuery = widget.initialFilterStack!.toLowerCase();
+      _searchController.text = widget.initialFilterStack!;
+    }
+  }
+
+  @override
+  void didUpdateWidget(TasksPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilterStack != oldWidget.initialFilterStack &&
+        widget.initialFilterStack != null &&
+        widget.initialFilterStack!.isNotEmpty) {
+      setState(() {
+        _searchQuery = widget.initialFilterStack!.toLowerCase();
+        _searchController.text = widget.initialFilterStack!;
+      });
+      if (_gridStateManager != null) {
+        _applyColumnFilter('stack', widget.initialFilterStack!);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -717,6 +744,9 @@ class _TasksPageState extends State<TasksPage> {
                       onLoaded: (PlutoGridOnLoadedEvent event) {
                         _gridStateManager = event.stateManager;
                         _gridStateManager!.setShowColumnFilter(true);
+                        if (widget.initialFilterStack != null && widget.initialFilterStack!.isNotEmpty) {
+                          _applyColumnFilter('stack', widget.initialFilterStack!);
+                        }
                         _gridStateManager!.addListener(() {
                           if (mounted) setState(() {});
                         });

@@ -363,6 +363,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Automated Stack Deduplication in State Sync:** Integrated automatic deduplication of stack records with identical names in `stateHandler`, preserving only the latest active stack and cleaning up superseded services and tasks.
 * **Dead Orphan Task Garbage Collection:** Added auto-pruning for dead tasks whose parent services or stacks were previously destroyed, guaranteeing accurate `4/4` container counts on the Legions dashboard.
 
+### 59. Interactive Stack-to-Containers Filtered Navigation & Deep Linking (`v2.59.19`)
+* **Interactive Stack & Badge Click Navigation:** Made stack names and container count badges across **Legions [Stacks]** table and **Overview** ("Recent Legions") interactive `InkWell` elements with tooltips, arrow indicators, and primary hover styling.
+* **Auto-Filtered Containers View (`initialFilterStack`):** Clicking on any stack name immediately switches the active dashboard tab to **Containers** (`TasksPage`) and auto-applies the stack filter into PlutoGrid and search bar, isolating precisely the containers belonging to that stack.
+
+
 
 
 

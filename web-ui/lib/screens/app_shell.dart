@@ -54,6 +54,7 @@ class _AppShellState extends State<AppShell> {
   Timer? _timer;
   int _selectedIndex = 0;
   String? _lokiFilterContainer;
+  String? _tasksFilterStack;
   bool _sidebarCollapsed = false;
 
   @override
@@ -262,7 +263,16 @@ class _AppShellState extends State<AppShell> {
           onRefresh: _fetchData,
           onViewLegions: () => setState(() => _selectedIndex = 2),
           onViewCenturions: () => setState(() => _selectedIndex = 1),
-          onViewTasks: () => setState(() => _selectedIndex = 3),
+          onViewTasks: () => setState(() {
+            _tasksFilterStack = null;
+            _selectedIndex = 3;
+          }),
+          onViewStackContainers: (stackName) {
+            setState(() {
+              _tasksFilterStack = stackName;
+              _selectedIndex = 3;
+            });
+          },
         );
       case 1:
         return CenturionsPage(state: _state, onRefresh: _fetchData);
@@ -276,9 +286,19 @@ class _AppShellState extends State<AppShell> {
               _selectedIndex = 10; // Navigate to Loki Logs Explorer
             });
           },
+          onViewStackContainers: (stackName) {
+            setState(() {
+              _tasksFilterStack = stackName;
+              _selectedIndex = 3; // Navigate to Containers tab filtered by stack
+            });
+          },
         );
       case 3:
-        return TasksPage(state: _state, onRefresh: _fetchData);
+        return TasksPage(
+          state: _state,
+          onRefresh: _fetchData,
+          initialFilterStack: _tasksFilterStack,
+        );
       case 4:
         return StoragePage(state: _state, onRefresh: _fetchData);
       case 5:
@@ -327,7 +347,12 @@ class _AppShellState extends State<AppShell> {
           GubernatorSidebar(
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
-              setState(() => _selectedIndex = index);
+              setState(() {
+                if (index == 3) {
+                  _tasksFilterStack = null;
+                }
+                _selectedIndex = index;
+              });
             },
             isDark: widget.isDark,
             onThemeChanged: widget.onThemeChanged,
