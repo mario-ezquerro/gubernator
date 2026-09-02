@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/image_remediation_dialog.dart';
+import '../../widgets/image_history_dialog.dart';
+import '../../widgets/image_build_dialog.dart';
 
 /// Image Security & SBOM (The Imperial Seal / The Armory)
 class ImageSecurityPage extends StatefulWidget {
@@ -161,6 +163,112 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
       widget.onRefresh();
     } catch (e) {
       _showSnackBar('Failed to prune orphan scans: $e', isError: true);
+    }
+  }
+
+  void _showHistoryDialog(String imageName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ImageHistoryDialog(
+        imageName: imageName,
+        onOpenInForge: (reconstructedDockerfile, tag) {
+          _showBuildDialog(initialDockerfile: reconstructedDockerfile, initialTag: '$tag-custom');
+        },
+      ),
+    );
+  }
+
+  void _showBuildDialog({String? initialDockerfile, String? initialTag}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ImageBuildDialog(
+        initialDockerfile: initialDockerfile,
+        initialTag: initialTag,
+        onBuildSuccess: () {
+          _showSnackBar('✅ Image compiled in The Forge and security scan triggered!');
+          _loadAllData();
+          widget.onRefresh();
+        },
+        onOpenInComposeStudio: (tag) {
+          if (widget.onOpenInComposeStudio != null) {
+            widget.onOpenInComposeStudio!('');
+          } else if (widget.onNavigateTab != null) {
+            widget.onNavigateTab!(15); // Compose Studio tab
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteHostImage(String imageName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Delete Docker Image from Cluster?'),
+          ],
+        ),
+        content: Text('Are you sure you want to delete the physical image "$imageName" from all cluster hosts (docker rmi)?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete from Hosts'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      _showSnackBar('🗑️ Deleting image $imageName from cluster nodes...');
+      final res = await ApiService.deleteHostDockerImage(imageName, node: 'all', force: true);
+      _showSnackBar('✅ ${res['message'] ?? 'Image deleted from hosts'}');
+      _loadAllData();
+      widget.onRefresh();
+    } catch (e) {
+      _showSnackBar('Failed to delete image: $e', isError: true);
+    }
+  }
+
+  Future<void> _pruneHostImages() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.cleaning_services_outlined, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text('Prune Unused Images on All Nodes?'),
+          ],
+        ),
+        content: const Text(
+          'This will execute "docker image prune -a -f" across the Manager and all Centurion worker nodes, reclaiming physical disk space by removing unused and dangling container images.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Prune All Unused Images'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      _showSnackBar('🧹 Pruning unused Docker images across all cluster hosts...');
+      final res = await ApiService.pruneHostDockerImages(node: 'all', allUnused: true);
+      _showSnackBar('✅ Prune complete: Deleted ${res.totalImagesDeleted} images, reclaimed ${res.totalSpaceReclaimed} disk space!');
+      _loadAllData();
+      widget.onRefresh();
+    } catch (e) {
+      _showSnackBar('Failed to prune host images: $e', isError: true);
     }
   }
 
@@ -825,10 +933,26 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
               ),
             ),
             const SizedBox(width: 8),
+            Tooltip(
+              message: 'Prune unused and dangling Docker images across all hosts to reclaim disk space',
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                label: const Text('Prune Host Images'),
+                onPressed: _pruneHostImages,
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              icon: const Icon(Icons.build_circle_outlined, size: 18),
+              label: const Text('Forge (Build Image)'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+              onPressed: () => _showBuildDialog(),
+            ),
+            const SizedBox(width: 8),
             FilledButton.icon(
               icon: const Icon(Icons.radar, size: 18),
               label: const Text('Scan Image'),
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
               onPressed: _showTriggerScanDialog,
             ),
           ],
@@ -1048,16 +1172,50 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                             ],
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
+                              icon: const Icon(Icons.history_edu, size: 16),
+                              label: const Text('History'),
+                              onPressed: () => _showHistoryDialog(s.imageName),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
                               icon: const Icon(Icons.remove_red_eye, size: 16),
                               label: const Text('View CVEs'),
                               onPressed: () => _showScanDetailsDialog(s),
                             ),
                             if (isOrphan) ...[
                               const SizedBox(width: 6),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                                tooltip: 'Purge Stale Scan Report',
-                                onPressed: () => _deleteScan(s.id),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, size: 18),
+                                tooltip: 'Image Options',
+                                onSelected: (val) {
+                                  if (val == 'purge_scan') {
+                                    _deleteScan(s.id);
+                                  } else if (val == 'delete_host') {
+                                    _deleteHostImage(s.imageName);
+                                  }
+                                },
+                                itemBuilder: (ctx) => [
+                                  const PopupMenuItem(
+                                    value: 'purge_scan',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, size: 16, color: Colors.orangeAccent),
+                                        SizedBox(width: 8),
+                                        Text('Purge Scan Record'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete_host',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_forever, size: 16, color: Colors.redAccent),
+                                        SizedBox(width: 8),
+                                        Text('Delete Image from Hosts (rmi)'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ],

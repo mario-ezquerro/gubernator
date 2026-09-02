@@ -33,6 +33,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/security"
@@ -486,6 +487,13 @@ func StartDashboard() {
 		api.POST("/security/evaluate", securityAdmissionEvaluateHandler)
 		api.GET("/security/remediate/preview", securityRemediatePreviewHandler)
 		api.POST("/security/remediate", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityRemediateExecuteHandler)
+
+		// Docker Host Image Lifecycle & Build Forge (The Imperial Forge)
+		api.GET("/images/host-list", imageHostListHandler)
+		api.GET("/images/history", imageHistoryHandler)
+		api.DELETE("/images/host-delete", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imageHostDeleteHandler)
+		api.POST("/images/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imagePruneHandler)
+		api.POST("/images/build", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imageBuildHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -5794,6 +5802,107 @@ func glusterVolumeSetOptionHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Option '%s=%s' set on volume '%s'", req.Key, req.Value, name)})
+}
+
+// ── Image Lifecycle & Build Forge Handlers ────────────────────────────────────
+
+func imageHostListHandler(c *gin.Context) {
+	targetNode := c.DefaultQuery("node", "all")
+	images, err := docker.ListClusterHostImages(targetNode)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list host images: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"images": images,
+		"count":  len(images),
+		"node":   targetNode,
+	})
+}
+
+func imageHistoryHandler(c *gin.Context) {
+	image := c.Query("image")
+	if image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image query parameter is required"})
+		return
+	}
+	targetNode := c.DefaultQuery("node", "manager")
+
+	history, err := docker.InspectImageHistory(targetNode, image)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to inspect image history: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, history)
+}
+
+func imageHostDeleteHandler(c *gin.Context) {
+	image := c.Query("image")
+	if image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image query parameter is required"})
+		return
+	}
+	targetNode := c.DefaultQuery("node", "all")
+	force := strings.EqualFold(c.DefaultQuery("force", "false"), "true")
+
+	res, err := docker.RemoveHostImage(targetNode, image, force)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func imagePruneHandler(c *gin.Context) {
+	var req struct {
+		Node      string `json:"node"`
+		AllUnused bool   `json:"all_unused"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.Node == "" {
+		req.Node = "all"
+	}
+
+	res, err := docker.PruneHostImages(req.Node, req.AllUnused)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prune images: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func imageBuildHandler(c *gin.Context) {
+	var req docker.ImageBuildRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid build request payload: " + err.Error()})
+		return
+	}
+
+	if req.Tag == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tag field is required"})
+		return
+	}
+	if req.Dockerfile == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "dockerfile field is required"})
+		return
+	}
+	if req.NodeID == "" {
+		req.NodeID = "manager"
+	}
+
+	res, err := docker.BuildHostImage(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Build failed: " + err.Error(),
+			"result": res,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 

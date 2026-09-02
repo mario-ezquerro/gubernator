@@ -2186,3 +2186,201 @@ class RemediationResultModel {
   }
 }
 
+/// Physical Docker image stored on a cluster node
+class HostDockerImageModel {
+  final String id;
+  final String repository;
+  final String tag;
+  final String fullName;
+  final String size;
+  final int sizeBytes;
+  final String createdAt;
+  final String nodeId;
+  final String nodeName;
+  final String nodeIp;
+  final bool inUse;
+  final List<String> containersUsing;
+
+  HostDockerImageModel({
+    required this.id,
+    required this.repository,
+    required this.tag,
+    required this.fullName,
+    required this.size,
+    required this.sizeBytes,
+    required this.createdAt,
+    required this.nodeId,
+    required this.nodeName,
+    required this.nodeIp,
+    required this.inUse,
+    this.containersUsing = const [],
+  });
+
+  factory HostDockerImageModel.fromJson(Map<String, dynamic> json) {
+    return HostDockerImageModel(
+      id: json['id'] ?? '',
+      repository: json['repository'] ?? '',
+      tag: json['tag'] ?? '',
+      fullName: json['full_name'] ?? '',
+      size: json['size'] ?? '',
+      sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
+      createdAt: json['created_at'] ?? '',
+      nodeId: json['node_id'] ?? '',
+      nodeName: json['node_name'] ?? '',
+      nodeIp: json['node_ip'] ?? '',
+      inUse: json['in_use'] == true,
+      containersUsing: (json['containers_using'] as List<dynamic>? ?? [])
+          .map((c) => c.toString())
+          .toList(),
+    );
+  }
+}
+
+/// Single layer in an image construction history
+class ImageLayerModel {
+  final int order;
+  final String id;
+  final String createdBy;
+  final String instruction;
+  final String args;
+  final String size;
+  final int sizeBytes;
+  final String createdAt;
+  final String comment;
+
+  ImageLayerModel({
+    required this.order,
+    required this.id,
+    required this.createdBy,
+    required this.instruction,
+    required this.args,
+    required this.size,
+    required this.sizeBytes,
+    required this.createdAt,
+    required this.comment,
+  });
+
+  factory ImageLayerModel.fromJson(Map<String, dynamic> json) {
+    return ImageLayerModel(
+      order: (json['order'] as num?)?.toInt() ?? 0,
+      id: json['id'] ?? '',
+      createdBy: json['created_by'] ?? '',
+      instruction: json['instruction'] ?? '',
+      args: json['args'] ?? '',
+      size: json['size'] ?? '',
+      sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
+      createdAt: json['created_at'] ?? '',
+      comment: json['comment'] ?? '',
+    );
+  }
+}
+
+/// Complete layer breakdown and reconstructed Dockerfile
+class ImageHistoryModel {
+  final String image;
+  final String imageId;
+  final String nodeId;
+  final String nodeName;
+  final List<ImageLayerModel> layers;
+  final String reconstructedDockerfile;
+  final int totalSizeBytes;
+  final String totalSize;
+
+  ImageHistoryModel({
+    required this.image,
+    required this.imageId,
+    required this.nodeId,
+    required this.nodeName,
+    required this.layers,
+    required this.reconstructedDockerfile,
+    required this.totalSizeBytes,
+    required this.totalSize,
+  });
+
+  factory ImageHistoryModel.fromJson(Map<String, dynamic> json) {
+    return ImageHistoryModel(
+      image: json['image'] ?? '',
+      imageId: json['image_id'] ?? '',
+      nodeId: json['node_id'] ?? '',
+      nodeName: json['node_name'] ?? '',
+      layers: (json['layers'] as List<dynamic>? ?? [])
+          .map((l) => ImageLayerModel.fromJson(l as Map<String, dynamic>))
+          .toList(),
+      reconstructedDockerfile: json['reconstructed_dockerfile'] ?? '',
+      totalSizeBytes: (json['total_size_bytes'] as num?)?.toInt() ?? 0,
+      totalSize: json['total_size'] ?? '',
+    );
+  }
+}
+
+/// Outcome of docker image prune operation across cluster nodes
+class ImagePruneResultModel {
+  final int totalImagesDeleted;
+  final String totalSpaceReclaimed;
+  final int totalSpaceReclaimedBytes;
+  final Map<String, String> nodeResults;
+  final List<String> logs;
+
+  ImagePruneResultModel({
+    required this.totalImagesDeleted,
+    required this.totalSpaceReclaimed,
+    required this.totalSpaceReclaimedBytes,
+    required this.nodeResults,
+    required this.logs,
+  });
+
+  factory ImagePruneResultModel.fromJson(Map<String, dynamic> json) {
+    Map<String, String> nodeRes = {};
+    if (json['node_results'] is Map) {
+      (json['node_results'] as Map).forEach((k, v) {
+        nodeRes[k.toString()] = v.toString();
+      });
+    }
+
+    return ImagePruneResultModel(
+      totalImagesDeleted: (json['total_images_deleted'] as num?)?.toInt() ?? 0,
+      totalSpaceReclaimed: json['total_space_reclaimed'] ?? '0 B',
+      totalSpaceReclaimedBytes: (json['total_space_reclaimed_bytes'] as num?)?.toInt() ?? 0,
+      nodeResults: nodeRes,
+      logs: (json['logs'] as List<dynamic>? ?? []).map((l) => l.toString()).toList(),
+    );
+  }
+}
+
+/// Outcome of Dockerfile build execution in The Forge
+class ImageBuildResultModel {
+  final bool success;
+  final String imageTag;
+  final String imageId;
+  final String nodeId;
+  final String nodeName;
+  final String duration;
+  final List<String> logs;
+  final String? error;
+
+  ImageBuildResultModel({
+    required this.success,
+    required this.imageTag,
+    required this.imageId,
+    required this.nodeId,
+    required this.nodeName,
+    required this.duration,
+    required this.logs,
+    this.error,
+  });
+
+  factory ImageBuildResultModel.fromJson(Map<String, dynamic> json) {
+    return ImageBuildResultModel(
+      success: json['success'] == true,
+      imageTag: json['image_tag'] ?? '',
+      imageId: json['image_id'] ?? '',
+      nodeId: json['node_id'] ?? '',
+      nodeName: json['node_name'] ?? '',
+      duration: json['duration'] ?? '',
+      logs: (json['logs'] as List<dynamic>? ?? []).map((l) => l.toString()).toList(),
+      error: json['error'],
+    );
+  }
+}
+
+

@@ -1642,6 +1642,97 @@ class ApiService {
     throw Exception(err['error'] ?? 'Prune failed');
   }
 
+  // ─── Docker Host Images & Build Forge Services ────────────────────────────
+
+  /// Fetches physical Docker images stored on cluster nodes.
+  static Future<List<HostDockerImageModel>> fetchHostDockerImages({String node = 'all'}) async {
+    final response = await http.get(
+      Uri.parse('/api/images/host-list?node=${Uri.encodeComponent(node)}'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final list = (data['images'] as List? ?? [])
+          .map((e) => HostDockerImageModel.fromJson(e))
+          .toList();
+      return list;
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to list host images');
+  }
+
+  /// Inspects layer history and reconstructed Dockerfile for a Docker image.
+  static Future<ImageHistoryModel> fetchImageHistory(String image, {String node = 'manager'}) async {
+    final response = await http.get(
+      Uri.parse('/api/images/history?image=${Uri.encodeComponent(image)}&node=${Uri.encodeComponent(node)}'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ImageHistoryModel.fromJson(data);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to inspect image history');
+  }
+
+  /// Deletes a physical Docker image from a specific node or all cluster nodes.
+  static Future<Map<String, dynamic>> deleteHostDockerImage(String image, {String node = 'all', bool force = false}) async {
+    final response = await http.delete(
+      Uri.parse('/api/images/host-delete?image=${Uri.encodeComponent(image)}&node=${Uri.encodeComponent(node)}&force=$force'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to delete image from host');
+  }
+
+  /// Prunes unused and dangling Docker images across cluster nodes to reclaim disk space.
+  static Future<ImagePruneResultModel> pruneHostDockerImages({String node = 'all', bool allUnused = true}) async {
+    final response = await http.post(
+      Uri.parse('/api/images/prune'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'node': node,
+        'all_unused': allUnused,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ImagePruneResultModel.fromJson(data);
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to prune host images');
+  }
+
+  /// Builds a Docker image on a Centurion node from a Dockerfile in The Imperial Forge.
+  static Future<ImageBuildResultModel> buildDockerImage({
+    required String tag,
+    required String dockerfile,
+    String node = 'manager',
+    Map<String, String>? buildArgs,
+    bool noCache = false,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/images/build'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'tag': tag,
+        'dockerfile': dockerfile,
+        'node_id': node,
+        'build_args': buildArgs ?? {},
+        'no_cache': noCache,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 || data['result'] != null) {
+      return ImageBuildResultModel.fromJson(data['result'] ?? data);
+    }
+    final err = data['error'] ?? 'Build failed';
+    throw Exception(err);
+  }
+
   /// Fetches transparent GitHub adoption stats & release metrics.
   static Future<AdoptionStatsModel> fetchAdoptionStats({bool force = false}) async {
     final url = force ? '/api/system/adoption?force=true' : '/api/system/adoption';

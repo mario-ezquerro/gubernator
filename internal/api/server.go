@@ -271,6 +271,15 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/remediate", SecurityRemediateExecuteHandler)
 		}
 
+		imagesRoute := v1.Group("/images", authMiddleware)
+		{
+			imagesRoute.GET("/host-list", ImageHostListHandler)
+			imagesRoute.GET("/history", ImageHistoryHandler)
+			imagesRoute.DELETE("/host-delete", ImageHostDeleteHandler)
+			imagesRoute.POST("/prune", ImagePruneHandler)
+			imagesRoute.POST("/build", ImageBuildHandler)
+		}
+
 		systemRoute := v1.Group("/system")
 		{
 			systemRoute.GET("/adoption", SystemAdoptionHandler)
