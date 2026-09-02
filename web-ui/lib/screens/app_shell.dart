@@ -165,7 +165,7 @@ class _AppShellState extends State<AppShell> {
       SidebarItem(
         icon: Icons.view_in_ar_outlined,
         activeIcon: Icons.view_in_ar,
-        label: 'Tasks',
+        label: 'Containers',
         badgeCount: running,
         showBadge: true,
       ),
@@ -239,7 +239,7 @@ class _AppShellState extends State<AppShell> {
     'Overview',
     'Centurions [Host]',
     'Legions [Stacks]',
-    'Tasks',
+    'Containers',
     'Storage & Backups',
     'Image Security & SBOM',
     'SLO & Error Budgets',

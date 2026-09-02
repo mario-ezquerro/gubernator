@@ -409,7 +409,7 @@ class _LegionsPageState extends State<LegionsPage> {
                                   _sortAscending = asc;
                                 }),
                               ),
-                              const DataColumn(label: Text('TASKS')),
+                              const DataColumn(label: Text('CONTAINERS')),
                               const DataColumn(label: Text('ACTIONS')),
                             ],
                             rows: filteredStacks.map((s) {

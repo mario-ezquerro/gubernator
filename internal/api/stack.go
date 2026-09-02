@@ -118,6 +118,16 @@ type ComposeService struct {
 		Placement struct {
 			Constraints []string `yaml:"constraints"`
 		} `yaml:"placement"`
+		Resources struct {
+			Limits struct {
+				Cpus   string `yaml:"cpus"`
+				Memory string `yaml:"memory"`
+			} `yaml:"limits"`
+			Reservations struct {
+				Cpus   string `yaml:"cpus"`
+				Memory string `yaml:"memory"`
+			} `yaml:"reservations"`
+		} `yaml:"resources"`
 	} `yaml:"deploy"`
 }
 
@@ -212,16 +222,20 @@ func StackDeployHandler(c *gin.Context) {
 		slog.Info("parsed compose service labels", "name", srvName, "labels", srvDef.Labels, "deploy_labels", srvDef.Deploy.Labels, "constraints", constraints)
 
 		service := db.Service{
-			ID:              uuid.New().String(),
-			StackID:         stackID,
-			Name:            srvName,
-			Image:           srvDef.Image,
-			DesiredReplicas: replicas,
-			Constraints:     constraints,
-			Ports:           srvDef.Ports,
-			Env:             []string(srvDef.Environment),
-			Volumes:         srvDef.Volumes,
-			Command:         string(srvDef.Command),
+			ID:                uuid.New().String(),
+			StackID:           stackID,
+			Name:              srvName,
+			Image:             srvDef.Image,
+			DesiredReplicas:   replicas,
+			Constraints:       constraints,
+			Ports:             srvDef.Ports,
+			Env:               []string(srvDef.Environment),
+			Volumes:           srvDef.Volumes,
+			Command:           string(srvDef.Command),
+			CpuLimit:          srvDef.Deploy.Resources.Limits.Cpus,
+			MemoryLimit:       srvDef.Deploy.Resources.Limits.Memory,
+			CpuReservation:    srvDef.Deploy.Resources.Reservations.Cpus,
+			MemoryReservation: srvDef.Deploy.Resources.Reservations.Memory,
 		}
 		db.DB.Create(&service)
 
@@ -343,21 +357,29 @@ func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
 
 	if selectedNode != nil {
 		task := db.Task{
-			ID:        uuid.New().String(),
-			ServiceID: service.ID,
-			NodeID:    selectedNode.ID,
-			Status:    "pending", // executor will pick this up
+			ID:                uuid.New().String(),
+			ServiceID:         service.ID,
+			NodeID:            selectedNode.ID,
+			Status:            "pending", // executor will pick this up
+			CpuLimit:          service.CpuLimit,
+			MemoryLimit:       service.MemoryLimit,
+			CpuReservation:    service.CpuReservation,
+			MemoryReservation: service.MemoryReservation,
 		}
 		db.DB.Create(&task)
 		return &task
 	} else {
 		fmt.Printf("Warning: Could not find a suitable node for service %s\n", service.Name)
 		task := db.Task{
-			ID:        uuid.New().String(),
-			ServiceID: service.ID,
-			NodeID:    "none", // Or a dummy node ID
-			Status:    "dead",
-			Error:     "No suitable node found for placement constraints",
+			ID:                uuid.New().String(),
+			ServiceID:         service.ID,
+			NodeID:            "none", // Or a dummy node ID
+			Status:            "dead",
+			CpuLimit:          service.CpuLimit,
+			MemoryLimit:       service.MemoryLimit,
+			CpuReservation:    service.CpuReservation,
+			MemoryReservation: service.MemoryReservation,
+			Error:             "No suitable node found for placement constraints",
 		}
 		db.DB.Create(&task)
 		return &task

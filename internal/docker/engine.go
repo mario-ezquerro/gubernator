@@ -20,13 +20,16 @@ func init() {
 // ContainerConfig holds all the runtime options for a container,
 // mirroring what a docker-compose service definition can provide.
 type ContainerConfig struct {
-	TaskID  string
-	Image   string
-	Ports   []string // ["8080:80", "443:443"]
-	Env     []string // ["FOO=bar", "BAR=baz"]
-	Volumes []string // ["/host:/container", "namedvol:/data"]
-	Command string   // optional override command
-	Restart string   // restart policy e.g. "unless-stopped", "always", "on-failure"
+	TaskID            string
+	Image             string
+	Ports             []string // ["8080:80", "443:443"]
+	Env               []string // ["FOO=bar", "BAR=baz"]
+	Volumes           []string // ["/host:/container", "namedvol:/data"]
+	Command           string   // optional override command
+	Restart           string   // restart policy e.g. "unless-stopped", "always", "on-failure"
+	CpuLimit          string   // e.g. "1.5"
+	MemoryLimit       string   // e.g. "512M", "2G"
+	MemoryReservation string   // e.g. "128M"
 }
 
 // PullImage pulls a Docker image from a registry.
@@ -55,6 +58,17 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 	}
 
 	args := []string{"run", "-d", "--name", containerName, "--restart", restartPolicy, "-l", "gbnt.task.id=" + cfg.TaskID}
+
+	// Resource limits & reservations
+	if cfg.CpuLimit != "" {
+		args = append(args, "--cpus", cfg.CpuLimit)
+	}
+	if cfg.MemoryLimit != "" {
+		args = append(args, "--memory", cfg.MemoryLimit)
+	}
+	if cfg.MemoryReservation != "" {
+		args = append(args, "--memory-reservation", cfg.MemoryReservation)
+	}
 
 	// Port mappings: -p host:container
 	for _, p := range cfg.Ports {

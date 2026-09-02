@@ -631,6 +631,54 @@ func stateHandler(c *gin.Context) {
 	db.DB.Find(&services)
 	db.DB.Find(&tasks)
 
+	// Dynamically resolve CPU & Memory bounds from Stack RawComposeFile if not persisted
+	for i := range services {
+		if services[i].CpuLimit == "" && services[i].MemoryLimit == "" {
+			for _, st := range stacks {
+				if st.ID == services[i].StackID && st.RawComposeFile != "" {
+					var cf struct {
+						Services map[string]struct {
+							Deploy struct {
+								Resources struct {
+									Limits struct {
+										Cpus   string `yaml:"cpus"`
+										Memory string `yaml:"memory"`
+									} `yaml:"limits"`
+									Reservations struct {
+										Cpus   string `yaml:"cpus"`
+										Memory string `yaml:"memory"`
+									} `yaml:"reservations"`
+								} `yaml:"resources"`
+							} `yaml:"deploy"`
+						} `yaml:"services"`
+					}
+					if err := yaml.Unmarshal([]byte(st.RawComposeFile), &cf); err == nil {
+						if cs, ok := cf.Services[services[i].Name]; ok {
+							services[i].CpuLimit = cs.Deploy.Resources.Limits.Cpus
+							services[i].MemoryLimit = cs.Deploy.Resources.Limits.Memory
+							services[i].CpuReservation = cs.Deploy.Resources.Reservations.Cpus
+							services[i].MemoryReservation = cs.Deploy.Resources.Reservations.Memory
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	for i := range tasks {
+		if tasks[i].CpuLimit == "" && tasks[i].MemoryLimit == "" {
+			for _, svc := range services {
+				if svc.ID == tasks[i].ServiceID {
+					tasks[i].CpuLimit = svc.CpuLimit
+					tasks[i].MemoryLimit = svc.MemoryLimit
+					tasks[i].CpuReservation = svc.CpuReservation
+					tasks[i].MemoryReservation = svc.MemoryReservation
+					break
+				}
+			}
+		}
+	}
+
 	monitor.PopulateNodeMetrics(nodes)
 
 	caddyfilePath := caddy.CaddyfilePath()

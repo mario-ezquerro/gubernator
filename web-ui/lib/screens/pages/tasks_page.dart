@@ -63,8 +63,8 @@ class _TasksPageState extends State<TasksPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Stop Task'),
-        content: const Text('Stop this container/task?'),
+        title: const Text('Stop Container'),
+        content: const Text('Stop this container?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
@@ -77,7 +77,7 @@ class _TasksPageState extends State<TasksPage> {
     );
     if (confirmed != true) return;
     final ok = await ApiService.deleteTask(id);
-    _showSnackBar(ok ? 'Task stopped.' : 'Failed to stop task.', isError: !ok);
+    _showSnackBar(ok ? 'Container stopped.' : 'Failed to stop container.', isError: !ok);
     widget.onRefresh();
   }
 
@@ -278,6 +278,32 @@ class _TasksPageState extends State<TasksPage> {
     }
   }
 
+  String _formatCpu(Task t, Service? svc) {
+    final limit = t.cpuLimit.isNotEmpty ? t.cpuLimit : (svc?.cpuLimit ?? '');
+    final res = t.cpuReservation.isNotEmpty ? t.cpuReservation : (svc?.cpuReservation ?? '');
+    if (limit.isNotEmpty && res.isNotEmpty) {
+      return '$limit Core (min $res)';
+    } else if (limit.isNotEmpty) {
+      return '$limit Core';
+    } else if (res.isNotEmpty) {
+      return 'min $res Core';
+    }
+    return 'Unlimited';
+  }
+
+  String _formatMem(Task t, Service? svc) {
+    final limit = t.memoryLimit.isNotEmpty ? t.memoryLimit : (svc?.memoryLimit ?? '');
+    final res = t.memoryReservation.isNotEmpty ? t.memoryReservation : (svc?.memoryReservation ?? '');
+    if (limit.isNotEmpty && res.isNotEmpty) {
+      return '$limit (min $res)';
+    } else if (limit.isNotEmpty) {
+      return limit;
+    } else if (res.isNotEmpty) {
+      return 'min $res';
+    }
+    return 'Unlimited';
+  }
+
   List<PlutoRow> _getPlutoRows(ThemeData theme) {
     final filteredTasks = widget.state.tasks.where((t) {
       if (_searchQuery.isEmpty) return true;
@@ -307,6 +333,8 @@ class _TasksPageState extends State<TasksPage> {
         'container': PlutoCell(value: t.containerName.isEmpty ? '-' : t.containerName),
         'node': PlutoCell(value: nodeVal),
         'status': PlutoCell(value: t.status),
+        'cpu': PlutoCell(value: _formatCpu(t, svc)),
+        'memory': PlutoCell(value: _formatMem(t, svc)),
         'ip': PlutoCell(value: t.containerIp.isEmpty ? '-' : t.containerIp),
         'created': PlutoCell(value: t.createdAt),
         'ports': PlutoCell(value: ''),
@@ -332,7 +360,7 @@ class _TasksPageState extends State<TasksPage> {
                 children: [
                   Icon(Icons.inbox, size: 64, color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
                   const SizedBox(height: 16),
-                  Text('No tasks running', style: theme.textTheme.titleMedium?.copyWith(
+                  Text('No containers running', style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   )),
                 ],
@@ -348,17 +376,17 @@ class _TasksPageState extends State<TasksPage> {
 
     final List<PlutoColumn> columns = [
       PlutoColumn(title: '', field: 'checkbox', type: PlutoColumnType.text(), width: 50, enableRowChecked: true, enableSorting: false, enableFilterMenuItem: false, enableContextMenu: false, enableDropToResize: false),
-      PlutoColumn(title: 'TASK ID', field: 'task_id', type: PlutoColumnType.text(), width: 110,
+      PlutoColumn(title: 'CONTAINER ID', field: 'task_id', type: PlutoColumnType.text(), width: 120,
         renderer: (ctx) {
           final t = ctx.row.cells['task_raw']!.value as Task;
           return Row(mainAxisSize: MainAxisSize.min, children: [
             SelectableText(t.id.length > 8 ? t.id.substring(0, 8) : t.id, style: const TextStyle(fontFamily: 'Courier New', fontSize: 13)),
             const SizedBox(width: 4),
-            IconButton(icon: const Icon(Icons.copy, size: 14), tooltip: 'Copy Task ID', padding: EdgeInsets.zero, constraints: const BoxConstraints(),
-              onPressed: () { ClipboardService.copy(t.id); _showSnackBar('Copied Task ID!'); }),
+            IconButton(icon: const Icon(Icons.copy, size: 14), tooltip: 'Copy Container ID', padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+              onPressed: () { ClipboardService.copy(t.id); _showSnackBar('Copied Container ID!'); }),
           ]);
         }),
-      PlutoColumn(title: 'SERVICE', field: 'service', type: PlutoColumnType.text(), width: 220,
+      PlutoColumn(title: 'SERVICE', field: 'service', type: PlutoColumnType.text(), width: 200,
         renderer: (ctx) {
           final t = ctx.row.cells['task_raw']!.value as Task;
           final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
@@ -447,6 +475,82 @@ class _TasksPageState extends State<TasksPage> {
         }),
       PlutoColumn(title: 'STATUS', field: 'status', type: PlutoColumnType.text(), width: 100,
         renderer: (ctx) => StatusBadge(label: ctx.cell.value as String)),
+      PlutoColumn(title: 'CPU', field: 'cpu', type: PlutoColumnType.text(), width: 145,
+        renderer: (ctx) {
+          final val = ctx.cell.value as String;
+          final isUnlimited = val == 'Unlimited';
+          return Container(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: isUnlimited
+                    ? Colors.grey.withValues(alpha: 0.08)
+                    : Colors.blueAccent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isUnlimited
+                      ? Colors.grey.withValues(alpha: 0.2)
+                      : Colors.blueAccent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.speed, size: 13, color: isUnlimited ? Colors.grey : Colors.blueAccent),
+                  const SizedBox(width: 4),
+                  Text(
+                    val,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'Courier New',
+                      fontWeight: FontWeight.w600,
+                      color: isUnlimited ? Colors.grey : Colors.blueAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      PlutoColumn(title: 'MEMORY', field: 'memory', type: PlutoColumnType.text(), width: 145,
+        renderer: (ctx) {
+          final val = ctx.cell.value as String;
+          final isUnlimited = val == 'Unlimited';
+          return Container(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: isUnlimited
+                    ? Colors.grey.withValues(alpha: 0.08)
+                    : Colors.teal.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isUnlimited
+                      ? Colors.grey.withValues(alpha: 0.2)
+                      : Colors.teal.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.memory, size: 13, color: isUnlimited ? Colors.grey : Colors.teal),
+                  const SizedBox(width: 4),
+                  Text(
+                    val,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'Courier New',
+                      fontWeight: FontWeight.w600,
+                      color: isUnlimited ? Colors.grey : Colors.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       PlutoColumn(title: 'IP', field: 'ip', type: PlutoColumnType.text(), width: 120),
       PlutoColumn(title: 'CREATED', field: 'created', type: PlutoColumnType.text(), width: 120,
         renderer: (ctx) {
@@ -479,7 +583,7 @@ class _TasksPageState extends State<TasksPage> {
                 children: [
                   Icon(Icons.view_in_ar, size: 22, color: theme.colorScheme.primary),
                   const SizedBox(width: 10),
-                  Text('Cohorts & Tasks (Containers)',
+                  Text('Containers (Cohorts & Workloads)',
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
                   if (hasActiveFilters) ...[
@@ -545,7 +649,7 @@ class _TasksPageState extends State<TasksPage> {
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search tasks...',
+                  hintText: 'Search containers, services, nodes, stacks...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(

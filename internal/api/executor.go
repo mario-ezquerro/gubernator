@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -100,6 +101,16 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 	var dockerArgs []string
 	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--restart", "unless-stopped", "--name", fmt.Sprintf("'%s'", containerName), "-l", fmt.Sprintf("'gbnt.task.id=%s'", task.ID))
 
+	if svc.CpuLimit != "" {
+		dockerArgs = append(dockerArgs, "--cpus", fmt.Sprintf("'%s'", svc.CpuLimit))
+	}
+	if svc.MemoryLimit != "" {
+		dockerArgs = append(dockerArgs, "--memory", fmt.Sprintf("'%s'", svc.MemoryLimit))
+	}
+	if svc.MemoryReservation != "" {
+		dockerArgs = append(dockerArgs, "--memory-reservation", fmt.Sprintf("'%s'", svc.MemoryReservation))
+	}
+
 	for _, p := range svc.Ports {
 		dockerArgs = append(dockerArgs, "-p", fmt.Sprintf("'%s'", strings.ReplaceAll(p, "'", "'\\''")))
 	}
@@ -116,63 +127,47 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		}
 	}
 
-	remoteDockerCmd := strings.Join(dockerArgs, " ")
+	runCmd := strings.Join(dockerArgs, " ")
+	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), runCmd)
 
-	// Free any old containers holding the same published host ports on the target worker
-	var portCleanups []string
-	for _, p := range svc.Ports {
-		parts := strings.Split(p, ":")
-		if len(parts) >= 2 && parts[0] != "" && parts[0] != "127.0.0.1" {
-			hostPort := parts[0]
-			if len(parts) == 3 {
-				hostPort = parts[1]
-			}
-			if hostPort != "" {
-				portCleanups = append(portCleanups, fmt.Sprintf("sudo docker ps -q --filter 'publish=%s' | xargs -r sudo docker rm -f 2>/dev/null || true;", hostPort))
-			}
+	var runStdout, runStderr bytes.Buffer
+	startCmd := exec.Command("ssh", runSSHArgs...)
+	startCmd.Stdout = &runStdout
+	startCmd.Stderr = &runStderr
+	if err := startCmd.Run(); err != nil {
+		errMsg := strings.TrimSpace(runStderr.String())
+		if errMsg == "" {
+			errMsg = err.Error()
 		}
-	}
-	portCleanStr := strings.Join(portCleanups, " ")
-
-	// Ensure network, remove existing stale container if any, and run
-	prepCmd := fmt.Sprintf("sudo docker network create gbnt-net 2>/dev/null || true; sudo docker rm -f '%s' 2>/dev/null || true; %s %s", containerName, portCleanStr, remoteDockerCmd)
-	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), prepCmd)
-	runOut, runErr := exec.Command("ssh", runSSHArgs...).CombinedOutput()
-	if runErr != nil {
-		slog.Warn("remote task start failed", "task", task.ID[:8], "node", node.ID, "err", runErr, "out", string(runOut))
+		slog.Error("failed to start container on worker via SSH", "task_id", task.ID[:8], "err", errMsg)
 		db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
 			"status": "dead",
-			"error":  fmt.Sprintf("Remote start failed on node %s: %v (%s)", node.ID, runErr, strings.TrimSpace(string(runOut))),
+			"error":  fmt.Sprintf("Worker node %s start failed: %s", node.ID, errMsg),
 		})
 		return
 	}
 
-	// 3. Connect to gbnt-net and inspect IP
-	connectCmd := fmt.Sprintf("sudo docker network connect gbnt-net %s 2>/dev/null || true; sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' %s", containerName, containerName)
-	inspectSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), connectCmd)
-	inspectOut, _ := exec.Command("ssh", inspectSSHArgs...).CombinedOutput()
-	containerIP := strings.TrimSpace(string(inspectOut))
-	parts := strings.Fields(containerIP)
-	if len(parts) > 0 {
-		containerIP = parts[0]
-	}
+	// 3. Obtain container IP on remote worker (fallback to node.IP)
+	ipCmd := fmt.Sprintf("sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' '%s'", containerName)
+	ipSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), ipCmd)
+	var ipOut bytes.Buffer
+	inspectCmd := exec.Command("ssh", ipSSHArgs...)
+	inspectCmd.Stdout = &ipOut
+	_ = inspectCmd.Run()
+	containerIP := strings.TrimSpace(ipOut.String())
 	if containerIP == "" {
 		containerIP = node.IP
 	}
 
-	slog.Info("remote container started successfully on worker node", "task_id", task.ID[:8], "container", containerName, "ip", containerIP)
-
+	slog.Info("container successfully started on worker", "task_id", task.ID[:8], "container", containerName, "ip", containerIP)
 	db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
 		"status":         "running",
 		"container_ip":   containerIP,
 		"container_name": containerName,
+		"cpu_limit":      svc.CpuLimit,
+		"memory_limit":   svc.MemoryLimit,
 		"error":          "",
 	})
-
-	go func() {
-		aqueducts.GenerateHostsFile()
-		aqueducts.GenerateCaddyfile()
-	}()
 }
 
 // executeTask pulls the image and starts the container for a given task+service.
@@ -195,12 +190,15 @@ func executeTask(task db.Task, svc db.Service) {
 	})
 
 	cfg := docker.ContainerConfig{
-		TaskID:  task.ID,
-		Image:   svc.Image,
-		Ports:   svc.Ports,
-		Env:     svc.Env,
-		Volumes: svc.Volumes,
-		Command: svc.Command,
+		TaskID:            task.ID,
+		Image:             svc.Image,
+		Ports:             svc.Ports,
+		Env:               svc.Env,
+		Volumes:           svc.Volumes,
+		Command:           svc.Command,
+		CpuLimit:          svc.CpuLimit,
+		MemoryLimit:       svc.MemoryLimit,
+		MemoryReservation: svc.MemoryReservation,
 	}
 
 	containerName, ip, err := docker.StartContainer(cfg)

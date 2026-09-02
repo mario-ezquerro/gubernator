@@ -114,9 +114,9 @@ class OverviewPage extends StatelessWidget {
             color: diskUsagePercent > 85 ? const Color(0xFFEF4444) : const Color(0xFF0EA5E9),
           ),
           _AnimatedStatCard(
-            label: 'Tasks',
+            label: 'Containers',
             value: '${state.tasks.length}',
-            icon: Icons.task,
+            icon: Icons.view_in_ar,
             color: const Color(0xFFF97316),
           ),
           _AnimatedStatCard(
@@ -173,7 +173,7 @@ class OverviewPage extends StatelessWidget {
         Expanded(
           child: _QuickLinkCard(
             icon: Icons.view_in_ar,
-            label: 'Tasks',
+            label: 'Containers',
             count: state.tasks.length,
             color: const Color(0xFFF97316),
             onTap: onViewTasks,
@@ -445,7 +445,7 @@ class OverviewPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
 
-                        // Tasks Count Badge
+                        // Containers Count Badge
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -453,7 +453,7 @@ class OverviewPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '$nodeRunningCount/$nodeTaskCount tasks',
+                            '$nodeRunningCount/$nodeTaskCount containers',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,

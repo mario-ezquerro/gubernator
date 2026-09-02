@@ -341,6 +341,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Dedicated Resources Copilot Tab:** Added a new **Resources** tab in Compose Studio and Compose Editor dialogs featuring 5 one-click production presets (Micro Service, Web/API App, Database/Cache, Data Science/ML, and AI/LLM GPU Model).
 * **Interactive Custom Resources Builder:** Integrated visual form controls with live core/RAM dropdown pickers and instant YAML snippet generation directly into the editor at correct indentation.
 
+### 54. Containers Telemetry & Resource Limits Display (`v2.59.14`)
+* **Universal "Containers" Terminology Standardization:** Renamed all user-facing instances of "Tasks" / "tacks" to "Containers" across sidebar navigation, breadcrumbs, overview stat cards, Legions stacks tables, and dialog titles.
+* **CPU & Memory Columns in Containers Table:** Integrated visual `CPU` (limits & reservations) and `MEMORY` badges with color-coded chips into the PlutoGrid Containers dashboard and CLI (`gbnt container ls` / `gbnt task ls`).
+* **Docker Engine & Worker Dispatch Resource Bounds:** Forwarded `--cpus`, `--memory`, and `--memory-reservation` to local Docker containers and remote Centurion SSH dispatches with dynamic backend Compose fallback resolution.
+
+
 
 
 

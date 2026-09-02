@@ -100,6 +100,10 @@ class Service {
   final String image;
   final int desiredReplicas;
   final List<String> ports;
+  final String cpuLimit;
+  final String memoryLimit;
+  final String cpuReservation;
+  final String memoryReservation;
 
   Service({
     required this.id,
@@ -108,6 +112,10 @@ class Service {
     required this.image,
     this.desiredReplicas = 1,
     this.ports = const [],
+    this.cpuLimit = '',
+    this.memoryLimit = '',
+    this.cpuReservation = '',
+    this.memoryReservation = '',
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
@@ -118,6 +126,10 @@ class Service {
       image: json['image'] ?? '',
       desiredReplicas: json['desired_replicas'] ?? 1,
       ports: (json['ports'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      cpuLimit: json['cpu_limit'] ?? '',
+      memoryLimit: json['memory_limit'] ?? '',
+      cpuReservation: json['cpu_reservation'] ?? '',
+      memoryReservation: json['memory_reservation'] ?? '',
     );
   }
 }
@@ -129,6 +141,10 @@ class Task {
   final String status;
   final String containerName;
   final String containerIp;
+  final String cpuLimit;
+  final String memoryLimit;
+  final String cpuReservation;
+  final String memoryReservation;
   final String error;
   final String createdAt;
 
@@ -139,6 +155,10 @@ class Task {
     required this.status,
     this.containerName = '',
     this.containerIp = '',
+    this.cpuLimit = '',
+    this.memoryLimit = '',
+    this.cpuReservation = '',
+    this.memoryReservation = '',
     this.error = '',
     this.createdAt = '',
   });
@@ -151,6 +171,10 @@ class Task {
       status: json['status'] ?? '',
       containerName: json['container_name'] ?? '',
       containerIp: json['container_ip'] ?? '',
+      cpuLimit: json['cpu_limit'] ?? '',
+      memoryLimit: json['memory_limit'] ?? '',
+      cpuReservation: json['cpu_reservation'] ?? '',
+      memoryReservation: json['memory_reservation'] ?? '',
       error: json['error'] ?? '',
       createdAt: json['created_at'] ?? '',
     );

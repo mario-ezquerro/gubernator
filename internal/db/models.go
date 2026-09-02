@@ -98,9 +98,13 @@ type Service struct {
 	Env             []string  `gorm:"-" json:"env"` // e.g. ["FOO=bar"]
 	VolumesRaw      []byte    `gorm:"type:json" json:"-"`
 	Volumes         []string  `gorm:"-" json:"volumes"` // e.g. ["/host:/container"]
-	Command         string    `gorm:"type:text" json:"command"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	Command           string    `gorm:"type:text" json:"command"`
+	CpuLimit          string    `gorm:"type:varchar(50)" json:"cpu_limit"`
+	MemoryLimit       string    `gorm:"type:varchar(50)" json:"memory_limit"`
+	CpuReservation    string    `gorm:"type:varchar(50)" json:"cpu_reservation"`
+	MemoryReservation string    `gorm:"type:varchar(50)" json:"memory_reservation"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // SLONotificationConfig stores alert delivery channels (Email/SMTP, Webhook) for SLO failures.
@@ -122,15 +126,19 @@ type SLONotificationConfig struct {
 
 // Task represents a running container instance of a Service assigned to a Node.
 type Task struct {
-	ID            string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	ServiceID     string    `gorm:"type:varchar(255);index;not null" json:"service_id"`
-	NodeID        string    `gorm:"type:varchar(255);index;not null" json:"node_id"`
-	Status        string    `gorm:"type:varchar(50);not null" json:"status"` // "pending", "running", "dead"
-	ContainerIP   string    `gorm:"type:varchar(50)" json:"container_ip"`
-	ContainerName string    `gorm:"type:varchar(255)" json:"container_name"`
-	Error         string    `gorm:"type:text" json:"error"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID                string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	ServiceID         string    `gorm:"type:varchar(255);index;not null" json:"service_id"`
+	NodeID            string    `gorm:"type:varchar(255);index;not null" json:"node_id"`
+	Status            string    `gorm:"type:varchar(50);not null" json:"status"` // "pending", "running", "dead"
+	ContainerIP       string    `gorm:"type:varchar(50)" json:"container_ip"`
+	ContainerName     string    `gorm:"type:varchar(255)" json:"container_name"`
+	CpuLimit          string    `gorm:"type:varchar(50)" json:"cpu_limit"`
+	MemoryLimit       string    `gorm:"type:varchar(50)" json:"memory_limit"`
+	CpuReservation    string    `gorm:"type:varchar(50)" json:"cpu_reservation"`
+	MemoryReservation string    `gorm:"type:varchar(50)" json:"memory_reservation"`
+	Error             string    `gorm:"type:text" json:"error"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 func (s *Service) BeforeSave(tx *gorm.DB) (err error) {
