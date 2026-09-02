@@ -351,6 +351,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **PlutoGrid Combined Usage / Limit Visualization:** Enhanced Containers table columns `CPU (USAGE / LIMIT)` and `MEMORY (USAGE / LIMIT)` with color-coded live metrics (`3.5%`, `414.0 MB`) paired with underlying limit definitions (`Limit: 1.0 Core`, `Limit: 4G`).
 * **CLI Live Metrics Parity:** Updated `gbnt container ls` / `gbnt task ls` to display live consumption alongside resource limits in the terminal table.
 
+### 56. Universal FlexString YAML Resource Parsing & Dynamic CPU/RAM Extraction (`v2.59.16`)
+* **Flexible YAML Resource Parsing (`FlexString`):** Implemented custom YAML unmarshaler capable of reading CPU bounds expressed as numeric literals (`cpus: 1.0`, `cpus: 2`), strings (`cpus: "1.0"`), or legacy Compose v2 keys (`mem_limit`, `mem_reservation`, `cpus`).
+* **Dynamic Compose Resource Bounds Resolution:** Upgraded backend backfill in `stateHandler` to parse both `deploy.resources` and service-level fields from any raw Compose file, propagating explicit CPU and Memory limits to active tasks and containers.
+
+
 
 
 

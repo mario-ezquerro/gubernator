@@ -97,6 +97,17 @@ func (c *CommandVal) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// FlexString handles both scalar strings ("1.0", "2G") and numbers (1.0, 2, 512) in YAML.
+type FlexString string
+
+func (f *FlexString) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*f = FlexString(value.Value)
+		return nil
+	}
+	return nil
+}
+
 type ComposeFile struct {
 	Name     string                    `yaml:"name"` // Top-level name in compose file
 	Services map[string]ComposeService `yaml:"services"`
@@ -105,14 +116,17 @@ type ComposeFile struct {
 // ComposeService maps a docker-compose service definition, capturing all
 // fields needed to run a container: image, replicas, ports, env, volumes, command, placement.
 type ComposeService struct {
-	Image       string            `yaml:"image"`
-	Ports       []string          `yaml:"ports"`       // e.g. ["8080:80"]
-	Environment EnvSlice          `yaml:"environment"` // handles both list and map formats
-	EnvMap      map[string]string `yaml:"environment_map,omitempty"`
-	Volumes     []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
-	Command     CommandVal        `yaml:"command"` // handles both string and list formats
-	Labels      LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
-	Deploy      struct {
+	Image          string            `yaml:"image"`
+	Ports          []string          `yaml:"ports"`       // e.g. ["8080:80"]
+	Environment    EnvSlice          `yaml:"environment"` // handles both list and map formats
+	EnvMap         map[string]string `yaml:"environment_map,omitempty"`
+	Volumes        []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
+	Command        CommandVal        `yaml:"command"` // handles both string and list formats
+	Labels         LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
+	Cpus           FlexString        `yaml:"cpus"`
+	MemLimit       FlexString        `yaml:"mem_limit"`
+	MemReservation FlexString        `yaml:"mem_reservation"`
+	Deploy         struct {
 		Replicas  int       `yaml:"replicas"`
 		Labels    LabelsMap `yaml:"labels"`
 		Placement struct {
@@ -120,12 +134,12 @@ type ComposeService struct {
 		} `yaml:"placement"`
 		Resources struct {
 			Limits struct {
-				Cpus   string `yaml:"cpus"`
-				Memory string `yaml:"memory"`
+				Cpus   FlexString `yaml:"cpus"`
+				Memory FlexString `yaml:"memory"`
 			} `yaml:"limits"`
 			Reservations struct {
-				Cpus   string `yaml:"cpus"`
-				Memory string `yaml:"memory"`
+				Cpus   FlexString `yaml:"cpus"`
+				Memory FlexString `yaml:"memory"`
 			} `yaml:"reservations"`
 		} `yaml:"resources"`
 	} `yaml:"deploy"`
@@ -221,6 +235,20 @@ func StackDeployHandler(c *gin.Context) {
 
 		slog.Info("parsed compose service labels", "name", srvName, "labels", srvDef.Labels, "deploy_labels", srvDef.Deploy.Labels, "constraints", constraints)
 
+		cpuLimit := string(srvDef.Deploy.Resources.Limits.Cpus)
+		if cpuLimit == "" {
+			cpuLimit = string(srvDef.Cpus)
+		}
+		memLimit := string(srvDef.Deploy.Resources.Limits.Memory)
+		if memLimit == "" {
+			memLimit = string(srvDef.MemLimit)
+		}
+		cpuRes := string(srvDef.Deploy.Resources.Reservations.Cpus)
+		memRes := string(srvDef.Deploy.Resources.Reservations.Memory)
+		if memRes == "" {
+			memRes = string(srvDef.MemReservation)
+		}
+
 		service := db.Service{
 			ID:                uuid.New().String(),
 			StackID:           stackID,
@@ -232,10 +260,10 @@ func StackDeployHandler(c *gin.Context) {
 			Env:               []string(srvDef.Environment),
 			Volumes:           srvDef.Volumes,
 			Command:           string(srvDef.Command),
-			CpuLimit:          srvDef.Deploy.Resources.Limits.Cpus,
-			MemoryLimit:       srvDef.Deploy.Resources.Limits.Memory,
-			CpuReservation:    srvDef.Deploy.Resources.Reservations.Cpus,
-			MemoryReservation: srvDef.Deploy.Resources.Reservations.Memory,
+			CpuLimit:          cpuLimit,
+			MemoryLimit:       memLimit,
+			CpuReservation:    cpuRes,
+			MemoryReservation: memRes,
 		}
 		db.DB.Create(&service)
 

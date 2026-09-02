@@ -616,6 +616,17 @@ func getDNSRecords() []DNSRecord {
 	return records
 }
 
+type flexString string
+
+func (f *flexString) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*f = flexString(value.Value)
+		return nil
+	}
+	return nil
+}
+
+// stateHandler serves the aggregated cluster state (nodes, stacks, services, tasks, Caddy info).
 func stateHandler(c *gin.Context) {
 	// Sync worker system stacks (cleans up any orphan stacks from left nodes)
 	coredns.SyncWorkerCoreStacks(db.DB)
@@ -633,20 +644,23 @@ func stateHandler(c *gin.Context) {
 
 	// Dynamically resolve CPU & Memory bounds from Stack RawComposeFile if not persisted
 	for i := range services {
-		if services[i].CpuLimit == "" && services[i].MemoryLimit == "" {
+		if services[i].CpuLimit == "" || services[i].MemoryLimit == "" {
 			for _, st := range stacks {
 				if st.ID == services[i].StackID && st.RawComposeFile != "" {
 					var cf struct {
 						Services map[string]struct {
-							Deploy struct {
+							Cpus           flexString `yaml:"cpus"`
+							MemLimit       flexString `yaml:"mem_limit"`
+							MemReservation flexString `yaml:"mem_reservation"`
+							Deploy         struct {
 								Resources struct {
 									Limits struct {
-										Cpus   string `yaml:"cpus"`
-										Memory string `yaml:"memory"`
+										Cpus   flexString `yaml:"cpus"`
+										Memory flexString `yaml:"memory"`
 									} `yaml:"limits"`
 									Reservations struct {
-										Cpus   string `yaml:"cpus"`
-										Memory string `yaml:"memory"`
+										Cpus   flexString `yaml:"cpus"`
+										Memory flexString `yaml:"memory"`
 									} `yaml:"reservations"`
 								} `yaml:"resources"`
 							} `yaml:"deploy"`
@@ -654,10 +668,31 @@ func stateHandler(c *gin.Context) {
 					}
 					if err := yaml.Unmarshal([]byte(st.RawComposeFile), &cf); err == nil {
 						if cs, ok := cf.Services[services[i].Name]; ok {
-							services[i].CpuLimit = cs.Deploy.Resources.Limits.Cpus
-							services[i].MemoryLimit = cs.Deploy.Resources.Limits.Memory
-							services[i].CpuReservation = cs.Deploy.Resources.Reservations.Cpus
-							services[i].MemoryReservation = cs.Deploy.Resources.Reservations.Memory
+							cLim := string(cs.Deploy.Resources.Limits.Cpus)
+							if cLim == "" {
+								cLim = string(cs.Cpus)
+							}
+							mLim := string(cs.Deploy.Resources.Limits.Memory)
+							if mLim == "" {
+								mLim = string(cs.MemLimit)
+							}
+							cRes := string(cs.Deploy.Resources.Reservations.Cpus)
+							mRes := string(cs.Deploy.Resources.Reservations.Memory)
+							if mRes == "" {
+								mRes = string(cs.MemReservation)
+							}
+							if services[i].CpuLimit == "" {
+								services[i].CpuLimit = cLim
+							}
+							if services[i].MemoryLimit == "" {
+								services[i].MemoryLimit = mLim
+							}
+							if services[i].CpuReservation == "" {
+								services[i].CpuReservation = cRes
+							}
+							if services[i].MemoryReservation == "" {
+								services[i].MemoryReservation = mRes
+							}
 						}
 					}
 					break
@@ -666,13 +701,21 @@ func stateHandler(c *gin.Context) {
 		}
 	}
 	for i := range tasks {
-		if tasks[i].CpuLimit == "" && tasks[i].MemoryLimit == "" {
+		if tasks[i].CpuLimit == "" || tasks[i].MemoryLimit == "" {
 			for _, svc := range services {
 				if svc.ID == tasks[i].ServiceID {
-					tasks[i].CpuLimit = svc.CpuLimit
-					tasks[i].MemoryLimit = svc.MemoryLimit
-					tasks[i].CpuReservation = svc.CpuReservation
-					tasks[i].MemoryReservation = svc.MemoryReservation
+					if tasks[i].CpuLimit == "" {
+						tasks[i].CpuLimit = svc.CpuLimit
+					}
+					if tasks[i].MemoryLimit == "" {
+						tasks[i].MemoryLimit = svc.MemoryLimit
+					}
+					if tasks[i].CpuReservation == "" {
+						tasks[i].CpuReservation = svc.CpuReservation
+					}
+					if tasks[i].MemoryReservation == "" {
+						tasks[i].MemoryReservation = svc.MemoryReservation
+					}
 					break
 				}
 			}
