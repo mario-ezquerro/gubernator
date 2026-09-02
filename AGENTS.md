@@ -367,6 +367,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Interactive Stack & Badge Click Navigation:** Made stack names and container count badges across **Legions [Stacks]** table and **Overview** ("Recent Legions") interactive `InkWell` elements with tooltips, arrow indicators, and primary hover styling.
 * **Auto-Filtered Containers View (`initialFilterStack`):** Clicking on any stack name immediately switches the active dashboard tab to **Containers** (`TasksPage`) and auto-applies the stack filter into PlutoGrid and search bar, isolating precisely the containers belonging to that stack.
 
+### 60. Stack Name Search Predicate Matching & Streamlined Container Filtering (`v2.59.20`)
+* **Stack Name Search Predicate Integration:** Fixed `TasksPage` filter predicate to inspect parent `stack.name` and `stack.id` in `_getPlutoRows`, ensuring that searching or clicking a stack name (`kubeflow-stack`) immediately matches all underlying services and containers.
+* **Seamless Double-Filter Conflict Resolution:** Streamlined PlutoGrid row population and search synchronization so deep-linked stack filters display all matching containers reliably.
+
+
 
 
 

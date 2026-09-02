@@ -34,7 +34,7 @@ class _TasksPageState extends State<TasksPage> {
   void initState() {
     super.initState();
     if (widget.initialFilterStack != null && widget.initialFilterStack!.isNotEmpty) {
-      _searchQuery = widget.initialFilterStack!.toLowerCase();
+      _searchQuery = widget.initialFilterStack!.trim().toLowerCase();
       _searchController.text = widget.initialFilterStack!;
     }
   }
@@ -42,15 +42,17 @@ class _TasksPageState extends State<TasksPage> {
   @override
   void didUpdateWidget(TasksPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialFilterStack != oldWidget.initialFilterStack &&
-        widget.initialFilterStack != null &&
-        widget.initialFilterStack!.isNotEmpty) {
-      setState(() {
-        _searchQuery = widget.initialFilterStack!.toLowerCase();
-        _searchController.text = widget.initialFilterStack!;
-      });
-      if (_gridStateManager != null) {
-        _applyColumnFilter('stack', widget.initialFilterStack!);
+    if (widget.initialFilterStack != oldWidget.initialFilterStack) {
+      if (widget.initialFilterStack != null && widget.initialFilterStack!.isNotEmpty) {
+        setState(() {
+          _searchQuery = widget.initialFilterStack!.trim().toLowerCase();
+          _searchController.text = widget.initialFilterStack!;
+        });
+      } else if (oldWidget.initialFilterStack != null) {
+        setState(() {
+          _searchQuery = '';
+          _searchController.clear();
+        });
       }
     }
   }
@@ -344,14 +346,17 @@ class _TasksPageState extends State<TasksPage> {
     final filteredTasks = widget.state.tasks.where((t) {
       if (_searchQuery.isEmpty) return true;
       final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+      final stack = widget.state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
       final node = widget.state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
-      return t.id.toLowerCase().contains(_searchQuery) ||
-          t.containerName.toLowerCase().contains(_searchQuery) ||
-          t.containerIp.toLowerCase().contains(_searchQuery) ||
-          t.status.toLowerCase().contains(_searchQuery) ||
-          (svc != null && svc.name.toLowerCase().contains(_searchQuery)) ||
-          (svc != null && svc.image.toLowerCase().contains(_searchQuery)) ||
-          (node != null && (node.id.toLowerCase().contains(_searchQuery) || node.ip.toLowerCase().contains(_searchQuery)));
+      final q = _searchQuery.trim().toLowerCase();
+
+      return t.id.toLowerCase().contains(q) ||
+          t.containerName.toLowerCase().contains(q) ||
+          t.containerIp.toLowerCase().contains(q) ||
+          t.status.toLowerCase().contains(q) ||
+          (stack != null && (stack.name.toLowerCase().contains(q) || stack.id.toLowerCase().contains(q))) ||
+          (svc != null && (svc.name.toLowerCase().contains(q) || svc.image.toLowerCase().contains(q) || svc.stackId.toLowerCase().contains(q))) ||
+          (node != null && (node.id.toLowerCase().contains(q) || node.ip.toLowerCase().contains(q)));
     }).toList();
 
     return filteredTasks.map((t) {
@@ -453,28 +458,35 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ]);
         }),
-      PlutoColumn(title: 'STACK', field: 'stack', type: PlutoColumnType.text(), width: 120,
+      PlutoColumn(title: 'STACK', field: 'stack', type: PlutoColumnType.text(), width: 130,
         renderer: (ctx) {
           final stackName = ctx.cell.value as String;
           return Align(
             alignment: Alignment.centerLeft,
             child: InkWell(
-              onTap: () => _applyColumnFilter('stack', stackName),
+              onTap: () {
+                setState(() {
+                  _searchController.text = stackName;
+                  _searchQuery = stackName.toLowerCase();
+                });
+              },
+              borderRadius: BorderRadius.circular(4),
               child: Tooltip(
                 message: 'Click to filter by stack: $stackName',
                 child: Text(
                   stackName,
                   style: TextStyle(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
                     decoration: TextDecoration.underline,
                     decorationStyle: TextDecorationStyle.dotted,
-                    color: theme.colorScheme.primary,
                   ),
                 ),
               ),
             ),
           );
-        }),
+        },
+      ),
       PlutoColumn(title: 'CONTAINER', field: 'container', type: PlutoColumnType.text(), width: 160),
       PlutoColumn(title: 'NODE', field: 'node', type: PlutoColumnType.text(), width: 180,
         renderer: (ctx) {
@@ -744,9 +756,6 @@ class _TasksPageState extends State<TasksPage> {
                       onLoaded: (PlutoGridOnLoadedEvent event) {
                         _gridStateManager = event.stateManager;
                         _gridStateManager!.setShowColumnFilter(true);
-                        if (widget.initialFilterStack != null && widget.initialFilterStack!.isNotEmpty) {
-                          _applyColumnFilter('stack', widget.initialFilterStack!);
-                        }
                         _gridStateManager!.addListener(() {
                           if (mounted) setState(() {});
                         });
