@@ -8,6 +8,13 @@ services:
       - "8080:8080"
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
       placement:
         constraints:
           - stack.name == jaeger-stack
@@ -92,6 +99,14 @@ services:
     container_name: jaeger-api-service
     ports:
       - "8085:8085"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
     command: |
       python -c "import http.server, socketserver, urllib.request, json, time, secrets
       def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs):
@@ -132,6 +147,14 @@ services:
     container_name: jaeger-worker-service
     ports:
       - "8086:8086"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
     command: |
       python -c "import http.server, socketserver, json, time
       class Handler(http.server.BaseHTTPRequestHandler):

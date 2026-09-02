@@ -37,6 +37,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   bool _loadingYaml = false;
   String _originalYaml = '';
 
+  String _customLimitCpu = '1.0';
+  String _customLimitRam = '512M';
+  String _customReserveCpu = '0.25';
+  String _customReserveRam = '128M';
+
   static const String _defaultTemplate = '''services:
   web:
     image: nginx:alpine
@@ -47,6 +52,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=80"
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
       placement:
         constraints:
           - "node.role == worker"
@@ -63,6 +75,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=80"
     deploy:
       replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 ''',
     'Postgres Storage': '''services:
   db:
@@ -75,6 +94,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - /var/contenedores/\${STACK_NAME}/pgdata:/var/lib/postgresql/data
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
 ''',
     'SRE Monitored Microservice': '''services:
   api:
@@ -92,6 +118,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.slo.latency.threshold=200ms"
     deploy:
       replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 ''',
     'Gatekeeper Signed App': '''services:
   secure-app:
@@ -101,6 +134,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.security.max-cve-severity=critical"
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 ''',
     'GPU / AI Task': '''services:
   llm-worker:
@@ -111,6 +151,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - /var/contenedores/\${STACK_NAME}/models:/root/.ollama
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          cpus: "2.0"
+          memory: 2G
       placement:
         constraints:
           - "gbnt.node.gpu == nvidia"
@@ -133,6 +180,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=8888"
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
 ''',
     'LLaMA-Factory Studio': '''services:
   llama-factory:
@@ -154,6 +208,13 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=7860"
     deploy:
       replicas: 1
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 12G
+        reservations:
+          cpus: "1.0"
+          memory: 4G
 ''',
     'Kubeflow MLOps Platform': '''services:
   minio:
@@ -173,12 +234,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=9001"
       - "gbnt.service.name=minio-s3"
     deploy:
+      replicas: 1
       resources:
         limits:
+          cpus: "1.0"
           memory: 2G
         reservations:
+          cpus: "0.25"
           memory: 512M
-      replicas: 1
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
@@ -199,12 +262,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=5000"
       - "gbnt.service.name=mlflow-tracking"
     deploy:
+      replicas: 1
       resources:
         limits:
-          memory: 4G
+          cpus: "2.0"
+          memory: 2G
         reservations:
-          memory: 1G
-      replicas: 1
+          cpus: "0.5"
+          memory: 512M
 
   jupyter-workspace:
     image: quay.io/jupyter/pytorch-notebook:latest
@@ -226,12 +291,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=8888"
       - "gbnt.service.name=jupyterlab"
     deploy:
+      replicas: 1
       resources:
         limits:
-          memory: 6G
+          cpus: "2.0"
+          memory: 4G
         reservations:
+          cpus: "0.5"
           memory: 1G
-      replicas: 1
 
   inference-engine:
     image: ollama/ollama:latest
@@ -245,12 +312,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=11434"
       - "gbnt.service.name=model-serving"
     deploy:
+      replicas: 1
       resources:
         limits:
+          cpus: "2.0"
           memory: 4G
         reservations:
+          cpus: "0.5"
           memory: 1G
-      replicas: 1
 ''',
   };
 
@@ -900,6 +969,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             child: Row(
               children: [
                 _tabBtn('Docker', 'docker', Icons.view_in_ar),
+                _tabBtn('Resources', 'resources', Icons.speed),
                 _tabBtn('Caddy', 'caddy', Icons.public),
                 _tabBtn('SLO', 'slo', Icons.show_chart),
                 _tabBtn('Security', 'security', Icons.security),
@@ -916,6 +986,184 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_activeCopilotTab == 'resources') ...[
+                  const Text('CPU & RAM Resources', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  const Text('Configure hard upper limits (limits) to prevent host starvation and minimum guaranteed reservations (reservations) for priority placement.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  
+                  const Text('1-Click Production Presets:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _buildSnippetCard(
+                    title: '⚡ Micro Service',
+                    subtitle: 'Limit: 0.25 CPU / 128MB • Reserve: 0.05 CPU / 32MB',
+                    icon: Icons.bolt,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "0.25"\n          memory: 128M\n        reservations:\n          cpus: "0.05"\n          memory: 32M\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '🌐 Standard Web / API App',
+                    subtitle: 'Limit: 1.0 CPU / 512MB • Reserve: 0.25 CPU / 128MB',
+                    icon: Icons.web,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "1.0"\n          memory: 512M\n        reservations:\n          cpus: "0.25"\n          memory: 128M\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '🗄️ Database & Cache',
+                    subtitle: 'Limit: 2.0 CPU / 2GB • Reserve: 0.5 CPU / 512MB',
+                    icon: Icons.storage,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "2.0"\n          memory: 2G\n        reservations:\n          cpus: "0.5"\n          memory: 512M\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '🧠 Data Science & ML',
+                    subtitle: 'Limit: 4.0 CPU / 4GB • Reserve: 1.0 CPU / 1GB',
+                    icon: Icons.science,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 4G\n        reservations:\n          cpus: "1.0"\n          memory: 1G\n');
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '🤖 AI / LLM Model Serving (GPU)',
+                    subtitle: 'Limit: 4.0 CPU / 8GB • Reserve: 2.0 CPU / 2GB',
+                    icon: Icons.smart_toy,
+                    onTap: () {
+                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 8G\n        reservations:\n          cpus: "2.0"\n          memory: 2G\n');
+                    },
+                  ),
+
+                  const Divider(height: 24),
+                  const Text('Custom Resources Builder:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('MAX LIMITS (Hard Caps)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Max CPU:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<String>(
+                                    value: _customLimitCpu,
+                                    isDense: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: ['0.25', '0.5', '1.0', '1.5', '2.0', '4.0', '8.0'].map((v) => DropdownMenuItem(value: v, child: Text('$v Core', style: const TextStyle(fontSize: 11)))).toList(),
+                                    onChanged: (val) => setState(() => _customLimitCpu = val ?? '1.0'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Max RAM:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<String>(
+                                    value: _customLimitRam,
+                                    isDense: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: ['128M', '256M', '512M', '1G', '2G', '4G', '8G', '16G', '32G'].map((v) => DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 11)))).toList(),
+                                    onChanged: (val) => setState(() => _customLimitRam = val ?? '512M'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('MIN RESERVATIONS (Guaranteed)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.greenAccent)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Min CPU:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<String>(
+                                    value: _customReserveCpu,
+                                    isDense: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: ['0.05', '0.1', '0.25', '0.5', '1.0', '2.0'].map((v) => DropdownMenuItem(value: v, child: Text('$v Core', style: const TextStyle(fontSize: 11)))).toList(),
+                                    onChanged: (val) => setState(() => _customReserveCpu = val ?? '0.25'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Min RAM:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<String>(
+                                    value: _customReserveRam,
+                                    isDense: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: ['32M', '64M', '128M', '256M', '512M', '1G', '2G', '4G'].map((v) => DropdownMenuItem(value: v, child: Text(v, style: const TextStyle(fontSize: 11)))).toList(),
+                                    onChanged: (val) => setState(() => _customReserveRam = val ?? '128M'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            icon: const Icon(Icons.add_task, size: 16),
+                            label: const Text('Insert Custom Resources Block', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              final snippet = '    deploy:\n      resources:\n        limits:\n          cpus: "$_customLimitCpu"\n          memory: $_customLimitRam\n        reservations:\n          cpus: "$_customReserveCpu"\n          memory: $_customReserveRam\n';
+                              ComposeAutocomplete.insertSnippet(_codeController, snippet);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 if (_activeCopilotTab == 'docker') ...[
                   const Text('Docker Copilot Options', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),

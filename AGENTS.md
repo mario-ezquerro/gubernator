@@ -336,6 +336,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Sub-Millisecond `/metrics` Scrapes:** Reduced Prometheus scrape response time from 15+ seconds down to <1ms, resolving context deadline timeouts.
 * **100% Up Gubernator Status in Grafana:** Restored `up{job="gubernator"} = 1` across Prometheus and Grafana dashboards for permanent, green "Gubernator Status: UP" display.
 
+### 53. CPU & RAM Resource Constraints & Compose Studio Copilot (`v2.59.13`)
+* **Comprehensive Examples Review & Resource Bounds:** Injected explicit `deploy.resources.limits` (max CPU & RAM) and `deploy.resources.reservations` (guaranteed min CPU & RAM) across all 18 production blueprints and example stacks (Kubeflow, N8N, JupyterLab, LLaMA-Factory, WordPress, Jaeger, SLO services, and Single-Node Manager).
+* **Dedicated Resources Copilot Tab:** Added a new **Resources** tab in Compose Studio and Compose Editor dialogs featuring 5 one-click production presets (Micro Service, Web/API App, Database/Cache, Data Science/ML, and AI/LLM GPU Model).
+* **Interactive Custom Resources Builder:** Integrated visual form controls with live core/RAM dropdown pickers and instant YAML snippet generation directly into the editor at correct indentation.
+
+
 
 
 

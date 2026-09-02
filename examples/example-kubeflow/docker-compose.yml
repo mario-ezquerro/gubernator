@@ -29,8 +29,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "1.0"
           memory: 2G
         reservations:
+          cpus: "0.25"
           memory: 512M
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -64,9 +66,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          cpus: "2.0"
+          memory: 2G
         reservations:
-          memory: 1G
+          cpus: "0.5"
+          memory: 512M
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Interactive JupyterLab & PyTorch Workspaces (Notebook Controller Equivalent)
@@ -93,8 +97,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G
+          cpus: "2.0"
+          memory: 4G
         reservations:
+          cpus: "0.5"
           memory: 1G
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +120,8 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "2.0"
           memory: 4G
         reservations:
+          cpus: "0.5"
           memory: 1G

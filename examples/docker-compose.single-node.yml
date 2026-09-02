@@ -85,6 +85,16 @@ services:
       retries: 3
       start_period: 10s
 
+    # ── Resources & Deployment ─────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
     # ── Labels ─────────────────────────────────────────────────────────────
     labels:
       gbnt.managed: "true"

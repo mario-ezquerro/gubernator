@@ -23,8 +23,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: "4.0"
           memory: 12G
         reservations:
+          cpus: "1.0"
           memory: 4G
       placement:
         constraints:

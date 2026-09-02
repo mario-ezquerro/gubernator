@@ -16,6 +16,13 @@ services:
     volumes:
       - jupyter_workspace:/home/jovyan/work
     deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
       placement:
         constraints:
           - stack.name == jupyter-stack

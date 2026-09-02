@@ -505,6 +505,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                _tabBtn('Resources', 'resources', Icons.speed),
                 _tabBtn('Caddy', 'caddy', Icons.public),
                 _tabBtn('SLO', 'slo', Icons.show_chart),
                 _tabBtn('Security', 'security', Icons.security),
@@ -518,6 +519,43 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_activeTab == 'resources') ...[
+                  const Text('CPU & RAM Resources', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Set CPU & RAM upper limits (limits) and guaranteed minimum reservations (reservations).', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "0.25"\n          memory: 128M\n        reservations:\n          cpus: "0.05"\n          memory: 32M\n');
+                    },
+                    icon: const Icon(Icons.bolt, color: Colors.amber),
+                    label: const Text('⚡ Micro Service (0.25 CPU / 128M)'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "1.0"\n          memory: 512M\n        reservations:\n          cpus: "0.25"\n          memory: 128M\n');
+                    },
+                    icon: const Icon(Icons.web, color: Colors.blueAccent),
+                    label: const Text('🌐 Standard Web App (1.0 CPU / 512M)'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "2.0"\n          memory: 2G\n        reservations:\n          cpus: "0.5"\n          memory: 512M\n');
+                    },
+                    icon: const Icon(Icons.storage, color: Colors.teal),
+                    label: const Text('🗄️ Database / Cache (2.0 CPU / 2GB)'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 8G\n        reservations:\n          cpus: "2.0"\n          memory: 2G\n');
+                    },
+                    icon: const Icon(Icons.smart_toy, color: Colors.purpleAccent),
+                    label: const Text('🤖 AI / LLM Model (4.0 CPU / 8GB)'),
+                  ),
+                ],
                 if (_activeTab == 'caddy') ...[
                   const Text('Caddy Ingress', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),

@@ -33,6 +33,13 @@ x-ollama: &service-ollama
   volumes:
     - ollama_storage:/root/.ollama
   deploy:
+    resources:
+      limits:
+        cpus: "2.0"
+        memory: 2G
+      reservations:
+        cpus: "0.5"
+        memory: 512M
     placement:
       constraints:
         - ingress.host == ollama.gbnt.local
@@ -42,6 +49,14 @@ x-init-ollama: &init-ollama
   container_name: ollama-pull-llama
   command: >
     sh -c "sleep 5 && curl -X POST http://ollama.{{stack.name}}.gbnt:11434/api/pull -d '{\"name\": \"llama3.2\"}'"
+  deploy:
+    resources:
+      limits:
+        cpus: "0.5"
+        memory: 128M
+      reservations:
+        cpus: "0.1"
+        memory: 32M
 
 services:
   postgres:
@@ -60,6 +75,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
   n8n:
     <<: *service-n8n
@@ -74,6 +97,13 @@ services:
       postgres:
         condition: service_healthy
     deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
       placement:
         constraints:
           - stack.name == n8n-stack
@@ -90,6 +120,13 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
     deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
       placement:
         constraints:
           - ingress.host == qdrant.gbnt.local

@@ -16,6 +16,14 @@ services:
       - GBNT_WEB_PASSWORD=admin
     working_dir: /app/data
     command: ["/app/gbnt", "serve"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
   coredns:
     image: coredns/coredns
@@ -27,6 +35,14 @@ services:
     command: ["-conf", "/Corefile"]
     depends_on:
       - gubernator-manager
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
 
   caddy:
     image: caddy:alpine
@@ -39,3 +55,11 @@ services:
       sh -c "while [ ! -f /data/Caddyfile ]; do sleep 1; done; caddy run --config /data/Caddyfile --watch"
     depends_on:
       - gubernator-manager
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
