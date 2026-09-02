@@ -60,11 +60,15 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
       final preview = await ApiService.fetchRemediationPreview(widget.imageName);
       if (!mounted) return;
 
+      final selectable = preview.affectedStacks.isNotEmpty
+          ? preview.affectedStacks
+          : preview.allAvailableStacks;
+
       String? defaultStack;
       if (widget.initialStackId != null && widget.initialStackId!.isNotEmpty) {
         defaultStack = widget.initialStackId;
-      } else if (preview.affectedStacks.isNotEmpty) {
-        defaultStack = preview.affectedStacks.first.stackId;
+      } else if (selectable.isNotEmpty) {
+        defaultStack = selectable.first.stackId;
       }
 
       String? defaultTarget;
@@ -103,14 +107,27 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
       return;
     }
 
-    if (_selectedStackId == null || _selectedStackId!.isEmpty) {
+    String? stackIdToUse = _selectedStackId;
+    if (stackIdToUse == null || stackIdToUse.isEmpty) {
+      if (_preview != null) {
+        final selectable = _preview!.affectedStacks.isNotEmpty
+            ? _preview!.affectedStacks
+            : _preview!.allAvailableStacks;
+        if (selectable.isNotEmpty) {
+          stackIdToUse = selectable.first.stackId;
+        }
+      }
+    }
+
+    if (stackIdToUse == null || stackIdToUse.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a target stack to remediate')),
+        const SnackBar(content: Text('Please select or create a target stack to remediate')),
       );
       return;
     }
 
     setState(() {
+      _selectedStackId = stackIdToUse;
       _executing = true;
       _liveLogs = [
         RemediationStepLogModel(
@@ -124,7 +141,7 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
 
     try {
       final result = await ApiService.executeRemediation(
-        stackId: _selectedStackId!,
+        stackId: stackIdToUse,
         currentImage: widget.imageName,
         targetImage: target,
         autoRollback: _autoRollback,
@@ -239,55 +256,116 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
                       children: [
                         const Divider(height: 16),
 
-                        // Affected Stack Selector
-                        if (_preview!.affectedStacks.isNotEmpty) ...[
-                          Row(
-                            children: [
-                              const Icon(Icons.layers_outlined, size: 16, color: Colors.blueAccent),
-                              const SizedBox(width: 6),
-                              const Text('Target Deployed Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const Spacer(),
-                              if (widget.onOpenInComposeStudio != null && _selectedStackId != null)
-                                TextButton.icon(
-                                  icon: const Icon(Icons.code, size: 14),
-                                  label: const Text('Open in Compose Studio', style: TextStyle(fontSize: 12)),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    widget.onOpenInComposeStudio!(_selectedStackId!);
-                                  },
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                isExpanded: true,
-                                value: _selectedStackId,
-                                items: _preview!.affectedStacks.map((st) {
-                                  return DropdownMenuItem(
-                                    value: st.stackId,
-                                    child: Row(
-                                      children: [
-                                        Text(st.stackName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                        const SizedBox(width: 8),
-                                        Text('➔ service: ${st.serviceName} (${st.replicas} replica)',
-                                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
-                                      ],
+                        // Stack Selector (Auto-detected affected stack or cluster stacks fallback)
+                        if (_preview != null) ...[
+                          () {
+                            final selectableStacks = _preview!.affectedStacks.isNotEmpty
+                                ? _preview!.affectedStacks
+                                : _preview!.allAvailableStacks;
+                            final isAutoDetected = _preview!.affectedStacks.isNotEmpty;
+
+                            if (selectableStacks.isNotEmpty) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.layers_outlined, size: 16, color: Colors.blueAccent),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isAutoDetected ? 'Target Deployed Stack (Auto-Detected):' : 'Select Target Stack in Cluster:',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const Spacer(),
+                                      if (widget.onOpenInComposeStudio != null && _selectedStackId != null)
+                                        TextButton.icon(
+                                          icon: const Icon(Icons.code, size: 14),
+                                          label: const Text('Open in Compose Studio', style: TextStyle(fontSize: 12)),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            widget.onOpenInComposeStudio!(_selectedStackId!);
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                                     ),
-                                  );
-                                }).toList(),
-                                onChanged: _executing ? null : (val) => setState(() => _selectedStackId = val),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        isExpanded: true,
+                                        value: _selectedStackId ?? selectableStacks.first.stackId,
+                                        items: selectableStacks.map((st) {
+                                          return DropdownMenuItem(
+                                            value: st.stackId,
+                                            child: Row(
+                                              children: [
+                                                Text(st.stackName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                                const SizedBox(width: 8),
+                                                Text('➔ service: ${st.serviceName}',
+                                                    style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
+                                                if (isAutoDetected) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.blueAccent.withValues(alpha: 0.15),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text('Detected', style: TextStyle(fontSize: 9, color: Colors.blueAccent)),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: _executing
+                                            ? null
+                                            : (val) => setState(() => _selectedStackId = val),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                ],
+                              );
+                            } else {
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.info_outline, color: Colors.blueAccent, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Text(
+                                        'No deployed stacks found in cluster. You can create a new stack in Compose Studio or deploy one first.',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                    if (widget.onOpenInComposeStudio != null)
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.code, size: 14),
+                                        label: const Text('Compose Studio'),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          widget.onOpenInComposeStudio!('');
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+                          }(),
                         ],
 
                         // Version Candidate Selector

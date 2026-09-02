@@ -38,14 +38,15 @@ type AffectedStackInfo struct {
 
 // RemediationPreview provides risk assessment and upgrade options before applying.
 type RemediationPreview struct {
-	CurrentImage      string              `json:"current_image"`
-	CriticalCount     int                 `json:"critical_count"`
-	HighCount         int                 `json:"high_count"`
-	MediumCount       int                 `json:"medium_count"`
-	SuggestedVersions []SuggestedVersion  `json:"suggested_versions"`
-	AffectedStacks    []AffectedStackInfo `json:"affected_stacks"`
-	RiskAssessment    string              `json:"risk_assessment"`
-	RiskLevel         string              `json:"risk_level"` // "low", "medium", "high"
+	CurrentImage       string              `json:"current_image"`
+	CriticalCount      int                 `json:"critical_count"`
+	HighCount          int                 `json:"high_count"`
+	MediumCount        int                 `json:"medium_count"`
+	SuggestedVersions  []SuggestedVersion  `json:"suggested_versions"`
+	AffectedStacks     []AffectedStackInfo `json:"affected_stacks"`
+	AllAvailableStacks []AffectedStackInfo `json:"all_available_stacks"`
+	RiskAssessment     string              `json:"risk_assessment"`
+	RiskLevel          string              `json:"risk_level"` // "low", "medium", "high"
 }
 
 // RemediationRequest is the payload sent to execute image remediation.
@@ -220,29 +221,89 @@ func SuggestVersions(image string) []SuggestedVersion {
 	return suggestions
 }
 
+func cleanImageName(img string) string {
+	s := strings.TrimSpace(img)
+	s = strings.TrimPrefix(s, "docker.io/")
+	s = strings.TrimPrefix(s, "library/")
+	return s
+}
+
+func baseImageName(img string) string {
+	clean := cleanImageName(img)
+	parts := strings.Split(clean, ":")
+	return parts[0]
+}
+
+func imageMatches(serviceImg, targetImg string) bool {
+	s := cleanImageName(serviceImg)
+	t := cleanImageName(targetImg)
+	if strings.EqualFold(s, t) {
+		return true
+	}
+	baseS := baseImageName(s)
+	baseT := baseImageName(t)
+	return strings.EqualFold(baseS, baseT) && baseS != ""
+}
+
 // PreviewRemediation calculates risk assessment and lists candidate versions and affected services.
 func PreviewRemediation(image string) (*RemediationPreview, error) {
 	// 1. Fetch scan stats
 	var scan db.ImageScan
 	_ = db.DB.Where("image_name = ?", image).Order("scanned_at desc").First(&scan).Error
 
-	// 2. Discover affected stacks & services
-	var services []db.Service
-	db.DB.Where("image = ?", image).Find(&services)
+	// 2. Discover all stacks & services in cluster
+	var allStacks []db.Stack
+	db.DB.Find(&allStacks)
 
 	affectedStacks := make([]AffectedStackInfo, 0)
-	stackIDs := make(map[string]bool)
+	allAvailableStacks := make([]AffectedStackInfo, 0)
+	seenAffected := make(map[string]bool)
 
-	for _, s := range services {
-		var st db.Stack
-		if err := db.DB.First(&st, "id = ?", s.StackID).Error; err == nil {
-			affectedStacks = append(affectedStacks, AffectedStackInfo{
-				StackID:     st.ID,
-				StackName:   st.Name,
-				ServiceName: s.Name,
-				Replicas:    s.DesiredReplicas,
-			})
-			stackIDs[st.ID] = true
+	cleanImg := cleanImageName(image)
+	baseImg := baseImageName(image)
+
+	for _, st := range allStacks {
+		var services []db.Service
+		db.DB.Where("stack_id = ?", st.ID).Find(&services)
+
+		primarySvcName := "service"
+		if len(services) > 0 {
+			primarySvcName = services[0].Name
+		}
+
+		allAvailableStacks = append(allAvailableStacks, AffectedStackInfo{
+			StackID:     st.ID,
+			StackName:   st.Name,
+			ServiceName: primarySvcName,
+			Replicas:    1,
+		})
+
+		for _, s := range services {
+			if imageMatches(s.Image, image) || strings.Contains(st.RawComposeFile, image) || strings.Contains(st.RawComposeFile, cleanImg) {
+				key := st.ID + ":" + s.Name
+				if !seenAffected[key] {
+					affectedStacks = append(affectedStacks, AffectedStackInfo{
+						StackID:     st.ID,
+						StackName:   st.Name,
+						ServiceName: s.Name,
+						Replicas:    s.DesiredReplicas,
+					})
+					seenAffected[key] = true
+				}
+			}
+		}
+
+		// Also check raw compose file text in case service records are slightly different
+		if !seenAffected[st.ID+":"+primarySvcName] {
+			if strings.Contains(st.RawComposeFile, image) || strings.Contains(st.RawComposeFile, cleanImg) || (baseImg != "" && strings.Contains(st.RawComposeFile, baseImg)) {
+				affectedStacks = append(affectedStacks, AffectedStackInfo{
+					StackID:     st.ID,
+					StackName:   st.Name,
+					ServiceName: primarySvcName,
+					Replicas:    1,
+				})
+				seenAffected[st.ID+":"+primarySvcName] = true
+			}
 		}
 	}
 
@@ -259,14 +320,15 @@ func PreviewRemediation(image string) (*RemediationPreview, error) {
 	}
 
 	return &RemediationPreview{
-		CurrentImage:      image,
-		CriticalCount:     scan.CriticalCount,
-		HighCount:         scan.HighCount,
-		MediumCount:       scan.MediumCount,
-		SuggestedVersions: suggestions,
-		AffectedStacks:    affectedStacks,
-		RiskAssessment:    riskAssessment,
-		RiskLevel:         riskLevel,
+		CurrentImage:       image,
+		CriticalCount:      scan.CriticalCount,
+		HighCount:          scan.HighCount,
+		MediumCount:        scan.MediumCount,
+		SuggestedVersions:  suggestions,
+		AffectedStacks:     affectedStacks,
+		AllAvailableStacks: allAvailableStacks,
+		RiskAssessment:     riskAssessment,
+		RiskLevel:          riskLevel,
 	}, nil
 }
 
@@ -285,7 +347,38 @@ func ReplaceImageInComposeYAML(rawCompose, currentImage, newImage string) (strin
 		return replaced, nil
 	}
 
-	// 2. Fallback: Parse into yaml.Node AST to modify safely
+	// 2. Try clean image name (stripped docker.io/ or library/)
+	cleanCur := cleanImageName(currentImage)
+	if cleanCur != currentImage {
+		escapedClean := regexp.QuoteMeta(cleanCur)
+		patternClean := regexp.MustCompile(`(?m)^([ \t]*image:[ \t]*['"]?)` + escapedClean + `(['"]?[ \t]*(?:#.*)?)$`)
+		if patternClean.MatchString(rawCompose) {
+			replaced := patternClean.ReplaceAllString(rawCompose, "${1}"+newImage+"${2}")
+			return replaced, nil
+		}
+	}
+
+	// 3. Try matching by base image name (e.g. postgres -> any postgres:... in compose)
+	baseCur := baseImageName(currentImage)
+	if baseCur != "" {
+		basePattern := regexp.MustCompile(`(?m)^([ \t]*image:[ \t]*['"]?(?:docker\.io\/|library\/)?` + regexp.QuoteMeta(baseCur) + `(?::[^\s'"#]+)?)(['"]?[ \t]*(?:#.*)?)$`)
+		if basePattern.MatchString(rawCompose) {
+			replaced := basePattern.ReplaceAllStringFunc(rawCompose, func(match string) string {
+				indent := ""
+				for _, ch := range match {
+					if ch == ' ' || ch == '\t' {
+						indent += string(ch)
+					} else {
+						break
+					}
+				}
+				return indent + "image: " + newImage
+			})
+			return replaced, nil
+		}
+	}
+
+	// 4. Fallback: Parse into yaml.Node AST to modify safely
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(rawCompose), &root); err != nil {
 		return "", fmt.Errorf("failed to parse compose YAML: %w", err)
@@ -314,7 +407,7 @@ func replaceImageInNode(node *yaml.Node, currentImage, newImage string) bool {
 			keyNode := node.Content[i]
 			valNode := node.Content[i+1]
 
-			if keyNode.Value == "image" && strings.TrimSpace(valNode.Value) == strings.TrimSpace(currentImage) {
+			if keyNode.Value == "image" && (strings.TrimSpace(valNode.Value) == strings.TrimSpace(currentImage) || imageMatches(valNode.Value, currentImage)) {
 				valNode.Value = newImage
 				modified = true
 			} else {

@@ -2089,6 +2089,7 @@ class RemediationPreviewModel {
   final int mediumCount;
   final List<SuggestedVersionModel> suggestedVersions;
   final List<AffectedStackInfoModel> affectedStacks;
+  final List<AffectedStackInfoModel> allAvailableStacks;
   final String riskAssessment;
   final String riskLevel;
 
@@ -2099,6 +2100,7 @@ class RemediationPreviewModel {
     required this.mediumCount,
     required this.suggestedVersions,
     required this.affectedStacks,
+    this.allAvailableStacks = const [],
     required this.riskAssessment,
     required this.riskLevel,
   });
@@ -2113,6 +2115,9 @@ class RemediationPreviewModel {
           .map((v) => SuggestedVersionModel.fromJson(v as Map<String, dynamic>))
           .toList(),
       affectedStacks: (json['affected_stacks'] as List<dynamic>? ?? [])
+          .map((s) => AffectedStackInfoModel.fromJson(s as Map<String, dynamic>))
+          .toList(),
+      allAvailableStacks: (json['all_available_stacks'] as List<dynamic>? ?? [])
           .map((s) => AffectedStackInfoModel.fromJson(s as Map<String, dynamic>))
           .toList(),
       riskAssessment: json['risk_assessment'] ?? '',
