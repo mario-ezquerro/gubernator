@@ -2175,9 +2175,9 @@ func nodeAddHandler(c *gin.Context) {
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		if err := db.DB.Create(&node).Error; err != nil {
-			addLog("Cluster Registry", fmt.Sprintf("Failed to register node: %v", err), "error")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "logs": stepLogs})
+		if createErr := db.DB.Create(&node).Error; createErr != nil {
+			addLog("Cluster Registry", fmt.Sprintf("Failed to register node: %v", createErr), "error")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": createErr.Error(), "logs": stepLogs})
 			return
 		}
 		addLog("Cluster Registry", fmt.Sprintf("Centurion '%s' registered into cluster database.", nodeID), "ok")
