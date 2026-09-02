@@ -42,22 +42,26 @@ var scanCmd = &cobra.Command{
 				return
 			}
 
-			fmt.Printf("%-32s %-10s %-8s %-6s %-6s %-6s %-30s\n", "IMAGE", "SIGNATURE", "CRITICAL", "HIGH", "MED", "LOW", "DEPLOYED HOSTS")
-			fmt.Println("-----------------------------------------------------------------------------------------------------------------------------")
+			fmt.Printf("%-32s %-10s %-12s %-8s %-6s %-6s %-6s %-30s\n", "IMAGE", "SIGNATURE", "STATUS", "CRITICAL", "HIGH", "MED", "LOW", "DEPLOYED HOSTS")
+			fmt.Println("-------------------------------------------------------------------------------------------------------------------------------------------")
 			for _, s := range data.Scans {
 				sigBadge := "Unsigned"
 				if s.SignatureStatus == "verified" {
 					sigBadge = "Verified"
 				}
+				statusBadge := "Active"
+				if !s.InUse {
+					statusBadge = "Not in Use"
+				}
 				hostsStr := strings.Join(s.Hosts, ", ")
 				if hostsStr == "" {
-					hostsStr = "Manager (192.168.252.27)"
+					hostsStr = "-"
 				}
 				if len(hostsStr) > 30 {
 					hostsStr = hostsStr[:27] + "..."
 				}
-				fmt.Printf("%-32s %-10s %-8d %-6d %-6d %-6d %-30s\n",
-					s.ImageName, sigBadge, s.CriticalCount, s.HighCount, s.MediumCount, s.LowCount, hostsStr)
+				fmt.Printf("%-32s %-10s %-12s %-8d %-6d %-6d %-6d %-30s\n",
+					s.ImageName, sigBadge, statusBadge, s.CriticalCount, s.HighCount, s.MediumCount, s.LowCount, hostsStr)
 			}
 			return
 		}
@@ -319,6 +323,16 @@ var imageFixCmd = &cobra.Command{
 			fmt.Printf("🔍 Auto-Remediation Assessment for: %s\n", currentImg)
 			fmt.Printf("Risk Level: %s | %s\n\n", strings.ToUpper(prev.RiskLevel), prev.RiskAssessment)
 
+			if !prev.IsInUse || len(prev.AffectedStacks) == 0 {
+				fmt.Printf("⚠️  Image '%s' is not in use by any active stack in the cluster.\n", currentImg)
+				fmt.Println("Auto-remediation cannot redeploy an unreferenced container image.")
+				fmt.Println("\nTo purge this stale scan report, run:")
+				fmt.Printf("  gbnt scan rm %s\n", currentImg)
+				fmt.Println("\nTo prune all stale / orphan scan reports across the cluster, run:")
+				fmt.Println("  gbnt scan prune")
+				return
+			}
+
 			fmt.Println("Suggested Patched Versions:")
 			for _, v := range prev.SuggestedVersions {
 				rec := ""
@@ -378,6 +392,46 @@ var imageFixCmd = &cobra.Command{
 	},
 }
 
+var scanPruneCmd = &cobra.Command{
+	Use:   "prune",
+	Short: "Prune all scan reports for images no longer used in any active stack",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("POST", "/v1/security/scans/prune-orphans", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		var result struct {
+			Message string `json:"message"`
+			Purged  int    `json:"purged"`
+		}
+		json.NewDecoder(resp.Body).Decode(&result)
+		fmt.Printf("🧹 %s (Pruned %d stale scan records)\n", result.Message, result.Purged)
+	},
+}
+
+var scanRmCmd = &cobra.Command{
+	Use:   "rm <id-or-image>",
+	Short: "Remove a scan report from the cluster database",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("DELETE", "/v1/security/scans/"+args[0], nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			fmt.Printf("✅ Scan report for '%s' purged successfully.\n", args[0])
+		} else {
+			fmt.Fprintf(os.Stderr, "Failed to purge scan for '%s'.\n", args[0])
+		}
+	},
+}
+
 func init() {
 	sbomCmd.Flags().StringVarP(&sbomFormatFlag, "format", "f", "cyclonedx-json", "SBOM format (cyclonedx-json, spdx-json)")
 
@@ -390,6 +444,9 @@ func init() {
 	imageFixCmd.Flags().StringVarP(&imageStackFlag, "stack", "s", "", "Target Stack ID to modify and redeploy")
 	imageFixCmd.Flags().BoolVar(&imageAutoRollbackFlag, "auto-rollback", true, "Enable automated rollback if updated container fails")
 	imageCmd.AddCommand(imageFixCmd)
+
+	scanCmd.AddCommand(scanPruneCmd)
+	scanCmd.AddCommand(scanRmCmd)
 
 	securityKeyCmd.AddCommand(securityKeyLsCmd)
 	securityCmd.AddCommand(securityPolicyCmd)

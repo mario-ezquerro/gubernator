@@ -254,6 +254,8 @@ func Start(ctx context.Context) error {
 		{
 			securityRoute.GET("/scans", SecurityScansListHandler)
 			securityRoute.GET("/scans/:id", SecurityScanDetailsHandler)
+			securityRoute.DELETE("/scans/:id", SecurityScanDeleteHandler)
+			securityRoute.POST("/scans/prune-orphans", SecurityScanPruneOrphansHandler)
 			securityRoute.POST("/scans/trigger", SecurityScanTriggerHandler)
 			securityRoute.POST("/scans/sync-all", SecurityScanSyncAllHandler)
 			securityRoute.GET("/sbom", SecuritySBOMGetHandler)

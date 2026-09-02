@@ -38,15 +38,15 @@ type AffectedStackInfo struct {
 
 // RemediationPreview provides risk assessment and upgrade options before applying.
 type RemediationPreview struct {
-	CurrentImage       string              `json:"current_image"`
-	CriticalCount      int                 `json:"critical_count"`
-	HighCount          int                 `json:"high_count"`
-	MediumCount        int                 `json:"medium_count"`
-	SuggestedVersions  []SuggestedVersion  `json:"suggested_versions"`
-	AffectedStacks     []AffectedStackInfo `json:"affected_stacks"`
-	AllAvailableStacks []AffectedStackInfo `json:"all_available_stacks"`
-	RiskAssessment     string              `json:"risk_assessment"`
-	RiskLevel          string              `json:"risk_level"` // "low", "medium", "high"
+	CurrentImage      string              `json:"current_image"`
+	CriticalCount     int                 `json:"critical_count"`
+	HighCount         int                 `json:"high_count"`
+	MediumCount       int                 `json:"medium_count"`
+	SuggestedVersions []SuggestedVersion  `json:"suggested_versions"`
+	AffectedStacks    []AffectedStackInfo `json:"affected_stacks"`
+	IsInUse           bool                `json:"is_in_use"`
+	RiskAssessment    string              `json:"risk_assessment"`
+	RiskLevel         string              `json:"risk_level"` // "low", "medium", "high"
 }
 
 // RemediationRequest is the payload sent to execute image remediation.
@@ -310,25 +310,29 @@ func PreviewRemediation(image string) (*RemediationPreview, error) {
 	// 3. Generate suggested versions
 	suggestions := SuggestVersions(image)
 
-	// 4. Calculate Risk Level
+	// 4. Calculate Risk Level and IsInUse status
+	isInUse := len(affectedStacks) > 0
 	riskLevel := "low"
 	riskAssessment := "Low risk: Upgrading to a patched security release within the same major architecture preserves configuration and database schema compatibility."
 
-	if strings.Contains(strings.ToLower(image), "postgres") || strings.Contains(strings.ToLower(image), "mysql") {
+	if !isInUse {
+		riskLevel = "low"
+		riskAssessment = "Orphaned Image: This container image is not in use by any active stack or service in the cluster. Auto-remediation cannot redeploy an active stack. You can purge this stale scan record from the cluster."
+	} else if strings.Contains(strings.ToLower(image), "postgres") || strings.Contains(strings.ToLower(image), "mysql") {
 		riskLevel = "medium"
 		riskAssessment = "Medium risk: Upgrading database engine images may require storage volume validation. Ensure container data directories are bound to persistent volumes (/var/contenedores or named volumes) before applying."
 	}
 
 	return &RemediationPreview{
-		CurrentImage:       image,
-		CriticalCount:      scan.CriticalCount,
-		HighCount:          scan.HighCount,
-		MediumCount:        scan.MediumCount,
-		SuggestedVersions:  suggestions,
-		AffectedStacks:     affectedStacks,
-		AllAvailableStacks: allAvailableStacks,
-		RiskAssessment:     riskAssessment,
-		RiskLevel:          riskLevel,
+		CurrentImage:      image,
+		CriticalCount:     scan.CriticalCount,
+		HighCount:         scan.HighCount,
+		MediumCount:       scan.MediumCount,
+		SuggestedVersions: suggestions,
+		AffectedStacks:    affectedStacks,
+		IsInUse:           isInUse,
+		RiskAssessment:    riskAssessment,
+		RiskLevel:         riskLevel,
 	}, nil
 }
 

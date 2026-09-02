@@ -24,16 +24,43 @@ type SecuritySummary struct {
 	UnsignedCount  int `json:"unsigned_count"`
 }
 
-// DiscoverClusterImages finds all unique container images running across all stacks and services.
+// DiscoverClusterImages finds all unique container images running across all active stacks and services.
 func DiscoverClusterImages() []string {
 	var services []db.Service
 	db.DB.Find(&services)
 
+	var stacks []db.Stack
+	db.DB.Find(&stacks)
+
+	validStackIDs := make(map[string]bool)
+	for _, st := range stacks {
+		validStackIDs[st.ID] = true
+	}
+
 	imageMap := make(map[string]bool)
 	for _, s := range services {
-		img := strings.TrimSpace(s.Image)
-		if img != "" {
-			imageMap[img] = true
+		if validStackIDs[s.StackID] {
+			img := strings.TrimSpace(s.Image)
+			if img != "" {
+				imageMap[img] = true
+			}
+		}
+	}
+
+	// Also check raw compose files of active stacks
+	for _, st := range stacks {
+		for _, line := range strings.Split(st.RawComposeFile, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "image:") {
+				img := strings.TrimSpace(strings.TrimPrefix(trimmed, "image:"))
+				img = strings.Trim(img, `"'`)
+				if idx := strings.Index(img, "#"); idx != -1 {
+					img = strings.TrimSpace(img[:idx])
+				}
+				if img != "" {
+					imageMap[img] = true
+				}
+			}
 		}
 	}
 
@@ -44,11 +71,19 @@ func DiscoverClusterImages() []string {
 	return images
 }
 
-// AutoSyncClusterImages ensures all images running in the cluster have an up-to-date vulnerability scan.
+// AutoSyncClusterImages ensures all images running in the cluster have an up-to-date vulnerability scan and sets InUse flag.
 func AutoSyncClusterImages() ([]db.ImageScan, error) {
 	clusterImages := DiscoverClusterImages()
 
+	activeMap := make(map[string]bool)
 	for _, img := range clusterImages {
+		activeMap[img] = true
+		activeMap[cleanImageName(img)] = true
+		base := baseImageName(img)
+		if base != "" {
+			activeMap[base] = true
+		}
+
 		var existing db.ImageScan
 		if err := db.DB.Where("image_name = ?", img).First(&existing).Error; err != nil {
 			// Not yet scanned, trigger automatic initial scan
@@ -61,6 +96,13 @@ func AutoSyncClusterImages() ([]db.ImageScan, error) {
 
 	var scans []db.ImageScan
 	err := db.DB.Order("scanned_at desc").Find(&scans).Error
+	if err == nil {
+		for i := range scans {
+			clean := cleanImageName(scans[i].ImageName)
+			base := baseImageName(scans[i].ImageName)
+			scans[i].InUse = activeMap[scans[i].ImageName] || activeMap[clean] || (base != "" && activeMap[base])
+		}
+	}
 	return scans, err
 }
 
@@ -71,14 +113,60 @@ func SyncAllClusterImages() ([]db.ImageScan, error) {
 		_, _, _ = TriggerScan(img)
 	}
 
-	var scans []db.ImageScan
-	err := db.DB.Order("scanned_at desc").Find(&scans).Error
-	return scans, err
+	return AutoSyncClusterImages()
 }
 
 // ListScans returns all image scan summaries, automatically discovering all cluster images.
 func ListScans() ([]db.ImageScan, error) {
 	return AutoSyncClusterImages()
+}
+
+// DeleteScan removes a scan report, its CVEs, and its SBOM from the database.
+func DeleteScan(scanIDOrImage string) error {
+	var scan db.ImageScan
+	if err := db.DB.Where("id = ? OR image_name = ?", scanIDOrImage, scanIDOrImage).First(&scan).Error; err != nil {
+		return err
+	}
+
+	// Delete vulnerabilities
+	db.DB.Where("scan_id = ? OR image_name = ?", scan.ID, scan.ImageName).Delete(&db.ImageVulnerability{})
+
+	// Delete SBOM
+	db.DB.Where("image_name = ?", scan.ImageName).Delete(&db.ImageSBOM{})
+
+	// Delete scan
+	return db.DB.Delete(&scan).Error
+}
+
+// PurgeOrphanScans finds and deletes all scan reports of images that are no longer used by any active stack.
+func PurgeOrphanScans() (int, error) {
+	clusterImages := DiscoverClusterImages()
+	activeMap := make(map[string]bool)
+	for _, img := range clusterImages {
+		activeMap[img] = true
+		activeMap[cleanImageName(img)] = true
+		base := baseImageName(img)
+		if base != "" {
+			activeMap[base] = true
+		}
+	}
+
+	var allScans []db.ImageScan
+	if err := db.DB.Find(&allScans).Error; err != nil {
+		return 0, err
+	}
+
+	purgedCount := 0
+	for _, s := range allScans {
+		clean := cleanImageName(s.ImageName)
+		base := baseImageName(s.ImageName)
+		if !activeMap[s.ImageName] && !activeMap[clean] && (base == "" || !activeMap[base]) {
+			if err := DeleteScan(s.ID); err == nil {
+				purgedCount++
+			}
+		}
+	}
+	return purgedCount, nil
 }
 
 // GetScanDetails returns a scan report along with all associated vulnerabilities.
@@ -90,6 +178,21 @@ func GetScanDetails(scanID string) (*db.ImageScan, []db.ImageVulnerability, erro
 			return nil, nil, err
 		}
 	}
+
+	// Compute InUse
+	clusterImages := DiscoverClusterImages()
+	activeMap := make(map[string]bool)
+	for _, img := range clusterImages {
+		activeMap[img] = true
+		activeMap[cleanImageName(img)] = true
+		base := baseImageName(img)
+		if base != "" {
+			activeMap[base] = true
+		}
+	}
+	clean := cleanImageName(scan.ImageName)
+	base := baseImageName(scan.ImageName)
+	scan.InUse = activeMap[scan.ImageName] || activeMap[clean] || (base != "" && activeMap[base])
 
 	var vulns []db.ImageVulnerability
 	if err := db.DB.Where("scan_id = ?", scan.ID).Order("cvss_score desc, cve_id asc").Find(&vulns).Error; err != nil {

@@ -23,6 +23,7 @@ class ImageRemediationDialog extends StatefulWidget {
 
 class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
   bool _loading = true;
+  bool _purging = false;
   String? _errorMessage;
   RemediationPreviewModel? _preview;
 
@@ -60,15 +61,11 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
       final preview = await ApiService.fetchRemediationPreview(widget.imageName);
       if (!mounted) return;
 
-      final selectable = preview.affectedStacks.isNotEmpty
-          ? preview.affectedStacks
-          : preview.allAvailableStacks;
-
       String? defaultStack;
       if (widget.initialStackId != null && widget.initialStackId!.isNotEmpty) {
         defaultStack = widget.initialStackId;
-      } else if (selectable.isNotEmpty) {
-        defaultStack = selectable.first.stackId;
+      } else if (preview.affectedStacks.isNotEmpty) {
+        defaultStack = preview.affectedStacks.first.stackId;
       }
 
       String? defaultTarget;
@@ -98,6 +95,30 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
     }
   }
 
+  Future<void> _purgeStaleScan() async {
+    setState(() => _purging = true);
+    try {
+      final ok = await ApiService.deleteImageScan(widget.imageName);
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Stale image scan report purged from cluster'),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+        widget.onRemediationComplete();
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _purging = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to purge scan: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
   Future<void> _applyRemediation() async {
     final target = _isCustomVersion ? _customImageCtrl.text.trim() : (_selectedTargetImage ?? '');
     if (target.isEmpty) {
@@ -107,27 +128,14 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
       return;
     }
 
-    String? stackIdToUse = _selectedStackId;
-    if (stackIdToUse == null || stackIdToUse.isEmpty) {
-      if (_preview != null) {
-        final selectable = _preview!.affectedStacks.isNotEmpty
-            ? _preview!.affectedStacks
-            : _preview!.allAvailableStacks;
-        if (selectable.isNotEmpty) {
-          stackIdToUse = selectable.first.stackId;
-        }
-      }
-    }
-
-    if (stackIdToUse == null || stackIdToUse.isEmpty) {
+    if (_selectedStackId == null || _selectedStackId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select or create a target stack to remediate')),
+        const SnackBar(content: Text('Please select a target stack to remediate')),
       );
       return;
     }
 
     setState(() {
-      _selectedStackId = stackIdToUse;
       _executing = true;
       _liveLogs = [
         RemediationStepLogModel(
@@ -141,7 +149,7 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
 
     try {
       final result = await ApiService.executeRemediation(
-        stackId: stackIdToUse,
+        stackId: _selectedStackId!,
         currentImage: widget.imageName,
         targetImage: target,
         autoRollback: _autoRollback,
@@ -176,6 +184,7 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOrphan = _preview != null && !_preview!.isInUse;
 
     return AlertDialog(
       backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
@@ -188,19 +197,23 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF97316).withValues(alpha: 0.15),
+              color: (isOrphan ? Colors.amber : const Color(0xFFF97316)).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.bolt, color: Color(0xFFF97316), size: 24),
+            child: Icon(
+              isOrphan ? Icons.warning_amber_rounded : Icons.bolt,
+              color: isOrphan ? Colors.amber : const Color(0xFFF97316),
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Auto-Remediate Vulnerable Image',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                Text(
+                  isOrphan ? 'Orphaned / Unused Image' : 'Auto-Remediate Vulnerable Image',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -212,9 +225,22 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
             ),
           ),
           if (_preview != null) ...[
-            _badgeChip('CRIT', _preview!.criticalCount, Colors.redAccent),
-            const SizedBox(width: 4),
-            _badgeChip('HIGH', _preview!.highCount, Colors.orange),
+            if (isOrphan)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                ),
+                child: const Text('NOT IN USE',
+                    style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 10)),
+              )
+            else ...[
+              _badgeChip('CRIT', _preview!.criticalCount, Colors.redAccent),
+              const SizedBox(width: 4),
+              _badgeChip('HIGH', _preview!.highCount, Colors.orange),
+            ],
           ],
         ],
       ),
@@ -256,116 +282,91 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
                       children: [
                         const Divider(height: 16),
 
-                        // Stack Selector (Auto-detected affected stack or cluster stacks fallback)
-                        if (_preview != null) ...[
-                          () {
-                            final selectableStacks = _preview!.affectedStacks.isNotEmpty
-                                ? _preview!.affectedStacks
-                                : _preview!.allAvailableStacks;
-                            final isAutoDetected = _preview!.affectedStacks.isNotEmpty;
-
-                            if (selectableStacks.isNotEmpty) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.layers_outlined, size: 16, color: Colors.blueAccent),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isAutoDetected ? 'Target Deployed Stack (Auto-Detected):' : 'Select Target Stack in Cluster:',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                      const Spacer(),
-                                      if (widget.onOpenInComposeStudio != null && _selectedStackId != null)
-                                        TextButton.icon(
-                                          icon: const Icon(Icons.code, size: 14),
-                                          label: const Text('Open in Compose Studio', style: TextStyle(fontSize: 12)),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            widget.onOpenInComposeStudio!(_selectedStackId!);
-                                          },
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        isExpanded: true,
-                                        value: _selectedStackId ?? selectableStacks.first.stackId,
-                                        items: selectableStacks.map((st) {
-                                          return DropdownMenuItem(
-                                            value: st.stackId,
-                                            child: Row(
-                                              children: [
-                                                Text(st.stackName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                                const SizedBox(width: 8),
-                                                Text('➔ service: ${st.serviceName}',
-                                                    style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
-                                                if (isAutoDetected) ...[
-                                                  const SizedBox(width: 6),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.blueAccent.withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                    child: const Text('Detected', style: TextStyle(fontSize: 9, color: Colors.blueAccent)),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: _executing
-                                            ? null
-                                            : (val) => setState(() => _selectedStackId = val),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                ],
-                              );
-                            } else {
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                                ),
-                                child: Row(
+                        // ORPHAN / UNUSED IMAGE ALERT
+                        if (isOrphan) ...[
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
                                   children: [
-                                    const Icon(Icons.info_outline, color: Colors.blueAccent, size: 20),
-                                    const SizedBox(width: 10),
-                                    const Expanded(
-                                      child: Text(
-                                        'No deployed stacks found in cluster. You can create a new stack in Compose Studio or deploy one first.',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
+                                    Icon(Icons.info_outline, color: Colors.amber, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'No Active Stacks Using This Image',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.amber),
                                     ),
-                                    if (widget.onOpenInComposeStudio != null)
-                                      OutlinedButton.icon(
-                                        icon: const Icon(Icons.code, size: 14),
-                                        label: const Text('Compose Studio'),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          widget.onOpenInComposeStudio!('');
-                                        },
-                                      ),
                                   ],
                                 ),
-                              );
-                            }
-                          }(),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'This container image is not currently referenced by any active stack or service in the cluster. It likely belongs to a previously deleted stack, an ad-hoc test container, or a superseded image.',
+                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '• To remove this scan record, click "Purge Stale Scan".\n• To deploy a new stack using a patched version, open Compose Studio.',
+                                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ] else ...[
+                          // ACTIVE AFFECTED STACK SELECTOR
+                          Row(
+                            children: [
+                              const Icon(Icons.layers_outlined, size: 16, color: Colors.blueAccent),
+                              const SizedBox(width: 6),
+                              const Text('Target Deployed Stack:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const Spacer(),
+                              if (widget.onOpenInComposeStudio != null && _selectedStackId != null)
+                                TextButton.icon(
+                                  icon: const Icon(Icons.code, size: 14),
+                                  label: const Text('Open in Compose Studio', style: TextStyle(fontSize: 12)),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    widget.onOpenInComposeStudio!(_selectedStackId!);
+                                  },
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: _selectedStackId,
+                                items: _preview!.affectedStacks.map((st) {
+                                  return DropdownMenuItem(
+                                    value: st.stackId,
+                                    child: Row(
+                                      children: [
+                                        Text(st.stackName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        const SizedBox(width: 8),
+                                        Text('➔ service: ${st.serviceName} (${st.replicas} replica)',
+                                            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600])),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: _executing ? null : (val) => setState(() => _selectedStackId = val),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
                         ],
 
                         // Version Candidate Selector
@@ -474,66 +475,68 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
                           ),
                         ),
 
-                        // Risk & Impact Warnings Box
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF97316).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.3)),
+                        // Risk Assessment Box (only if active)
+                        if (!isOrphan) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF97316).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: Color(0xFFF97316), size: 18),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Risk & Operational Impact Assessment',
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF97316)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _preview!.riskAssessment,
+                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[800]),
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF10B981)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'A cryptographic backup of the previous Compose definition is created automatically.',
+                                      style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, color: Color(0xFFF97316), size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Risk & Operational Impact Assessment',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF97316)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _preview!.riskAssessment,
-                                style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.grey[800]),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  const Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF10B981)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'A cryptographic backup of the previous Compose definition is created automatically.',
-                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-                        // Safe Automated Rollback Switch
-                        SwitchListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: const Row(
-                            children: [
-                              Icon(Icons.history_toggle_off, size: 18, color: Color(0xFF10B981)),
-                              SizedBox(width: 8),
-                              Text('Enable Safe Automated Rollback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
+                          // Safe Automated Rollback Switch
+                          SwitchListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: const Row(
+                              children: [
+                                Icon(Icons.history_toggle_off, size: 18, color: Color(0xFF10B981)),
+                                SizedBox(width: 8),
+                                Text('Enable Safe Automated Rollback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                            subtitle: const Text(
+                              'If the upgraded container crashes or fails healthchecks within 20s, automatically revert to the previous Compose state.',
+                              style: TextStyle(fontSize: 11.5),
+                            ),
+                            value: _autoRollback,
+                            onChanged: _executing ? null : (val) => setState(() => _autoRollback = val),
                           ),
-                          subtitle: const Text(
-                            'If the upgraded container crashes or fails healthchecks within 20s, automatically revert to the previous Compose state.',
-                            style: TextStyle(fontSize: 11.5),
-                          ),
-                          value: _autoRollback,
-                          onChanged: _executing ? null : (val) => setState(() => _autoRollback = val),
-                        ),
+                        ],
 
                         // Live Monospace Execution Terminal Console
                         if (_liveLogs.isNotEmpty) ...[
@@ -633,20 +636,45 @@ class _ImageRemediationDialogState extends State<ImageRemediationDialog> {
                   ),
       ),
       actions: [
-        TextButton(
-          onPressed: _executing ? null : () => Navigator.pop(context),
-          child: Text(_result != null ? 'Close' : 'Cancel'),
-        ),
-        if (!_executing && _result == null && _preview != null)
-          FilledButton.icon(
-            icon: const Icon(Icons.bolt, size: 18),
-            label: const Text('Apply Fix & Redeploy'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFF97316),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        if (isOrphan) ...[
+          if (widget.onOpenInComposeStudio != null)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.code, size: 16),
+              label: const Text('Open Compose Studio'),
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onOpenInComposeStudio!('');
+              },
             ),
-            onPressed: _applyRemediation,
+          FilledButton.icon(
+            icon: const Icon(Icons.delete_outline, size: 16),
+            label: const Text('Purge Stale Scan'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            onPressed: _purging ? null : _purgeStaleScan,
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ] else ...[
+          TextButton(
+            onPressed: _executing ? null : () => Navigator.pop(context),
+            child: Text(_result != null ? 'Close' : 'Cancel'),
+          ),
+          if (!_executing && _result == null && _preview != null)
+            FilledButton.icon(
+              icon: const Icon(Icons.bolt, size: 18),
+              label: const Text('Apply Fix & Redeploy'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF97316),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onPressed: _applyRemediation,
+            ),
+        ],
       ],
     );
   }

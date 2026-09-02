@@ -1412,6 +1412,7 @@ class ImageScanModel {
   final String? signatureSigner;
   final List<String> hosts;
   final List<String> services;
+  final bool inUse;
 
   ImageScanModel({
     required this.id,
@@ -1427,6 +1428,7 @@ class ImageScanModel {
     this.signatureSigner,
     this.hosts = const [],
     this.services = const [],
+    this.inUse = true,
   });
 
   factory ImageScanModel.fromJson(Map<String, dynamic> json) {
@@ -1444,6 +1446,7 @@ class ImageScanModel {
       signatureSigner: json['signature_signer'],
       hosts: (json['hosts'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       services: (json['services'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      inUse: json['in_use'] ?? true,
     );
   }
 }
@@ -2089,7 +2092,7 @@ class RemediationPreviewModel {
   final int mediumCount;
   final List<SuggestedVersionModel> suggestedVersions;
   final List<AffectedStackInfoModel> affectedStacks;
-  final List<AffectedStackInfoModel> allAvailableStacks;
+  final bool isInUse;
   final String riskAssessment;
   final String riskLevel;
 
@@ -2100,7 +2103,7 @@ class RemediationPreviewModel {
     required this.mediumCount,
     required this.suggestedVersions,
     required this.affectedStacks,
-    this.allAvailableStacks = const [],
+    this.isInUse = true,
     required this.riskAssessment,
     required this.riskLevel,
   });
@@ -2117,9 +2120,7 @@ class RemediationPreviewModel {
       affectedStacks: (json['affected_stacks'] as List<dynamic>? ?? [])
           .map((s) => AffectedStackInfoModel.fromJson(s as Map<String, dynamic>))
           .toList(),
-      allAvailableStacks: (json['all_available_stacks'] as List<dynamic>? ?? [])
-          .map((s) => AffectedStackInfoModel.fromJson(s as Map<String, dynamic>))
-          .toList(),
+      isInUse: json['is_in_use'] ?? ((json['affected_stacks'] as List<dynamic>? ?? []).isNotEmpty),
       riskAssessment: json['risk_assessment'] ?? '',
       riskLevel: json['risk_level'] ?? 'low',
     );

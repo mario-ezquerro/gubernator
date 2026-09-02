@@ -392,6 +392,7 @@ type ImageScan struct {
 	Hosts           []string   `gorm:"-" json:"hosts"`
 	ServicesRaw     []byte     `gorm:"type:json" json:"-"`
 	Services        []string   `gorm:"-" json:"services"`
+	InUse           bool       `gorm:"-" json:"in_use"`
 }
 
 func (s *ImageScan) BeforeSave(tx *gorm.DB) (err error) {

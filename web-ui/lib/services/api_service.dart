@@ -1611,6 +1611,37 @@ class ApiService {
     return RemediationResultModel.fromJson(data);
   }
 
+  /// Deletes a specific image scan report and its CVEs from cluster state.
+  static Future<bool> deleteImageScan(String scanIdOrImage) async {
+    final response = await http.delete(
+      Uri.parse('/api/security/scans/${Uri.encodeComponent(scanIdOrImage)}'),
+      headers: authHeaders,
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Prunes all scan reports of images that are no longer used by any active stack.
+  static Future<Map<String, dynamic>> pruneOrphanImageScans() async {
+    final response = await http.post(
+      Uri.parse('/api/security/scans/prune-orphans'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final scans = (data['scans'] as List? ?? [])
+          .map((e) => ImageScanModel.fromJson(e))
+          .toList();
+      final summary = data['summary'] != null ? SecuritySummaryModel.fromJson(data['summary']) : SecuritySummaryModel();
+      return {
+        'purged': data['purged'] ?? 0,
+        'scans': scans,
+        'summary': summary,
+      };
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Prune failed');
+  }
+
   /// Fetches transparent GitHub adoption stats & release metrics.
   static Future<AdoptionStatsModel> fetchAdoptionStats({bool force = false}) async {
     final url = force ? '/api/system/adoption?force=true' : '/api/system/adoption';

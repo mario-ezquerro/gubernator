@@ -60,7 +60,7 @@ func SecurityScanTriggerHandler(c *gin.Context) {
 	})
 }
 
-// SecurityScanSyncAllHandler triggers a full cluster-wide re-scan of all running images.
+// SecurityScanSyncAllHandler rescans all cluster images.
 func SecurityScanSyncAllHandler(c *gin.Context) {
 	scans, err := security.SyncAllClusterImages()
 	if err != nil {
@@ -69,7 +69,37 @@ func SecurityScanSyncAllHandler(c *gin.Context) {
 	}
 	summary, _ := security.GetSecuritySummary()
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Cluster-wide image scan synchronized",
+		"message": "All images scanned successfully",
+		"scans":   scans,
+		"summary": summary,
+	})
+}
+
+// SecurityScanDeleteHandler removes a specific scan report and its CVEs from the database.
+func SecurityScanDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := security.DeleteScan(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete scan: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Scan report purged successfully",
+		"id":      id,
+	})
+}
+
+// SecurityScanPruneOrphansHandler purges all scans for images no longer used in any active stack.
+func SecurityScanPruneOrphansHandler(c *gin.Context) {
+	count, err := security.PurgeOrphanScans()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prune orphan scans: " + err.Error()})
+		return
+	}
+	scans, _ := security.ListScans()
+	summary, _ := security.GetSecuritySummary()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Pruned orphan scans successfully",
+		"purged":  count,
 		"scans":   scans,
 		"summary": summary,
 	})

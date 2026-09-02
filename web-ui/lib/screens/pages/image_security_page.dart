@@ -123,7 +123,7 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
         imageName: imageName,
         initialStackId: stackId,
         onRemediationComplete: () {
-          _showSnackBar('✅ Container image successfully remediated and redeployed!');
+          _showSnackBar('✅ Security scan state updated!');
           _loadAllData();
           widget.onRefresh();
         },
@@ -136,6 +136,32 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
         },
       ),
     );
+  }
+
+  Future<void> _deleteScan(String id) async {
+    try {
+      final ok = await ApiService.deleteImageScan(id);
+      if (ok) {
+        _showSnackBar('✅ Stale image scan purged successfully');
+        _loadAllData();
+        widget.onRefresh();
+      }
+    } catch (e) {
+      _showSnackBar('Failed to purge scan: $e', isError: true);
+    }
+  }
+
+  Future<void> _pruneOrphans() async {
+    try {
+      _showSnackBar('🧹 Pruning stale scans for images not used in any active stack...');
+      final res = await ApiService.pruneOrphanImageScans();
+      final count = res['purged'] ?? 0;
+      _showSnackBar('✅ Pruned $count stale image scans');
+      _loadAllData();
+      widget.onRefresh();
+    } catch (e) {
+      _showSnackBar('Failed to prune orphan scans: $e', isError: true);
+    }
   }
 
   void _showScanDetailsDialog(ImageScanModel scan) async {
@@ -790,6 +816,15 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
               },
             ),
             const SizedBox(width: 8),
+            Tooltip(
+              message: 'Purge all scan records for images not in active stacks',
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.cleaning_services_outlined, size: 16),
+                label: const Text('Prune Orphans'),
+                onPressed: _pruneOrphans,
+              ),
+            ),
+            const SizedBox(width: 8),
             FilledButton.icon(
               icon: const Icon(Icons.radar, size: 18),
               label: const Text('Scan Image'),
@@ -847,13 +882,13 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                   itemBuilder: (ctx, i) {
                     final s = filtered[i];
                     final isVerified = s.signatureStatus == 'verified';
-
-                    // Find where this image is used across services & tasks
                     final usedServices = widget.state.services
                         .where((svc) => svc.image == s.imageName)
                         .map((svc) => svc.name)
                         .toSet()
                         .toList();
+
+                    final isOrphan = !s.inUse && usedServices.isEmpty;
 
                     return Card(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -865,12 +900,19 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: (s.criticalCount > 0 ? Colors.redAccent : const Color(0xFF10B981)).withValues(alpha: 0.15),
+                                color: (isOrphan
+                                        ? Colors.amber
+                                        : (s.criticalCount > 0 ? Colors.redAccent : const Color(0xFF10B981)))
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                s.criticalCount > 0 ? Icons.gpp_bad : Icons.gpp_good,
-                                color: s.criticalCount > 0 ? Colors.redAccent : const Color(0xFF10B981),
+                                isOrphan
+                                    ? Icons.warning_amber_rounded
+                                    : (s.criticalCount > 0 ? Icons.gpp_bad : Icons.gpp_good),
+                                color: isOrphan
+                                    ? Colors.amber
+                                    : (s.criticalCount > 0 ? Colors.redAccent : const Color(0xFF10B981)),
                                 size: 24,
                               ),
                             ),
@@ -881,40 +923,48 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                 children: [
                                   Row(
                                     children: [
-                                      Text(s.imageName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: isVerified ? Colors.green.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(isVerified ? Icons.verified : Icons.lock_open, size: 12, color: isVerified ? Colors.greenAccent : Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isVerified ? 'VERIFIED' : 'UNSIGNED',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: isVerified ? Colors.greenAccent : Colors.grey[400],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                      Text(
+                                        s.imageName,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                                       ),
+                                      const SizedBox(width: 8),
+                                      if (isVerified)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.verified, size: 12, color: Color(0xFF10B981)),
+                                              SizedBox(width: 4),
+                                              Text('VERIFIED', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      if (isOrphan) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                                          ),
+                                          child: const Text('NOT IN USE', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                   const SizedBox(height: 6),
-                                  // Deployed Hosts & Services
                                   Wrap(
-                                    spacing: 6,
+                                    spacing: 8,
                                     runSpacing: 4,
                                     children: [
-                                      // Host chips
-                                      for (final host in s.hosts.isNotEmpty ? s.hosts : ['node-local-manager (Manager - 192.168.252.27)'])
+                                      for (final host in s.hosts)
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
@@ -984,7 +1034,8 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                 _badgeChip('LOW', s.lowCount, s.lowCount > 0 ? Colors.blue : Colors.grey),
                               ],
                             ),
-                            if (s.criticalCount > 0 || s.highCount > 0) ...[
+                            if (!isOrphan && (s.criticalCount > 0 || s.highCount > 0)) ...[
+                              const SizedBox(width: 8),
                               FilledButton.icon(
                                 icon: const Icon(Icons.bolt, size: 16),
                                 label: const Text('Fix Image'),
@@ -994,13 +1045,21 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                 ),
                                 onPressed: () => _showRemediationDialog(s.imageName),
                               ),
-                              const SizedBox(width: 8),
                             ],
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.remove_red_eye, size: 16),
                               label: const Text('View CVEs'),
                               onPressed: () => _showScanDetailsDialog(s),
                             ),
+                            if (isOrphan) ...[
+                              const SizedBox(width: 6),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                                tooltip: 'Purge Stale Scan Report',
+                                onPressed: () => _deleteScan(s.id),
+                              ),
+                            ],
                           ],
                         ),
                       ),

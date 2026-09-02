@@ -471,6 +471,8 @@ func StartDashboard() {
 		// Image Security & SBOM Subsystem (The Imperial Seal)
 		api.GET("/security/scans", securityScansListHandler)
 		api.GET("/security/scans/:id", securityScanDetailsHandler)
+		api.DELETE("/security/scans/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanDeleteHandler)
+		api.POST("/security/scans/prune-orphans", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanPruneOrphansHandler)
 		api.POST("/security/scans/trigger", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanTriggerHandler)
 		api.POST("/security/scans/sync-all", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityScanSyncAllHandler)
 		api.GET("/security/sbom", securitySBOMGetHandler)
@@ -5205,6 +5207,34 @@ func securityScanSyncAllHandler(c *gin.Context) {
 	summary, _ := security.GetSecuritySummary()
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Cluster-wide image scan synchronized",
+		"scans":   scans,
+		"summary": summary,
+	})
+}
+
+func securityScanDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := security.DeleteScan(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete scan: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Scan report purged successfully",
+		"id":      id,
+	})
+}
+
+func securityScanPruneOrphansHandler(c *gin.Context) {
+	count, err := security.PurgeOrphanScans()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to prune orphan scans: " + err.Error()})
+		return
+	}
+	scans, _ := security.ListScans()
+	summary, _ := security.GetSecuritySummary()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Pruned orphan scans successfully",
+		"purged":  count,
 		"scans":   scans,
 		"summary": summary,
 	})
