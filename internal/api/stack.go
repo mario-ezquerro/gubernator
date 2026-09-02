@@ -371,7 +371,7 @@ func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
 
 					// Support node.role == worker / node.role == manager directly
 					if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-						if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
+						if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
 							matchesAll = false
 							break
 						}

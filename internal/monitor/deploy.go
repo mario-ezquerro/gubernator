@@ -68,13 +68,13 @@ func DeployManagerStack(webUser, webPass string) error {
 		"--device", "/dev/kmsg",
 		"gcr.io/cadvisor/cadvisor:latest",
 	}); err != nil {
-		return fmt.Errorf("cAdvisor failed: %w", err)
+		return fmt.Errorf("cadvisor failed: %w", err)
 	}
 
 	// 1b) Node Exporter
 	fmt.Println("\n🖥 Deploying Node Exporter (host metrics)...")
 	if err := EnsureNodeExporterRunning(); err != nil {
-		return fmt.Errorf("Node Exporter failed: %w", err)
+		return fmt.Errorf("node exporter failed: %w", err)
 	}
 
 	// 2) Loki (must start before Promtail)

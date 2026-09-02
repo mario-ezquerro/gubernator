@@ -56,11 +56,9 @@ func refreshGlusterSnapshotAsync() {
 		volumes, _ := storage.GetGlusterVolumes()
 		heals := make(map[string]bool)
 
-		if volumes != nil {
-			for _, v := range volumes {
-				if heal, err := storage.GetGlusterHealReport(v.Name); err == nil && heal.InSplitBrain {
-					heals[v.Name] = true
-				}
+		for _, v := range volumes {
+			if heal, err := storage.GetGlusterHealReport(v.Name); err == nil && heal.InSplitBrain {
+				heals[v.Name] = true
 			}
 		}
 

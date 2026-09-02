@@ -679,7 +679,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 						return fmt.Errorf("gluster volume create failed after purge: %s (%v)", string(outRetry), errRetry)
 					}
 				} else {
-					return fmt.Errorf("GlusterFS volume '%s' already exists in the cluster.\n\nTip: You can delete the volume from the GlusterFS tab, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly.", req.Name)
+					return fmt.Errorf("glusterfs volume '%s' already exists in the cluster (tip: you can delete the volume from the GlusterFS tab, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly)", req.Name)
 				}
 			} else {
 				return fmt.Errorf("gluster volume create failed: %s (%v)", outStr, err)

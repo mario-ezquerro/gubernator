@@ -237,7 +237,7 @@ func webScheduleService(service *db.Service, targetNode string) {
 
 						// Support node.role == worker / node.role == manager directly
 						if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-							if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
+							if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
 								matchesAll = false
 								break
 							}
@@ -2156,7 +2156,7 @@ func nodeAddHandler(c *gin.Context) {
 
 	// Check if node already exists in DB
 	var existing db.Node
-	if err := db.DB.First(&existing, "id = ? OR ip = ?", nodeID, req.Host).Error; err == nil {
+	if findErr := db.DB.First(&existing, "id = ? OR ip = ?", nodeID, req.Host).Error; findErr == nil {
 		// Update existing node status to active if reconnecting
 		db.DB.Model(&existing).Updates(map[string]interface{}{
 			"status":     "active",
@@ -2189,9 +2189,8 @@ func nodeAddHandler(c *gin.Context) {
 	dockerOut, _ := runSSHCommand(client, dockerCheckCmd)
 	if strings.TrimSpace(dockerOut) == "" {
 		addLog("Docker Engine", "Docker not found. Installing Docker CE automatically...", "ok")
-		_, err := runSSHCommand(client, "curl -fsSL https://get.docker.com | sudo sh && sudo systemctl enable --now docker")
-		if err != nil {
-			addLog("Docker Engine", fmt.Sprintf("Docker auto-installation failed: %v", err), "warn")
+		if _, installErr := runSSHCommand(client, "curl -fsSL https://get.docker.com | sudo sh && sudo systemctl enable --now docker"); installErr != nil {
+			addLog("Docker Engine", fmt.Sprintf("Docker auto-installation failed: %v", installErr), "warn")
 		} else {
 			addLog("Docker Engine", "Docker CE successfully installed and started.", "ok")
 		}
@@ -2410,9 +2409,6 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 		return
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(targetURL)
-	originalDirector := proxy.Director
-
 	// Resolve active username
 	userSession := auth.ExtractUserSession(c)
 	username := ""
@@ -2444,16 +2440,17 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 		}
 	}
 
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		req.Header.Set("X-WEBAUTH-USER", username)
-		req.Header.Del("Authorization")
-	}
-
-	proxy.ModifyResponse = func(resp *http.Response) error {
-		resp.Header.Del("X-Frame-Options")
-		resp.Header.Del("Content-Security-Policy")
-		return nil
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(targetURL)
+			pr.Out.Header.Set("X-WEBAUTH-USER", username)
+			pr.Out.Header.Del("Authorization")
+		},
+		ModifyResponse: func(resp *http.Response) error {
+			resp.Header.Del("X-Frame-Options")
+			resp.Header.Del("Content-Security-Policy")
+			return nil
+		},
 	}
 
 	proxy.ServeHTTP(c.Writer, c.Request)
