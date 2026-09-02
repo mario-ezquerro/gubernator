@@ -414,10 +414,8 @@ func replaceImageInNode(node *yaml.Node, currentImage, newImage string) bool {
 			if keyNode.Value == "image" && (strings.TrimSpace(valNode.Value) == strings.TrimSpace(currentImage) || imageMatches(valNode.Value, currentImage)) {
 				valNode.Value = newImage
 				modified = true
-			} else {
-				if replaceImageInNode(valNode, currentImage, newImage) {
-					modified = true
-				}
+			} else if replaceImageInNode(valNode, currentImage, newImage) {
+				modified = true
 			}
 		}
 	} else if node.Kind == yaml.SequenceNode || node.Kind == yaml.DocumentNode {
