@@ -346,6 +346,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **CPU & Memory Columns in Containers Table:** Integrated visual `CPU` (limits & reservations) and `MEMORY` badges with color-coded chips into the PlutoGrid Containers dashboard and CLI (`gbnt container ls` / `gbnt task ls`).
 * **Docker Engine & Worker Dispatch Resource Bounds:** Forwarded `--cpus`, `--memory`, and `--memory-reservation` to local Docker containers and remote Centurion SSH dispatches with dynamic backend Compose fallback resolution.
 
+### 55. Live Container CPU & Memory Consumption Telemetry (`v2.59.15`)
+* **Real-Time cAdvisor Container Telemetry:** Added `PopulateContainerMetrics()` to query Prometheus cAdvisor metrics (`container_cpu_usage_seconds_total` and `container_memory_working_set_bytes`) and populate `CpuPercent` and `MemUsedBytes` across all cluster tasks.
+* **PlutoGrid Combined Usage / Limit Visualization:** Enhanced Containers table columns `CPU (USAGE / LIMIT)` and `MEMORY (USAGE / LIMIT)` with color-coded live metrics (`3.5%`, `414.0 MB`) paired with underlying limit definitions (`Limit: 1.0 Core`, `Limit: 4G`).
+* **CLI Live Metrics Parity:** Updated `gbnt container ls` / `gbnt task ls` to display live consumption alongside resource limits in the terminal table.
+
+
 
 
 

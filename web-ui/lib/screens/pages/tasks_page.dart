@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -264,6 +265,14 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (log(bytes) / log(1024)).floor();
+    if (i >= suffixes.length) i = suffixes.length - 1;
+    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
   String _timeAgo(String iso) {
     if (iso.isEmpty) return '-';
     try {
@@ -475,79 +484,95 @@ class _TasksPageState extends State<TasksPage> {
         }),
       PlutoColumn(title: 'STATUS', field: 'status', type: PlutoColumnType.text(), width: 100,
         renderer: (ctx) => StatusBadge(label: ctx.cell.value as String)),
-      PlutoColumn(title: 'CPU', field: 'cpu', type: PlutoColumnType.text(), width: 145,
+      PlutoColumn(title: 'CPU (USAGE / LIMIT)', field: 'cpu', type: PlutoColumnType.text(), width: 175,
         renderer: (ctx) {
-          final val = ctx.cell.value as String;
-          final isUnlimited = val == 'Unlimited';
-          return Container(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: isUnlimited
-                    ? Colors.grey.withValues(alpha: 0.08)
-                    : Colors.blueAccent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isUnlimited
-                      ? Colors.grey.withValues(alpha: 0.2)
-                      : Colors.blueAccent.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.speed, size: 13, color: isUnlimited ? Colors.grey : Colors.blueAccent),
-                  const SizedBox(width: 4),
-                  Text(
-                    val,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'Courier New',
-                      fontWeight: FontWeight.w600,
-                      color: isUnlimited ? Colors.grey : Colors.blueAccent,
+          final t = ctx.row.cells['task_raw']!.value as Task;
+          final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+          final cpuLimitStr = _formatCpu(t, svc);
+          final isRunning = t.status == 'running';
+          final cpuVal = t.cpuPercent;
+          final cpuColor = cpuVal > 80
+              ? Colors.redAccent
+              : (cpuVal > 50 ? Colors.orangeAccent : (isRunning && cpuVal > 0 ? Colors.greenAccent : Colors.grey));
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.speed, size: 13, color: cpuColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      isRunning ? '${cpuVal.toStringAsFixed(1)}%' : '0.0%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Courier New',
+                        fontWeight: FontWeight.bold,
+                        color: isRunning && cpuVal > 0 ? cpuColor : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  cpuLimitStr == 'Unlimited' ? 'Limit: Unlimited' : 'Limit: $cpuLimitStr',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'Courier New',
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           );
         }),
-      PlutoColumn(title: 'MEMORY', field: 'memory', type: PlutoColumnType.text(), width: 145,
+      PlutoColumn(title: 'MEMORY (USAGE / LIMIT)', field: 'memory', type: PlutoColumnType.text(), width: 185,
         renderer: (ctx) {
-          final val = ctx.cell.value as String;
-          final isUnlimited = val == 'Unlimited';
-          return Container(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: isUnlimited
-                    ? Colors.grey.withValues(alpha: 0.08)
-                    : Colors.teal.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isUnlimited
-                      ? Colors.grey.withValues(alpha: 0.2)
-                      : Colors.teal.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.memory, size: 13, color: isUnlimited ? Colors.grey : Colors.teal),
-                  const SizedBox(width: 4),
-                  Text(
-                    val,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'Courier New',
-                      fontWeight: FontWeight.w600,
-                      color: isUnlimited ? Colors.grey : Colors.teal,
+          final t = ctx.row.cells['task_raw']!.value as Task;
+          final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+          final memLimitStr = _formatMem(t, svc);
+          final isRunning = t.status == 'running';
+          final memBytes = t.memUsedBytes;
+          final memColor = isRunning && memBytes > 0 ? const Color(0xFF14B8A6) : Colors.grey;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.memory, size: 13, color: memColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      isRunning && memBytes > 0 ? _formatBytes(memBytes) : '0 B',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Courier New',
+                        fontWeight: FontWeight.bold,
+                        color: isRunning && memBytes > 0 ? memColor : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  memLimitStr == 'Unlimited' ? 'Limit: Unlimited' : 'Limit: $memLimitStr',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'Courier New',
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           );
         }),

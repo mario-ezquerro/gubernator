@@ -32,19 +32,31 @@ var taskLsCmd = &cobra.Command{
 		json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tCPU\tMEMORY\tIP\tERROR")
+		fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tCPU (LIVE/LIMIT)\tMEMORY (LIVE/LIMIT)\tIP\tERROR")
 		for _, t := range tasks {
 			errStr := t.Error
 			if len(errStr) > 40 {
 				errStr = errStr[:37] + "..."
 			}
-			cpuStr := t.CpuLimit
-			if cpuStr == "" {
-				cpuStr = "-"
+			cpuStr := fmt.Sprintf("%.1f%%", t.CpuPercent)
+			if t.CpuLimit != "" {
+				cpuStr += fmt.Sprintf(" / %s", t.CpuLimit)
 			}
-			memStr := t.MemoryLimit
-			if memStr == "" {
-				memStr = "-"
+			memStr := "-"
+			if t.MemUsedBytes > 0 {
+				mb := float64(t.MemUsedBytes) / (1024 * 1024)
+				if mb >= 1024 {
+					memStr = fmt.Sprintf("%.1f GB", mb/1024)
+				} else {
+					memStr = fmt.Sprintf("%.1f MB", mb)
+				}
+			}
+			if t.MemoryLimit != "" {
+				if memStr == "-" {
+					memStr = "0 B / " + t.MemoryLimit
+				} else {
+					memStr += " / " + t.MemoryLimit
+				}
 			}
 			tID := t.ID
 			if len(tID) > 8 {

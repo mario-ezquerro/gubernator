@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
 // TaskResponse represents the payload sent back to a worker
@@ -134,6 +135,7 @@ func TaskListHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return
 	}
+	monitor.PopulateContainerMetrics(tasks)
 	c.JSON(http.StatusOK, tasks)
 }
 

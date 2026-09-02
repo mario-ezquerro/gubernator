@@ -680,6 +680,7 @@ func stateHandler(c *gin.Context) {
 	}
 
 	monitor.PopulateNodeMetrics(nodes)
+	monitor.PopulateContainerMetrics(tasks)
 
 	caddyfilePath := caddy.CaddyfilePath()
 	caddyfileContent := ""

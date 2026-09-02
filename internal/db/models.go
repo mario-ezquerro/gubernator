@@ -136,6 +136,8 @@ type Task struct {
 	MemoryLimit       string    `gorm:"type:varchar(50)" json:"memory_limit"`
 	CpuReservation    string    `gorm:"type:varchar(50)" json:"cpu_reservation"`
 	MemoryReservation string    `gorm:"type:varchar(50)" json:"memory_reservation"`
+	CpuPercent        float64   `gorm:"-" json:"cpu_percent"`
+	MemUsedBytes      uint64    `gorm:"-" json:"mem_used_bytes"`
 	Error             string    `gorm:"type:text" json:"error"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`

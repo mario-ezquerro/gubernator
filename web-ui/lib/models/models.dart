@@ -145,6 +145,8 @@ class Task {
   final String memoryLimit;
   final String cpuReservation;
   final String memoryReservation;
+  final double cpuPercent;
+  final int memUsedBytes;
   final String error;
   final String createdAt;
 
@@ -159,6 +161,8 @@ class Task {
     this.memoryLimit = '',
     this.cpuReservation = '',
     this.memoryReservation = '',
+    this.cpuPercent = 0.0,
+    this.memUsedBytes = 0,
     this.error = '',
     this.createdAt = '',
   });
@@ -175,6 +179,8 @@ class Task {
       memoryLimit: json['memory_limit'] ?? '',
       cpuReservation: json['cpu_reservation'] ?? '',
       memoryReservation: json['memory_reservation'] ?? '',
+      cpuPercent: (json['cpu_percent'] as num?)?.toDouble() ?? 0.0,
+      memUsedBytes: (json['mem_used_bytes'] as num?)?.toInt() ?? 0,
       error: json['error'] ?? '',
       createdAt: json['created_at'] ?? '',
     );
