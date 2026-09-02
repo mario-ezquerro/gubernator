@@ -148,6 +148,12 @@ func TaskListHandler(c *gin.Context) {
 // @Router /v1/task/{id} [delete]
 func TaskRmHandler(c *gin.Context) {
 	id := c.Param("id")
+
+	var task db.Task
+	if err := db.DB.Where("id = ?", id).First(&task).Error; err == nil {
+		_ = StopTaskOnNode(task)
+	}
+
 	res := db.DB.Where("id = ?", id).Delete(&db.Task{})
 	if res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
@@ -156,5 +162,5 @@ func TaskRmHandler(c *gin.Context) {
 
 	aqueducts.GenerateAllAsync()
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task removed"})
+	c.JSON(http.StatusOK, gin.H{"message": "Task removed and container stopped"})
 }

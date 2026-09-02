@@ -224,20 +224,61 @@ func executeTask(task db.Task, svc db.Service) {
 	}()
 }
 
-// StopStackContainers stops and removes all containers belonging to a stack's tasks.
+// StopTaskOnNode stops and removes a container on its assigned node (local manager or remote worker via SSH).
+func StopTaskOnNode(task db.Task) error {
+	containerName := task.ContainerName
+	if containerName == "" {
+		if len(task.ID) >= 8 {
+			containerName = "gbnt-" + task.ID
+		} else {
+			return nil
+		}
+	}
+
+	if task.NodeID == localManagerNodeID || task.NodeID == "" || strings.Contains(strings.ToLower(task.NodeID), "manager") {
+		_ = docker.StopContainer(containerName)
+		_ = exec.Command("docker", "rm", "-f", containerName).Run()
+		return nil
+	}
+
+	// Remote worker node via SSH
+	var targetNode db.Node
+	if err := db.DB.First(&targetNode, "id = ? OR ip = ?", task.NodeID, task.NodeID).Error; err == nil && targetNode.IP != "" {
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/data/id_ed25519", "/data/id_rsa",
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		stopCmd := fmt.Sprintf("sudo docker rm -f %s 2>/dev/null || true", containerName)
+		stopSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", targetNode.IP), stopCmd)
+		_ = exec.Command("ssh", stopSSHArgs...).Run()
+	} else {
+		_ = docker.StopContainer(containerName)
+		_ = exec.Command("docker", "rm", "-f", containerName).Run()
+	}
+	return nil
+}
+
+// StopStackContainers stops and removes all containers belonging to a stack's tasks across all nodes.
 func StopStackContainers(stackID string) {
 	var services []db.Service
 	db.DB.Where("stack_id = ?", stackID).Find(&services)
 
 	for _, svc := range services {
 		var tasks []db.Task
-		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
+		db.DB.Where("service_id = ?", svc.ID).Find(&tasks)
 
 		for _, task := range tasks {
-			fmt.Printf("[Executor] Stopping container %s for task %s...\n", task.ContainerName, task.ID[:8])
-			if err := docker.StopContainer(task.ContainerName); err != nil {
-				fmt.Printf("[Executor] Warning: %v\n", err)
-			}
+			fmt.Printf("[Executor] Stopping container %s on node %s for task %s...\n", task.ContainerName, task.NodeID, task.ID[:8])
+			_ = StopTaskOnNode(task)
 		}
 	}
 }

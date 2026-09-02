@@ -642,6 +642,41 @@ func stateHandler(c *gin.Context) {
 	db.DB.Find(&services)
 	db.DB.Find(&tasks)
 
+	// Clean up duplicate stacks with identical names (keep latest)
+	stackMap := make(map[string]db.Stack)
+	cleanedStacks := false
+	for _, st := range stacks {
+		if existing, ok := stackMap[st.Name]; ok {
+			db.DB.Where("id = ?", existing.ID).Delete(&db.Stack{})
+			var oldSvcs []db.Service
+			db.DB.Where("stack_id = ?", existing.ID).Find(&oldSvcs)
+			for _, os := range oldSvcs {
+				db.DB.Where("service_id = ?", os.ID).Delete(&db.Task{})
+			}
+			db.DB.Where("stack_id = ?", existing.ID).Delete(&db.Service{})
+			cleanedStacks = true
+		}
+		stackMap[st.Name] = st
+	}
+
+	// Prune dead tasks whose services no longer exist
+	serviceIDs := make(map[string]bool)
+	for _, svc := range services {
+		serviceIDs[svc.ID] = true
+	}
+	for _, t := range tasks {
+		if t.Status == "dead" && !serviceIDs[t.ServiceID] {
+			db.DB.Where("id = ?", t.ID).Delete(&db.Task{})
+			cleanedStacks = true
+		}
+	}
+
+	if cleanedStacks {
+		db.DB.Find(&stacks)
+		db.DB.Find(&services)
+		db.DB.Find(&tasks)
+	}
+
 	// Dynamically resolve CPU & Memory bounds from Stack RawComposeFile if not persisted
 	for i := range services {
 		if services[i].CpuLimit == "" || services[i].MemoryLimit == "" {

@@ -209,6 +209,21 @@ func StackDeployHandler(c *gin.Context) {
 		return
 	}
 
+	// Clean up existing stack with the same name if redeploying
+	var existingStack db.Stack
+	if err := db.DB.Where("name = ?", stackName).First(&existingStack).Error; err == nil {
+		slog.Info("redeploying existing stack, stopping previous containers", "name", stackName, "old_id", existingStack.ID)
+		StopStackContainers(existingStack.ID)
+
+		var oldServices []db.Service
+		db.DB.Where("stack_id = ?", existingStack.ID).Find(&oldServices)
+		for _, s := range oldServices {
+			db.DB.Where("service_id = ?", s.ID).Delete(&db.Task{})
+		}
+		db.DB.Where("stack_id = ?", existingStack.ID).Delete(&db.Service{})
+		db.DB.Where("id = ?", existingStack.ID).Delete(&db.Stack{})
+	}
+
 	// Create Stack record
 	stackID := uuid.New().String()
 	stack := db.Stack{

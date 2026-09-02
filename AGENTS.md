@@ -355,6 +355,16 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Flexible YAML Resource Parsing (`FlexString`):** Implemented custom YAML unmarshaler capable of reading CPU bounds expressed as numeric literals (`cpus: 1.0`, `cpus: 2`), strings (`cpus: "1.0"`), or legacy Compose v2 keys (`mem_limit`, `mem_reservation`, `cpus`).
 * **Dynamic Compose Resource Bounds Resolution:** Upgraded backend backfill in `stateHandler` to parse both `deploy.resources` and service-level fields from any raw Compose file, propagating explicit CPU and Memory limits to active tasks and containers.
 
+### 57. Multi-Node Container Termination, Stack Redeploy Purge & Kubeflow 4/4 Health (`v2.59.17`)
+* **Remote SSH Task Termination (`StopTaskOnNode`):** Upgraded `StopTaskOnNode` and `StopStackContainers` to dispatch remote SSH commands (`sudo docker rm -f <container>`) to remote worker Centurions, completely eliminating orphaned containers and port binding collisions (`Bind for 0.0.0.0:9000 failed`).
+* **Atomic Stack Redeployment Purge:** Enhanced `StackDeployHandler` to atomically stop all remote containers, remove old tasks, and prune stale services before deploying updated compose stacks, maintaining clean 4/4 replica ratios in Legions dashboard.
+
+### 58. Automated Stack Deduplication & Dead Orphan Task Auto-Pruning (`v2.59.18`)
+* **Automated Stack Deduplication in State Sync:** Integrated automatic deduplication of stack records with identical names in `stateHandler`, preserving only the latest active stack and cleaning up superseded services and tasks.
+* **Dead Orphan Task Garbage Collection:** Added auto-pruning for dead tasks whose parent services or stacks were previously destroyed, guaranteeing accurate `4/4` container counts on the Legions dashboard.
+
+
+
 
 
 
