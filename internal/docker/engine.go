@@ -26,6 +26,7 @@ type ContainerConfig struct {
 	Env     []string // ["FOO=bar", "BAR=baz"]
 	Volumes []string // ["/host:/container", "namedvol:/data"]
 	Command string   // optional override command
+	Restart string   // restart policy e.g. "unless-stopped", "always", "on-failure"
 }
 
 // PullImage pulls a Docker image from a registry.
@@ -48,7 +49,12 @@ func PullImage(imageName string) error {
 func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 	containerName = "gbnt-" + cfg.TaskID
 
-	args := []string{"run", "-d", "--name", containerName, "-l", "gbnt.task.id=" + cfg.TaskID}
+	restartPolicy := cfg.Restart
+	if restartPolicy == "" {
+		restartPolicy = "unless-stopped"
+	}
+
+	args := []string{"run", "-d", "--name", containerName, "--restart", restartPolicy, "-l", "gbnt.task.id=" + cfg.TaskID}
 
 	// Port mappings: -p host:container
 	for _, p := range cfg.Ports {

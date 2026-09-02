@@ -321,7 +321,7 @@ func drainNodeTasks(nodeID string) {
 		}
 
 		// 4. Reschedule a new replica (will be placed on another ACTIVE node)
-		scheduleService(&svc, "")
+		ScheduleService(&svc, "")
 	}
 
 	// Regenerate configurations

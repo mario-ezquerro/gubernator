@@ -286,10 +286,47 @@ var legionJoinCmd = &cobra.Command{
 					activeTasks[t.Task.ID] = true
 				}
 
+				reportStatus := func(taskID, status, ip, containerName, errMsg string) {
+					statusPayload, _ := json.Marshal(map[string]string{
+						"status":         status,
+						"container_ip":   ip,
+						"container_name": containerName,
+						"error":          errMsg,
+					})
+					statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, taskID), bytes.NewBuffer(statusPayload))
+					if err == nil {
+						statusReq.Header.Set("Content-Type", "application/json")
+						if apiToken != "" {
+							statusReq.Header.Set("Authorization", "Bearer "+apiToken)
+						} else if joinToken != "" {
+							statusReq.Header.Set("Authorization", "Bearer "+joinToken)
+						}
+						http.DefaultClient.Do(statusReq)
+					}
+				}
+
 				for i, t := range data.Tasks {
+					containerName := "gbnt-" + t.Task.ID
+
+					// Health check for tasks expected to be running
+					if t.Task.Status == "running" {
+						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+						if out, err := inspectCmd.Output(); err != nil || strings.TrimSpace(string(out)) != "true" {
+							// Container is dead or stopped: attempt restart
+							fmt.Printf("⚠️ Task %s container %s is not running. Attempting restart...\n", t.Task.ID, containerName)
+							startCmd := exec.Command("docker", "start", containerName)
+							if sErr := startCmd.Run(); sErr != nil {
+								fmt.Printf("❌ Failed to restart container %s: %v. Reporting dead...\n", containerName, sErr)
+								reportStatus(t.Task.ID, "dead", "", containerName, fmt.Sprintf("container exited and restart failed: %v", sErr))
+							} else {
+								fmt.Printf("✅ Container %s restarted successfully.\n", containerName)
+							}
+						}
+						continue
+					}
+
 					if t.Task.Status == "pending" || t.Task.Status == "pulling" || t.Task.Status == "starting" {
 						// If container is already running locally on this worker, report running and continue
-						containerName := "gbnt-" + t.Task.ID
 						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
 						if out, err := inspectCmd.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
 							continue
@@ -297,32 +334,13 @@ var legionJoinCmd = &cobra.Command{
 
 						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)
 
-						reportStatus := func(status, ip, containerName, errMsg string) {
-							statusPayload, _ := json.Marshal(map[string]string{
-								"status":         status,
-								"container_ip":   ip,
-								"container_name": containerName,
-								"error":          errMsg,
-							})
-							statusReq, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/tasks/%s/status", addr, t.Task.ID), bytes.NewBuffer(statusPayload))
-							if err == nil {
-								statusReq.Header.Set("Content-Type", "application/json")
-								if apiToken != "" {
-									statusReq.Header.Set("Authorization", "Bearer "+apiToken)
-								} else if joinToken != "" {
-									statusReq.Header.Set("Authorization", "Bearer "+joinToken)
-								}
-								http.DefaultClient.Do(statusReq)
-							}
-						}
-
 						// 1. Report "pulling" status immediately so manager & dashboard show live progress
-						reportStatus("pulling", "", "", fmt.Sprintf("Pulling image %s...", t.Image))
+						reportStatus(t.Task.ID, "pulling", "", "", fmt.Sprintf("Pulling image %s...", t.Image))
 
 						fmt.Printf("Pulling image %s...\n", t.Image)
 						if err := docker.PullImage(t.Image); err != nil {
 							fmt.Printf("Failed to pull image: %v\n", err)
-							reportStatus("dead", "", "", fmt.Sprintf("pull failed: %v", err))
+							reportStatus(t.Task.ID, "dead", "", "", fmt.Sprintf("pull failed: %v", err))
 							continue
 						}
 
@@ -349,17 +367,17 @@ var legionJoinCmd = &cobra.Command{
 
 							if err := exec.Command("docker", args...).Run(); err != nil {
 								fmt.Printf("Failed to start scope probe: %v\n", err)
-								reportStatus("dead", "", "", fmt.Sprintf("scope probe start failed: %v", err))
+								reportStatus(t.Task.ID, "dead", "", "", fmt.Sprintf("scope probe start failed: %v", err))
 								continue
 							}
 
-							reportStatus("running", t.Task.ContainerIP, "gbnt-monitor-scope-probe", "")
+							reportStatus(t.Task.ID, "running", t.Task.ContainerIP, "gbnt-monitor-scope-probe", "")
 							data.Tasks[i].Task.Status = "running"
 							continue
 						}
 
 						// 2. Report "starting" status
-						reportStatus("starting", "", "", "Starting container...")
+						reportStatus(t.Task.ID, "starting", "", "", "Starting container...")
 
 						cfg := docker.ContainerConfig{
 							TaskID:  t.Task.ID,
@@ -374,13 +392,13 @@ var legionJoinCmd = &cobra.Command{
 						containerName, ip, err := docker.StartContainer(cfg)
 						if err != nil {
 							fmt.Printf("Failed to start container: %v\n", err)
-							reportStatus("dead", "", "", fmt.Sprintf("start failed: %v", err))
+							reportStatus(t.Task.ID, "dead", "", "", fmt.Sprintf("start failed: %v", err))
 							continue
 						}
 
 						fmt.Printf("Container %s started successfully with IP: %s\n", containerName, ip)
 
-						reportStatus("running", ip, containerName, "")
+						reportStatus(t.Task.ID, "running", ip, containerName, "")
 
 						// Update local t.Task details for immediate Caddyfile update
 						data.Tasks[i].Task.Status = "running"

@@ -226,7 +226,7 @@ func StackDeployHandler(c *gin.Context) {
 		db.DB.Create(&service)
 
 		// Scheduler: assign Tasks to Nodes based on Constraints
-		scheduleService(&service, req.TargetNode)
+		ScheduleService(&service, req.TargetNode)
 	}
 
 	// Trigger generation of Prometheus SLO rules
@@ -239,120 +239,127 @@ func StackDeployHandler(c *gin.Context) {
 	})
 }
 
-func scheduleService(service *db.Service, targetNode string) {
-	// For each replica, find a suitable node
+// ScheduleService assigns desired replicas of a service to cluster nodes.
+func ScheduleService(service *db.Service, targetNode string) {
 	for i := 0; i < service.DesiredReplicas; i++ {
-		var selectedNode *db.Node
+		ScheduleSingleReplica(service, targetNode)
+	}
+}
 
-		if targetNode != "" && targetNode != "auto" {
-			var n db.Node
-			if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
-				// Check if targeted node is not in pause/drain/no_schedule status
-				if n.Status == "active" || n.Status == "ready" {
-					selectedNode = &n
-				}
+// ScheduleSingleReplica assigns one replica of a service to the optimal cluster node.
+func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
+	var selectedNode *db.Node
+
+	if targetNode != "" && targetNode != "auto" {
+		var n db.Node
+		if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
+			// Check if targeted node is not in pause/drain/no_schedule status
+			if n.Status == "active" || n.Status == "ready" {
+				selectedNode = &n
+			}
+		}
+	}
+
+	if selectedNode == nil {
+		var allNodes []db.Node
+		// Fetch all active or ready nodes (excluding drain, pause, no_schedule, maintenance)
+		db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
+
+		// Calculate real-time task load per node (Workers prioritized first, Manager last)
+		type nodeWithLoad struct {
+			node db.Node
+			load int64
+		}
+		var workerLoads []nodeWithLoad
+		var managerLoads []nodeWithLoad
+
+		for _, n := range allNodes {
+			var count int64
+			db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", n.ID, []string{"running", "pending", "pulling", "starting"}).Count(&count)
+			nl := nodeWithLoad{node: n, load: count}
+			if strings.ToLower(n.Role) == "manager" {
+				managerLoads = append(managerLoads, nl)
+			} else {
+				workerLoads = append(workerLoads, nl)
 			}
 		}
 
-		if selectedNode == nil {
-			var allNodes []db.Node
-			// Fetch all active or ready nodes (excluding drain, pause, no_schedule, maintenance)
-			db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
+		// Sort workers by active task load ascending (least-loaded worker first)
+		sort.SliceStable(workerLoads, func(a, b int) bool {
+			return workerLoads[a].load < workerLoads[b].load
+		})
+		// Sort managers by active task load ascending
+		sort.SliceStable(managerLoads, func(a, b int) bool {
+			return managerLoads[a].load < managerLoads[b].load
+		})
 
-			// Calculate real-time task load per node (Workers prioritized first, Manager last)
-			type nodeWithLoad struct {
-				node db.Node
-				load int64
-			}
-			var workerLoads []nodeWithLoad
-			var managerLoads []nodeWithLoad
+		// Workers ALWAYS prioritized over Manager
+		var orderedNodes []db.Node
+		for _, wl := range workerLoads {
+			orderedNodes = append(orderedNodes, wl.node)
+		}
+		for _, ml := range managerLoads {
+			orderedNodes = append(orderedNodes, ml.node)
+		}
 
-			for _, n := range allNodes {
-				var count int64
-				db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", n.ID, []string{"running", "pending", "pulling", "starting"}).Count(&count)
-				nl := nodeWithLoad{node: n, load: count}
-				if strings.ToLower(n.Role) == "manager" {
-					managerLoads = append(managerLoads, nl)
-				} else {
-					workerLoads = append(workerLoads, nl)
-				}
-			}
+		// Constraint matching with Worker-First priority and Least-Loaded Spread
+		for _, node := range orderedNodes {
+			matchesAll := true
+			for _, constraint := range service.Constraints {
+				// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 {
+					leftSide := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
 
-			// Sort workers by active task load ascending (least-loaded worker first)
-			sort.SliceStable(workerLoads, func(a, b int) bool {
-				return workerLoads[a].load < workerLoads[b].load
-			})
-			// Sort managers by active task load ascending
-			sort.SliceStable(managerLoads, func(a, b int) bool {
-				return managerLoads[a].load < managerLoads[b].load
-			})
-
-			// Workers ALWAYS prioritized over Manager
-			var orderedNodes []db.Node
-			for _, wl := range workerLoads {
-				orderedNodes = append(orderedNodes, wl.node)
-			}
-			for _, ml := range managerLoads {
-				orderedNodes = append(orderedNodes, ml.node)
-			}
-
-			// Constraint matching with Worker-First priority and Least-Loaded Spread
-			for _, node := range orderedNodes {
-				matchesAll := true
-				for _, constraint := range service.Constraints {
-					// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
-					parts := strings.Split(constraint, "==")
-					if len(parts) == 2 {
-						leftSide := strings.TrimSpace(parts[0])
-						val := strings.TrimSpace(parts[1])
-
-						// Support node.role == worker / node.role == manager directly
-						if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-							if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
-								matchesAll = false
-								break
-							}
-							continue
-						}
-
-						if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
-							// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
-							continue
-						}
-
-						key := strings.TrimPrefix(leftSide, "node.labels.")
-						if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+					// Support node.role == worker / node.role == manager directly
+					if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+						if strings.ToLower(node.Role) != strings.ToLower(val) && strings.ToLower(node.Labels["gbnt.node.role"]) != strings.ToLower(val) {
 							matchesAll = false
 							break
 						}
+						continue
+					}
+
+					if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+						// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
+						continue
+					}
+
+					key := strings.TrimPrefix(leftSide, "node.labels.")
+					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+						matchesAll = false
+						break
 					}
 				}
+			}
 
-				if matchesAll {
-					selectedNode = &node
-					break // Found a matching node (Workers prioritized first, Manager last)
-				}
+			if matchesAll {
+				selectedNode = &node
+				break // Found a matching node (Workers prioritized first, Manager last)
 			}
 		}
+	}
 
-		if selectedNode != nil {
-			task := db.Task{
-				ID:        uuid.New().String(),
-				ServiceID: service.ID,
-				NodeID:    selectedNode.ID,
-				Status:    "pending", // executor will pick this up
-			}
-			db.DB.Create(&task)
-		} else {
-			fmt.Printf("Warning: Could not find a suitable node for service %s replica %d\n", service.Name, i+1)
-			task := db.Task{
-				ID:        uuid.New().String(),
-				ServiceID: service.ID,
-				NodeID:    "none", // Or a dummy node ID
-				Status:    "dead",
-				Error:     "No suitable node found for placement constraints",
-			}
-			db.DB.Create(&task)
+	if selectedNode != nil {
+		task := db.Task{
+			ID:        uuid.New().String(),
+			ServiceID: service.ID,
+			NodeID:    selectedNode.ID,
+			Status:    "pending", // executor will pick this up
 		}
+		db.DB.Create(&task)
+		return &task
+	} else {
+		fmt.Printf("Warning: Could not find a suitable node for service %s\n", service.Name)
+		task := db.Task{
+			ID:        uuid.New().String(),
+			ServiceID: service.ID,
+			NodeID:    "none", // Or a dummy node ID
+			Status:    "dead",
+			Error:     "No suitable node found for placement constraints",
+		}
+		db.DB.Create(&task)
+		return &task
 	}
 }

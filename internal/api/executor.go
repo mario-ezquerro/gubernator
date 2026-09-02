@@ -98,7 +98,7 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 
 	// 2. Build docker run arguments with safe single quoting
 	var dockerArgs []string
-	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--name", fmt.Sprintf("'%s'", containerName), "-l", fmt.Sprintf("'gbnt.task.id=%s'", task.ID))
+	dockerArgs = append(dockerArgs, "sudo", "docker", "run", "-d", "--restart", "unless-stopped", "--name", fmt.Sprintf("'%s'", containerName), "-l", fmt.Sprintf("'gbnt.task.id=%s'", task.ID))
 
 	for _, p := range svc.Ports {
 		dockerArgs = append(dockerArgs, "-p", fmt.Sprintf("'%s'", strings.ReplaceAll(p, "'", "'\\''")))

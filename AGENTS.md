@@ -326,6 +326,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Persistent Navigation Hierarchy:** Guaranteed stable 1:1 index matching across all 16 sidebar navigation entries regardless of SRE monitor container states.
 * **Clean Section Visual Dividers:** Added a sleek, permanent divider separating Core Services from Observability Suites (Monitoring, Loki Logs, Network Monitor, Jaeger, Scope).
 
+### 51. Self-Healing Watchdog & Automated Container Restart Subsystem (`v2.59.11`)
+* **Universal `--restart unless-stopped` Policy:** Injected native container restart policies into `docker.StartContainer` and remote worker SSH dispatchers, ensuring containers auto-recover across host reboots and dockerd restarts.
+* **Manager Self-Healing Watchdog Daemon:** Implemented background reconciliation loop (`StartSelfHealingWatchdog`) continuously auditing stack replica health, detecting dead or missing containers, and automatically re-scheduling replacements to the least-loaded healthy nodes.
+* **Worker Execution Health Monitor:** Added active container state verification in `gbnt legion join` worker loops to detect exited or crashed processes and attempt local restarts before escalating to the Manager.
+
+
 
 
 

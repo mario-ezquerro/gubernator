@@ -83,6 +83,7 @@ func Start(ctx context.Context) error {
 	go web.StartDashboard()
 	go startTelemetryServer(ctx)
 	go startLocalExecutor(ctx)
+	go StartSelfHealingWatchdog(ctx)
 
 	// Auto-deploy SRE Monitoring Stack if GBNT_MONITOR=true
 	monitorEnabled := strings.ToLower(os.Getenv("GBNT_MONITOR"))
