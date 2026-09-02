@@ -22,8 +22,9 @@ While `./gbnt serve` is running:
 
 ### Cluster & Nodes
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| `GET` | `/api/node/join-info` | Get Manager IP, join tokens, public key, and formatted join commands |
+| `GET` | `/join.sh` (or `/api/node/join.sh`) | Standalone bash installer script for automated worker join |
+| `POST` | `/api/node/add` | Remote SSH provisioning with multi-auth (password, private key, manager key) and live step logs |
 | `GET` | `/v1/node/ls` | List all registered nodes |
 | `GET` | `/v1/node/{id}` | Inspect a specific node |
 | `POST` | `/v1/node/join` | Register a new worker node |

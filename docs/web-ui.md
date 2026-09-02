@@ -246,6 +246,27 @@ The dashboard includes a dedicated **5-tab SLO Management Suite** inspired by Sl
 
 ---
 
+## 🏛️ Centurions & Universal Onboarding Suite (`AddNodeDialog`)
+
+Accessible from **Centurions [Host] ➔ Add Centurion**, the onboarding suite offers 3 workflows:
+
+### 1. ⚡ Quick Join (Copy & Paste Commands)
+* Instant 1-click command cards for:
+  * **One-Liner Automated Installer** (`curl -fsSL .../join.sh | sudo bash -s ...`).
+  * **Docker Container** (`sudo docker run ... legion join`).
+  * **Gubernator CLI Binary** (`sudo gbnt legion join`).
+* Shows real-time cluster pulse bar with current manager IP and registered node count.
+
+### 2. 🚀 Remote SSH Provisioning + Live Terminal Console
+* Manager connects via SSH into the remote machine.
+* Supports **Password**, **SSH Private Key (.pem)**, or **Manager Public Key Auto-Discovery**.
+* Displays an authentic Linux-style monospace terminal console streaming live execution progress (`SSH Handshake`, `Hardware Discovery`, `Docker Engine Check`, `Agent Deployment`, `System Stacks`, `Aqueducts & Telemetry`).
+
+### 3. ☁️ Cloud-Init & Automation (IaC)
+* Formatted `#cloud-config` YAML blueprint ready to paste into Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, or Terraform.
+
+---
+
 ## API Endpoints Used by the Dashboard
 
 The Web UI communicates with the internal `/api` routes (on port 4001, protected by Basic Auth):

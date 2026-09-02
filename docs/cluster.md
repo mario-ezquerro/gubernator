@@ -125,30 +125,94 @@ To add a worker to this legion, run the following command:
 
 ---
 
-## 💓 5. Join Worker Nodes to the Cluster
+## 💓 5. Universal Centurion Worker Onboarding Suite
 
-On each **Worker node**, run the join command in the background to start the heartbeat and container execution loops:
+Gubernator provides **3 flexible methods** to join Worker nodes (*Centurions*) into the cluster, accessible directly from the Web Dashboard (**Centurions [Host] ➔ Add Centurion**) or via CLI and automated scripts:
 
+### ⚡ Method A: Quick Join (Copy & Paste Commands)
+*Best for fast setup, cloud VMs, or hosts behind NAT/firewalls (no SSH configuration needed).*
+
+Open a terminal on your target worker machine and paste any of the following commands:
+
+#### Option 1: One-Liner Automated Installer (Recommended)
+Automatically installs Docker CE if missing, configures systemd persistence, and starts the Centurion worker agent:
 ```bash
-# Run on Worker 1 and Worker 2
-nohup /home/ubuntu/gbnt legion join \
+curl -fsSL http://<MANAGER-IP>:4001/api/node/join.sh | sudo bash -s -- \
+    --manager http://<MANAGER-IP>:4000 \
     --token <JOIN_TOKEN> \
-    --api-token my-gubernator-api-token \
-    --manager <MANAGER-IP>:4000 > /home/ubuntu/worker.log 2>&1 &
+    --api-token <API_TOKEN>
 ```
 
-Verify that the workers successfully join by checking the log:
+#### Option 2: Docker Container (Native Engine)
+Runs the Centurion worker agent inside an isolated container with host network permissions:
 ```bash
-cat /home/ubuntu/worker.log
+sudo docker run -d --name gbnt-worker \
+    --network host \
+    --restart unless-stopped \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /data:/data \
+    marioezquerro/gubernator:latest legion join \
+    --token <JOIN_TOKEN> \
+    --manager http://<MANAGER-IP>:4000 \
+    --api-token <API_TOKEN>
 ```
-Output:
-```text
-✅ Successfully joined the Legion!
-   Node ID  : node-gbnt-worker1
-   Local IP : 192.168.252.6
-   Manager  : http://192.168.252.5:4000
 
-💓 Starting background loops (Heartbeat & Executor)...
+#### Option 3: Standalone Gubernator Binary
+```bash
+sudo gbnt legion join \
+    --token <JOIN_TOKEN> \
+    --manager http://<MANAGER-IP>:4000 \
+    --api-token <API_TOKEN>
+```
+
+---
+
+### 🚀 Method B: Remote SSH Provisioning + Live Terminal Console
+*Best when you want the Manager to connect over SSH and bootstrap the remote host with zero manual work on the worker machine.*
+
+1. Open the Web Dashboard at `http://<MANAGER-IP>:4001` and navigate to **Centurions [Host]**.
+2. Click **Add Centurion**.
+3. Select the **🚀 Remote SSH Provision** tab.
+4. Fill in:
+   * **Host IP / FQDN**: `192.168.252.34`
+   * **SSH Port**: `22`
+   * **SSH Username**: `ubuntu` / `root`
+   * **Authentication Method**:
+     * 🔑 **Password**: Enter password (used for SSH login & sudo elevation).
+     * 🛡️ **Private Key (.pem)**: Paste your OpenSSH RSA/ED25519 private key.
+     * 👑 **Manager SSH Key**: Uses the Manager's internal SSH key (`/data/ssh/id_ed25519.pub`).
+   * **Auto-deploy System Stacks**: Automatically deploys Caddy Ingress (`CORE-GBNT`) and Prometheus Monitoring agents (`[SRE] Monitor`).
+5. Click **Start Remote SSH Provisioning**.
+6. The modal transforms into a **Live Monospace Terminal Console** showing step-by-step progress:
+   ```text
+   [SSH Connection]       Connecting to 192.168.252.34:22 as user 'ubuntu'...
+   [SSH Handshake]        SSH session established securely.
+   [Hardware Discovery]   Detected hostname 'gbnt-worker3', 2 CPU cores, 1955 MB RAM.
+   [Cluster Registry]     Registered Centurion 'node-gbnt-worker3' into database.
+   [Docker Engine]        Docker CE runtime is installed and operational.
+   [Agent Deployment]     Gubernator Centurion worker container deployed and running.
+   [System Stacks]        Bootstrapping CORE-GBNT (Caddy) and SRE Monitor services...
+   [Aqueducts & Telemetry] Updating CoreDNS routing and Prometheus metric scraping targets...
+   [Complete]             Centurion 'node-gbnt-worker3' successfully provisioned and online!
+   🎉 SUCCESS: Centurion worker host is online and active in cluster!
+   ```
+
+---
+
+### ☁️ Method C: Cloud-Init & Infrastructure as Code (IaC)
+*Best for automated provisioning with Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, or Terraform.*
+
+Copy the following `#cloud-config` template into your VM UserData configuration:
+
+```yaml
+#cloud-config
+package_upgrade: true
+packages:
+  - curl
+  - docker.io
+runcmd:
+  - systemctl enable --now docker
+  - sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token <JOIN_TOKEN> --manager http://<MANAGER-IP>:4000 --api-token <API_TOKEN>
 ```
 
 ---

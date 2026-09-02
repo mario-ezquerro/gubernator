@@ -213,33 +213,39 @@ node-worker-pi4      192.168.1.20  worker   active
 
 ### Clustering (The Legion)
 
-To form a cluster, you must initialize the "Legion" from the Manager node to retrieve the secure Join Token.
+To form a cluster, you can join Worker nodes (*Centurions*) using any of the following methods:
 
+#### ⚡ Quick Join via One-Liner (Fastest & Firewall-Proof)
+Run on the target worker machine to automatically install Docker CE, start the Centurion worker, and register into the cluster:
 ```bash
-# On the Manager node — shows both tokens and ready-to-use commands
-gbnt legion info
+curl -fsSL http://<MANAGER-IP>:4001/api/node/join.sh | sudo bash -s -- \
+    --manager http://<MANAGER-IP>:4000 \
+    --token <JOIN_TOKEN> \
+    --api-token <API_TOKEN>
 ```
 
-*Output example:*
-```text
-╔══════════════════════════════════════════════════════════╗
-║         🏛  GUBERNATOR — CLUSTER INFO                   ║
-╠══════════════════════════════════════════════════════════╣
-║  JOIN TOKEN : a3f8c1d2e4b5...                            ║
-║  API TOKEN  : 4a8f3c1d2e9b...                            ║
-╠══════════════════════════════════════════════════════════╣
-║  Add a WORKER node:                                      ║
-║  > gbnt legion join --token a3f8... --manager <IP>:4000  ║
-║                                                          ║
-║  Configure remote CLI:                                   ║
-║  > gbnt config add-context myserver --server http://...  ║
-╚══════════════════════════════════════════════════════════╝
+#### 🐳 Docker Container (Native Engine)
+```bash
+sudo docker run -d --name gbnt-worker \
+    --network host \
+    --restart unless-stopped \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /data:/data \
+    marioezquerro/gubernator:latest legion join \
+    --token <JOIN_TOKEN> \
+    --manager http://<MANAGER-IP>:4000 \
+    --api-token <API_TOKEN>
 ```
 
-Once you have both tokens, join any machine as a Worker (Centurion):
+#### 🚀 Web UI Dashboard Onboarding Suite & Live Terminal Console
+Open `http://<MANAGER-IP>:4001` ➔ **Centurions [Host]** ➔ **Add Centurion**:
+- **⚡ Quick Join**: 1-click copyable commands.
+- **🚀 Remote SSH Provisioning**: Multi-auth (Password, SSH Key, Manager Auto-Key) with live monospace console streaming progress.
+- **☁️ Cloud-Init**: Copyable YAML configuration for Proxmox VE, AWS, GCP, and Terraform.
 
+#### 💻 Standalone Binary (CLI)
+Retrieve tokens with `gbnt legion info`, then join:
 ```bash
-# On the worker host
 gbnt legion join \
     --token <JOIN_TOKEN> \
     --api-token <API_TOKEN> \
@@ -251,6 +257,7 @@ gbnt legion join \
 2. Register it in the Manager's SQLite DB with its real IP address.
 3. Start a background heartbeat service (every 10s) so the Manager tracks its availability.
 4. Start the task executor loop (every 5s) to pull and run assigned containers.
+5. Bootstrap Caddy Ingress proxy (`CORE-GBNT`) and Prometheus Monitoring agents (`[SRE] Monitor`).
 
 > **Security note:** The Join Token is only used during the `legion join` handshake. All subsequent communication (heartbeat, task status) uses the Bearer API Token.
 

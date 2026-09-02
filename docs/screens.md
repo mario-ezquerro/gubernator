@@ -98,3 +98,13 @@ Enterprise SSO login screen supporting Active Directory domains, OpenLDAP direct
 
 Full management interface for Directory Servers, dynamic RBAC group mappings, live "Test Connection" diagnostic tool, and cluster API security tokens.
 
+---
+
+## 🏛️ 8. Universal Centurion Onboarding Suite & Live Terminal Console (`v2.60.0`)
+
+Full 3-tab onboarding dialog accessible from **Centurions [Host] ➔ Add Centurion**:
+- **⚡ Quick Join (Copy & Paste)**: 1-click command cards for One-Liner Auto-Installer (`curl ... | sudo bash`), Docker Container (`legion join`), and CLI binary.
+- **🚀 Remote SSH Provisioning**: Multi-auth form supporting Password, SSH Private Key (.pem), and Manager Public Key auto-discovery.
+- **📺 Live Monospace Terminal Console**: Real-time progress console streaming SSH connection, hardware discovery, Docker CE verification, agent deployment, and system stacks synchronization.
+- **☁️ Cloud-Init & Automation (IaC)**: Ready-to-copy `#cloud-config` YAML blueprint for automated VM provisioning.
+

@@ -188,6 +188,14 @@ multipass exec gbnt-manager -- sudo docker exec gbnt-manager gbnt legion info
 
 ### 5. Join Workers
 
+You can join workers using any of the following:
+
+#### Option A: One-Liner Script (Fastest)
+```bash
+multipass exec gbnt-worker1 -- bash -c "curl -fsSL http://<MANAGER_IP>:4001/api/node/join.sh | sudo bash -s -- --manager http://<MANAGER_IP>:4000 --token <JOIN_TOKEN> --api-token <API_TOKEN>"
+```
+
+#### Option B: Docker Container
 ```bash
 # Replace <JOIN_TOKEN>, <API_TOKEN>, and <MANAGER_IP> with actual values
 multipass exec gbnt-worker1 -- sudo docker run -d \
@@ -197,7 +205,11 @@ multipass exec gbnt-worker1 -- sudo docker run -d \
   -v /data:/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
   marioezquerro/gubernator:latest \
-  legion join --token <JOIN_TOKEN> --api-token <API_TOKEN> --manager <MANAGER_IP>:4000
+  legion join --token <JOIN_TOKEN> --api-token <API_TOKEN> --manager http://<MANAGER_IP>:4000
+```
+
+#### Option C: Web Dashboard
+Open `http://<MANAGER_IP>:4001` ➔ **Centurions [Host]** ➔ **Add Centurion** and use the **Quick Join** or **Remote SSH Provisioning** wizard with live console feedback.
 ```
 
 ### 6. Access Dashboard

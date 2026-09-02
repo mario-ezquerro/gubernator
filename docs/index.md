@@ -15,6 +15,7 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Single-node mode** | No workers needed — the Manager runs containers locally |
 | **Built-in executor** | Passes `ports`, `environment`, `volumes`, and `command` to Docker |
 | **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings |
+| **Universal Worker Onboarding** | 3-tab onboarding suite (`AddNodeDialog`): Quick Join (1-liner), Remote SSH Provision with multi-auth & Live Terminal Console, and Cloud-Init YAML |
 | **Enterprise AD / LDAP & RBAC** | Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (`admin`, `operator`, `readonly`) |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
 | **Secure API** | Bearer token auth on port 4000, JWT / Session Auth on Web UI |
