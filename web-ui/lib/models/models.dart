@@ -2421,4 +2421,81 @@ class ImageDistributeResultModel {
   }
 }
 
+class ServerStackFileModel {
+  final String path;
+  final String filename;
+  final String directory;
+  final int size;
+  final String modifiedAt;
+  final String inferredName;
+  final bool isExample;
+  final int services;
+
+  ServerStackFileModel({
+    required this.path,
+    required this.filename,
+    required this.directory,
+    required this.size,
+    required this.modifiedAt,
+    required this.inferredName,
+    required this.isExample,
+    required this.services,
+  });
+
+  factory ServerStackFileModel.fromJson(Map<String, dynamic> json) {
+    return ServerStackFileModel(
+      path: json['path'] ?? '',
+      filename: json['filename'] ?? '',
+      directory: json['directory'] ?? '',
+      size: (json['size'] as num?)?.toInt() ?? 0,
+      modifiedAt: json['modified_at'] ?? '',
+      inferredName: json['inferred_name'] ?? '',
+      isExample: json['is_example'] == true,
+      services: (json['services'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class POCExampleModel {
+  final String id;
+  final String name;
+  final String category;
+  final String description;
+  final String filename;
+  final String defaultStack;
+  final List<String> services;
+  final String composeRaw;
+  final String icon;
+  final List<String> tags;
+
+  POCExampleModel({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.description,
+    required this.filename,
+    required this.defaultStack,
+    required this.services,
+    required this.composeRaw,
+    required this.icon,
+    required this.tags,
+  });
+
+  factory POCExampleModel.fromJson(Map<String, dynamic> json) {
+    return POCExampleModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      category: json['category'] ?? '',
+      description: json['description'] ?? '',
+      filename: json['filename'] ?? '',
+      defaultStack: json['default_stack'] ?? '',
+      services: (json['services'] as List<dynamic>? ?? []).map((s) => s.toString()).toList(),
+      composeRaw: json['compose_raw'] ?? '',
+      icon: json['icon'] ?? '',
+      tags: (json['tags'] as List<dynamic>? ?? []).map((t) => t.toString()).toList(),
+    );
+  }
+}
+
+
 

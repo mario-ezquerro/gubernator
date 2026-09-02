@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  hello-app:
+    image: busybox:latest
+    command: 'sh -c "mkdir -p /www && echo hola contenedor \$(hostname) > /www/index.html && httpd -f -p 80 -h /www"'
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+      placement:
+        constraints:
+          - stack.name == hello-lb
+          - ingress.host == hello-lb.gbnt.local

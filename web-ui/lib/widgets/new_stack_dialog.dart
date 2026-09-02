@@ -6,6 +6,8 @@ import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 import 'compose_autocomplete.dart';
+import 'server_stack_picker_dialog.dart';
+import 'poc_examples_dialog.dart';
 import '../models/models.dart' as models;
 import '../utils/clipboard_service.dart';
 
@@ -83,6 +85,45 @@ class _NewStackDialogState extends State<NewStackDialog> {
         reader.readAsText(file);
       }
     });
+  }
+
+  void _showServerStackPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) => ServerStackPickerDialog(
+        onSelect: (name, yaml) {
+          setState(() {
+            _yamlController.text = yaml;
+            if (_nameController.text.trim().isEmpty) {
+              _nameController.text = name;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Loaded "$name" from Master server')),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showPOCExamples() {
+    showDialog(
+      context: context,
+      builder: (ctx) => POCExamplesDialog(
+        nodes: widget.nodes,
+        onOpenInStudio: (name, yaml) {
+          setState(() {
+            _yamlController.text = yaml;
+            if (_nameController.text.trim().isEmpty) {
+              _nameController.text = name;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Loaded POC Blueprint "$name"')),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -413,10 +454,31 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                               );
                                             },
                                           ),
-                                          TextButton.icon(
-                                            onPressed: _pickFile,
-                                            icon: const Icon(Icons.upload_file, size: 16),
-                                            label: const Text('Load from file'),
+                                          Tooltip(
+                                            message: 'Upload Compose file from your workstation',
+                                            child: TextButton.icon(
+                                              onPressed: _pickFile,
+                                              icon: const Icon(Icons.laptop, size: 15),
+                                              label: const Text('My PC'),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Tooltip(
+                                            message: 'Load Compose file from Master server filesystem (~/.gbnt/stacks/)',
+                                            child: TextButton.icon(
+                                              onPressed: _showServerStackPicker,
+                                              icon: const Icon(Icons.dns, size: 15, color: Color(0xFF58A6FF)),
+                                              label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Tooltip(
+                                            message: 'Browse and load built-in production POC templates',
+                                            child: TextButton.icon(
+                                              onPressed: _showPOCExamples,
+                                              icon: const Icon(Icons.rocket_launch, size: 15, color: Color(0xFFE3B341)),
+                                              label: const Text('POC Blueprints', style: TextStyle(color: Color(0xFFE3B341))),
+                                            ),
                                           ),
                                         ],
                                       ),

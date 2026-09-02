@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -191,8 +192,13 @@ func GetAPIEndpoint() string {
 	return "http://localhost:4000"
 }
 
-// DoAPIRequest securely sends an HTTP request to the active Manager
+// DoAPIRequest securely sends an HTTP request to the active Manager with a default 15s timeout
 func DoAPIRequest(method, path string, body io.Reader) (*http.Response, error) {
+	return DoAPIRequestWithTimeout(method, path, body, 15*time.Second)
+}
+
+// DoAPIRequestWithTimeout sends an HTTP request with a custom timeout
+func DoAPIRequestWithTimeout(method, path string, body io.Reader, timeout time.Duration) (*http.Response, error) {
 	cfg := loadConfig()
 	var server, token string
 	for _, ctx := range cfg.Contexts {
@@ -223,5 +229,7 @@ func DoAPIRequest(method, path string, body io.Reader) (*http.Response, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	return http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: timeout}
+	return client.Do(req)
 }
+

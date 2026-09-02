@@ -383,6 +383,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (ctx) => ComposeEditorDialog(
           stackName: stack.name,
           composeYaml: yaml,
+          nodes: _state.nodes,
           onSave: (y) => ApiService.updateStackCompose(stack.id, y),
           onRedeploy: (_) async {
             final ok = await ApiService.redeployStack(stack.id);

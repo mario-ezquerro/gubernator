@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  jupyter:
+    image: quay.io/jupyter/minimal-notebook:latest
+    restart: unless-stopped
+    ports:
+      - "8888"
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - /var/contenedores/{{stack.name}}/workspace:/home/jovyan/work
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == jupyter-datascience
+          - ingress.host == jupyter.gbnt.local

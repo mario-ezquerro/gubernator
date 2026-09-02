@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  monitored-api:
+    image: python:3.11-alpine
+    command: |
+      python -c "import http.server, socketserver
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(b'{\"status\":\"ok\",\"service\":\"sre-monitored-service\",\"metrics_enabled\":true}')
+      with socketserver.TCPServer(('', 8080), Handler) as httpd:
+          print('Service running on :8080')
+          httpd.serve_forever()"
+    ports:
+      - "8080"
+    labels:
+      gbnt.slo.enable: "true"
+      gbnt.slo.target: "99.9"
+      gbnt.slo.window: "30d"
+      gbnt.slo.indicator: "latency"
+      gbnt.slo.latency.threshold: "200ms"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+      placement:
+        constraints:
+          - stack.name == sre-microservice
+          - ingress.host == sre-api.gbnt.local

@@ -67,7 +67,7 @@ class ApiService {
   static Future<String?> deployStack(String name, String compose, {String? targetNode}) async {
     final response = await http.post(
       Uri.parse('/api/stack'),
-      headers: {'Content-Type': 'application/json'},
+      headers: authHeaders,
       body: jsonEncode({
         'name': name,
         'compose': compose,
@@ -83,6 +83,92 @@ class ApiService {
       } catch (_) {
         return 'Server error: ${response.statusCode}';
       }
+    }
+  }
+
+  /// Lists Compose stack files found on the Master server host.
+  static Future<Map<String, dynamic>> fetchServerStackFiles({String? dir}) async {
+    final uri = (dir != null && dir.isNotEmpty)
+        ? Uri.parse('/api/stacks/server-files?dir=${Uri.encodeQueryComponent(dir)}')
+        : Uri.parse('/api/stacks/server-files');
+    final response = await http.get(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final files = (data['files'] as List? ?? [])
+          .map((f) => ServerStackFileModel.fromJson(f))
+          .toList();
+      return {
+        'files': files,
+        'stacks_dir': data['stacks_dir'] ?? '',
+        'examples_dir': data['examples_dir'] ?? '',
+        'total': data['total'] ?? files.length,
+      };
+    }
+    throw Exception('Failed to fetch server stack files: ${response.statusCode}');
+  }
+
+  /// Reads a Compose stack file from the Master server filesystem.
+  static Future<Map<String, dynamic>> fetchServerStackFile(String path) async {
+    final uri = Uri.parse('/api/stacks/server-file?path=${Uri.encodeQueryComponent(path)}');
+    final response = await http.get(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to read server stack file: ${response.statusCode}');
+  }
+
+  /// Deploys a stack directly from a Master server file path.
+  static Future<String?> deployServerStack(String path, {String? name, String? targetNode}) async {
+    final response = await http.post(
+      Uri.parse('/api/stacks/server-deploy'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'path': path,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (targetNode != null && targetNode.isNotEmpty) 'target_node': targetNode,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return null;
+    }
+    try {
+      final body = jsonDecode(response.body);
+      return body['error'] ?? 'Unknown error';
+    } catch (_) {
+      return 'Server error: ${response.statusCode}';
+    }
+  }
+
+  /// Retrieves the list of built-in POC examples and blueprints.
+  static Future<List<POCExampleModel>> fetchPOCExamples() async {
+    final response = await http.get(Uri.parse('/api/examples'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['examples'] as List? ?? [])
+          .map((e) => POCExampleModel.fromJson(e))
+          .toList();
+    }
+    throw Exception('Failed to fetch POC examples: ${response.statusCode}');
+  }
+
+  /// Deploys one or all POC examples into the cluster.
+  static Future<String?> deployPOCExample(String id, {String? targetNode}) async {
+    final response = await http.post(
+      Uri.parse('/api/examples/deploy'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'id': id,
+        if (targetNode != null && targetNode.isNotEmpty) 'target_node': targetNode,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return null;
+    }
+    try {
+      final body = jsonDecode(response.body);
+      return body['error'] ?? 'Unknown error';
+    } catch (_) {
+      return 'Server error: ${response.statusCode}';
     }
   }
 

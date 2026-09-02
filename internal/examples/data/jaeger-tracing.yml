@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  jaeger-app:
+    image: python:3.11-alpine
+    command: |
+      python -c "import http.server, socketserver
+      class Handler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              self.send_response(200)
+              self.send_header('Content-type', 'application/json')
+              self.end_headers()
+              self.wfile.write(b'{\"status\":\"ok\",\"service\":\"jaeger-demo-app\",\"otlp_endpoint\":\"http://gbnt-monitor-jaeger:4318\"}')
+      with socketserver.TCPServer(('', 8080), Handler) as httpd:
+          print('Jaeger demo server running on :8080')
+          httpd.serve_forever()"
+    ports:
+      - "8080"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+      placement:
+        constraints:
+          - stack.name == jaeger-tracing-demo
+          - ingress.host == tracing-app.gbnt.local

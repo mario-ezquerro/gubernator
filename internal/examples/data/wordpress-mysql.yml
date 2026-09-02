@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: db_wordpress
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: admin
+    volumes:
+      - /var/contenedores/{{stack.name}}/db:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  wordpress:
+    image: wordpress:latest
+    container_name: app_wordpress
+    restart: always
+    ports:
+      - "80"
+    environment:
+      WORDPRESS_DB_HOST: db.{{stack.name}}.gbnt:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: admin
+    volumes:
+      - /var/contenedores/{{stack.name}}/html:/var/www/html
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+      placement:
+        constraints:
+          - stack.name == wordpress-demo
+          - ingress.host == wordpress.gbnt.local
+    depends_on:
+      - db

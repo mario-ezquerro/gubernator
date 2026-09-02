@@ -50,13 +50,28 @@ var legionInitCmd = &cobra.Command{
 		fmt.Println("🏛 Gubernator Legion Initialized!")
 		fmt.Println("\nTo add a worker to this swarm, run the following command on the worker node:")
 		fmt.Printf("\n  gbnt legion join --token %s --manager <MANAGER-IP>:4000\n\n", data.Token)
+
+		if withExamples {
+			fmt.Println("🚀 Deploying bundled POC examples into cluster (--with-examples)...")
+			payload := map[string]string{"id": "all", "target_node": "auto"}
+			body, _ := json.Marshal(payload)
+			respEx, errEx := DoAPIRequest("POST", "/v1/examples/deploy", bytes.NewBuffer(body))
+			if errEx == nil && respEx.StatusCode == http.StatusOK {
+				var resEx map[string]interface{}
+				json.NewDecoder(respEx.Body).Decode(&resEx)
+				fmt.Printf("✅ Successfully deployed %v POC examples for testing and demonstration!\n", resEx["deployed_count"])
+			} else {
+				fmt.Println("ℹ️  POC examples deployment submitted. Check 'gbnt task ls' or dashboard.")
+			}
+		}
 	},
 }
 
 var (
-	joinToken   string
-	managerAddr string
-	apiToken    string // Bearer token for the Manager API (used by workers)
+	withExamples bool
+	joinToken    string
+	managerAddr  string
+	apiToken     string // Bearer token for the Manager API (used by workers)
 )
 
 var legionJoinCmd = &cobra.Command{
@@ -516,6 +531,8 @@ func init() {
 	rootCmd.AddCommand(legionCmd)
 	legionCmd.AddCommand(legionInitCmd)
 	legionCmd.AddCommand(legionJoinCmd)
+
+	legionInitCmd.Flags().BoolVar(&withExamples, "with-examples", false, "Deploy bundled POC examples immediately upon cluster initialization")
 
 	legionJoinCmd.Flags().StringVarP(&joinToken, "token", "t", "", "Join token provided by the Manager (gbnt legion join-token)")
 	legionJoinCmd.Flags().StringVarP(&managerAddr, "manager", "m", "", "Manager API address (e.g., 192.168.1.100:4000 or http://192.168.1.100:4000)")

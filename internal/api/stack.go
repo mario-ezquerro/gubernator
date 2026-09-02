@@ -10,9 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"gopkg.in/yaml.v3"
 )
+
+func init() {
+	examples.DeployStackFn = DeployStackRaw
+}
 
 // EnvSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
 type EnvSlice []string
@@ -167,11 +172,26 @@ func StackDeployHandler(c *gin.Context) {
 		return
 	}
 
-	stackName := req.Name
+	stack, err := DeployStackRaw(req.Name, req.ComposeRaw, req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Stack deployed successfully",
+		"stack_id": stack.ID,
+		"name":     stack.Name,
+	})
+}
+
+// DeployStackRaw parses compose YAML, stops any prior version of the stack, registers services, and schedules tasks.
+func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error) {
+	stackName := strings.TrimSpace(reqName)
 
 	// Try to infer it from the raw YAML if present
 	var tempCompose ComposeFile
-	if err := yaml.Unmarshal([]byte(req.ComposeRaw), &tempCompose); err == nil {
+	if err := yaml.Unmarshal([]byte(composeRawInput), &tempCompose); err == nil {
 		extractedName := ""
 		// Fallback: search for stack.name == XXX in constraints
 		for _, srv := range tempCompose.Services {
@@ -195,18 +215,16 @@ func StackDeployHandler(c *gin.Context) {
 	}
 
 	if stackName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name must be provided via API or defined in compose file as 'name: <name>' or 'stack.name == <name>' constraint"})
-		return
+		return nil, fmt.Errorf("stack name must be provided or defined in compose file as 'name: <name>' or 'stack.name == <name>' constraint")
 	}
 
 	// Replace placeholders like {{stack.name}} with the actual stack name
-	composeRaw := strings.ReplaceAll(req.ComposeRaw, "{{stack.name}}", stackName)
+	composeRaw := strings.ReplaceAll(composeRawInput, "{{stack.name}}", stackName)
 
 	// Parse YAML for actual deployment
 	var compose ComposeFile
 	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
-		return
+		return nil, fmt.Errorf("failed to parse compose YAML: %w", err)
 	}
 
 	// Clean up existing stack with the same name if redeploying
@@ -283,17 +301,13 @@ func StackDeployHandler(c *gin.Context) {
 		db.DB.Create(&service)
 
 		// Scheduler: assign Tasks to Nodes based on Constraints
-		ScheduleService(&service, req.TargetNode)
+		ScheduleService(&service, targetNode)
 	}
 
 	// Trigger generation of Prometheus SLO rules
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Stack deployed successfully",
-		"stack_id": stackID,
-		"name":     stackName,
-	})
+	return &stack, nil
 }
 
 // ScheduleService assigns desired replicas of a service to cluster nodes.

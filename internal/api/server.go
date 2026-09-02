@@ -19,6 +19,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
@@ -122,6 +123,21 @@ func Start(ctx context.Context) error {
 		}()
 	}
 
+	// ── Master Server Stacks & POC Examples Init ──
+	_ = examples.EnsureServerDirectories()
+	examplesEnv := strings.ToLower(os.Getenv("GBNT_DEPLOY_EXAMPLES"))
+	if examplesEnv == "" {
+		examplesEnv = strings.ToLower(os.Getenv("GBNT_EXAMPLES"))
+	}
+	if examplesEnv == "true" || examplesEnv == "1" {
+		go func() {
+			time.Sleep(6 * time.Second)
+			slog.Info("auto-deploying bundled POC examples into cluster (GBNT_DEPLOY_EXAMPLES=true)...")
+			deployed, errs := examples.DeployAllPOCExamples("auto")
+			slog.Info("bundled POC examples deployment completed", "deployed_count", len(deployed), "errors_count", len(errs))
+		}()
+	}
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
@@ -178,6 +194,16 @@ func Start(ctx context.Context) error {
 			stack.GET("/ls", StackListHandler)
 			stack.GET("/:id/services", StackServicesHandler)
 			stack.DELETE("/:id", StackRmHandler)
+			stack.GET("/server-files", StackServerFilesHandler)
+			stack.GET("/server-file", StackServerFileReadHandler)
+			stack.POST("/server-deploy", StackServerDeployHandler)
+		}
+
+		examplesGroup := v1.Group("/examples", authMiddleware)
+		{
+			examplesGroup.GET("", ExamplesListHandler)
+			examplesGroup.GET("/:id", ExampleGetHandler)
+			examplesGroup.POST("/deploy", ExampleDeployHandler)
 		}
 
 		service := v1.Group("/service", authMiddleware)

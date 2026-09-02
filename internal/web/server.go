@@ -34,6 +34,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
+	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
 	"github.com/mario-ezquerro/gubernator/internal/security"
@@ -367,10 +368,18 @@ func StartDashboard() {
 		api.GET("/logs/query", logsQueryHandler)
 		api.GET("/logs/export", logsExportHandler)
 
+		// Server Stacks & Built-in POC Examples
+		api.GET("/stacks/server-files", stackServerFilesWebHandler)
+		api.GET("/stacks/server-file", stackServerFileReadWebHandler)
+		api.GET("/examples", examplesListWebHandler)
+		api.GET("/examples/:id", exampleGetWebHandler)
+
 		// Operator & Admin write operations (Stacks & Tasks & Shell)
 		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
 		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
 		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
+		api.POST("/stacks/server-deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerDeployWebHandler)
+		api.POST("/examples/deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), exampleDeployWebHandler)
 		api.DELETE("/stack/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteStackHandler)
 		api.POST("/stack/:id/migrate", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), migrateStackHandler)
 		api.DELETE("/task/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteTaskHandler)
@@ -1421,6 +1430,114 @@ func deployStackHandler(c *gin.Context) {
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
+}
+
+func stackServerFilesWebHandler(c *gin.Context) {
+	customDir := c.Query("dir")
+	files, err := examples.ListServerStackFiles(customDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"files":        files,
+		"total":        len(files),
+		"stacks_dir":   examples.DefaultServerStacksDir(),
+		"examples_dir": examples.DefaultServerExamplesDir(),
+	})
+}
+
+func stackServerFileReadWebHandler(c *gin.Context) {
+	path := c.Query("path")
+	if strings.TrimSpace(path) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path parameter is required"})
+		return
+	}
+	content, err := examples.ReadServerStackFile(path)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, content)
+}
+
+func stackServerDeployWebHandler(c *gin.Context) {
+	var req struct {
+		Path       string `json:"path" binding:"required"`
+		Name       string `json:"name"`
+		TargetNode string `json:"target_node"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stack, err := examples.DeployServerStackFile(req.Path, req.Name, req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to deploy stack from server file: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "deployed",
+		"stack_id":   stack.ID,
+		"stack_name": stack.Name,
+		"path":       req.Path,
+	})
+}
+
+func examplesListWebHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"examples": examples.GetAllPOCExamples(),
+		"total":    len(examples.GetAllPOCExamples()),
+	})
+}
+
+func exampleGetWebHandler(c *gin.Context) {
+	id := c.Param("id")
+	ex, err := examples.GetPOCExample(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, ex)
+}
+
+func exampleDeployWebHandler(c *gin.Context) {
+	var req struct {
+		ID         string `json:"id" binding:"required"`
+		TargetNode string `json:"target_node"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ID == "all" {
+		deployed, errs := examples.DeployAllPOCExamples(req.TargetNode)
+		errStrs := make([]string, len(errs))
+		for i, e := range errs {
+			errStrs[i] = e.Error()
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":         "deployed_all",
+			"deployed_count": len(deployed),
+			"errors":         errStrs,
+		})
+		return
+	}
+
+	stack, err := examples.DeployPOCExample(req.ID, req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to deploy example '%s': %v", req.ID, err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "deployed",
+		"stack_id":   stack.ID,
+		"stack_name": stack.Name,
+	})
 }
 
 func redeployStackHandler(c *gin.Context) {

@@ -262,4 +262,80 @@ Gubernator's parser focuses on the fields necessary for container scheduling, se
 * `deploy.replicas`: Number of container instances to spawn.
 * `deploy.placement.constraints`: Node hardware affinity (e.g. `gbnt.node.gpu == nvidia`, `node.role == worker`) and stack constraints.
 
+---
+
+## 8. Loading Stacks from Master Server Filesystem & Workstations
+
+Gubernator supports flexible stack loading from both your client browser/workstation and the **Master server filesystem**:
+
+### Deployment Methods
+
+| Method | Source | UI Action | CLI Command |
+| :--- | :--- | :--- | :--- |
+| **Client Workstation** | Local PC disk | Click **"My PC"** in Stacks / Studio | `gbnt stack deploy my-stack -f ./local-compose.yml` |
+| **Master Server Filesystem** | Manager host disk | Click **"Master Server"** in Stacks / Studio | `gbnt stack deploy my-stack -s ~/.gbnt/stacks/app.yml` |
+| **Built-in POC Blueprints** | In-cluster embedded library | Click **"POC Blueprints"** in Stacks / Studio | `gbnt examples deploy <id>` |
+
+### Server Directory Structure
+
+When Gubernator starts, it automatically ensures and indexes the following directories on the Master host:
+
+* `~/.gbnt/stacks/`: User-defined Docker Compose stacks. Drop `.yml` or `.yaml` files here to manage them directly on the server.
+* `~/.gbnt/examples/`: Bundled production POC example blueprints exported for inspection and modification.
+* `/etc/gubernator/stacks/`: System-wide shared stacks directory.
+
+### Listing Server Stack Files
+
+To inspect stack files available on the Master host:
+
+```bash
+# List files in default directories (~/.gbnt/stacks and ~/.gbnt/examples)
+gbnt stack server-ls
+
+# List files in a custom directory on the Master host
+gbnt stack server-ls --dir /opt/docker-stacks
+```
+
+---
+
+## 9. Built-in POC Examples Library & Bootstrap Auto-Deployment
+
+Gubernator includes an embedded catalog of **8 production-grade proof-of-concept (POC) blueprints** designed to demonstrate clustering, service discovery, persistent storage, security, and observability out of the box:
+
+1. **`hello-loadbalancer`**: High-availability web app with 2 replicas, Caddy load balancing, and CoreDNS discovery.
+2. **`wordpress-mysql`**: WordPress CMS with MySQL 8.0 backend and persistent storage mounts.
+3. **`public-https`**: Automatic Let's Encrypt / ZeroSSL public TLS reverse proxy via Caddy.
+4. **`sloth-slo`**: Microservice with Google SRE Sloth SLO labels and multi-window burn-rate alert rules.
+5. **`n8n-workflow`**: Self-hosted workflow automation platform with PostgreSQL persistence.
+6. **`jaeger-tracing`**: Distributed tracing service with OpenTelemetry export and Jaeger UI.
+7. **`jupyter-datascience`**: Interactive Python data science notebook workspace.
+8. **`sre-observability`**: Microservice exporting Prometheus metrics for full observability validation.
+
+### Deploying POC Examples During Installation
+
+To deploy all POC examples automatically when initializing a new cluster:
+
+```bash
+# Option A: Deploy during cluster initialization
+gbnt legion init --with-examples
+
+# Option B: Environment variable flag on manager startup
+export GBNT_DEPLOY_EXAMPLES=true
+gbnt serve
+```
+
+### On-Demand POC Deployment via CLI
+
+```bash
+# List all available POC blueprints
+gbnt examples ls
+
+# Deploy a specific POC blueprint
+gbnt examples deploy hello-loadbalancer
+
+# Deploy all POC blueprints into the cluster
+gbnt examples deploy all
+```
+
+
 

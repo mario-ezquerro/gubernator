@@ -11,6 +11,8 @@ import '../../models/models.dart' as models;
 import '../../services/api_service.dart';
 import '../../utils/clipboard_service.dart';
 import '../../widgets/compose_autocomplete.dart';
+import '../../widgets/server_stack_picker_dialog.dart';
+import '../../widgets/poc_examples_dialog.dart';
 
 class ComposeStudioPage extends StatefulWidget {
   final models.DashboardState state;
@@ -832,6 +834,46 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reader.readAsText(file);
       }
     });
+  }
+
+  void _showServerStackPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) => ServerStackPickerDialog(
+        onSelect: (name, yaml) {
+          setState(() {
+            _codeController.text = yaml;
+            if (_selectedStackId == 'new') {
+              _nameController.text = name;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Loaded "$name" from Master server')),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showPOCExamples() {
+    showDialog(
+      context: context,
+      builder: (ctx) => POCExamplesDialog(
+        nodes: widget.state.nodes,
+        onOpenInStudio: (name, yaml) {
+          setState(() {
+            _codeController.text = yaml;
+            if (_selectedStackId == 'new') {
+              _nameController.text = name;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Loaded POC Blueprint "$name" into Studio')),
+          );
+        },
+        onStackDeployed: widget.onRefresh,
+      ),
+    );
   }
 
   Future<void> _saveCompose() async {
@@ -1702,10 +1744,43 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       children: [
                         Icon(Icons.widgets_outlined, size: 16),
                         SizedBox(width: 6),
-                        Text('Blueprints', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('Quick Snippets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         Icon(Icons.arrow_drop_down, size: 18),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Import from PC
+                Tooltip(
+                  message: 'Upload Compose YAML from your local workstation',
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.laptop, size: 16),
+                    label: const Text('My PC'),
+                    onPressed: _importFile,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Load from Master Server Filesystem
+                Tooltip(
+                  message: 'Load Compose YAML from Master server filesystem (~/.gbnt/stacks/)',
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
+                    label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
+                    onPressed: _showServerStackPicker,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Full POC Blueprints Catalog
+                Tooltip(
+                  message: 'Browse and deploy built-in POC example blueprints',
+                  child: FilledButton.tonalIcon(
+                    icon: const Icon(Icons.rocket_launch, size: 16, color: Color(0xFFE3B341)),
+                    label: const Text('POC Blueprints', style: TextStyle(color: Color(0xFFE3B341), fontWeight: FontWeight.bold)),
+                    onPressed: _showPOCExamples,
                   ),
                 ),
                 const SizedBox(width: 10),

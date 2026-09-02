@@ -410,6 +410,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Interactive Revocation Modals & UI Actions:** Added direct `🔏❌ Unsign` action buttons in the Signed Images Registry and a confirmation dialog preventing accidental revocation. Scan card popup menus now include `Revoke Signature (Unsign)` alongside orphan deletion options.
 * **Full CLI & REST API Parity:** Added dedicated command `gbnt image unsign <image>` and REST API endpoints `POST /v1/security/unsign` and `POST /api/security/unsign`.
 
+### 68. Master Server Stacks & Built-in POC Blueprints Subsystem (`v2.64.0`)
+* **Master Server Filesystem Stack Loading (`~/.gbnt/stacks/`):** Enables loading and deploying Docker Compose `.yml` files stored directly on the Master/Manager server disk without requiring client workstation file uploads. Automatically discovers and indexes files in `~/.gbnt/stacks/`, `~/.gbnt/examples/`, `/etc/gubernator/stacks/`, and custom server directories.
+* **Embedded Production POC Examples Library (`internal/examples/`):** 8 production-grade Compose blueprints embedded directly into the Go binary (`hello-loadbalancer`, `wordpress-mysql`, `public-https`, `sloth-slo`, `n8n-workflow`, `jaeger-tracing`, `jupyter-datascience`, `sre-observability`). Automatically exports to `~/.gbnt/examples/` on startup.
+* **Cluster Installation Bootstrap Auto-Deployment:** Deploy all POC blueprints automatically when initializing a new cluster via CLI (`gbnt legion init --with-examples`) or environment variable (`GBNT_DEPLOY_EXAMPLES=true gbnt serve`).
+* **Interactive Web UI Suite:**
+  - `ServerStackPickerDialog`: Split-view dialog for browsing server directories, searching files, viewing YAML syntax preview, and 1-click loading into editor or direct deployment.
+  - `POCExamplesDialog`: Production blueprints catalog with category filters, tags, descriptions, services badges, 1-click "Deploy POC", 1-click "Studio" editor bridge, "Deploy All POCs" bulk runner, and an in-platform Master Server deployment guide.
+  - Seamlessly integrated into `NewStackDialog`, `ComposeStudioPage`, and `LegionsPage` headers alongside workstation PC upload.
+* **Full CLI & REST API Parity:** Added `gbnt examples ls`, `gbnt examples deploy <id|all> [--target-node]`, `gbnt stack server-ls [--dir]`, `gbnt stack deploy --from-server <path>`, and REST APIs (`GET /v1/examples`, `POST /v1/examples/deploy`, `GET /v1/stack/server-files`, `POST /v1/stack/server-deploy`).
+
+
 
 
 

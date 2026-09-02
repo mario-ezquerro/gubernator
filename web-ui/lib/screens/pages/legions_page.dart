@@ -4,6 +4,8 @@ import '../../services/api_service.dart';
 import '../../widgets/compose_editor.dart';
 import '../../widgets/new_stack_dialog.dart';
 import '../../widgets/stack_diagram_dialog.dart';
+import '../../widgets/server_stack_picker_dialog.dart';
+import '../../widgets/poc_examples_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Legions page — full-width stacks table with all actions.
@@ -254,6 +256,69 @@ class _LegionsPageState extends State<LegionsPage> {
     );
   }
 
+  void _showServerStackPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) => ServerStackPickerDialog(
+        onSelect: (name, yaml) {
+          showDialog(
+            context: context,
+            builder: (ctx2) => NewStackDialog(
+              nodes: widget.state.nodes,
+              initialName: name,
+              initialYaml: yaml,
+              onDeploy: (n, y, target) async {
+                final err = await ApiService.deployStack(n, y, targetNode: target);
+                if (err == null) {
+                  _showSnackBar('Stack deployed successfully!');
+                  widget.onRefresh();
+                }
+                return err;
+              },
+            ),
+          );
+        },
+        onDirectDeploy: (path, name) async {
+          final err = await ApiService.deployServerStack(path, name: name);
+          if (err == null) {
+            _showSnackBar('🚀 Stack "$name" deployed from Master server ($path)!');
+            widget.onRefresh();
+          } else {
+            _showSnackBar('Failed: $err');
+          }
+        },
+      ),
+    );
+  }
+
+  void _showPOCExamples() {
+    showDialog(
+      context: context,
+      builder: (ctx) => POCExamplesDialog(
+        nodes: widget.state.nodes,
+        onOpenInStudio: (name, yaml) {
+          showDialog(
+            context: context,
+            builder: (ctx2) => NewStackDialog(
+              nodes: widget.state.nodes,
+              initialName: name,
+              initialYaml: yaml,
+              onDeploy: (n, y, target) async {
+                final err = await ApiService.deployStack(n, y, targetNode: target);
+                if (err == null) {
+                  _showSnackBar('POC Blueprint "$n" deployed successfully!');
+                  widget.onRefresh();
+                }
+                return err;
+              },
+            ),
+          );
+        },
+        onStackDeployed: widget.onRefresh,
+      ),
+    );
+  }
+
   void _showStackDiagramDialog(StackModel s) {
     showDialog(
       context: context,
@@ -331,6 +396,18 @@ class _LegionsPageState extends State<LegionsPage> {
                   Text('Legions (Stacks)',
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
+                    label: const Text('Master Server File', style: TextStyle(color: Color(0xFF58A6FF))),
+                    onPressed: _showServerStackPicker,
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.rocket_launch, size: 16, color: Color(0xFFE3B341)),
+                    label: const Text('POC Blueprints', style: TextStyle(color: Color(0xFFE3B341), fontWeight: FontWeight.bold)),
+                    onPressed: _showPOCExamples,
+                  ),
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Deploy Stack'),

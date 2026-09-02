@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: n8n_password
+      POSTGRES_DB: n8n_db
+    volumes:
+      - /var/contenedores/{{stack.name}}/postgres:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.2"
+          memory: 128M
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678"
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres.{{stack.name}}.gbnt
+      - DB_POSTGRESDB_USER=n8n_user
+      - DB_POSTGRESDB_PASSWORD=n8n_password
+      - DB_POSTGRESDB_DATABASE=n8n_db
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+    volumes:
+      - /var/contenedores/{{stack.name}}/n8n:/home/node/.n8n
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == n8n-automation
+          - ingress.host == n8n.gbnt.local
+    depends_on:
+      - postgres
