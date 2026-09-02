@@ -289,6 +289,28 @@ func SecurityImageSignHandler(c *gin.Context) {
 	})
 }
 
+// SecurityImageUnsignHandler revokes the signature of an image.
+func SecurityImageUnsignHandler(c *gin.Context) {
+	var req struct {
+		Image string `json:"image" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image field is required"})
+		return
+	}
+
+	if err := security.RevokeImageSignature(req.Image); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke signature: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Image signature successfully revoked",
+		"image":   req.Image,
+		"status":  "unsigned",
+	})
+}
+
 // SecurityPolicyGetHandler returns active cluster admission policy.
 func SecurityPolicyGetHandler(c *gin.Context) {
 	policy, err := security.GetClusterPolicy()

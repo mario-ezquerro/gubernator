@@ -1569,6 +1569,20 @@ class ApiService {
     throw Exception(err['error'] ?? 'Image signing failed');
   }
 
+  /// Revokes/removes the cryptographic signature from an image.
+  static Future<bool> unsignImage(String image) async {
+    final response = await http.post(
+      Uri.parse('/api/security/unsign'),
+      headers: authHeaders,
+      body: jsonEncode({'image': image}),
+    );
+    if (response.statusCode == 200) {
+      return true;
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to revoke image signature');
+  }
+
   /// Fetches cluster admission security policy.
   static Future<SecurityPolicyModel> fetchSecurityPolicy() async {
     final response = await http.get(Uri.parse('/api/security/policy'), headers: authHeaders);

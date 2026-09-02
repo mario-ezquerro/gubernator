@@ -264,6 +264,7 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/keys", SecurityKeySaveHandler)
 			securityRoute.DELETE("/keys/:id", SecurityKeyDeleteHandler)
 			securityRoute.POST("/sign", SecurityImageSignHandler)
+			securityRoute.POST("/unsign", SecurityImageUnsignHandler)
 			securityRoute.GET("/policy", SecurityPolicyGetHandler)
 			securityRoute.POST("/policy", SecurityPolicySaveHandler)
 			securityRoute.POST("/evaluate", SecurityAdmissionEvaluateHandler)

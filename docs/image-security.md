@@ -176,7 +176,7 @@ gbnt sbom postgres:16-alpine --format cyclonedx-json
 gbnt sbom postgres:16-alpine --format spdx-json
 ```
 
-### Cryptographic Signing & Verification (Cosign)
+### Cryptographic Signing, Verification & Revocation (Cosign)
 ```bash
 # Generate in-cluster ECDSA keypair (private key stored securely in SQLite)
 gbnt security key generate --name "Imperial Cluster Authority"
@@ -186,6 +186,9 @@ gbnt image sign company/app:1.0
 
 # Verify image signature against trusted keys
 gbnt image verify company/app:1.0
+
+# Revoke / remove cryptographic signature from an image
+gbnt image unsign company/app:1.0
 ```
 
 ---
@@ -208,7 +211,9 @@ gbnt image verify company/app:1.0
 | `/v1/security/keys` | `GET` | `all` | List trusted signing keys with in-cluster status |
 | `/v1/security/keys/generate` | `POST` | `admin` | Generate new Cosign ECDSA keypair with persistent private key |
 | `/v1/security/sign` | `POST` | `operator` | Cryptographically sign image with in-cluster or manual key |
+| `/v1/security/unsign` | `POST` | `operator` | Revoke/remove cryptographic signature from image |
 | `/v1/security/policy` | `GET` | `all` | Get active cluster admission policy |
 | `/v1/security/policy` | `POST` | `admin` | Update cluster admission policy |
 | `/v1/security/evaluate` | `POST` | `all` | Evaluate image admission against Gatekeeper rules |
+
 

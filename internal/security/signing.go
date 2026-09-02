@@ -243,3 +243,30 @@ func ResolveImageDigest(imageName string) string {
 	h := sha256.Sum256([]byte(imageName))
 	return fmt.Sprintf("sha256:%x", h[:])
 }
+
+// RevokeImageSignature revokes/removes the cryptographic signature from an image scan record.
+func RevokeImageSignature(imageName string) error {
+	if db.DB == nil {
+		return fmt.Errorf("database not initialized")
+	}
+
+	var scans []db.ImageScan
+	if err := db.DB.Where("image_name = ?", imageName).Find(&scans).Error; err != nil {
+		return fmt.Errorf("failed to query scans for %s: %w", imageName, err)
+	}
+
+	if len(scans) == 0 {
+		return fmt.Errorf("image %s not found in scan records", imageName)
+	}
+
+	for _, scan := range scans {
+		scan.SignatureStatus = "unsigned"
+		scan.SignatureSigner = ""
+		scan.SignedAt = nil
+		if err := db.DB.Save(&scan).Error; err != nil {
+			return fmt.Errorf("failed to update scan record: %w", err)
+		}
+	}
+
+	return nil
+}

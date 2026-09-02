@@ -405,6 +405,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Interactive Distribution Dialog (`ImageDistributeDialog`):** Material Design 3 modal with target Centurion node selection (`All Centurions`, specific worker), live streaming SSH progress, and execution results breakdown.
 * **Full CLI Parity:** Added dedicated command `gbnt image distribute <image> [--node all|node-id]` and REST API endpoint `POST /v1/images/distribute`.
 
+### 67. Cryptographic Signature Revocation & Unsign Subsystem (`v2.63.1`)
+* **Signature Revocation Engine (`RevokeImageSignature`):** Resets signature verification state (`signature_status = 'unsigned'`, removes signer identity and timestamp) across SQLite scan records, immediately enforcing Gatekeeper admission blocks on deprecated or compromised images.
+* **Interactive Revocation Modals & UI Actions:** Added direct `🔏❌ Unsign` action buttons in the Signed Images Registry and a confirmation dialog preventing accidental revocation. Scan card popup menus now include `Revoke Signature (Unsign)` alongside orphan deletion options.
+* **Full CLI & REST API Parity:** Added dedicated command `gbnt image unsign <image>` and REST API endpoints `POST /v1/security/unsign` and `POST /api/security/unsign`.
+
+
 
 
 

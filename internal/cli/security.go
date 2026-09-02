@@ -222,6 +222,33 @@ var imageVerifyCmd = &cobra.Command{
 	},
 }
 
+var imageUnsignCmd = &cobra.Command{
+	Use:   "unsign <image>",
+	Short: "Revoke/remove cryptographic signature from an image",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		imageName := args[0]
+		reqBody, _ := json.Marshal(map[string]string{
+			"image": imageName,
+		})
+
+		resp, err := DoAPIRequest("POST", "/v1/security/unsign", bytes.NewReader(reqBody))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to unsign image: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		fmt.Printf("✅ Signature successfully revoked from image '%s' (status: unsigned)\n", imageName)
+	},
+}
+
 // Security command group
 var securityCmd = &cobra.Command{
 	Use:   "security",
@@ -439,6 +466,7 @@ func init() {
 	imageSignCmd.Flags().StringVarP(&imageSignerFlag, "signer", "s", "Cluster Administrator", "Signer identity name")
 	imageCmd.AddCommand(imageSignCmd)
 	imageCmd.AddCommand(imageVerifyCmd)
+	imageCmd.AddCommand(imageUnsignCmd)
 
 	imageFixCmd.Flags().StringVarP(&imageToFlag, "to", "t", "", "Target upgraded image tag (e.g. postgres:16-alpine)")
 	imageFixCmd.Flags().StringVarP(&imageStackFlag, "stack", "s", "", "Target Stack ID to modify and redeploy")

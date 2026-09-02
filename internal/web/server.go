@@ -482,6 +482,7 @@ func StartDashboard() {
 		api.POST("/security/keys", auth.RequireRole(auth.RoleAdmin), securityKeySaveHandler)
 		api.DELETE("/security/keys/:id", auth.RequireRole(auth.RoleAdmin), securityKeyDeleteHandler)
 		api.POST("/security/sign", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityImageSignHandler)
+		api.POST("/security/unsign", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), securityImageUnsignHandler)
 		api.GET("/security/policy", securityPolicyGetHandler)
 		api.POST("/security/policy", auth.RequireRole(auth.RoleAdmin), securityPolicySaveHandler)
 		api.POST("/security/evaluate", securityAdmissionEvaluateHandler)
@@ -5423,6 +5424,27 @@ func securityImageSignHandler(c *gin.Context) {
 		"digest":    digest,
 		"signature": sig,
 		"signer":    req.SignerName,
+	})
+}
+
+func securityImageUnsignHandler(c *gin.Context) {
+	var req struct {
+		Image string `json:"image" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image field is required"})
+		return
+	}
+
+	if err := security.RevokeImageSignature(req.Image); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke signature: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Image signature successfully revoked",
+		"image":   req.Image,
+		"status":  "unsigned",
 	})
 }
 

@@ -607,6 +607,47 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
     );
   }
 
+  Future<void> _confirmUnsignImage(String image) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.remove_moderator, color: Colors.orangeAccent),
+            SizedBox(width: 8),
+            Text('Revoke Signature?'),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to revoke and remove the cryptographic signature from "$image"?\n\nGatekeeper will treat this image as unsigned, and stacks enforcing signatures will block its execution.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.remove_moderator, size: 16),
+            label: const Text('Revoke Signature'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ApiService.unsignImage(image);
+        _showSnackBar('🔏 Signature revoked for $image (now unsigned)');
+        _loadAllData();
+        widget.onRefresh();
+      } catch (e) {
+        _showSnackBar('Error revoking signature: $e', isError: true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1204,39 +1245,54 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                               label: const Text('View CVEs'),
                               onPressed: () => _showScanDetailsDialog(s),
                             ),
-                            if (isOrphan) ...[
+                            if (isOrphan || isVerified) ...[
                               const SizedBox(width: 6),
                               PopupMenuButton<String>(
                                 icon: const Icon(Icons.more_vert, size: 18),
                                 tooltip: 'Image Options',
                                 onSelected: (val) {
-                                  if (val == 'purge_scan') {
+                                  if (val == 'unsign') {
+                                    _confirmUnsignImage(s.imageName);
+                                  } else if (val == 'purge_scan') {
                                     _deleteScan(s.id);
                                   } else if (val == 'delete_host') {
                                     _deleteHostImage(s.imageName);
                                   }
                                 },
                                 itemBuilder: (ctx) => [
-                                  const PopupMenuItem(
-                                    value: 'purge_scan',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline, size: 16, color: Colors.orangeAccent),
-                                        SizedBox(width: 8),
-                                        Text('Purge Scan Record'),
-                                      ],
+                                  if (isVerified)
+                                    const PopupMenuItem(
+                                      value: 'unsign',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.remove_moderator, size: 16, color: Colors.orangeAccent),
+                                          SizedBox(width: 8),
+                                          Text('Revoke Signature (Unsign)'),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'delete_host',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_forever, size: 16, color: Colors.redAccent),
-                                        SizedBox(width: 8),
-                                        Text('Delete Image from Hosts (rmi)'),
-                                      ],
+                                  if (isOrphan) ...[
+                                    const PopupMenuItem(
+                                      value: 'purge_scan',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_outline, size: 16, color: Colors.orangeAccent),
+                                          SizedBox(width: 8),
+                                          Text('Purge Scan Record'),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                    const PopupMenuItem(
+                                      value: 'delete_host',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_forever, size: 16, color: Colors.redAccent),
+                                          SizedBox(width: 8),
+                                          Text('Delete Image from Hosts (rmi)'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ],
@@ -1663,6 +1719,12 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                           icon: const Icon(Icons.edit_document, size: 15, color: Color(0xFF10B981)),
                           label: const Text('Re-sign', style: TextStyle(color: Color(0xFF10B981), fontSize: 12)),
                           onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.remove_moderator, size: 15, color: Colors.orangeAccent),
+                          label: const Text('Unsign', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+                          onPressed: () => _confirmUnsignImage(s.imageName),
                         ),
                       ],
                     ),
