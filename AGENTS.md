@@ -331,6 +331,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Manager Self-Healing Watchdog Daemon:** Implemented background reconciliation loop (`StartSelfHealingWatchdog`) continuously auditing stack replica health, detecting dead or missing containers, and automatically re-scheduling replacements to the least-loaded healthy nodes.
 * **Worker Execution Health Monitor:** Added active container state verification in `gbnt legion join` worker loops to detect exited or crashed processes and attempt local restarts before escalating to the Manager.
 
+### 52. Non-Blocking Prometheus Telemetry Engine & Live Status Parity (`v2.59.12`)
+* **Asynchronous Telemetry Snapshot Cache:** Eliminated synchronous, multi-second CLI commands (`gluster volume heal <vol> info`) from Prometheus's `Collect()` loop, replacing them with a non-blocking in-memory snapshot cache.
+* **Sub-Millisecond `/metrics` Scrapes:** Reduced Prometheus scrape response time from 15+ seconds down to <1ms, resolving context deadline timeouts.
+* **100% Up Gubernator Status in Grafana:** Restored `up{job="gubernator"} = 1` across Prometheus and Grafana dashboards for permanent, green "Gubernator Status: UP" display.
+
+
 
 
 

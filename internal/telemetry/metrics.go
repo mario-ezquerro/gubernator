@@ -1,6 +1,9 @@
 package telemetry
 
 import (
+	"sync"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/storage"
 
@@ -19,7 +22,62 @@ var (
 	})
 )
 
-// glusterCollector implements prometheus.Collector for live GlusterFS metrics.
+type glusterSnapshot struct {
+	diag      *storage.GlusterClusterDiagnostics
+	volumes   []storage.GlusterVolume
+	heals     map[string]bool
+	fetchedAt time.Time
+}
+
+var (
+	glusterCache   *glusterSnapshot
+	glusterCacheMu sync.RWMutex
+	glusterSyncing bool
+	glusterSyncMu  sync.Mutex
+)
+
+func refreshGlusterSnapshotAsync() {
+	glusterSyncMu.Lock()
+	if glusterSyncing {
+		glusterSyncMu.Unlock()
+		return
+	}
+	glusterSyncing = true
+	glusterSyncMu.Unlock()
+
+	go func() {
+		defer func() {
+			glusterSyncMu.Lock()
+			glusterSyncing = false
+			glusterSyncMu.Unlock()
+		}()
+
+		diag, _ := storage.GetGlusterDiagnostics()
+		volumes, _ := storage.GetGlusterVolumes()
+		heals := make(map[string]bool)
+
+		if volumes != nil {
+			for _, v := range volumes {
+				if heal, err := storage.GetGlusterHealReport(v.Name); err == nil && heal.InSplitBrain {
+					heals[v.Name] = true
+				}
+			}
+		}
+
+		snap := &glusterSnapshot{
+			diag:      diag,
+			volumes:   volumes,
+			heals:     heals,
+			fetchedAt: time.Now(),
+		}
+
+		glusterCacheMu.Lock()
+		glusterCache = snap
+		glusterCacheMu.Unlock()
+	}()
+}
+
+// glusterCollector implements prometheus.Collector for live GlusterFS metrics using non-blocking cache.
 type glusterCollector struct {
 	healthScoreDesc   *prometheus.Desc
 	daemonRunningDesc *prometheus.Desc
@@ -109,10 +167,20 @@ func (c *glusterCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *glusterCollector) Collect(ch chan<- prometheus.Metric) {
-	diag, err := storage.GetGlusterDiagnostics()
-	if err != nil || diag == nil {
+	glusterCacheMu.RLock()
+	snap := glusterCache
+	glusterCacheMu.RUnlock()
+
+	// If cache is empty or older than 20 seconds, trigger async background refresh
+	if snap == nil || time.Since(snap.fetchedAt) > 20*time.Second {
+		refreshGlusterSnapshotAsync()
+	}
+
+	if snap == nil || snap.diag == nil {
 		return
 	}
+
+	diag := snap.diag
 	daemonVal := 0.0
 	if diag.DaemonRunning {
 		daemonVal = 1.0
@@ -131,11 +199,7 @@ func (c *glusterCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.peersConnDesc, prometheus.GaugeValue, float64(connectedCount))
 	ch <- prometheus.MustNewConstMetric(c.volsTotalDesc, prometheus.GaugeValue, float64(diag.VolumesCount))
 
-	volumes, err := storage.GetGlusterVolumes()
-	if err != nil {
-		return
-	}
-	for _, v := range volumes {
+	for _, v := range snap.volumes {
 		statusVal := 0.0
 		if v.Status == "Started" {
 			statusVal = 1.0
@@ -159,7 +223,7 @@ func (c *glusterCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(c.volPendingHeal, prometheus.GaugeValue, float64(v.PendingHeals), v.Name)
 
 		splitVal := 0.0
-		if heal, err := storage.GetGlusterHealReport(v.Name); err == nil && heal.InSplitBrain {
+		if snap.heals[v.Name] {
 			splitVal = 1.0
 		}
 		ch <- prometheus.MustNewConstMetric(c.volSplitBrainDesc, prometheus.GaugeValue, splitVal, v.Name)
@@ -171,6 +235,9 @@ func init() {
 	prometheus.MustRegister(TotalNodes)
 	prometheus.MustRegister(TotalTasks)
 	prometheus.MustRegister(newGlusterCollector())
+
+	// Start initial async snapshot
+	go refreshGlusterSnapshotAsync()
 }
 
 // MetricsHandler returns a gin.HandlerFunc for Prometheus scraping
