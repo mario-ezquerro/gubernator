@@ -112,24 +112,73 @@ class ApiService {
 
   /// Provision and add a remote worker host via SSH.
   static Future<String?> addHost(String host, String user, String password) async {
+    final res = await provisionNode(host: host, user: user, password: password);
+    return res.success ? null : res.error ?? res.message;
+  }
+
+  /// Fetches cluster join info and commands
+  static Future<NodeJoinInfo?> fetchJoinInfo() async {
+    try {
+      final response = await http.get(Uri.parse('/api/node/join-info'));
+      if (response.statusCode == 200) {
+        return NodeJoinInfo.fromJson(jsonDecode(response.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Provision a remote host via SSH with step logs
+  static Future<NodeProvisionResult> provisionNode({
+    required String host,
+    String port = '22',
+    required String user,
+    String authType = 'password',
+    String password = '',
+    String privateKey = '',
+    bool deploySystemStacks = true,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('/api/node/add'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'host': host,
+          'port': port,
           'user': user,
+          'auth_type': authType,
           'password': password,
+          'private_key': privateKey,
+          'deploy_system_stacks': deploySystemStacks,
         }),
       );
-      if (response.statusCode == 200) {
-        return null; // Success
+      final body = jsonDecode(response.body);
+      final rawLogs = (body['logs'] as List? ?? [])
+          .map((e) => ProvisionStepLog.fromJson(e))
+          .toList();
+      if (response.statusCode == 200 && (body['success'] == true || body['message'] != null)) {
+        return NodeProvisionResult(
+          success: true,
+          message: body['message'] ?? 'Node provisioned successfully',
+          logs: rawLogs,
+          node: body['node'] != null ? Node.fromJson(body['node']) : null,
+        );
       } else {
-        final body = jsonDecode(response.body);
-        return body['error'] ?? 'Failed to add host';
+        return NodeProvisionResult(
+          success: false,
+          message: body['error'] ?? 'Provisioning failed',
+          error: body['error'] ?? 'Provisioning failed',
+          logs: rawLogs,
+        );
       }
     } catch (e) {
-      return e.toString();
+      return NodeProvisionResult(
+        success: false,
+        message: e.toString(),
+        error: e.toString(),
+        logs: [
+          ProvisionStepLog(step: 'Connection Error', message: e.toString(), status: 'error'),
+        ],
+      );
     }
   }
 

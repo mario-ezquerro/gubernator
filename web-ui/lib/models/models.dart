@@ -1957,6 +1957,75 @@ class GlusterClusterDiagnosticsModel {
   }
 }
 
+/// Information and commands for joining a worker node into the cluster
+class NodeJoinInfo {
+  final String managerIp;
+  final String managerHttp;
+  final String joinToken;
+  final String apiToken;
+  final String managerPublicKey;
+  final String oneLinerCmd;
+  final String dockerCmd;
+  final String cliCmd;
+  final String cloudInitYaml;
 
+  NodeJoinInfo({
+    this.managerIp = '',
+    this.managerHttp = '',
+    this.joinToken = '',
+    this.apiToken = '',
+    this.managerPublicKey = '',
+    this.oneLinerCmd = '',
+    this.dockerCmd = '',
+    this.cliCmd = '',
+    this.cloudInitYaml = '',
+  });
 
+  factory NodeJoinInfo.fromJson(Map<String, dynamic> json) {
+    return NodeJoinInfo(
+      managerIp: json['manager_ip'] ?? '',
+      managerHttp: json['manager_http'] ?? '',
+      joinToken: json['join_token'] ?? '',
+      apiToken: json['api_token'] ?? '',
+      managerPublicKey: json['manager_public_key'] ?? '',
+      oneLinerCmd: json['one_liner_cmd'] ?? '',
+      dockerCmd: json['docker_cmd'] ?? '',
+      cliCmd: json['cli_cmd'] ?? '',
+      cloudInitYaml: json['cloud_init_yaml'] ?? '',
+    );
+  }
+}
 
+/// A step log entry generated during SSH node provisioning
+class ProvisionStepLog {
+  final String step;
+  final String message;
+  final String status; // "ok", "warn", "error", "running"
+
+  ProvisionStepLog({required this.step, required this.message, required this.status});
+
+  factory ProvisionStepLog.fromJson(Map<String, dynamic> json) {
+    return ProvisionStepLog(
+      step: json['step'] ?? '',
+      message: json['message'] ?? '',
+      status: json['status'] ?? 'ok',
+    );
+  }
+}
+
+/// Result returned from remote SSH node provisioning
+class NodeProvisionResult {
+  final bool success;
+  final String message;
+  final String? error;
+  final List<ProvisionStepLog> logs;
+  final Node? node;
+
+  NodeProvisionResult({
+    required this.success,
+    required this.message,
+    this.error,
+    this.logs = const [],
+    this.node,
+  });
+}

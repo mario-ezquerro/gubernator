@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/node_labels_dialog.dart';
 import '../../widgets/shell_dialog.dart';
+import '../../widgets/add_node_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Centurions page — full-width nodes table with all actions.
@@ -372,121 +373,13 @@ class _CenturionsPageState extends State<CenturionsPage> {
   }
 
   void _showAddHostDialog() {
-    final hostController = TextEditingController();
-    final userController = TextEditingController(text: 'ubuntu');
-    final passwordController = TextEditingController();
-    bool isLoading = false;
-    String? errorText;
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Row(children: [
-            Icon(Icons.dns, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Add Worker Host (Centurion)'),
-          ]),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Specify the remote host connection details. Gubernator will connect via SSH, '
-                'detect system resources, and deploy the worker node agent.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              if (errorText != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 12))),
-                  ]),
-                ),
-                const SizedBox(height: 12),
-              ],
-              TextField(
-                controller: hostController,
-                decoration: const InputDecoration(
-                  labelText: 'IP Address / FQDN',
-                  hintText: 'e.g. 192.168.252.14 or worker3.local',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: userController,
-                decoration: const InputDecoration(
-                  labelText: 'SSH Username',
-                  hintText: 'ubuntu / root',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'SSH Password / Sudo Password',
-                  hintText: 'Required for sudo privilege elevation',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton.icon(
-              onPressed: isLoading
-                  ? null
-                  : () async {
-                      if (hostController.text.trim().isEmpty) {
-                        setDialogState(() => errorText = 'Host address is required');
-                        return;
-                      }
-                      setDialogState(() {
-                        isLoading = true;
-                        errorText = null;
-                      });
-
-                      final err = await ApiService.addHost(
-                        hostController.text.trim(),
-                        userController.text.trim(),
-                        passwordController.text,
-                      );
-
-                      if (err == null) {
-                        Navigator.of(ctx).pop();
-                        _showSnackBar('Host added successfully! Deploying worker...');
-                        widget.onRefresh();
-                      } else {
-                        setDialogState(() {
-                          isLoading = false;
-                          errorText = err;
-                        });
-                      }
-                    },
-              icon: isLoading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.add, size: 16),
-              label: Text(isLoading ? 'Bootstrapping...' : 'Bootstrap Host'),
-            ),
-          ],
-        ),
+      builder: (ctx) => AddNodeDialog(
+        state: widget.state,
+        onNodeAdded: () {
+          widget.onRefresh();
+        },
       ),
     );
   }

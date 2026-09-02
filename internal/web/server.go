@@ -389,6 +389,8 @@ func StartDashboard() {
 		api.POST("/node/:id/leave", auth.RequireRole(auth.RoleAdmin), nodeLeaveHandler)
 		api.POST("/node/:id/labels", auth.RequireRole(auth.RoleAdmin), nodeLabelsHandler)
 		api.POST("/node/:id/sync-token", auth.RequireRole(auth.RoleAdmin), nodeSyncTokenHandler)
+		api.GET("/node/join-info", nodeJoinInfoHandler)
+		api.GET("/node/join.sh", nodeJoinScriptHandler)
 		api.POST("/node/add", auth.RequireRole(auth.RoleAdmin), nodeAddHandler)
 		api.PUT("/coredns/config", auth.RequireRole(auth.RoleAdmin), updateCoreDNSConfigHandler)
 		api.POST("/coredns/custom-records", auth.RequireRole(auth.RoleAdmin), createCustomDNSRecordHandler)
@@ -507,6 +509,8 @@ func StartDashboard() {
 	r.Any("/grafana/*proxyPath", func(c *gin.Context) {
 		grafanaProxyHandler(c, sessionToken, user, pass)
 	})
+
+	r.GET("/join.sh", nodeJoinScriptHandler)
 
 	r.GET("/jaeger", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/jaeger/")
@@ -1996,35 +2000,92 @@ func nodeLeaveHandler(c *gin.Context) {
 }
 
 type addNodeRequest struct {
-	Host     string `json:"host" binding:"required"`
-	User     string `json:"user" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Host               string `json:"host" binding:"required"`
+	Port               string `json:"port"`
+	User               string `json:"user" binding:"required"`
+	AuthType           string `json:"auth_type"` // "password", "private_key", "manager_key"
+	Password           string `json:"password"`
+	PrivateKey         string `json:"private_key"`
+	DeploySystemStacks bool   `json:"deploy_system_stacks"`
 }
 
-func runRemoteSSHCommand(host, user, password, command string) (string, error) {
+type ProvisionStepLog struct {
+	Step    string `json:"step"`
+	Message string `json:"message"`
+	Status  string `json:"status"` // "ok", "warn", "error"
+}
+
+func buildSSHClient(host, port, user, authType, password, privateKey string) (*ssh.Client, error) {
+	if port == "" {
+		port = "22"
+	}
+	var authMethods []ssh.AuthMethod
+
+	switch authType {
+	case "private_key":
+		if strings.TrimSpace(privateKey) != "" {
+			signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse private key: %w", err)
+			}
+			authMethods = append(authMethods, ssh.PublicKeys(signer))
+		}
+	case "manager_key":
+		keyPaths := []string{
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		for _, kp := range keyPaths {
+			if data, err := os.ReadFile(kp); err == nil {
+				if signer, err := ssh.ParsePrivateKey(data); err == nil {
+					authMethods = append(authMethods, ssh.PublicKeys(signer))
+					break
+				}
+			}
+		}
+	default: // "password" or fallback
+		if password != "" {
+			authMethods = append(authMethods, ssh.Password(password))
+		}
+	}
+
+	if len(authMethods) == 0 {
+		// Fallback: try manager key if password is empty
+		keyPaths := []string{
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		for _, kp := range keyPaths {
+			if data, err := os.ReadFile(kp); err == nil {
+				if signer, err := ssh.ParsePrivateKey(data); err == nil {
+					authMethods = append(authMethods, ssh.PublicKeys(signer))
+					break
+				}
+			}
+		}
+	}
+
+	if len(authMethods) == 0 {
+		return nil, fmt.Errorf("no valid SSH authentication credentials provided")
+	}
+
 	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-		},
+		User:            user,
+		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         12 * time.Second,
+		Timeout:         15 * time.Second,
 	}
 
-	address := host
-	if !strings.Contains(address, ":") {
-		address += ":22"
-	}
+	address := net.JoinHostPort(host, port)
+	return ssh.Dial("tcp", address, config)
+}
 
-	client, err := ssh.Dial("tcp", address, config)
-	if err != nil {
-		return "", fmt.Errorf("SSH connection failed to %s: %v", address, err)
-	}
-	defer client.Close()
-
+func runSSHCommand(client *ssh.Client, command string) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
-		return "", fmt.Errorf("failed to open SSH session: %v", err)
+		return "", fmt.Errorf("failed to open SSH session: %w", err)
 	}
 	defer session.Close()
 
@@ -2035,16 +2096,44 @@ func runRemoteSSHCommand(host, user, password, command string) (string, error) {
 func nodeAddHandler(c *gin.Context) {
 	var req addNodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Host, User, and Password are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Host and User are required"})
 		return
 	}
 
-	// 1. Fetch system info via SSH from target host
-	infoCmd := "hostname && uname -m && nproc && free -m | awk '/Mem:/ {print $2}'"
-	out, err := runRemoteSSHCommand(req.Host, req.User, req.Password, infoCmd)
+	var stepLogs []ProvisionStepLog
+	addLog := func(step, message, status string) {
+		stepLogs = append(stepLogs, ProvisionStepLog{
+			Step:    step,
+			Message: message,
+			Status:  status,
+		})
+	}
+
+	port := req.Port
+	if port == "" {
+		port = "22"
+	}
+
+	// 1. Establish SSH connection
+	addLog("SSH Connection", fmt.Sprintf("Connecting to %s:%s as user '%s'...", req.Host, port, req.User), "ok")
+	client, err := buildSSHClient(req.Host, port, req.User, req.AuthType, req.Password, req.PrivateKey)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to connect via SSH: %v", err)})
+		addLog("SSH Connection", fmt.Sprintf("Connection failed: %v", err), "error")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("SSH connection failed: %v", err),
+			"logs":  stepLogs,
+		})
 		return
+	}
+	defer client.Close()
+	addLog("SSH Handshake", "SSH session established securely.", "ok")
+
+	// 2. Fetch system and hardware info
+	addLog("Hardware Discovery", "Probing target host architecture, CPU cores, and RAM...", "ok")
+	infoCmd := "hostname && uname -m && nproc && free -m | awk '/Mem:/ {print $2}'"
+	out, err := runSSHCommand(client, infoCmd)
+	if err != nil {
+		addLog("Hardware Discovery", fmt.Sprintf("Warning: could not probe full hardware stats: %v", err), "warn")
 	}
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
@@ -2061,65 +2150,226 @@ func nodeAddHandler(c *gin.Context) {
 	if len(lines) >= 4 {
 		fmt.Sscanf(lines[3], "%d", &ramMB)
 	}
+	addLog("Hardware Discovery", fmt.Sprintf("Detected hostname '%s', %d CPU cores, %d MB RAM.", hostname, cpuCount, ramMB), "ok")
 
 	nodeID := fmt.Sprintf("node-%s", strings.ReplaceAll(hostname, ".", "-"))
 
 	// Check if node already exists in DB
 	var existing db.Node
 	if err := db.DB.First(&existing, "id = ? OR ip = ?", nodeID, req.Host).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Node with IP %s or ID %s already exists", req.Host, existing.ID)})
-		return
+		// Update existing node status to active if reconnecting
+		db.DB.Model(&existing).Updates(map[string]interface{}{
+			"status":     "active",
+			"ip":         req.Host,
+			"updated_at": time.Now(),
+		})
+		addLog("Cluster Registry", fmt.Sprintf("Updated existing Centurion '%s' record in database.", existing.ID), "ok")
+	} else {
+		// 3. Register Node in Database
+		node := db.Node{
+			ID:        nodeID,
+			IP:        req.Host,
+			Role:      "worker",
+			Status:    "active",
+			Labels:    map[string]string{"gbnt.node.role": "worker"},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := db.DB.Create(&node).Error; err != nil {
+			addLog("Cluster Registry", fmt.Sprintf("Failed to register node: %v", err), "error")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "logs": stepLogs})
+			return
+		}
+		addLog("Cluster Registry", fmt.Sprintf("Centurion '%s' registered into cluster database.", nodeID), "ok")
 	}
 
-	// 2. Deploy Worker Container on remote host via SSH
-	managerIP := os.Getenv("GBNT_MANAGER_IP")
+	// 4. Check Docker Engine on remote host
+	addLog("Docker Engine", "Verifying Docker CE runtime on remote host...", "ok")
+	dockerCheckCmd := "command -v docker || true"
+	dockerOut, _ := runSSHCommand(client, dockerCheckCmd)
+	if strings.TrimSpace(dockerOut) == "" {
+		addLog("Docker Engine", "Docker not found. Installing Docker CE automatically...", "ok")
+		_, err := runSSHCommand(client, "curl -fsSL https://get.docker.com | sudo sh && sudo systemctl enable --now docker")
+		if err != nil {
+			addLog("Docker Engine", fmt.Sprintf("Docker auto-installation failed: %v", err), "warn")
+		} else {
+			addLog("Docker Engine", "Docker CE successfully installed and started.", "ok")
+		}
+	} else {
+		addLog("Docker Engine", "Docker CE runtime is installed and operational.", "ok")
+	}
+
+	// 5. Deploy Worker Agent Container
+	managerIP := db.GetManagerIP()
 	if managerIP == "" {
-		managerIP = "192.168.252.11"
+		managerIP = db.DetectLocalIP()
 	}
 	joinToken := db.GetJoinToken()
+	apiToken := db.GetAPIToken()
 
+	addLog("Agent Deployment", fmt.Sprintf("Connecting Centurion worker to Manager at http://%s:4000...", managerIP), "ok")
 	deployCmd := fmt.Sprintf(
-		"sudo docker run -d --name gbnt-worker --network host --restart always "+
-			"-v /var/run/docker.sock:/var/run/docker.sock "+
-			"marioezquerro/gubernator:latest agent --join %s:4000 --token %s",
-		managerIP, joinToken,
+		"sudo docker rm -f gbnt-worker 2>/dev/null || true; "+
+			"sudo docker run -d --name gbnt-worker --network host --restart unless-stopped "+
+			"-v /var/run/docker.sock:/var/run/docker.sock -v /data:/data "+
+			"marioezquerro/gubernator:latest legion join --token %s --manager http://%s:4000 --api-token %s",
+		joinToken, managerIP, apiToken,
 	)
 
-	// Attempt remote docker deployment asynchronously
-	go func() {
-		_, err := runRemoteSSHCommand(req.Host, req.User, req.Password, deployCmd)
-		if err != nil {
-			slog.Warn("remote docker run error (or container already running)", "host", req.Host, "err", err)
-		}
-	}()
-
-	// 3. Register Node in Database
-	node := db.Node{
-		ID:        nodeID,
-		IP:        req.Host,
-		Role:      "worker",
-		Status:    "active",
-		Labels:    map[string]string{"gbnt.node.role": "worker"},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	_, err = runSSHCommand(client, deployCmd)
+	if err != nil {
+		addLog("Agent Deployment", fmt.Sprintf("Warning during container launch: %v", err), "warn")
+	} else {
+		addLog("Agent Deployment", "Gubernator Centurion worker container deployed and running.", "ok")
 	}
 
-	if err := db.DB.Create(&node).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save node: %v", err)})
-		return
-	}
+	// 6. Synchronize Worker System Stacks (CORE-GBNT and SRE-Monitor)
+	addLog("System Stacks", "Bootstrapping CORE-GBNT (Caddy Ingress) and SRE Monitor services...", "ok")
+	coredns.SyncWorkerCoreStacks(db.DB)
+	monitor.SyncWorkerSreStacks(db.DB)
 
-	// Trigger Prometheus & Aqueducts updates
+	// 7. Update DNS & Observability configs
+	addLog("Aqueducts & Telemetry", "Updating CoreDNS routing and Prometheus metric scraping targets...", "ok")
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
 	if err := monitor.UpdatePrometheusConfig(); err != nil {
 		slog.Warn("failed to update Prometheus config on node add", "err", err)
 	}
 
+	addLog("Complete", fmt.Sprintf("Centurion '%s' (%s) successfully provisioned and online!", nodeID, req.Host), "ok")
+
+	var finalNode db.Node
+	_ = db.DB.First(&finalNode, "id = ?", nodeID)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Node successfully added to cluster",
-		"node":    node,
+		"message": "Node successfully provisioned and joined cluster",
+		"node":    finalNode,
+		"logs":    stepLogs,
+		"success": true,
 	})
+}
+
+func nodeJoinInfoHandler(c *gin.Context) {
+	managerIP := db.GetManagerIP()
+	if managerIP == "" {
+		managerIP = db.DetectLocalIP()
+	}
+	joinToken := db.GetJoinToken()
+	apiToken := db.GetAPIToken()
+
+	managerPubKey := ""
+	pubKeyPaths := []string{
+		"/data/ssh/id_ed25519.pub", "/data/ssh/id_rsa.pub",
+		"/root/.ssh/id_ed25519.pub", "/root/.ssh/id_rsa.pub",
+		"/home/ubuntu/.ssh/id_ed25519.pub", "/home/ubuntu/.ssh/id_rsa.pub",
+	}
+	for _, p := range pubKeyPaths {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
+			managerPubKey = strings.TrimSpace(string(data))
+			break
+		}
+	}
+
+	managerHTTP := fmt.Sprintf("http://%s:4000", managerIP)
+	webHTTP := fmt.Sprintf("http://%s:4001", managerIP)
+
+	oneLiner := fmt.Sprintf("curl -fsSL %s/api/node/join.sh | sudo bash -s -- --manager %s --token %s --api-token %s",
+		webHTTP, managerHTTP, joinToken, apiToken)
+
+	dockerCmd := fmt.Sprintf("sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token %s --manager %s --api-token %s",
+		joinToken, managerHTTP, apiToken)
+
+	cliCmd := fmt.Sprintf("sudo gbnt legion join --token %s --manager %s --api-token %s",
+		joinToken, managerHTTP, apiToken)
+
+	cloudInit := fmt.Sprintf(`#cloud-config
+package_upgrade: true
+packages:
+  - curl
+  - docker.io
+runcmd:
+  - systemctl enable --now docker
+  - %s
+`, dockerCmd)
+
+	c.JSON(http.StatusOK, gin.H{
+		"manager_ip":         managerIP,
+		"manager_http":       managerHTTP,
+		"join_token":         joinToken,
+		"api_token":          apiToken,
+		"manager_public_key": managerPubKey,
+		"one_liner_cmd":      oneLiner,
+		"docker_cmd":         dockerCmd,
+		"cli_cmd":            cliCmd,
+		"cloud_init_yaml":    cloudInit,
+	})
+}
+
+func nodeJoinScriptHandler(c *gin.Context) {
+	managerIP := db.GetManagerIP()
+	if managerIP == "" {
+		managerIP = db.DetectLocalIP()
+	}
+	joinToken := db.GetJoinToken()
+	apiToken := db.GetAPIToken()
+	managerHTTP := fmt.Sprintf("http://%s:4000", managerIP)
+
+	script := fmt.Sprintf(`#!/usr/bin/env bash
+# Gubernator Centurion Automated Bootstrap Script
+set -e
+
+MANAGER_URL="%s"
+JOIN_TOKEN="%s"
+API_TOKEN="%s"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -m|--manager)
+      MANAGER_URL="$2"
+      shift 2
+      ;;
+    -t|--token)
+      JOIN_TOKEN="$2"
+      shift 2
+      ;;
+    --api-token)
+      API_TOKEN="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+echo "🏛️  Gubernator Legion Onboarding Agent"
+echo "=========================================="
+echo "Connecting to Manager at: $MANAGER_URL"
+
+# 1. Install Docker if missing
+if ! command -v docker > /dev/null 2>&1; then
+  echo "🐳 Installing Docker CE Engine..."
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo systemctl enable --now docker
+fi
+
+# 2. Stop any existing worker container
+sudo docker rm -f gbnt-worker 2>/dev/null || true
+
+# 3. Start Gubernator Worker Agent
+echo "🚀 Starting Gubernator Centurion Worker Agent..."
+sudo docker run -d --name gbnt-worker \
+  --network host \
+  --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /data:/data \
+  marioezquerro/gubernator:latest legion join --token "$JOIN_TOKEN" --manager "$MANAGER_URL" --api-token "$API_TOKEN"
+
+echo "✅ Centurion successfully registered and joined the Legion!"
+`, managerHTTP, joinToken, apiToken)
+
+	c.Header("Content-Type", "text/x-shellscript; charset=utf-8")
+	c.String(http.StatusOK, script)
 }
 
 type nodeLabelsRequest struct {

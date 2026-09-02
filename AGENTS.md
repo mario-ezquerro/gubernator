@@ -371,6 +371,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Stack Name Search Predicate Integration:** Fixed `TasksPage` filter predicate to inspect parent `stack.name` and `stack.id` in `_getPlutoRows`, ensuring that searching or clicking a stack name (`kubeflow-stack`) immediately matches all underlying services and containers.
 * **Seamless Double-Filter Conflict Resolution:** Streamlined PlutoGrid row population and search synchronization so deep-linked stack filters display all matching containers reliably.
 
+### 61. Universal Centurion Onboarding Suite & Live Terminal Console (`v2.60.0`)
+* **3-Tab Universal Onboarding Suite (`AddNodeDialog`):** Completely redesigned the Centurion worker onboarding experience with 3 specialized workflows:
+  * ⚡ **Quick Join (Copy & Paste):** Instant 1-click command cards for **One-Liner Automated Installer** (`curl -fsSL .../join.sh | sudo bash -s ...`), **Docker Container** (`sudo docker run ... legion join`), and **Gubernator CLI Binary** (`sudo gbnt legion join`), allowing workers behind NAT/firewalls or cloud VMs to join without SSH keys or password configuration.
+  * 🚀 **Remote SSH Provisioning + Live Terminal Console:** Manager connects via SSH supporting 3 distinct authentication modes: **Password**, **Custom Private Key (.pem / RSA / ED25519)**, and **Manager Public Key Auto-Discovery** with an interactive monospace Linux console streaming step-by-step progress (`SSH Handshake`, `Hardware Discovery`, `Docker Engine Check`, `Agent Deployment`, `System Stacks`, `Aqueducts & Telemetry`).
+  * ☁️ **Cloud-Init & Automation (IaC):** Ready-to-copy `cloud-config` YAML blueprint for automated first-boot provisioning on Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, and Terraform.
+* **New Cluster Endpoints (`/api/node/join-info` & `/api/node/join.sh`):** Added native REST APIs returning auto-detected Manager IP, join tokens, API tokens, Manager SSH public key, pre-rendered join commands, and standalone bootstrap shell script with public `/join.sh` alias.
+* **Auto-Bootstrap System Stacks on Join:** Automatically bootstraps worker Caddy ingress (`CORE-GBNT`) and monitoring agents (`[SRE] Monitor`) upon node registration and updates CoreDNS and Prometheus scraping targets in real time.
+
 
 
 
