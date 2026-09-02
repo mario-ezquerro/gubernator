@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -145,11 +146,36 @@ func VerifyImageSignature(imageName, signatureStatus string, trustedKeys []db.Tr
 func ListTrustedKeys() ([]db.TrustedSigningKey, error) {
 	var keys []db.TrustedSigningKey
 	err := db.DB.Order("created_at desc").Find(&keys).Error
+	for i := range keys {
+		keys[i].HasPrivateKey = (strings.TrimSpace(keys[i].PrivateKeyPEM) != "")
+	}
 	return keys, err
 }
 
-// SaveTrustedKey stores or updates a trusted public signing key.
-func SaveTrustedKey(name, pubPEM string, isDefault bool) (*db.TrustedSigningKey, error) {
+// GetTrustedKeyByID retrieves a trusted signing key by ID.
+func GetTrustedKeyByID(id string) (*db.TrustedSigningKey, error) {
+	var key db.TrustedSigningKey
+	if err := db.DB.First(&key, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	key.HasPrivateKey = (strings.TrimSpace(key.PrivateKeyPEM) != "")
+	return &key, nil
+}
+
+// GetDefaultSigningKey retrieves the default cluster signing key.
+func GetDefaultSigningKey() (*db.TrustedSigningKey, error) {
+	var key db.TrustedSigningKey
+	if err := db.DB.Where("is_default = ?", true).First(&key).Error; err != nil {
+		if err := db.DB.Order("created_at asc").First(&key).Error; err != nil {
+			return nil, err
+		}
+	}
+	key.HasPrivateKey = (strings.TrimSpace(key.PrivateKeyPEM) != "")
+	return &key, nil
+}
+
+// SaveTrustedKey stores or updates a trusted public signing key (and optional private key).
+func SaveTrustedKey(name, pubPEM, privPEM string, isDefault bool) (*db.TrustedSigningKey, error) {
 	// Validate public key format
 	_, err := ParseECDSAPublicKey(pubPEM)
 	if err != nil {
@@ -157,12 +183,14 @@ func SaveTrustedKey(name, pubPEM string, isDefault bool) (*db.TrustedSigningKey,
 	}
 
 	key := db.TrustedSigningKey{
-		ID:           "key-" + uuid.New().String()[:8],
-		Name:         name,
-		PublicKeyPEM: strings.TrimSpace(pubPEM),
-		KeyType:      "cosign-ecdsa",
-		IsDefault:    isDefault,
-		CreatedAt:    time.Now(),
+		ID:            "key-" + uuid.New().String()[:8],
+		Name:          name,
+		PublicKeyPEM:  strings.TrimSpace(pubPEM),
+		PrivateKeyPEM: strings.TrimSpace(privPEM),
+		HasPrivateKey: strings.TrimSpace(privPEM) != "",
+		KeyType:       "cosign-ecdsa",
+		IsDefault:     isDefault,
+		CreatedAt:     time.Now(),
 	}
 
 	if isDefault {
@@ -179,4 +207,39 @@ func SaveTrustedKey(name, pubPEM string, isDefault bool) (*db.TrustedSigningKey,
 // DeleteTrustedKey removes a trusted signing key by ID.
 func DeleteTrustedKey(id string) error {
 	return db.DB.Delete(&db.TrustedSigningKey{}, "id = ?", id).Error
+}
+
+// ResolveImageDigest retrieves or calculates the cryptographic digest of an image.
+func ResolveImageDigest(imageName string) string {
+	// 1. Check ImageScan record in DB
+	var scan db.ImageScan
+	if err := db.DB.Where("image_name = ?", imageName).First(&scan).Error; err == nil && scan.ImageDigest != "" {
+		return scan.ImageDigest
+	}
+
+	// 2. Query Docker inspect for RepoDigests
+	cmd := exec.Command("docker", "inspect", "--format", "{{index .RepoDigests 0}}", imageName)
+	if out, err := cmd.Output(); err == nil && strings.TrimSpace(string(out)) != "" {
+		raw := strings.TrimSpace(string(out))
+		if idx := strings.Index(raw, "@"); idx != -1 {
+			return raw[idx+1:]
+		}
+		if strings.HasPrefix(raw, "sha256:") {
+			return raw
+		}
+	}
+
+	// 3. Query Docker inspect for Image ID
+	cmdID := exec.Command("docker", "inspect", "--format", "{{.Id}}", imageName)
+	if out, err := cmdID.Output(); err == nil && strings.TrimSpace(string(out)) != "" {
+		raw := strings.TrimSpace(string(out))
+		if strings.HasPrefix(raw, "sha256:") {
+			return raw
+		}
+		return "sha256:" + raw
+	}
+
+	// 4. SHA-256 fallback of image name
+	h := sha256.Sum256([]byte(imageName))
+	return fmt.Sprintf("sha256:%x", h[:])
 }

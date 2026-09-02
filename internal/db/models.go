@@ -366,12 +366,14 @@ type SecurityPolicy struct {
 
 // TrustedSigningKey represents a trusted public signing key for Cosign image verification.
 type TrustedSigningKey struct {
-	ID           string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Name         string    `gorm:"type:varchar(255);not null" json:"name"`
-	PublicKeyPEM string    `gorm:"type:text;not null" json:"public_key_pem"`
-	KeyType      string    `gorm:"type:varchar(50);default:'cosign-ecdsa'" json:"key_type"`
-	IsDefault    bool      `gorm:"default:false" json:"is_default"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID            string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name          string    `gorm:"type:varchar(255);not null" json:"name"`
+	PublicKeyPEM  string    `gorm:"type:text;not null" json:"public_key_pem"`
+	PrivateKeyPEM string    `gorm:"type:text" json:"-"`
+	HasPrivateKey bool      `gorm:"-" json:"has_private_key"`
+	KeyType       string    `gorm:"type:varchar(50);default:'cosign-ecdsa'" json:"key_type"`
+	IsDefault     bool      `gorm:"default:false" json:"is_default"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // ImageScan represents an image vulnerability scan report.

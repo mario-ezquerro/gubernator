@@ -1501,6 +1501,7 @@ class TrustedKeyModel {
   final String publicKeyPem;
   final String keyType;
   final bool isDefault;
+  final bool hasPrivateKey;
   final String createdAt;
 
   TrustedKeyModel({
@@ -1509,6 +1510,7 @@ class TrustedKeyModel {
     required this.publicKeyPem,
     this.keyType = 'cosign-ecdsa',
     this.isDefault = false,
+    this.hasPrivateKey = false,
     required this.createdAt,
   });
 
@@ -1519,6 +1521,7 @@ class TrustedKeyModel {
       publicKeyPem: json['public_key_pem'] ?? '',
       keyType: json['key_type'] ?? 'cosign-ecdsa',
       isDefault: json['is_default'] ?? false,
+      hasPrivateKey: json['has_private_key'] == true,
       createdAt: json['created_at'] != null ? json['created_at'].toString().split('T')[0] : '',
     );
   }

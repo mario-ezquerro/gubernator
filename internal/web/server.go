@@ -5298,7 +5298,7 @@ func securityKeyGenerateHandler(c *gin.Context) {
 		return
 	}
 
-	key, err := security.SaveTrustedKey(req.Name, pubPEM, req.IsDefault)
+	key, err := security.SaveTrustedKey(req.Name, pubPEM, privPEM, req.IsDefault)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -5323,7 +5323,7 @@ func securityKeySaveHandler(c *gin.Context) {
 		return
 	}
 
-	key, err := security.SaveTrustedKey(req.Name, req.PublicKeyPEM, req.IsDefault)
+	key, err := security.SaveTrustedKey(req.Name, req.PublicKeyPEM, "", req.IsDefault)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -5347,11 +5347,45 @@ func securityKeyDeleteHandler(c *gin.Context) {
 func securityImageSignHandler(c *gin.Context) {
 	var req struct {
 		Image      string `json:"image" binding:"required"`
-		PrivateKey string `json:"private_key" binding:"required"`
+		KeyID      string `json:"key_id"`
+		PrivateKey string `json:"private_key"`
 		SignerName string `json:"signer_name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "image and private_key are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image is required"})
+		return
+	}
+
+	// 1. Resolve private key from KeyID or default cluster key if not explicitly passed
+	if req.PrivateKey == "" && req.KeyID != "" {
+		key, err := security.GetTrustedKeyByID(req.KeyID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Signing key not found: " + err.Error()})
+			return
+		}
+		if key.PrivateKeyPEM == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Selected key does not contain a private key; please provide private_key manually"})
+			return
+		}
+		req.PrivateKey = key.PrivateKeyPEM
+		if req.SignerName == "" {
+			req.SignerName = key.Name
+		}
+	}
+
+	if req.PrivateKey == "" {
+		// Fallback to default cluster key
+		defKey, err := security.GetDefaultSigningKey()
+		if err == nil && defKey != nil && defKey.PrivateKeyPEM != "" {
+			req.PrivateKey = defKey.PrivateKeyPEM
+			if req.SignerName == "" {
+				req.SignerName = defKey.Name
+			}
+		}
+	}
+
+	if req.PrivateKey == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Private key is required; please specify private_key or select a cluster key with private key stored"})
 		return
 	}
 
@@ -5359,12 +5393,17 @@ func securityImageSignHandler(c *gin.Context) {
 		req.SignerName = "Cluster Administrator"
 	}
 
-	sig, err := security.SignImageDigest(req.Image, "sha256:digest", req.PrivateKey, req.SignerName)
+	// 2. Discover cryptographic digest of image via Docker
+	digest := security.ResolveImageDigest(req.Image)
+
+	// 3. Sign digest using ECDSA private key
+	sig, err := security.SignImageDigest(req.Image, digest, req.PrivateKey, req.SignerName)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to sign image: " + err.Error()})
 		return
 	}
 
+	// 4. Update or trigger scan with verified status
 	scan, _, _ := security.GetScanByImage(req.Image)
 	if scan == nil {
 		scan, _, _ = security.TriggerScan(req.Image)
@@ -5373,12 +5412,14 @@ func securityImageSignHandler(c *gin.Context) {
 		db.DB.Model(&db.ImageScan{}).Where("id = ?", scan.ID).Updates(map[string]interface{}{
 			"signature_status": "verified",
 			"signature_signer": req.SignerName,
+			"image_digest":     digest,
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Image signed successfully",
 		"image":     req.Image,
+		"digest":    digest,
 		"signature": sig,
 		"signer":    req.SignerName,
 	})

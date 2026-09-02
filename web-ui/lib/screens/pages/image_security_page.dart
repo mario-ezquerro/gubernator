@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../widgets/image_remediation_dialog.dart';
 import '../../widgets/image_history_dialog.dart';
 import '../../widgets/image_build_dialog.dart';
+import '../../widgets/sign_image_dialog.dart';
 
 /// Image Security & SBOM (The Imperial Seal / The Armory)
 class ImageSecurityPage extends StatefulWidget {
@@ -557,80 +558,28 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
     );
   }
 
-  void _showSignImageDialog() {
-    final imageCtrl = TextEditingController();
-    final privKeyCtrl = TextEditingController();
-    final signerCtrl = TextEditingController(text: 'Cluster Administrator');
+  void _showSignImageDialog({String? initialImage}) {
+    final imageSet = <String>{};
+    for (final s in _scans) {
+      if (s.imageName.isNotEmpty) imageSet.add(s.imageName);
+    }
+    for (final svc in widget.state.services) {
+      if (svc.image.isNotEmpty) imageSet.add(svc.image);
+    }
+
+    final availableImages = imageSet.toList()..sort();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.verified, color: Color(0xFF10B981)),
-            SizedBox(width: 8),
-            Text('Cryptographically Sign Image'),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: imageCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Image to Sign',
-                  hintText: 'e.g. company/payments:2.1.0',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: signerCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Signer Identity',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: privKeyCtrl,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'ECDSA Private Key (PEM format)',
-                  hintText: '-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton.icon(
-            icon: const Icon(Icons.edit_document, size: 18),
-            label: const Text('Sign Image'),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-            onPressed: () async {
-              final img = imageCtrl.text.trim();
-              final key = privKeyCtrl.text.trim();
-              if (img.isEmpty || key.isEmpty) {
-                _showSnackBar('Image and private key are required', isError: true);
-                return;
-              }
-              Navigator.pop(ctx);
-              try {
-                await ApiService.signImage(img, key, signerName: signerCtrl.text.trim());
-                _showSnackBar('✅ Image $img signed successfully!');
-                _loadAllData();
-              } catch (e) {
-                _showSnackBar('❌ Signing failed: $e', isError: true);
-              }
-            },
-          ),
-        ],
+      builder: (ctx) => SignImageDialog(
+        initialImage: initialImage,
+        availableImages: availableImages,
+        availableKeys: _keys,
+        onSigned: () {
+          _showSnackBar('✅ Image signed and verified with The Imperial Seal!');
+          _loadAllData();
+          widget.onRefresh();
+        },
       ),
     );
   }
@@ -1172,6 +1121,12 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                             ],
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
+                              icon: const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF10B981)),
+                              label: const Text('Sign', style: TextStyle(color: Color(0xFF10B981))),
+                              onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
                               icon: const Icon(Icons.history_edu, size: 16),
                               label: const Text('History'),
                               onPressed: () => _showHistoryDialog(s.imageName),
@@ -1418,10 +1373,29 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                                          child: const Text('DEFAULT CLUSTER KEY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purpleAccent)),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text('DEFAULT', style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
                                         ),
                                       ],
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: k.hasPrivateKey ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          k.hasPrivateKey ? 'IN-CLUSTER KEYPAIR (READY TO SIGN)' : 'PUBLIC KEY ONLY',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: k.hasPrivateKey ? const Color(0xFF10B981) : Colors.grey,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),

@@ -1533,16 +1533,28 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  /// Signs an image with a private key.
-  static Future<Map<String, dynamic>> signImage(String image, String privateKey, {String signerName = 'Cluster Admin'}) async {
+  /// Signs an image with an in-cluster key or manual private key.
+  static Future<Map<String, dynamic>> signImage(
+    String image, {
+    String? keyId,
+    String? privateKey,
+    String signerName = 'Cluster Admin',
+  }) async {
+    final payload = <String, dynamic>{
+      'image': image,
+      'signer_name': signerName,
+    };
+    if (keyId != null && keyId.isNotEmpty) {
+      payload['key_id'] = keyId;
+    }
+    if (privateKey != null && privateKey.isNotEmpty) {
+      payload['private_key'] = privateKey;
+    }
+
     final response = await http.post(
       Uri.parse('/api/security/sign'),
       headers: authHeaders,
-      body: jsonEncode({
-        'image': image,
-        'private_key': privateKey,
-        'signer_name': signerName,
-      }),
+      body: jsonEncode(payload),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body);

@@ -51,11 +51,11 @@ func TestCosignKeyGenerationAndSigning(t *testing.T) {
 	}
 
 	// Save trusted key
-	key, err := SaveTrustedKey("Release Key", pubPEM, true)
+	key, err := SaveTrustedKey("Release Key", pubPEM, privPEM, true)
 	if err != nil {
 		t.Fatalf("SaveTrustedKey failed: %v", err)
 	}
-	if key.ID == "" || !key.IsDefault {
+	if key.ID == "" || !key.IsDefault || !key.HasPrivateKey {
 		t.Errorf("unexpected key state: %+v", key)
 	}
 
