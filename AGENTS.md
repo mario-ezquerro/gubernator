@@ -321,6 +321,12 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Elevated Ambient Glow & Geometry:** Styled the selected orange tab indicator with an 8px border radius, 4px inset container margins, and an ambient drop shadow (`BoxShadow(color: Color(0xFFF97316).withValues(alpha: 0.35), blurRadius: 8, offset: Offset(0, 2))`).
 * **Enhanced Typography & Contrast:** Configured bold white text with letter-spacing for active tab state and high-contrast muted text for unselected tabs.
 
+### 50. Stable Sidebar Navigation & Dynamic Item Index Parity (`v2.59.10`)
+* **Eliminated Intermittent Sidebar Item Flashing:** Removed legacy hardcoded `i >= 7 && i <= 9 && !widget.monitorRunning` item hiding in `sidebar.dart` that caused Caddy Ingress, CoreDNS, and Monitoring to intermittently appear/disappear on state polling.
+* **Persistent Navigation Hierarchy:** Guaranteed stable 1:1 index matching across all 16 sidebar navigation entries regardless of SRE monitor container states.
+* **Clean Section Visual Dividers:** Added a sleek, permanent divider separating Core Services from Observability Suites (Monitoring, Loki Logs, Network Monitor, Jaeger, Scope).
+
+
 
 
 

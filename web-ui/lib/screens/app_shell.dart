@@ -327,8 +327,6 @@ class _AppShellState extends State<AppShell> {
           GubernatorSidebar(
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
-              // Guard Grafana/Jaeger if monitor not running
-              if (index >= 7 && index <= 9 && !_state.monitorRunning) return;
               setState(() => _selectedIndex = index);
             },
             isDark: widget.isDark,
