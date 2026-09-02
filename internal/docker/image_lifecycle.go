@@ -452,6 +452,144 @@ exit $BUILD_STATUS
 	}, nil
 }
 
+// ── Multi-Host Image Distribution Engine ──────────────────────────────────────
+
+// ImageDistributeRequest represents a request to distribute an image across cluster hosts.
+type ImageDistributeRequest struct {
+	Image      string `json:"image" binding:"required"`
+	TargetNode string `json:"target_node"` // "all" or specific node ID
+}
+
+// ImageDistributeResult represents the result of distributing an image across cluster nodes.
+type ImageDistributeResult struct {
+	Success     bool              `json:"success"`
+	Image       string            `json:"image"`
+	SourceNode  string            `json:"source_node"`
+	TargetNodes []string          `json:"target_nodes"`
+	NodeResults map[string]string `json:"node_results"`
+	Duration    string            `json:"duration"`
+	Error       string            `json:"error,omitempty"`
+}
+
+// DistributeHostImage transfers and loads a Docker image across Centurion cluster nodes.
+func DistributeHostImage(req ImageDistributeRequest) (*ImageDistributeResult, error) {
+	start := time.Now()
+	allNodes := resolveNodes("all")
+	if len(allNodes) == 0 {
+		return nil, fmt.Errorf("no nodes found in cluster")
+	}
+
+	// 1. Locate source node having the image
+	var sourceNode *db.Node
+	for _, n := range allNodes {
+		checkCmd := fmt.Sprintf("docker image inspect %s >/dev/null 2>&1 && echo 'FOUND'", req.Image)
+		out, err := storage.ExecuteRemoteScript(n.IP, checkCmd)
+		if err == nil && strings.Contains(out, "FOUND") {
+			nodeCopy := n
+			sourceNode = &nodeCopy
+			break
+		}
+	}
+
+	if sourceNode == nil {
+		// Default to manager
+		for _, n := range allNodes {
+			if n.Role == "manager" || n.IP == "127.0.0.1" {
+				nodeCopy := n
+				sourceNode = &nodeCopy
+				break
+			}
+		}
+	}
+
+	if sourceNode == nil {
+		return nil, fmt.Errorf("image %s not found on any cluster node", req.Image)
+	}
+
+	// 2. Save image on source node to /tmp
+	archiveName := fmt.Sprintf("/tmp/gbnt-dist-%d.tar.gz", time.Now().UnixNano())
+	saveCmd := fmt.Sprintf("docker save %s | gzip -1 > %s", req.Image, archiveName)
+	if _, err := storage.ExecuteRemoteScript(sourceNode.IP, saveCmd); err != nil {
+		return nil, fmt.Errorf("failed to export image on source node %s: %w", nodeDisplayName(*sourceNode), err)
+	}
+	defer func() {
+		_, _ = storage.ExecuteRemoteScript(sourceNode.IP, fmt.Sprintf("rm -f %s", archiveName))
+	}()
+
+	// 3. Resolve target destination nodes
+	var targetNodes []db.Node
+	if req.TargetNode == "" || req.TargetNode == "all" || req.TargetNode == "all-nodes" {
+		for _, n := range allNodes {
+			if n.IP != sourceNode.IP && n.ID != sourceNode.ID {
+				targetNodes = append(targetNodes, n)
+			}
+		}
+	} else {
+		for _, n := range resolveNodes(req.TargetNode) {
+			if n.IP != sourceNode.IP && n.ID != sourceNode.ID {
+				targetNodes = append(targetNodes, n)
+			}
+		}
+	}
+
+	if len(targetNodes) == 0 {
+		return &ImageDistributeResult{
+			Success:     true,
+			Image:       req.Image,
+			SourceNode:  nodeDisplayName(*sourceNode),
+			TargetNodes: []string{},
+			NodeResults: map[string]string{nodeDisplayName(*sourceNode): "Image already present on host"},
+			Duration:    time.Since(start).Round(time.Millisecond).String(),
+		}, nil
+	}
+
+	nodeResults := make(map[string]string)
+	allSuccess := true
+	var successfulHosts []string
+	successfulHosts = append(successfulHosts, nodeDisplayName(*sourceNode))
+
+	// 4. Distribute and load on each target node
+	for _, target := range targetNodes {
+		tName := nodeDisplayName(target)
+		pipeCmd := fmt.Sprintf("cat %s | ssh -o StrictHostKeyChecking=no %s 'docker load' 2>&1", archiveName, target.IP)
+		out, err := storage.ExecuteRemoteScript("127.0.0.1", pipeCmd)
+		if err != nil {
+			scpCmd := fmt.Sprintf("scp -o StrictHostKeyChecking=no %s %s:%s && ssh -o StrictHostKeyChecking=no %s 'gzip -dc %s | docker load && rm -f %s' 2>&1",
+				archiveName, target.IP, archiveName, target.IP, archiveName, archiveName)
+			out, err = storage.ExecuteRemoteScript("127.0.0.1", scpCmd)
+		}
+
+		if err != nil {
+			allSuccess = false
+			nodeResults[tName] = fmt.Sprintf("Error: %s", out)
+		} else {
+			nodeResults[tName] = "Distributed & loaded successfully"
+			successfulHosts = append(successfulHosts, tName)
+		}
+	}
+
+	// 5. Update ImageScan hosts in database
+	var scan db.ImageScan
+	if err := db.DB.Where("image_name = ?", req.Image).First(&scan).Error; err == nil {
+		scan.Hosts = successfulHosts
+		db.DB.Save(&scan)
+	}
+
+	targetNodeNames := make([]string, len(targetNodes))
+	for i, t := range targetNodes {
+		targetNodeNames[i] = nodeDisplayName(t)
+	}
+
+	return &ImageDistributeResult{
+		Success:     allSuccess,
+		Image:       req.Image,
+		SourceNode:  nodeDisplayName(*sourceNode),
+		TargetNodes: targetNodeNames,
+		NodeResults: nodeResults,
+		Duration:    time.Since(start).Round(time.Millisecond).String(),
+	}, nil
+}
+
 // ── Helper Functions ──────────────────────────────────────────────────────────
 
 func nodeDisplayName(n db.Node) string {

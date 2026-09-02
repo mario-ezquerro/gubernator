@@ -111,3 +111,31 @@ func ImageBuildHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+// ImageDistributeHandler distributes an image across Centurion cluster nodes.
+func ImageDistributeHandler(c *gin.Context) {
+	var req docker.ImageDistributeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid distribution request payload: " + err.Error()})
+		return
+	}
+
+	if req.Image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image field is required"})
+		return
+	}
+	if req.TargetNode == "" {
+		req.TargetNode = "all"
+	}
+
+	res, err := docker.DistributeHostImage(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Image distribution failed: " + err.Error(),
+			"result": res,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}

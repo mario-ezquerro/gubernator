@@ -217,6 +217,40 @@ var imageBuildCmd = &cobra.Command{
 	},
 }
 
+var imageDistributeCmd = &cobra.Command{
+	Use:   "distribute <image>",
+	Short: "Distribute and load an image across all or targeted Centurion nodes",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		imageName := args[0]
+		reqBody, _ := json.Marshal(docker.ImageDistributeRequest{
+			Image:      imageName,
+			TargetNode: imageNodeFlag,
+		})
+
+		fmt.Printf("🌐 Distributing image '%s' across cluster (target: %s)...\n", imageName, imageNodeFlag)
+		resp, err := DoAPIRequest("POST", "/v1/images/distribute", bytes.NewReader(reqBody))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		var res docker.ImageDistributeResult
+		json.NewDecoder(resp.Body).Decode(&res)
+
+		for node, status := range res.NodeResults {
+			fmt.Printf("  • %-20s : %s\n", node, status)
+		}
+
+		if res.Success {
+			fmt.Printf("\n✅ Successfully distributed %s across %d node(s) in %s\n", res.Image, len(res.TargetNodes), res.Duration)
+		} else {
+			fmt.Printf("\n⚠️ Distribution completed with warnings/errors: %s\n", res.Error)
+		}
+	},
+}
+
 func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
@@ -240,9 +274,12 @@ func init() {
 	imageBuildCmd.Flags().StringVarP(&imageNodeFlag, "node", "n", "manager", "Target Centurion node to build on")
 	imageBuildCmd.Flags().BoolVar(&imageNoCacheFlag, "no-cache", false, "Do not use cache when building image")
 
+	imageDistributeCmd.Flags().StringVarP(&imageNodeFlag, "node", "n", "all", "Target Centurion node ID, IP, or 'all'")
+
 	imageCmd.AddCommand(imageLsCmd)
 	imageCmd.AddCommand(imageHistoryCmd)
 	imageCmd.AddCommand(imageRmCmd)
 	imageCmd.AddCommand(imagePruneCmd)
 	imageCmd.AddCommand(imageBuildCmd)
+	imageCmd.AddCommand(imageDistributeCmd)
 }

@@ -46,6 +46,12 @@ class ApiService {
     throw Exception('Failed to fetch state: ${response.statusCode}');
   }
 
+  /// Fetches all cluster Centurion nodes.
+  static Future<List<Node>> fetchNodes() async {
+    final state = await fetchState();
+    return state.nodes;
+  }
+
   /// Deletes a stack and stops all its containers.
   static Future<bool> deleteStack(String id) async {
     final response = await http.delete(Uri.parse('/api/stack/$id'), headers: authHeaders);
@@ -1742,6 +1748,27 @@ class ApiService {
       return ImageBuildResultModel.fromJson(data['result'] ?? data);
     }
     final err = data['error'] ?? 'Build failed';
+    throw Exception(err);
+  }
+
+  /// Distributes and loads a Docker image across Centurion cluster nodes.
+  static Future<ImageDistributeResultModel> distributeDockerImage({
+    required String image,
+    String targetNode = 'all',
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/images/distribute'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'image': image,
+        'target_node': targetNode,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 || data['result'] != null) {
+      return ImageDistributeResultModel.fromJson(data['result'] ?? data);
+    }
+    final err = data['error'] ?? 'Distribution failed';
     throw Exception(err);
   }
 

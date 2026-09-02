@@ -59,10 +59,11 @@ Access **Image Security & SBOM** in the Web Dashboard (Port 4001) to interact wi
 * **License Compliance**: Highlights software licenses (MIT, Apache-2.0, BSD, GPL) for legal audit compliance.
 * **1-Click Export**: Export the full SBOM in **CycloneDX JSON** or **SPDX JSON** format.
 
-### 3. 🔏 Image Signatures & Keys (Cosign)
-* **Keypair Management**: Generate ECDSA P-256 Cosign-compatible keypairs directly in-cluster or import external public keys.
-* **Verification Status**: Displays whether images are 🟢 *Verified* or 🟡 *Unsigned*.
-* **1-Click Signing**: Sign container images with private keys stored or entered securely.
+### 3. 🔏 Image Signatures & Keys (Cosign) & Signed Images Registry
+* **In-Cluster Keypair Management**: Generate ECDSA P-256 Cosign-compatible keypairs directly in-cluster with secure SQLite persistence.
+* **Signed Images Registry**: Catalog of all signed container images in the cluster, indicating the signer identity, algorithm (`ECDSA P-256`), digest (`sha256:...`), and physical host availability.
+* **1-Click Signing & Quick Sign**: Sign container images with default or selected keypairs without manual PEM copy-pasting.
+* **🌐 Multi-Host Image & Signature Distribution**: Stream and synchronize locally built or signed container images across all Centurion worker nodes via internal cluster bridge, ensuring immediate availability on any host without requiring an external registry.
 
 ### 4. 📜 Gatekeeper Policies (Admission Controller)
 * **Signature Enforcement**:
@@ -111,6 +112,16 @@ services:
 
 ---
 
+## 🌐 Multi-Host Image & Signature Distribution Engine
+
+Gubernator allows distributing locally compiled or signed container images across the entire cluster without needing an external Docker registry (such as Docker Hub, Harbor, or ECR):
+
+1. **Internal Cluster Bridge**: The Manager saves the image (`docker save`) and streams it over high-speed SSH pipes directly to target Centurion worker nodes (`docker load`).
+2. **Cluster-Wide Synchronized Admission**: When a stack with `gbnt.security.require-signature=true` is scheduled, Gatekeeper validates the signature against the cluster's trusted key database and any Centurion worker can immediately execute the container.
+3. **1-Click UI & CLI Execution**: Trigger distribution directly from the web dashboard with `Distribute` buttons or via `gbnt image distribute <image> [--node all|worker-id]`.
+
+---
+
 ## 🔨 Image Lifecycle, Layer Inspector & The Imperial Forge
 
 Gubernator provides full host image management directly from the dashboard and CLI:
@@ -123,10 +134,13 @@ Gubernator provides full host image management directly from the dashboard and C
 
 ## 💻 CLI Command Reference
 
-### Docker Host Images & Build Forge
+### Docker Host Images, Distribution & Build Forge
 ```bash
 # List physical Docker images across cluster nodes
 gbnt image ls [--node <node>]
+
+# Distribute and load an image across all or specific Centurion worker nodes
+gbnt image distribute <image> [--node all|worker-id]
 
 # Inspect layer history and reverse-engineer Dockerfile
 gbnt image history <image> [--node <node>]
@@ -185,6 +199,7 @@ gbnt image verify company/app:1.0
 | `/v1/images/host-delete` | `DELETE` | `operator` | Delete physical image from target or all nodes |
 | `/v1/images/prune` | `POST` | `operator` | Prune unused images across hosts and return reclaimed space |
 | `/v1/images/build` | `POST` | `operator` | Compile Dockerfile in The Forge with streaming logs |
+| `/v1/images/distribute` | `POST` | `operator` | Distribute and load image across Centurion worker nodes |
 | `/v1/security/scans` | `GET` | `all` | List all image vulnerability scans and summary metrics |
 | `/v1/security/scans/:id` | `GET` | `all` | Get detailed scan report with all CVEs |
 | `/v1/security/scans/trigger` | `POST` | `operator` | Trigger immediate vulnerability scan |

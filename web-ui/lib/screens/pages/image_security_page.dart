@@ -8,6 +8,7 @@ import '../../widgets/image_remediation_dialog.dart';
 import '../../widgets/image_history_dialog.dart';
 import '../../widgets/image_build_dialog.dart';
 import '../../widgets/sign_image_dialog.dart';
+import '../../widgets/image_distribute_dialog.dart';
 
 /// Image Security & SBOM (The Imperial Seal / The Armory)
 class ImageSecurityPage extends StatefulWidget {
@@ -584,6 +585,28 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
     );
   }
 
+  void _showDistributeDialog(
+    String imageName, {
+    String? signatureStatus,
+    String? signatureSigner,
+    List<String> currentHosts = const [],
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ImageDistributeDialog(
+        imageName: imageName,
+        signatureStatus: signatureStatus,
+        signatureSigner: signatureSigner,
+        currentHosts: currentHosts,
+        onSuccess: () {
+          _showSnackBar('🌐 Image distributed and synchronized across Centurion nodes!');
+          _loadAllData();
+          widget.onRefresh();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1003,18 +1026,51 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                       const SizedBox(width: 8),
                                       if (isVerified)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.45)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.verified, size: 13, color: Color(0xFF10B981)),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                s.signatureSigner != null && s.signatureSigner!.isNotEmpty
+                                                    ? 'SIGNED (${s.signatureSigner})'
+                                                    : 'SIGNED (Cluster Key)',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF10B981),
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.06),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.white24),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.verified, size: 12, color: Color(0xFF10B981)),
+                                              Icon(Icons.shield_outlined, size: 13, color: Colors.grey),
                                               SizedBox(width: 4),
-                                              Text('VERIFIED', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                                              Text(
+                                                'UNSIGNED',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -1089,7 +1145,7 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Digest: ${s.imageDigest.length > 18 ? s.imageDigest.substring(0, 18) + "..." : s.imageDigest} | Scanned: ${s.scannedAt}',
+                                    'Digest: ${s.imageDigest.isNotEmpty ? (s.imageDigest.length > 20 ? s.imageDigest.substring(0, 20) + "..." : s.imageDigest) : "local"} | Signer: ${s.signatureSigner ?? "Unsigned"} | Scanned: ${s.scannedAt}',
                                     style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                                   ),
                                 ],
@@ -1124,6 +1180,17 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                               icon: const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF10B981)),
                               label: const Text('Sign', style: TextStyle(color: Color(0xFF10B981))),
                               onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.share_location, size: 16, color: Colors.lightBlueAccent),
+                              label: const Text('Distribute', style: TextStyle(color: Colors.lightBlueAccent)),
+                              onPressed: () => _showDistributeDialog(
+                                s.imageName,
+                                signatureStatus: s.signatureStatus,
+                                signatureSigner: s.signatureSigner,
+                                currentHosts: s.hosts,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
@@ -1302,149 +1369,309 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
   // ── Tab 3: Signatures & Keys ──────────────────────────────────────
 
   Widget _buildSignaturesTab(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Trusted Signing Keys (Cosign / Sigstore)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Row(
-              children: [
-                FilledButton.icon(
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Generate Keypair'),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-                  onPressed: _showGenerateKeyDialog,
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  icon: const Icon(Icons.edit_document, size: 18),
-                  label: const Text('Sign Image'),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-                  onPressed: _showSignImageDialog,
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: _keys.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.vpn_key_outlined, size: 48, color: Colors.grey[600]),
-                      const SizedBox(height: 12),
-                      const Text('No trusted signing keys configured. Click "Generate Keypair" to create one!'),
-                    ],
+    final signedScans = _scans.where((s) => s.signatureStatus == 'verified' || s.signatureStatus == 'signed').toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Trusted Signing Keys (Cosign / Sigstore)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Generate Keypair'),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
+                    onPressed: _showGenerateKeyDialog,
                   ),
-                )
-              : ListView.separated(
-                  itemCount: _keys.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (ctx, i) {
-                    final k = _keys[i];
-                    return Card(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14.0),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.key, color: Color(0xFF8B5CF6), size: 24),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.edit_document, size: 18),
+                    label: const Text('Sign Image'),
+                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                    onPressed: _showSignImageDialog,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_keys.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  children: [
+                    Icon(Icons.vpn_key_outlined, size: 42, color: Colors.grey[600]),
+                    const SizedBox(height: 8),
+                    const Text('No trusted signing keys configured. Click "Generate Keypair" to create one!'),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _keys.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (ctx, i) {
+                final k = _keys[i];
+                return Card(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.key, color: Color(0xFF8B5CF6), size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text(k.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                      if (k.isDefault) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.amber.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text('DEFAULT', style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
-                                        ),
-                                      ],
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: k.hasPrivateKey ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          k.hasPrivateKey ? 'IN-CLUSTER KEYPAIR (READY TO SIGN)' : 'PUBLIC KEY ONLY',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: k.hasPrivateKey ? const Color(0xFF10B981) : Colors.grey,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                  Text(k.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  if (k.isDefault) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
                                       ),
-                                    ],
+                                      child: const Text('DEFAULT', style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: k.hasPrivateKey ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      k.hasPrivateKey ? 'IN-CLUSTER KEYPAIR (READY TO SIGN)' : 'PUBLIC KEY ONLY',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: k.hasPrivateKey ? const Color(0xFF10B981) : Colors.grey,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text('Type: ${k.keyType} | Added: ${k.createdAt}', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                                 ],
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 18, color: Colors.blueAccent),
-                              tooltip: 'Copy Public Key PEM',
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(text: k.publicKeyPem));
-                                _showSnackBar('Public Key PEM copied to clipboard');
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                              tooltip: 'Delete Key',
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Delete Key'),
-                                    content: Text('Delete trusted key "${k.name}"?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                                      FilledButton(
-                                        style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                                        onPressed: () => Navigator.pop(c, true),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  await ApiService.deleteTrustedKey(k.id);
-                                  _showSnackBar('Key deleted');
-                                  _loadAllData();
-                                }
-                              },
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text('Type: ${k.keyType} | Added: ${k.createdAt}', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 18, color: Colors.blueAccent),
+                          tooltip: 'Copy Public Key PEM',
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: k.publicKeyPem));
+                            _showSnackBar('Public Key PEM copied to clipboard');
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                          tooltip: 'Delete Key',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('Delete Key'),
+                                content: Text('Delete trusted key "${k.name}"?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                                    onPressed: () => Navigator.pop(c, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await ApiService.deleteTrustedKey(k.id);
+                              _showSnackBar('Key deleted');
+                              _loadAllData();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 28),
+
+          // ── Signed Images & Distributed Cluster Registry ──────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.verified_user, color: Color(0xFF10B981), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Signed Images & Cluster Registry (${signedScans.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              if (signedScans.isNotEmpty)
+                Text(
+                  'Synchronized with Admission Gatekeeper for multi-host deployment',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
                 ),
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (signedScans.isEmpty)
+            Card(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.shield_outlined, size: 36, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      const Text('No signed images registered yet.'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Click "Sign Image" above or use the "Sign" button on any image card to cryptographically sign container digests.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: signedScans.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (ctx, i) {
+                final s = signedScans[i];
+                return Card(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.verified, color: Color(0xFF10B981), size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    s.imageName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, fontFamily: 'monospace'),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text('VERIFIED', style: TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                                  ),
+                                  if (s.signatureSigner != null && s.signatureSigner!.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Text(
+                                        'Signer: ${s.signatureSigner}',
+                                        style: const TextStyle(fontSize: 10, color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Digest: ${s.imageDigest.isNotEmpty ? (s.imageDigest.length > 24 ? s.imageDigest.substring(0, 24) + "..." : s.imageDigest) : "local-digest"}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                  ),
+                                  if (s.hosts.isNotEmpty) ...[
+                                    const SizedBox(width: 12),
+                                    const Icon(Icons.dns, size: 12, color: Colors.tealAccent),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Hosts: ${s.hosts.join(", ")}',
+                                      style: const TextStyle(fontSize: 11, color: Colors.tealAccent, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.share_location, size: 15, color: Colors.lightBlueAccent),
+                          label: const Text('Distribute', style: TextStyle(color: Colors.lightBlueAccent, fontSize: 12)),
+                          onPressed: () => _showDistributeDialog(
+                            s.imageName,
+                            signatureStatus: s.signatureStatus,
+                            signatureSigner: s.signatureSigner,
+                            currentHosts: s.hosts,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.edit_document, size: 15, color: Color(0xFF10B981)),
+                          label: const Text('Re-sign', style: TextStyle(color: Color(0xFF10B981), fontSize: 12)),
+                          onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 

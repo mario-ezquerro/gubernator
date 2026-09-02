@@ -278,6 +278,7 @@ func Start(ctx context.Context) error {
 			imagesRoute.DELETE("/host-delete", ImageHostDeleteHandler)
 			imagesRoute.POST("/prune", ImagePruneHandler)
 			imagesRoute.POST("/build", ImageBuildHandler)
+			imagesRoute.POST("/distribute", ImageDistributeHandler)
 		}
 
 		systemRoute := v1.Group("/system")

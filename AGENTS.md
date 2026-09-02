@@ -398,6 +398,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Interactive SignImageDialog & Quick Sign Actions:** Redesigned signing modal featuring a searchable cluster image dropdown, in-cluster keypair selector with status pills, automatic Docker SHA-256 RepoDigest discovery, and 1-click `🔏 Sign` buttons directly on every image card.
 * **Compose Studio Zero-Trust Autocomplete & Security Labels:** Added comprehensive autocomplete snippets and Gubernator Copilot cards for `gbnt.security.require-signature=true`, `gbnt.security.max-cve-severity=critical`, `gbnt.security.allow-unfixed-cve=false`, and `gbnt.security.signer="Cluster Administrator"`.
 
+### 66. Multi-Host Image & Signature Distribution, Signed Registry & Cluster Admission Subsystem (`v2.63.0`)
+* **Multi-Host Container Image Distribution (`docker save` ➔ SSH ➔ `docker load`):** Internal cluster bridge streaming locally built or signed container images across Manager and Centurion worker nodes, eliminating the prerequisite of an external Docker registry.
+* **Cluster-Wide Synchronized Signature Admission:** Centralized validation ensures that images signed on the Manager or via in-cluster keys are verified across all Centurion nodes, enabling any node in the cluster to execute signed tasks seamlessly.
+* **Signed Images & Distributed Registry UI:** Dedicated catalog view in the Signatures tab highlighting all signed cluster images, signer identities, cryptographic digests (`sha256:...`), and physical host presence.
+* **Interactive Distribution Dialog (`ImageDistributeDialog`):** Material Design 3 modal with target Centurion node selection (`All Centurions`, specific worker), live streaming SSH progress, and execution results breakdown.
+* **Full CLI Parity:** Added dedicated command `gbnt image distribute <image> [--node all|node-id]` and REST API endpoint `POST /v1/images/distribute`.
+
+
 
 
 

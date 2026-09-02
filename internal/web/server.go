@@ -494,6 +494,7 @@ func StartDashboard() {
 		api.DELETE("/images/host-delete", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imageHostDeleteHandler)
 		api.POST("/images/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imagePruneHandler)
 		api.POST("/images/build", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imageBuildHandler)
+		api.POST("/images/distribute", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), imageDistributeHandler)
 	}
 
 	// Serve the Flutter web app — SPA routing
@@ -5938,6 +5939,33 @@ func imageBuildHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":  "Build failed: " + err.Error(),
+			"result": res,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func imageDistributeHandler(c *gin.Context) {
+	var req docker.ImageDistributeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid distribution request payload: " + err.Error()})
+		return
+	}
+
+	if req.Image == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image field is required"})
+		return
+	}
+	if req.TargetNode == "" {
+		req.TargetNode = "all"
+	}
+
+	res, err := docker.DistributeHostImage(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Image distribution failed: " + err.Error(),
 			"result": res,
 		})
 		return

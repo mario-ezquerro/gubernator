@@ -2386,4 +2386,39 @@ class ImageBuildResultModel {
   }
 }
 
+/// Outcome of distributing an image across Centurion cluster nodes
+class ImageDistributeResultModel {
+  final bool success;
+  final String image;
+  final String sourceNode;
+  final List<String> targetNodes;
+  final Map<String, String> nodeResults;
+  final String duration;
+  final String? error;
+
+  ImageDistributeResultModel({
+    required this.success,
+    required this.image,
+    required this.sourceNode,
+    required this.targetNodes,
+    required this.nodeResults,
+    required this.duration,
+    this.error,
+  });
+
+  factory ImageDistributeResultModel.fromJson(Map<String, dynamic> json) {
+    final rawResults = json['node_results'] as Map<String, dynamic>? ?? {};
+    final nodeResults = rawResults.map((k, v) => MapEntry(k, v.toString()));
+    return ImageDistributeResultModel(
+      success: json['success'] == true,
+      image: json['image'] ?? '',
+      sourceNode: json['source_node'] ?? '',
+      targetNodes: (json['target_nodes'] as List<dynamic>? ?? []).map((t) => t.toString()).toList(),
+      nodeResults: nodeResults,
+      duration: json['duration'] ?? '',
+      error: json['error'],
+    );
+  }
+}
+
 
