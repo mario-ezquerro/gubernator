@@ -549,6 +549,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Stacks (Legions) DataTable in `legions_page.dart` and `dashboard_screen.dart` features a dedicated **`HOST NODE`** column.
   - Renders a color-coded Centurion badge (icon, hostname, IP, and role: amber for `MANAGER`, sky blue for `WORKER`) with one-click access to the stack migration dialog.
 
+### 77. Remote Worker Container Actions & Terminal Dispatch (`v2.70.1`)
+* **Multi-Node Container Inspect Resolution:**
+  - `taskInspectHandler` (`GET /api/task/:id/inspect`) dynamically detects if a container is hosted on a remote Centurion worker.
+  - Automatically queries the container over SSH (`sudo docker inspect <name>`) and streams raw JSON back to the Web Dashboard, resolving `exit status 1` / `no such object` errors on multi-node clusters.
+* **Remote Container Interactive Shell (PTY over SSH & WebSockets):**
+  - `taskShellHandler` (`GET /api/task/:id/shell`) connects the browser xterm.js terminal directly to containers running on remote Centurion workers.
+  - Spawns an interactive PTY session over SSH (`ssh -tt ... sudo docker exec -it <name> /bin/sh`), bridging bidirectional WebSocket frames without requiring local Docker daemon residency.
+* **Clean Remote Container Logs Streaming:**
+  - `taskLogsHandler` (`GET /api/task/:id/logs`) incorporates `-o LogLevel=ERROR` and resolves host identity across both node IDs and network IPs.
+  - Eliminates SSH host key warning banners from container logs output.
+* **Cluster-Aware Container Lifecycle & Deletion:**
+  - `deleteTaskHandler` and `stopContainerByName` invoke `docker.RemoveContainerOnNode(task.NodeID, task.ContainerName)`, properly terminating and pruning containers on the remote host where they physically run.
+
 
 
 

@@ -1285,10 +1285,10 @@ func deleteStackHandler(c *gin.Context) {
 func deleteTaskHandler(c *gin.Context) {
 	id := c.Param("id")
 
-	// Stop the actual container first
+	// Stop the actual container first across local or remote host
 	var task db.Task
 	if err := db.DB.First(&task, "id = ?", id).Error; err == nil && task.ContainerName != "" {
-		go stopContainerByName(task.ContainerName)
+		go docker.RemoveContainerOnNode(task.NodeID, task.ContainerName)
 	}
 
 	db.DB.Where("id = ?", id).Delete(&db.Task{})
@@ -1341,6 +1341,53 @@ func taskActionHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+// getNodeSSHArgs builds the ssh command-line arguments to execute a command on a remote Centurion node.
+func getNodeSSHArgs(nodeIP string, pty bool, remoteCmd string) []string {
+	sshArgs := []string{
+		"-o", "LogLevel=ERROR",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "ConnectTimeout=5",
+	}
+	if pty {
+		sshArgs = append(sshArgs, "-tt")
+	}
+
+	keyCandidates := []string{
+		"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+		"/data/id_ed25519", "/data/id_rsa",
+		"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+		"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		keyCandidates = append(keyCandidates, filepath.Join(home, ".ssh", "id_ed25519"), filepath.Join(home, ".ssh", "id_rsa"))
+	}
+
+	for _, k := range keyCandidates {
+		if _, statErr := os.Stat(k); statErr == nil {
+			sshArgs = append(sshArgs, "-i", k)
+			break
+		}
+	}
+
+	sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", nodeIP), remoteCmd)
+	return sshArgs
+}
+
+// resolveRemoteWorkerNode returns the node and true if nodeID points to an active remote worker Centurion.
+func resolveRemoteWorkerNode(nodeID string) (*db.Node, bool) {
+	if nodeID == "" || nodeID == "node-local-manager" {
+		return nil, false
+	}
+	var node db.Node
+	if err := db.DB.Where("id = ? OR ip = ?", nodeID, nodeID).First(&node).Error; err == nil {
+		if node.Role != "manager" && node.ID != "node-local-manager" && node.IP != "" && node.IP != "127.0.0.1" {
+			return &node, true
+		}
+	}
+	return nil, false
+}
+
 func taskLogsHandler(c *gin.Context) {
 	id := c.Param("id")
 	var task db.Task
@@ -1357,34 +1404,10 @@ func taskLogsHandler(c *gin.Context) {
 		return
 	}
 
-	// 1. If container is on manager or local node
-	if task.NodeID == "node-local-manager" || task.NodeID == "" {
-		out, err := exec.Command("docker", "logs", "--tail", "200", task.ContainerName).CombinedOutput()
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Task %s - %s]\nStatus: %s\nOutput: %s\nError: %v", task.ID[:8], task.ContainerName, task.Status, string(out), err)})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"logs": string(out)})
-		return
-	}
-
-	// 2. Container is on a remote worker node -> query via SSH
-	var node db.Node
-	if err := db.DB.First(&node, "id = ?", task.NodeID).Error; err == nil && node.IP != "" && node.IP != "127.0.0.1" {
-		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
-		keyCandidates := []string{
-			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
-			"/data/id_ed25519", "/data/id_rsa",
-			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
-		}
-		for _, k := range keyCandidates {
-			if _, err := os.Stat(k); err == nil {
-				sshArgs = append(sshArgs, "-i", k)
-				break
-			}
-		}
+	// 1. If container is on a remote worker node -> query via SSH
+	if node, isRemote := resolveRemoteWorkerNode(task.NodeID); isRemote {
 		remoteCmd := fmt.Sprintf("sudo docker logs --tail 200 %s", task.ContainerName)
-		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
+		sshArgs := getNodeSSHArgs(node.IP, false, remoteCmd)
 		out, err := exec.Command("ssh", sshArgs...).CombinedOutput()
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Centurion %s (%s)] Remote container %s\nStatus: %s\nOutput: %s\nError: %v", node.ID, node.IP, task.ContainerName, task.Status, string(out), err)})
@@ -1394,10 +1417,10 @@ func taskLogsHandler(c *gin.Context) {
 		return
 	}
 
-	// 3. Fallback to local docker logs
+	// 2. Local docker container logs
 	out, err := exec.Command("docker", "logs", "--tail", "200", task.ContainerName).CombinedOutput()
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Container %s]\nStatus: %s\nError: %v\nOutput: %s", task.ContainerName, task.Status, err, string(out))})
+		c.JSON(http.StatusOK, gin.H{"logs": fmt.Sprintf("[Task %s - %s]\nStatus: %s\nOutput: %s\nError: %v", task.ID[:8], task.ContainerName, task.Status, string(out), err)})
 		return
 	}
 
@@ -1416,7 +1439,16 @@ func taskInspectHandler(c *gin.Context) {
 		return
 	}
 
-	out, err := exec.Command("docker", "inspect", task.ContainerName).CombinedOutput()
+	var out []byte
+	var err error
+	if node, isRemote := resolveRemoteWorkerNode(task.NodeID); isRemote {
+		remoteCmd := fmt.Sprintf("sudo docker inspect %s", task.ContainerName)
+		sshArgs := getNodeSSHArgs(node.IP, false, remoteCmd)
+		out, err = exec.Command("ssh", sshArgs...).Output()
+	} else {
+		out, err = exec.Command("docker", "inspect", task.ContainerName).Output()
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to inspect: %v", err)})
 		return
@@ -1450,7 +1482,15 @@ func taskShellHandler(c *gin.Context) {
 	}
 	defer ws.Close()
 
-	cmd := exec.Command("docker", "exec", "-it", task.ContainerName, "/bin/sh")
+	var cmd *exec.Cmd
+	if node, isRemote := resolveRemoteWorkerNode(task.NodeID); isRemote {
+		remoteCmd := fmt.Sprintf("sudo docker exec -it %s /bin/sh", task.ContainerName)
+		sshArgs := getNodeSSHArgs(node.IP, true, remoteCmd)
+		cmd = exec.Command("ssh", sshArgs...)
+	} else {
+		cmd = exec.Command("docker", "exec", "-it", task.ContainerName, "/bin/sh")
+	}
+
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start shell: %v\r\n", err)))
@@ -2568,8 +2608,13 @@ func scaleServiceDown(svc *db.Service, count int) {
 	}
 }
 
-// stopContainerByName calls docker stop + rm on a named container.
+// stopContainerByName calls docker stop + rm on a named container across its host Centurion.
 func stopContainerByName(name string) {
+	var task db.Task
+	if err := db.DB.Where("container_name = ?", name).First(&task).Error; err == nil && task.NodeID != "" {
+		_ = docker.RemoveContainerOnNode(task.NodeID, name)
+		return
+	}
 	exec.Command("docker", "stop", name).Run()
 	exec.Command("docker", "rm", "-f", name).Run()
 }
@@ -3295,7 +3340,7 @@ func jaegerProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass
 func nodeShellHandler(c *gin.Context) {
 	id := c.Param("id")
 	var node db.Node
-	if err := db.DB.First(&node, "id = ?", id).Error; err != nil {
+	if err := db.DB.Where("id = ? OR ip = ?", id, id).First(&node).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Node not found"})
 		return
 	}
@@ -3309,25 +3354,11 @@ func nodeShellHandler(c *gin.Context) {
 
 	// Use nsenter inside a privileged container to get host shell
 	var cmd *exec.Cmd
-	if node.Role == "manager" {
+	if node.Role == "manager" || node.ID == "node-local-manager" {
 		cmd = exec.Command("docker", "run", "-it", "--rm", "--privileged", "--pid=host", "alpine", "nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh")
 	} else {
-		sshArgs := []string{"-t", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null"}
-		keyCandidates := []string{
-			"/root/.ssh/id_ed25519",
-			"/root/.ssh/id_rsa",
-			"/data/id_ed25519",
-			"/data/id_rsa",
-			"/data/ssh/id_ed25519",
-			"/data/ssh/id_rsa",
-		}
-		for _, k := range keyCandidates {
-			if _, statErr := os.Stat(k); statErr == nil {
-				sshArgs = append(sshArgs, "-i", k)
-				break
-			}
-		}
-		sshArgs = append(sshArgs, "ubuntu@"+node.IP, "sudo docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh")
+		remoteCmd := "sudo docker run -it --rm --privileged --pid=host alpine nsenter -t 1 -m -u -n -i sh"
+		sshArgs := getNodeSSHArgs(node.IP, true, remoteCmd)
 		cmd = exec.Command("ssh", sshArgs...)
 	}
 	ptmx, err := pty.Start(cmd)
