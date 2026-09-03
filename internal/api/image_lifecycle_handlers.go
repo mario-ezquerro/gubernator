@@ -60,8 +60,9 @@ func ImageHostDeleteHandler(c *gin.Context) {
 	}
 
 	if purgeDB && db.DB != nil {
-		db.DB.Where("image_name = ?", image).Delete(&db.ImageScan{})
-		db.DB.Where("image_name = ?", image).Delete(&db.ImageVulnerability{})
+		db.DB.Exec("DELETE FROM image_vulnerabilities WHERE scan_id IN (SELECT id FROM image_scans WHERE image_name = ? OR image_name LIKE ?)", image, "%"+image+"%")
+		db.DB.Exec("DELETE FROM image_sboms WHERE image_name = ? OR image_name LIKE ?", image, "%"+image+"%")
+		db.DB.Exec("DELETE FROM image_scans WHERE image_name = ? OR image_name LIKE ?", image, "%"+image+"%")
 	}
 
 	c.JSON(http.StatusOK, res)

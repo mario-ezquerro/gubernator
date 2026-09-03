@@ -605,6 +605,18 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Enhanced `ImageHostDeleteHandler` (`DELETE /v1/images/host-delete`) and `imageHostDeleteHandler` (`DELETE /api/images/host-delete`) with `purge_db` parameter.
   - Automatically cascades image deletion to SQLite `image_scans` and `image_vulnerabilities` tables when `purge_db=true`, ensuring UI tables stay clean and in sync.
 
+### 81. Elimination of Image Auto-Resurrection & Optimistic Removal (`v2.70.5`)
+* **Decoupled Read Operations from Auto-Scanning:**
+  - Refactored `ListScans` and `GetSecuritySummary` in `internal/security/scanner.go` into pure read operations directly querying SQLite.
+  - Eliminated automatic `AutoSyncClusterImages()` scan triggers during `GET /api/security/scans`, preventing deleted images from being automatically re-scanned and resurrected upon dashboard refresh.
+* **Cascading Subquery Purging in Database:**
+  - Fixed database deletion in `internal/security/scanner.go`, `internal/web/server.go`, and `internal/api/image_lifecycle_handlers.go` to properly delete from `image_vulnerabilities` using subquery on `scan_id` (since `image_vulnerabilities` references scans rather than storing `image_name`).
+  - Added clean removal of associated `image_sboms` and `image_scans`.
+* **Active Workload Warning & Optimistic UI Removal:**
+  - Enhanced `_deleteHostImage` in `web-ui/lib/screens/pages/image_security_page.dart` to detect active workloads and display a warning explaining that deleting an in-use image untags it on hosts while leaving running containers operational until their stack is updated.
+  - Added immediate optimistic removal from `_scans` upon successful deletion, guaranteeing the image vanishes immediately from the table without delay.
+
+
 
 
 

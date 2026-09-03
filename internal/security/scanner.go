@@ -116,9 +116,31 @@ func SyncAllClusterImages() ([]db.ImageScan, error) {
 	return AutoSyncClusterImages()
 }
 
-// ListScans returns all image scan summaries, automatically discovering all cluster images.
+// ListScans returns all image scan summaries, annotating whether they are in active use.
 func ListScans() ([]db.ImageScan, error) {
-	return AutoSyncClusterImages()
+	var scans []db.ImageScan
+	err := db.DB.Order("scanned_at desc").Find(&scans).Error
+	if err != nil {
+		return nil, err
+	}
+
+	clusterImages := DiscoverClusterImages()
+	activeMap := make(map[string]bool)
+	for _, img := range clusterImages {
+		activeMap[img] = true
+		activeMap[cleanImageName(img)] = true
+		base := baseImageName(img)
+		if base != "" {
+			activeMap[base] = true
+		}
+	}
+
+	for i := range scans {
+		clean := cleanImageName(scans[i].ImageName)
+		base := baseImageName(scans[i].ImageName)
+		scans[i].InUse = activeMap[scans[i].ImageName] || activeMap[clean] || (base != "" && activeMap[base])
+	}
+	return scans, nil
 }
 
 // DeleteScan removes a scan report, its CVEs, and its SBOM from the database.
@@ -129,7 +151,7 @@ func DeleteScan(scanIDOrImage string) error {
 	}
 
 	// Delete vulnerabilities
-	db.DB.Where("scan_id = ? OR image_name = ?", scan.ID, scan.ImageName).Delete(&db.ImageVulnerability{})
+	db.DB.Where("scan_id = ?", scan.ID).Delete(&db.ImageVulnerability{})
 
 	// Delete SBOM
 	db.DB.Where("image_name = ?", scan.ImageName).Delete(&db.ImageSBOM{})
@@ -214,7 +236,7 @@ func GetScanByImage(imageName string) (*db.ImageScan, []db.ImageVulnerability, e
 
 // GetSecuritySummary aggregates cluster-wide security statistics.
 func GetSecuritySummary() (*SecuritySummary, error) {
-	scans, err := AutoSyncClusterImages()
+	scans, err := ListScans()
 	if err != nil {
 		return nil, err
 	}

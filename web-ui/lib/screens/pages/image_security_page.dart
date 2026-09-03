@@ -207,6 +207,10 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
     bool force = true;
     bool purgeDb = true;
 
+    final scanMatch = _scans.where((s) => s.imageName == imageName).firstOrNull;
+    final inUseServices = scanMatch?.services ?? [];
+    final isActivelyInUse = inUseServices.isNotEmpty || (scanMatch?.inUse ?? false);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -253,6 +257,30 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                     ],
                   ),
                 ),
+                if (isActivelyInUse) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline, size: 18, color: Colors.amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Active Services: ${inUseServices.isNotEmpty ? inUseServices.join(", ") : "Running workloads"}.\nDeleting the image physically removes/untags it on the selected host(s). Running containers will persist until their stack is stopped or updated.',
+                            style: const TextStyle(fontSize: 11.5, color: Colors.amberAccent),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 const Text(
                   'Target Host(s):',
@@ -342,6 +370,16 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
       _showSnackBar('🗑️ Deleting image $imageName from $targetDesc...');
       final res = await ApiService.deleteHostDockerImage(imageName, node: selectedNode, force: force, purgeDb: purgeDb);
       _showSnackBar('✅ ${res['message'] ?? 'Image deleted from hosts'}');
+
+      if (purgeDb) {
+        setState(() {
+          _scans.removeWhere((s) => s.imageName == imageName);
+          if (_selectedSbomImage == imageName) {
+            _selectedSbomImage = _scans.isNotEmpty ? _scans.first.imageName : null;
+          }
+        });
+      }
+
       _loadAllData();
       widget.onRefresh();
     } catch (e) {
