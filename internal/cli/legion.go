@@ -282,9 +282,10 @@ var legionJoinCmd = &cobra.Command{
 			var data struct {
 				Tasks []struct {
 					Task struct {
-						ID          string `json:"id"`
-						Status      string `json:"status"`
-						ContainerIP string `json:"container_ip"`
+						ID            string `json:"id"`
+						Status        string `json:"status"`
+						ContainerIP   string `json:"container_ip"`
+						ContainerName string `json:"container_name"`
 					} `json:"task"`
 					Image       string   `json:"image"`
 					Ports       []string `json:"ports"`
@@ -321,7 +322,10 @@ var legionJoinCmd = &cobra.Command{
 				}
 
 				for i, t := range data.Tasks {
-					containerName := "gbnt-" + t.Task.ID
+					containerName := t.Task.ContainerName
+					if containerName == "" {
+						containerName = "gbnt-" + t.Task.ID
+					}
 
 					// Health check for tasks expected to be running
 					if t.Task.Status == "running" {
@@ -344,7 +348,18 @@ var legionJoinCmd = &cobra.Command{
 						// If container is already running locally on this worker, report running and continue
 						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
 						if out, err := inspectCmd.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
+							reportStatus(t.Task.ID, "running", t.Task.ContainerIP, containerName, "")
 							continue
+						}
+
+						// SRE monitor containers (cAdvisor, Node Exporter, Promtail) are managed as local base daemons
+						if strings.HasPrefix(t.Task.ID, "sre-task-") || strings.HasPrefix(containerName, "gbnt-monitor-") {
+							_ = monitor.EnsureWorkerMonitoring(managerIP)
+							inspectCheck := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+							if out, err := inspectCheck.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
+								reportStatus(t.Task.ID, "running", t.Task.ContainerIP, containerName, "")
+								continue
+							}
 						}
 
 						fmt.Printf("Received task %s (Image: %s). Starting...\n", t.Task.ID, t.Image)

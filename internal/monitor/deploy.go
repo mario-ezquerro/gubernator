@@ -404,33 +404,6 @@ scrape_configs:
 	volCmd.Stdin = strings.NewReader(promtailYaml)
 	_ = volCmd.Run()
 
-	// 3) Ensure Weave Scope probe is running pointing to Manager Scope App:4040
-	scopeProbeName := "gbnt-monitor-scope-probe"
-	scopeOut, scopeErr := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", scopeProbeName).Output()
-	if scopeErr != nil || strings.TrimSpace(string(scopeOut)) != "running" {
-		scopeArgs := []string{
-			"-e", "CHECKPOINT_DISABLE=1",
-			"--net", "host",
-			"--pid", "host",
-			"--privileged",
-			"-v", "/var/run/docker.sock:/var/run/docker.sock",
-			"-v", "/proc:/host/proc:ro",
-			"-v", "/sys:/sys:ro",
-			"marioezquerro/scope:latest",
-			"--weave=false",
-			"--mode=probe",
-			"--probe.docker=true",
-			"--probe.processes=true",
-			"--probe.proc.spy=true",
-			fmt.Sprintf("%s:4040", managerIP),
-		}
-		if err := runContainer(scopeProbeName, scopeArgs); err != nil {
-			fmt.Printf("⚠️ Failed to start Weave Scope probe: %v\n", err)
-		} else {
-			fmt.Println("🕸️ Worker Weave Scope probe started successfully.")
-		}
-	}
-
 	return runContainer(PromtailName, []string{
 		"-v", VolPromtail + ":/etc/promtail:ro",
 		"-v", "/var/log:/var/log:ro",

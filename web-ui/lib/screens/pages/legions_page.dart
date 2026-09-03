@@ -41,11 +41,18 @@ class _LegionsPageState extends State<LegionsPage> {
     final name = s.name.toLowerCase();
     return id == 'core-gbnt-stack' ||
         id == 'sre-monitor-stack' ||
+        id == 'super-net-topology-mgr' ||
+        id.startsWith('core-') ||
+        id.startsWith('sre-') ||
+        id.startsWith('super-') ||
         name.contains('core-gbnt') ||
         name == 'core' ||
         name.contains('monitor') ||
         name.contains('[sre]') ||
-        name == 'sre';
+        name == 'sre' ||
+        name.contains('topology') ||
+        name.contains('[super]') ||
+        name.contains('scope');
   }
 
   Future<void> _stopStack(String id, String name) async {

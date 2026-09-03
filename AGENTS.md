@@ -562,6 +562,21 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Cluster-Aware Container Lifecycle & Deletion:**
   - `deleteTaskHandler` and `stopContainerByName` invoke `docker.RemoveContainerOnNode(task.NodeID, task.ContainerName)`, properly terminating and pruning containers on the remote host where they physically run.
 
+### 78. SRE Worker Daemon Disambiguation & Network Topology Base Classification (`v2.70.2`)
+* **Strict 3-Container SRE Worker Monitoring:**
+  - SRE monitoring on Centurion worker nodes is strictly composed of 3 daemons: `cAdvisor` (`gbnt-monitor-cadvisor`), `Node Exporter` (`gbnt-monitor-node-exporter`), and `Promtail` (`gbnt-monitor-promtail`).
+  - Removed redundant Weave Scope probe deployment from `EnsureWorkerMonitoring`. Scope is decoupled and managed strictly as part of Network Topology.
+* **Worker Task Executor Canonical Container Discovery:**
+  - Added `ContainerName` field decoding to the worker task executor in `internal/cli/legion.go`.
+  - Worker healthchecks now inspect canonical container names (`gbnt-monitor-promtail`, `cadvisor`, `node-exporter`) instead of defaulting to `gbnt-<taskID>`. This prevents false `dead` reports and eliminates the creation of duplicate Promtail containers on workers.
+  - In `SyncWorkerSreStacks` (`internal/monitor/register.go`), automatically purges any rogue or duplicate tasks and containers across worker SRE services.
+  - Updated `startLocalExecutor` in `internal/api/executor.go` to strictly skip system infrastructure stacks (`isSystemStack(svc.StackID)`), preventing duplicate SSH container dispatch.
+* **Network Topology Classified as BASE Infrastructure:**
+  - Updated `_isBaseStack` in `web-ui/lib/screens/pages/legions_page.dart` and `web-ui/lib/screens/dashboard_screen.dart` to recognize `[SUPER] Net-Topology` (`super-net-topology-mgr`, `super-scope-stack-*`, `topology`, `scope`, `[super]`).
+  - Network Topology stacks now display the purple **`BASE`** badge with `Icons.foundation`, are categorized under Base infrastructure, and are protected against user app actions (duplicate, host migration).
+  - Updated `isSystemStack` in `internal/api/node_crud.go` and `internal/api/watchdog.go` to safeguard topology stacks from watchdog reconciliation and node drain migrations.
+
+
 
 
 

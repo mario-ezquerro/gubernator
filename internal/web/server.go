@@ -1262,6 +1262,14 @@ func deleteStackHandler(c *gin.Context) {
 		return
 	}
 
+	// Special handling for Scope / Network Topology stack
+	if id == "super-net-topology-mgr" || strings.HasPrefix(strings.ToLower(id), "super-") ||
+		strings.Contains(strings.ToLower(id), "topology") || strings.Contains(strings.ToLower(id), "scope") {
+		_ = monitor.DisableScope()
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Network Topology stopped"})
+		return
+	}
+
 	// Stop containers before deleting
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
@@ -2187,6 +2195,14 @@ func stopStackHandler(c *gin.Context) {
 		return
 	}
 
+	// 2b. Special handling for Scope / Network Topology stack
+	if id == "super-net-topology-mgr" || strings.HasPrefix(strings.ToLower(id), "super-") ||
+		strings.Contains(strings.ToLower(stack.Name), "topology") || strings.Contains(strings.ToLower(stack.Name), "scope") {
+		_ = monitor.DisableScope()
+		c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": id, "message": "Network Topology stopped"})
+		return
+	}
+
 	// 3. User deployed application stacks: strictly enforce desired replicas
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
@@ -2249,6 +2265,14 @@ func startStackHandler(c *gin.Context) {
 	// 2. Special handling for Core stack
 	if id == coredns.CoreStackID || strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
 		redeployCoreStack(c)
+		return
+	}
+
+	// 2b. Special handling for Scope / Network Topology stack
+	if id == "super-net-topology-mgr" || strings.HasPrefix(strings.ToLower(id), "super-") ||
+		strings.Contains(strings.ToLower(stack.Name), "topology") || strings.Contains(strings.ToLower(stack.Name), "scope") {
+		_ = monitor.EnableScope()
+		c.JSON(http.StatusOK, gin.H{"status": "running", "stack_id": id, "message": "Network Topology started"})
 		return
 	}
 
@@ -2455,9 +2479,12 @@ func migrateStackHandler(c *gin.Context) {
 	}
 
 	// Reject system infrastructure stacks from manual host migration
-	if id == monitor.SREStackID || id == coredns.CoreStackID ||
-		strings.Contains(strings.ToLower(stack.Name), "sre") ||
-		strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
+	sID := strings.ToLower(id)
+	sName := strings.ToLower(stack.Name)
+	if sID == monitor.SREStackID || sID == coredns.CoreStackID ||
+		strings.HasPrefix(sID, "core-") || strings.HasPrefix(sID, "sre-") || strings.HasPrefix(sID, "super-") ||
+		strings.Contains(sName, "sre") || strings.Contains(sName, "core-gbnt") ||
+		strings.Contains(sName, "topology") || strings.Contains(sName, "scope") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Infrastructure stacks cannot be manually migrated"})
 		return
 	}

@@ -47,6 +47,10 @@ func startLocalExecutor(ctx context.Context) {
 				continue
 			}
 
+			if isSystemStack(svc.StackID) || strings.HasPrefix(task.ID, "sre-") || strings.HasPrefix(task.ID, "core-") {
+				continue
+			}
+
 			if task.NodeID == localManagerNodeID {
 				// Local Manager Execution
 				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{

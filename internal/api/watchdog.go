@@ -51,11 +51,11 @@ func ReconcileClusterServices() (prunedCount int, rescheduledCount int) {
 	validContainerNames := make(map[string]bool)
 
 	for _, stack := range stacks {
-		// Skip system stacks (Caddy/CoreDNS and SRE monitor have their own dedicated sync lifecycles)
+		// Skip system stacks (Caddy/CoreDNS, SRE monitor, and Scope Net-Topology have their own dedicated sync lifecycles)
 		sID := strings.ToLower(stack.ID)
 		sName := strings.ToLower(stack.Name)
-		if strings.HasPrefix(sID, "core-") || strings.HasPrefix(sID, "sre-") ||
-			strings.Contains(sName, "core-gbnt") || strings.Contains(sName, "monitor") {
+		if isSystemStack(sID) || strings.Contains(sName, "core-gbnt") || strings.Contains(sName, "monitor") ||
+			strings.Contains(sName, "topology") || strings.Contains(sName, "scope") {
 			continue
 		}
 

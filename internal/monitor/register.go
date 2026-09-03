@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"gorm.io/gorm"
 )
 
@@ -189,10 +190,24 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 				database.Create(&task)
 			} else {
 				database.Model(&existingTask).Updates(map[string]interface{}{
-					"status":       "running",
-					"container_ip":  node.IP,
-					"updated_at":   now,
+					"status":         "running",
+					"container_ip":   node.IP,
+					"container_name": ms.ContainerName,
+					"error":          "",
+					"updated_at":     now,
 				})
+			}
+
+			// Purge any rogue or duplicate tasks for this worker SRE service
+			var rogueTasks []db.Task
+			database.Where("service_id = ? AND id != ?", serviceID, taskID).Find(&rogueTasks)
+			for _, rt := range rogueTasks {
+				cName := rt.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + rt.ID
+				}
+				_ = docker.RemoveContainerOnNode(rt.NodeID, cName)
+				database.Delete(&rt)
 			}
 		}
 	}
@@ -344,13 +359,20 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 				ID:            taskID,
 				ServiceID:     serviceID,
 				NodeID:        node.ID,
-				Status:        "pending",
+				Status:        "running",
 				ContainerIP:   node.IP,
 				ContainerName: "gbnt-monitor-scope-probe",
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}
 			database.Create(&task)
+		} else {
+			database.Model(&existingTask).Updates(map[string]interface{}{
+				"status":         "running",
+				"container_ip":   node.IP,
+				"container_name": "gbnt-monitor-scope-probe",
+				"updated_at":     now,
+			})
 		}
 	}
 }

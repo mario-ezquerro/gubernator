@@ -153,13 +153,17 @@ func NodeRebootHandler(c *gin.Context) {
 
 func isSystemStack(stackID string) bool {
 	s := strings.ToLower(stackID)
-	return strings.HasPrefix(s, "core-stack-") ||
-		strings.HasPrefix(s, "sre-stack-") ||
+	return strings.HasPrefix(s, "core-") ||
+		strings.HasPrefix(s, "sre-") ||
+		strings.HasPrefix(s, "super-") ||
 		s == "core-gbnt-stack" ||
 		s == "sre-monitor-stack" ||
+		s == "super-net-topology-mgr" ||
 		strings.Contains(s, "core-gbnt") ||
 		strings.Contains(s, "sre-monitor") ||
-		strings.Contains(s, "monitor")
+		strings.Contains(s, "monitor") ||
+		strings.Contains(s, "topology") ||
+		strings.Contains(s, "scope")
 }
 
 // @Summary Leave Legion
