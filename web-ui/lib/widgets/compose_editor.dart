@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -505,6 +506,36 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
     ));
   }
 
+  void _saveOnDisk() {
+    final rawName = widget.stackName.trim();
+    final name = rawName.isEmpty ? 'docker-compose' : rawName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '-');
+    final filename = name.endsWith('.yml') || name.endsWith('.yaml') ? name : '$name.yml';
+
+    final bytes = utf8.encode(_controller.text);
+    final blob = html.Blob([bytes], 'application/x-yaml');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', filename)
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
+            const SizedBox(width: 8),
+            Text('Saved "$filename" to local computer disk'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Widget _buildCopilotPanel(ThemeData theme) {
     return Container(
       width: 380,
@@ -756,6 +787,12 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Save on disk (Download YAML)',
+                    icon: const Icon(Icons.download, size: 20),
+                    onPressed: _saveOnDisk,
+                  ),
+                  const SizedBox(width: 4),
                   IconButton(
                     tooltip: 'Copy YAML to clipboard',
                     icon: const Icon(Icons.copy, size: 20),

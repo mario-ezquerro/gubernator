@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -822,14 +823,34 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     }
   }
 
-  void _exportFile() {
-    final name = _nameController.text.trim().isEmpty ? 'docker-compose' : _nameController.text.trim();
-    final bytes = html.Blob([_codeController.text], 'text/yaml');
-    final url = html.Url.createObjectUrlFromBlob(bytes);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', '$name.yml')
+  void _saveOnDisk() {
+    final rawName = _nameController.text.trim();
+    final name = rawName.isEmpty ? 'docker-compose' : rawName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '-');
+    final filename = name.endsWith('.yml') || name.endsWith('.yaml') ? name : '$name.yml';
+
+    final bytes = utf8.encode(_codeController.text);
+    final blob = html.Blob([bytes], 'application/x-yaml');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', filename)
       ..click();
     html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
+            const SizedBox(width: 8),
+            Text('Saved "$filename" to local computer disk'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _importFile() {
@@ -2438,6 +2459,19 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           ),
           const SizedBox(width: 4),
 
+          // Save on Disk (Download YAML)
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              foregroundColor: const Color(0xFF58A6FF),
+            ),
+            icon: const Icon(Icons.download, size: 14),
+            label: const Text('Save on Disk', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            onPressed: _saveOnDisk,
+          ),
+          const SizedBox(width: 4),
+
           // Toggle Block Gutter Markers Strip
           IconButton(
             tooltip: _showBlockGutter ? 'Hide Block Markers Strip' : 'Show Block Markers Strip',
@@ -2588,13 +2622,24 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ),
                 const SizedBox(width: 8),
 
-                // Import from PC
+                // Open / Import from Local PC
                 Tooltip(
-                  message: 'Upload Compose YAML from your local workstation',
+                  message: 'Upload / Open Compose YAML from your local workstation',
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.laptop, size: 16),
-                    label: const Text('My PC'),
+                    icon: const Icon(Icons.file_open_outlined, size: 16),
+                    label: const Text('Open PC'),
                     onPressed: _importFile,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Save on Disk (Local Computer)
+                Tooltip(
+                  message: 'Save / Download Compose YAML directly to your local computer disk',
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.download, size: 16, color: Color(0xFF388BFD)),
+                    label: const Text('Save on Disk', style: TextStyle(color: Color(0xFF388BFD), fontWeight: FontWeight.bold)),
+                    onPressed: _saveOnDisk,
                   ),
                 ),
                 const SizedBox(width: 8),

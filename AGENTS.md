@@ -502,6 +502,18 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     - 📋 **Configured / Inserted (Blue):** New section cleanly created with proper YAML hierarchy.
   - 100% test coverage with automated unit tests in `web-ui/test/compose_smart_merger_test.dart` validating singleton replacement, collection deduplication, and syntax preservation.
 
+### 74. Compose Studio Client Workstation "Save on Disk" Subsystem (`v2.69.1`)
+* **Local Workstation File Export ("Save on Disk"):**
+  - Added dedicated client file export allowing engineers to directly save / download active Compose YAML configurations onto their local workstation computer.
+  - Automatically sanitizes the filename using the stack name (`<stack-name>.yml`), with fallback to `docker-compose.yml`.
+  - Seamlessly creates an in-memory YAML blob (`application/x-yaml`) and triggers browser-native download without requiring round-trips to the remote manager.
+* **Dual Action Access across Compose Studio:**
+  - **Top Header Toolbar**: Positioned alongside "Open PC" (`_importFile`) for an intuitive local file management workflow (`Open PC` ➔ Edit with Copilot ➔ `Save on Disk`).
+  - **YAML Editor Action Bar**: Directly accessible in the editor quick action bar next to Copy and Paste for rapid developer workflows.
+  - **Advanced Compose Editor Dialog (`ComposeEditorDialog`)**: Header icon button enabling instant disk downloads directly from the modal view.
+* **Informative Visual Feedback:**
+  - Displays instant floating notification: `✓ Saved "<filename>" to local computer disk` with green confirmation icon.
+
 
 
 
