@@ -429,6 +429,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Container column visualizes live state (`Running: X/Y` with green play indicator vs `Stopped: 0/Y` with amber stop indicator).
 * **Full CLI & REST API Parity:** Added CLI commands `gbnt stack stop <stack_id>` and `gbnt stack start <stack_id>` along with REST API endpoints `POST /api/stack/:id/stop`, `POST /api/stack/:id/start`, `POST /v1/stack/:id/stop`, and `POST /v1/stack/:id/start`.
 
+### 70. Stack Task Reconciliation, Desired Replicas Invariant & Orphan Pruning Subsystem (`v2.66.0`)
+* **Strict Desired Replicas Invariant:** Enforces that total tasks tracked for any service never exceed `svc.DesiredReplicas` (e.g. 2 containers for a 2-service WordPress + MariaDB stack), eliminating container accumulation caused by unpurged dead instances during self-healing restarts.
+* **Active Host Docker Inspection & Health Auditing:** The Watchdog engine now directly inspects local Docker container states (`InspectContainerStatus`) and remote Centurion worker tasks. If a container exits or dies, it is immediately flagged, its container is safely removed (`docker rm -f`), and a replacement task is scheduled.
+* **Smart Stack Stop & Start Lifecycle Reconciliation:**
+  - When stopping a stack, exactly `DesiredReplicas` newest containers are placed into `stopped` state; any excess or dead tasks are purged from the DB and their physical containers removed from the host.
+  - When starting a stopped stack, any surplus tasks beyond `DesiredReplicas` are pruned before containers resume, guaranteeing the stack never launches with lingering dead containers.
+* **Cluster-Wide Orphan Container Garbage Collector:** `PruneOrphanContainers` scans the host Docker daemon for unrecognized `gbnt-*` containers (skipping system containers like `gbnt-coredns`, `gbnt-caddy`, `gbnt-monitor-*`) and removes them.
+* **Interactive UI Reconciliation & Prune Controls:**
+  - Header action: "Reconcile & Prune" button (`Icons.cleaning_services_outlined`) in `LegionsPage` for one-click cluster-wide reconciliation and dead container purging.
+  - Per-stack action: "Reconcile Stack" button (`Icons.auto_fix_high`) in `LegionsPage` and `DashboardScreen` to immediately reconcile and prune any specific stack.
+  - Automatic reconciliation on state queries (`/api/state`) ensures the dashboard always displays accurate, normalized container counts.
+* **Full CLI & REST API Parity:** Added CLI commands `gbnt stack reconcile [stack_id]` and `gbnt task prune` along with REST endpoints `POST /api/stack/:id/reconcile`, `POST /api/tasks/prune`, `POST /v1/stack/:id/reconcile`, and `POST /v1/tasks/prune`.
+
 
 
 

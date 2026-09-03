@@ -196,6 +196,7 @@ func Start(ctx context.Context) error {
 			stack.DELETE("/:id", StackRmHandler)
 			stack.POST("/:id/stop", StackStopHandler)
 			stack.POST("/:id/start", StackStartHandler)
+			stack.POST("/:id/reconcile", StackReconcileHandler)
 			stack.GET("/server-files", StackServerFilesHandler)
 			stack.GET("/server-file", StackServerFileReadHandler)
 			stack.POST("/server-deploy", StackServerDeployHandler)
@@ -220,7 +221,9 @@ func Start(ctx context.Context) error {
 		{
 			task.GET("/ls", TaskListHandler)
 			task.DELETE("/:id", TaskRmHandler)
+			task.POST("/prune", TasksPruneHandler)
 		}
+		v1.POST("/tasks/prune", authMiddleware, TasksPruneHandler)
 
 		sloRoute := v1.Group("/slo", authMiddleware)
 		{

@@ -76,6 +76,28 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Reconciles a single stack, purging dead/stale containers and aligning tasks with desired replicas.
+  static Future<Map<String, dynamic>?> reconcileStack(String id) async {
+    try {
+      final response = await http.post(Uri.parse('/api/stack/$id/reconcile'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Prunes all dead, duplicate, and orphan containers across the cluster.
+  static Future<Map<String, dynamic>?> pruneTasks() async {
+    try {
+      final response = await http.post(Uri.parse('/api/tasks/prune'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<String?> deployStack(String name, String compose, {String? targetNode}) async {
     final response = await http.post(
       Uri.parse('/api/stack'),

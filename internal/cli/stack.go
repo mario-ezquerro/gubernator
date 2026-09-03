@@ -270,6 +270,32 @@ var stackStartCmd = &cobra.Command{
 	},
 }
 
+var stackReconcileCmd = &cobra.Command{
+	Use:     "reconcile [stack_id]",
+	Aliases: []string{"prune", "sync"},
+	Short:   "Reconcile a stack (or all stacks) against desired replicas and purge dead/stale containers",
+	Run: func(cmd *cobra.Command, args []string) {
+		endpoint := "/v1/tasks/prune"
+		if len(args) > 0 && args[0] != "" {
+			endpoint = "/v1/stack/" + args[0] + "/reconcile"
+		}
+		resp, err := DoAPIRequest("POST", endpoint, nil)
+		if err != nil {
+			fmt.Printf("Failed to reconcile: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var res map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&res)
+		if msg, ok := res["message"]; ok {
+			fmt.Printf("✅ %v\n", msg)
+		} else {
+			fmt.Println("✅ Reconciliation complete.")
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(stackCmd)
 	stackCmd.AddCommand(stackDeployCmd)
@@ -279,6 +305,7 @@ func init() {
 	stackCmd.AddCommand(stackRmCmd)
 	stackCmd.AddCommand(stackStopCmd)
 	stackCmd.AddCommand(stackStartCmd)
+	stackCmd.AddCommand(stackReconcileCmd)
 
 	stackDeployCmd.Flags().StringVarP(&composeFile, "compose-file", "c", "", "Path to a local Compose file on your client machine")
 	stackDeployCmd.Flags().StringVarP(&serverComposeFile, "from-server", "s", "", "Path to a Compose file residing on the Master server filesystem")

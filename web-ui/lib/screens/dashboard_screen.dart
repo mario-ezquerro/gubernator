@@ -418,6 +418,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _reconcileStack(String id, String name) async {
+    setState(() => _processingStackIds.add(id));
+    _showSnackBar('Reconciling stack "$name" and purging stale containers...');
+    final res = await ApiService.reconcileStack(id);
+    if (mounted) {
+      setState(() => _processingStackIds.remove(id));
+    }
+    if (res != null) {
+      final msg = res['message'] ?? 'Stack "$name" reconciled successfully.';
+      _showSnackBar(msg.toString());
+      _fetchData();
+    } else {
+      _showSnackBar('Failed to reconcile stack "$name".', isError: true);
+    }
+  }
+
   Future<void> _duplicateStack(StackModel stack) async {
     try {
       final yaml = await ApiService.getStackCompose(stack.id);
@@ -1744,6 +1760,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const Color(0xFF10B981), () => _duplicateStack(s)),
                           _actionBtn(Icons.rocket_launch, 'Redeploy',
                               const Color(0xFFD29922), () => _redeployStack(s.id)),
+                          _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
+                              const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),
                           if (!isBase)
                             _actionBtn(Icons.swap_horiz, 'Change Target Host',
                                 const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),

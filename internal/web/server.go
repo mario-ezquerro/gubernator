@@ -379,6 +379,8 @@ func StartDashboard() {
 		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
 		api.POST("/stack/:id/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stopStackHandler)
 		api.POST("/stack/:id/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), startStackHandler)
+		api.POST("/stack/:id/reconcile", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), reconcileStackWebHandler)
+		api.POST("/tasks/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), pruneTasksWebHandler)
 		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
 		api.POST("/stacks/server-deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerDeployWebHandler)
 		api.POST("/examples/deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), exampleDeployWebHandler)
@@ -697,6 +699,56 @@ func stateHandler(c *gin.Context) {
 		if t.Status == "dead" && !serviceIDs[t.ServiceID] {
 			db.DB.Where("id = ?", t.ID).Delete(&db.Task{})
 			cleanedStacks = true
+		}
+	}
+
+	// Enforce desired replicas and prune stale/dead/excess tasks per service
+	for _, svc := range services {
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
+		}
+		var svcTasks []db.Task
+		for _, t := range tasks {
+			if t.ServiceID == svc.ID {
+				svcTasks = append(svcTasks, t)
+			}
+		}
+		if len(svcTasks) > desired {
+			var running []db.Task
+			var stoppedOrDead []db.Task
+			for _, t := range svcTasks {
+				if t.Status == "running" || t.Status == "pulling" || t.Status == "starting" || t.Status == "pending" {
+					running = append(running, t)
+				} else {
+					stoppedOrDead = append(stoppedOrDead, t)
+				}
+			}
+
+			// Case 1: Active running service with dead/stale leftovers
+			if len(running) >= desired && len(stoppedOrDead) > 0 {
+				for _, t := range stoppedOrDead {
+					cName := t.ContainerName
+					if cName == "" {
+						cName = "gbnt-" + t.ID
+					}
+					_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+					db.DB.Delete(&t)
+					cleanedStacks = true
+				}
+			} else if len(running) == 0 && len(stoppedOrDead) > desired {
+				// Case 2: Stopped service with excess stopped/dead tasks (e.g. 5 tasks instead of 2)
+				// Keep newest 'desired' tasks, delete the older excess
+				for _, t := range stoppedOrDead[desired:] {
+					cName := t.ContainerName
+					if cName == "" {
+						cName = "gbnt-" + t.ID
+					}
+					_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+					db.DB.Delete(&t)
+					cleanedStacks = true
+				}
+			}
 		}
 	}
 
@@ -1749,41 +1801,7 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 // executeContainerDockerAction runs a docker container action (stop, start, restart, pause, unpause)
 // on either the local manager host or remotely on a worker Centurion via SSH.
 func executeContainerDockerAction(nodeID, containerName, action string) error {
-	if containerName == "" {
-		return nil
-	}
-
-	// 1. Local manager or empty node ID
-	if nodeID == "node-local-manager" || nodeID == "" {
-		return exec.Command("docker", action, containerName).Run()
-	}
-
-	// 2. Remote worker node via SSH
-	var node db.Node
-	if err := db.DB.First(&node, "id = ? OR ip = ?", nodeID, nodeID).Error; err == nil && node.IP != "" && node.IP != "127.0.0.1" {
-		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
-		keyCandidates := []string{
-			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
-			"/data/id_ed25519", "/data/id_rsa",
-			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
-			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
-		}
-		if home, err := os.UserHomeDir(); err == nil {
-			keyCandidates = append(keyCandidates, filepath.Join(home, ".ssh", "id_ed25519"), filepath.Join(home, ".ssh", "id_rsa"))
-		}
-		for _, k := range keyCandidates {
-			if _, err := os.Stat(k); err == nil {
-				sshArgs = append(sshArgs, "-i", k)
-				break
-			}
-		}
-		remoteCmd := fmt.Sprintf("sudo docker %s %s", action, containerName)
-		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
-		return exec.Command("ssh", sshArgs...).Run()
-	}
-
-	// Fallback to local docker command
-	return exec.Command("docker", action, containerName).Run()
+	return docker.ExecuteNodeDockerAction(nodeID, containerName, action)
 }
 
 func stopStackHandler(c *gin.Context) {
@@ -1826,21 +1844,38 @@ func stopStackHandler(c *gin.Context) {
 		return
 	}
 
-	// 3. User deployed application stacks
+	// 3. User deployed application stacks: strictly enforce desired replicas
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
 	stoppedCount := 0
 	for _, svc := range services {
-		var tasks []db.Task
-		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
-		for _, task := range tasks {
-			_ = executeContainerDockerAction(task.NodeID, task.ContainerName, "stop")
-			stoppedCount++
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
 		}
-		db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
-			"status":       "stopped",
-			"container_ip": "",
-		})
+		var tasks []db.Task
+		db.DB.Where("service_id = ?", svc.ID).Order("created_at desc").Find(&tasks)
+
+		for i, task := range tasks {
+			cName := task.ContainerName
+			if cName == "" {
+				cName = "gbnt-" + task.ID
+			}
+
+			if i < desired {
+				// Keep newest 'desired' tasks as stopped
+				_ = docker.ExecuteNodeDockerAction(task.NodeID, cName, "stop")
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+					"status":       "stopped",
+					"container_ip": "",
+				})
+				stoppedCount++
+			} else {
+				// Extra/older dead or duplicate task: forcibly remove container and purge from DB
+				_ = docker.RemoveContainerOnNode(task.NodeID, cName)
+				db.DB.Delete(&task)
+			}
+		}
 	}
 
 	go aqueducts.GenerateHostsFile()
@@ -1878,13 +1913,37 @@ func startStackHandler(c *gin.Context) {
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
 
+	// First, prune any extra tasks beyond desired replicas
+	for _, svc := range services {
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
+		}
+		var tasks []db.Task
+		db.DB.Where("service_id = ?", svc.ID).Order("created_at desc").Find(&tasks)
+		if len(tasks) > desired {
+			for _, extra := range tasks[desired:] {
+				cName := extra.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + extra.ID
+				}
+				_ = docker.RemoveContainerOnNode(extra.NodeID, cName)
+				db.DB.Delete(&extra)
+			}
+		}
+	}
+
 	// Try starting existing stopped containers first
 	startedCount := 0
 	for _, svc := range services {
 		var tasks []db.Task
 		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
 		for _, task := range tasks {
-			err := executeContainerDockerAction(task.NodeID, task.ContainerName, "start")
+			cName := task.ContainerName
+			if cName == "" {
+				cName = "gbnt-" + task.ID
+			}
+			err := docker.ExecuteNodeDockerAction(task.NodeID, cName, "start")
 			if err == nil {
 				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "running")
 				startedCount++
@@ -1894,7 +1953,15 @@ func startStackHandler(c *gin.Context) {
 
 	// If no existing containers could be started (e.g. they were removed or never created),
 	// trigger a clean redeploy from the stored compose definition!
-	if startedCount == 0 {
+	totalDesired := 0
+	for _, svc := range services {
+		d := svc.DesiredReplicas
+		if d <= 0 {
+			d = 1
+		}
+		totalDesired += d
+	}
+	if startedCount < totalDesired {
 		redeployStackHandler(c)
 		return
 	}
@@ -1906,6 +1973,125 @@ func startStackHandler(c *gin.Context) {
 		"status":            "started",
 		"stack_id":          id,
 		"started_containers": startedCount,
+	})
+}
+
+func reconcileStackWebHandler(c *gin.Context) {
+	id := c.Param("id")
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	var services []db.Service
+	db.DB.Where("stack_id = ?", stack.ID).Find(&services)
+	prunedCount := 0
+	for _, svc := range services {
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
+		}
+		var tasks []db.Task
+		db.DB.Where("service_id = ?", svc.ID).Order("created_at desc").Find(&tasks)
+
+		var running []db.Task
+		var stoppedOrDead []db.Task
+		for _, t := range tasks {
+			if t.Status == "running" || t.Status == "pulling" || t.Status == "starting" || t.Status == "pending" {
+				running = append(running, t)
+			} else {
+				stoppedOrDead = append(stoppedOrDead, t)
+			}
+		}
+
+		if len(running) >= desired && len(stoppedOrDead) > 0 {
+			for _, t := range stoppedOrDead {
+				cName := t.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + t.ID
+				}
+				_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+				db.DB.Delete(&t)
+				prunedCount++
+			}
+		} else if len(running) == 0 && len(stoppedOrDead) > desired {
+			for _, t := range stoppedOrDead[desired:] {
+				cName := t.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + t.ID
+				}
+				_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+				db.DB.Delete(&t)
+				prunedCount++
+			}
+		}
+	}
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "ok",
+		"stack_id":          stack.ID,
+		"stack_name":        stack.Name,
+		"pruned_containers": prunedCount,
+		"message":           fmt.Sprintf("Stack %s reconciled. Purged %d stale/dead containers.", stack.Name, prunedCount),
+	})
+}
+
+func pruneTasksWebHandler(c *gin.Context) {
+	prunedCount := 0
+	var services []db.Service
+	db.DB.Find(&services)
+	for _, svc := range services {
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
+		}
+		var tasks []db.Task
+		db.DB.Where("service_id = ?", svc.ID).Order("created_at desc").Find(&tasks)
+
+		var running []db.Task
+		var stoppedOrDead []db.Task
+		for _, t := range tasks {
+			if t.Status == "running" || t.Status == "pulling" || t.Status == "starting" || t.Status == "pending" {
+				running = append(running, t)
+			} else {
+				stoppedOrDead = append(stoppedOrDead, t)
+			}
+		}
+
+		if len(running) >= desired && len(stoppedOrDead) > 0 {
+			for _, t := range stoppedOrDead {
+				cName := t.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + t.ID
+				}
+				_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+				db.DB.Delete(&t)
+				prunedCount++
+			}
+		} else if len(running) == 0 && len(stoppedOrDead) > desired {
+			for _, t := range stoppedOrDead[desired:] {
+				cName := t.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + t.ID
+				}
+				_ = docker.RemoveContainerOnNode(t.NodeID, cName)
+				db.DB.Delete(&t)
+				prunedCount++
+			}
+		}
+	}
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "ok",
+		"pruned_containers": prunedCount,
+		"message":           fmt.Sprintf("Cluster reconciliation complete. Purged %d stale/dead containers.", prunedCount),
 	})
 }
 

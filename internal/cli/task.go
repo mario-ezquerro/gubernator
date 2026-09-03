@@ -87,8 +87,31 @@ var taskRmCmd = &cobra.Command{
 	},
 }
 
+var taskPruneCmd = &cobra.Command{
+	Use:     "prune",
+	Aliases: []string{"cleanup", "clean", "gc"},
+	Short:   "Prune all dead, duplicate, and orphan containers across the cluster",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("POST", "/v1/tasks/prune", nil)
+		if err != nil {
+			fmt.Printf("Failed to prune tasks: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var res map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&res)
+		if msg, ok := res["message"]; ok {
+			fmt.Printf("✅ %v\n", msg)
+		} else {
+			fmt.Println("✅ Tasks pruned successfully.")
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(taskCmd)
 	taskCmd.AddCommand(taskLsCmd)
 	taskCmd.AddCommand(taskRmCmd)
+	taskCmd.AddCommand(taskPruneCmd)
 }

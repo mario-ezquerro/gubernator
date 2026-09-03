@@ -11,6 +11,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
@@ -165,21 +166,34 @@ func StackStopHandler(c *gin.Context) {
 		return
 	}
 
-	// 3. User deployed stacks
+	// 3. User deployed stacks: strictly enforce desired replicas
 	var services []db.Service
 	db.DB.Where("stack_id = ?", id).Find(&services)
 	stoppedCount := 0
 	for _, svc := range services {
-		var tasks []db.Task
-		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
-		for _, task := range tasks {
-			_ = StopTaskOnNode(task)
-			stoppedCount++
+		desired := svc.DesiredReplicas
+		if desired <= 0 {
+			desired = 1
 		}
-		db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
-			"status":       "stopped",
-			"container_ip": "",
-		})
+		var tasks []db.Task
+		db.DB.Where("service_id = ?", svc.ID).Order("created_at desc").Find(&tasks)
+		for i, task := range tasks {
+			if i < desired {
+				_ = StopTaskOnNode(task)
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+					"status":       "stopped",
+					"container_ip": "",
+				})
+				stoppedCount++
+			} else {
+				cName := task.ContainerName
+				if cName == "" {
+					cName = "gbnt-" + task.ID
+				}
+				_ = docker.RemoveContainerOnNode(task.NodeID, cName)
+				db.DB.Delete(&task)
+			}
+		}
 	}
 
 	aqueducts.GenerateAllAsync()
@@ -234,4 +248,43 @@ func StackStartHandler(c *gin.Context) {
 
 	aqueducts.GenerateAllAsync()
 	c.JSON(http.StatusOK, gin.H{"status": "started", "stack_id": id})
+}
+
+// @Summary Reconcile Stack
+// @Description Reconcile a stack against desired replicas, repairing degraded services and purging dead/stale containers
+// @Tags stacks
+// @Produce json
+// @Param id path string true "Stack ID or Name"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/stack/{id}/reconcile [post]
+func StackReconcileHandler(c *gin.Context) {
+	id := c.Param("id")
+	pruned, rescheduled, err := ReconcileSingleStack(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":                 "ok",
+		"stack_id":               id,
+		"pruned_containers":      pruned,
+		"rescheduled_containers": rescheduled,
+		"message":                fmt.Sprintf("Stack %s reconciled. Purged %d stale containers, rescheduled %d.", id, pruned, rescheduled),
+	})
+}
+
+// @Summary Prune Tasks
+// @Description Prune all dead, duplicate, and orphan containers across the cluster
+// @Tags tasks
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/tasks/prune [post]
+func TasksPruneHandler(c *gin.Context) {
+	pruned, rescheduled := ReconcileClusterServices()
+	c.JSON(http.StatusOK, gin.H{
+		"status":                 "ok",
+		"pruned_containers":      pruned,
+		"rescheduled_containers": rescheduled,
+		"message":                fmt.Sprintf("Cluster reconciliation complete. Purged %d stale containers, rescheduled %d.", pruned, rescheduled),
+	})
 }

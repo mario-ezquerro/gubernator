@@ -3,11 +3,14 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func init() {
@@ -194,4 +197,121 @@ func splitCommand(cmd string) []string {
 	}
 
 	return args
+}
+
+// ExecuteNodeDockerAction executes a docker command (e.g. "stop", "start", "rm -f") on the specified node.
+// If nodeID is a remote worker node, it executes over SSH. If local, it runs directly.
+func ExecuteNodeDockerAction(nodeID, containerName, action string) error {
+	if containerName == "" {
+		return nil
+	}
+
+	// If assigned to a remote worker node, execute via SSH
+	var node db.Node
+	if err := db.DB.Where("id = ? OR ip = ?", nodeID, nodeID).First(&node).Error; err == nil &&
+		node.Role != "manager" && node.ID != "node-local-manager" && node.IP != "" && node.IP != "127.0.0.1" {
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/data/id_ed25519", "/data/id_rsa",
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			keyCandidates = append(keyCandidates, filepath.Join(home, ".ssh", "id_ed25519"), filepath.Join(home, ".ssh", "id_rsa"))
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		remoteCmd := fmt.Sprintf("sudo docker %s %s", action, containerName)
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
+		return exec.Command("ssh", sshArgs...).Run()
+	}
+
+	// Local docker command execution
+	fields := strings.Fields(action)
+	args := append(fields, containerName)
+	return exec.Command("docker", args...).Run()
+}
+
+// InspectContainerStatus queries Docker for the State.Status of a container ("running", "exited", "dead", etc.).
+func InspectContainerStatus(nodeID, containerName string) (string, error) {
+	if containerName == "" {
+		return "", fmt.Errorf("empty container name")
+	}
+
+	var node db.Node
+	if err := db.DB.Where("id = ? OR ip = ?", nodeID, nodeID).First(&node).Error; err == nil &&
+		node.Role != "manager" && node.ID != "node-local-manager" && node.IP != "" && node.IP != "127.0.0.1" {
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/data/id_ed25519", "/data/id_rsa",
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		remoteCmd := fmt.Sprintf("sudo docker inspect -f '{{.State.Status}}' %s", containerName)
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
+		out, err := exec.Command("ssh", sshArgs...).Output()
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", containerName).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// RemoveContainerOnNode disconnects from gbnt-net (if local) and forcibly removes the container.
+func RemoveContainerOnNode(nodeID, containerName string) error {
+	if containerName == "" {
+		return nil
+	}
+	// Best effort disconnect network
+	coredns.DisconnectContainer(containerName)
+	return ExecuteNodeDockerAction(nodeID, containerName, "rm -f")
+}
+
+// PruneOrphanContainers searches for all gbnt-* containers on the local Docker engine
+// and removes any that do not belong to activeContainerNames.
+// Skips system containers (gbnt-coredns, gbnt-caddy, gbnt-monitor-*).
+func PruneOrphanContainers(activeContainerNames map[string]bool) int {
+	out, err := exec.Command("docker", "ps", "-a", "--filter", "name=gbnt-", "--format", "{{.Names}}").Output()
+	if err != nil {
+		return 0
+	}
+
+	lines := strings.Split(string(out), "\n")
+	pruned := 0
+	for _, line := range lines {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		// Skip system infrastructure containers
+		if name == "gbnt-coredns" || name == "gbnt-caddy" || strings.HasPrefix(name, "gbnt-monitor-") {
+			continue
+		}
+
+		// If this container is NOT recognized in active/desired tasks, prune it
+		if !activeContainerNames[name] {
+			if err := exec.Command("docker", "rm", "-f", name).Run(); err == nil {
+				pruned++
+				slog.Info("docker: pruned orphan container", "name", name)
+			}
+		}
+	}
+	return pruned
 }

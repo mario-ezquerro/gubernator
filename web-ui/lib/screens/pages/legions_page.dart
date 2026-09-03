@@ -104,6 +104,34 @@ class _LegionsPageState extends State<LegionsPage> {
     }
   }
 
+  Future<void> _reconcileStack(String id, String name) async {
+    setState(() => _processingStackIds.add(id));
+    _showSnackBar('Reconciling stack "$name" and purging stale containers...');
+    final res = await ApiService.reconcileStack(id);
+    if (mounted) {
+      setState(() => _processingStackIds.remove(id));
+    }
+    if (res != null) {
+      final msg = res['message'] ?? 'Stack "$name" reconciled successfully.';
+      _showSnackBar(msg.toString());
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to reconcile stack "$name".', isError: true);
+    }
+  }
+
+  Future<void> _pruneAllTasks() async {
+    _showSnackBar('Reconciling cluster stacks and pruning stale containers...');
+    final res = await ApiService.pruneTasks();
+    if (res != null) {
+      final msg = res['message'] ?? 'Cluster reconciliation complete.';
+      _showSnackBar(msg.toString());
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to reconcile cluster tasks.', isError: true);
+    }
+  }
+
   @override
   void dispose() {
     _horizontalScrollController.dispose();
@@ -478,6 +506,15 @@ class _LegionsPageState extends State<LegionsPage> {
                   Text('Legions (Stacks)',
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
+                  Tooltip(
+                    message: 'Reconcile all stacks and purge dead/stale containers across the cluster',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.cleaning_services_outlined, size: 16, color: Color(0xFF06B6D4)),
+                      label: const Text('Reconcile & Prune', style: TextStyle(color: Color(0xFF06B6D4))),
+                      onPressed: _pruneAllTasks,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
                     label: const Text('Master Server File', style: TextStyle(color: Color(0xFF58A6FF))),
@@ -792,6 +829,8 @@ class _LegionsPageState extends State<LegionsPage> {
                                             const Color(0xFF10B981), () => _duplicateStack(s)),
                                     _actionBtn(Icons.rocket_launch, 'Redeploy',
                                         const Color(0xFFD29922), () => _redeployStack(s.id)),
+                                    _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
+                                        const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),
                                     if (!isBase)
                                       _actionBtn(Icons.swap_horiz, 'Change Target Host',
                                           const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
