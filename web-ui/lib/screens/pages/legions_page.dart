@@ -29,10 +29,80 @@ class LegionsPage extends StatefulWidget {
 
 class _LegionsPageState extends State<LegionsPage> {
   String _searchQuery = '';
+  String _selectedGroup = 'all'; // 'all', 'deployed', 'base'
   int? _sortColumnIndex;
   bool _sortAscending = true;
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
+  final Set<String> _processingStackIds = {};
+
+  bool _isBaseStack(StackModel s) {
+    final id = s.id.toLowerCase();
+    final name = s.name.toLowerCase();
+    return id == 'core-gbnt-stack' ||
+        id == 'sre-monitor-stack' ||
+        name.contains('core-gbnt') ||
+        name == 'core' ||
+        name.contains('monitor') ||
+        name.contains('[sre]') ||
+        name == 'sre';
+  }
+
+  Future<void> _stopStack(String id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.stop_circle_outlined, color: Color(0xFFF59E0B)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Stop Stack: $name')),
+          ],
+        ),
+        content: Text(
+          'Stop all running containers for stack "$name"?\n\n'
+          'The stack definition and service configuration will remain saved in Gubernator and can be started again at any time.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
+            child: const Text('Stop Stack'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _processingStackIds.add(id));
+    _showSnackBar('Stopping stack "$name"...');
+    final ok = await ApiService.stopStack(id);
+    if (mounted) {
+      setState(() => _processingStackIds.remove(id));
+    }
+    if (ok) {
+      _showSnackBar('Stack "$name" stopped successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to stop stack "$name".', isError: true);
+    }
+  }
+
+  Future<void> _startStack(String id, String name) async {
+    setState(() => _processingStackIds.add(id));
+    _showSnackBar('Starting stack "$name"...');
+    final ok = await ApiService.startStack(id);
+    if (mounted) {
+      setState(() => _processingStackIds.remove(id));
+    }
+    if (ok) {
+      _showSnackBar('Stack "$name" started successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to start stack "$name".', isError: true);
+    }
+  }
 
   @override
   void dispose() {
@@ -359,11 +429,23 @@ class _LegionsPageState extends State<LegionsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    List<StackModel> filteredStacks = widget.state.stacks.where((s) {
+    final allMatching = widget.state.stacks.where((s) {
       if (_searchQuery.isEmpty) return true;
       return s.id.toLowerCase().contains(_searchQuery) ||
           s.name.toLowerCase().contains(_searchQuery);
     }).toList();
+
+    final deployedCount = widget.state.stacks.where((s) => !_isBaseStack(s)).length;
+    final baseCount = widget.state.stacks.where((s) => _isBaseStack(s)).length;
+
+    List<StackModel> filteredStacks;
+    if (_selectedGroup == 'deployed') {
+      filteredStacks = allMatching.where((s) => !_isBaseStack(s)).toList();
+    } else if (_selectedGroup == 'base') {
+      filteredStacks = allMatching.where((s) => _isBaseStack(s)).toList();
+    } else {
+      filteredStacks = allMatching;
+    }
 
     // Apply sorting
     if (_sortColumnIndex != null) {
@@ -420,15 +502,48 @@ class _LegionsPageState extends State<LegionsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Search stacks...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+              Row(
+                children: [
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'all',
+                        icon: const Icon(Icons.layers_outlined, size: 15),
+                        label: Text('All (${widget.state.stacks.length})'),
+                      ),
+                      ButtonSegment(
+                        value: 'deployed',
+                        icon: const Icon(Icons.rocket_launch, size: 15, color: Color(0xFF38BDF8)),
+                        label: Text('Deployed Apps ($deployedCount)'),
+                      ),
+                      ButtonSegment(
+                        value: 'base',
+                        icon: const Icon(Icons.foundation, size: 15, color: Color(0xFF8B5CF6)),
+                        label: Text('Base Stacks ($baseCount)'),
+                      ),
+                    ],
+                    selected: {_selectedGroup},
+                    onSelectionChanged: (newSelection) {
+                      setState(() => _selectedGroup = newSelection.first);
+                    },
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search stacks by name or ID...',
+                        prefixIcon: Icon(Icons.search, size: 18),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -443,7 +558,7 @@ class _LegionsPageState extends State<LegionsPage> {
                             Text(
                               widget.state.stacks.isEmpty
                                   ? 'No stacks deployed yet'
-                                  : 'No matching stacks found',
+                                  : 'No matching stacks found in this group',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                               ),
@@ -492,6 +607,7 @@ class _LegionsPageState extends State<LegionsPage> {
                               const DataColumn(label: Text('ACTIONS')),
                             ],
                             rows: filteredStacks.map((s) {
+                              final isBase = _isBaseStack(s);
                               final stackTasks = widget.state.tasks.where((t) {
                                 final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
                                 return svc?.stackId == s.id;
@@ -524,12 +640,39 @@ class _LegionsPageState extends State<LegionsPage> {
                                      onTap: () => widget.onViewStackContainers?.call(s.name),
                                      borderRadius: BorderRadius.circular(4),
                                      child: Tooltip(
-                                       message: 'Click to view containers for ${s.name}',
+                                       message: isBase
+                                           ? 'Base Infrastructure Stack: ${s.name}'
+                                           : 'Deployed Application: ${s.name}',
                                        child: Padding(
                                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                                          child: Row(
                                            mainAxisSize: MainAxisSize.min,
                                            children: [
+                                             Icon(
+                                               isBase ? Icons.foundation : Icons.rocket_launch,
+                                               size: 16,
+                                               color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
+                                             ),
+                                             const SizedBox(width: 6),
+                                             Container(
+                                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                               decoration: BoxDecoration(
+                                                 color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
+                                                 borderRadius: BorderRadius.circular(4),
+                                                 border: Border.all(
+                                                   color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.4),
+                                                 ),
+                                               ),
+                                               child: Text(
+                                                 isBase ? 'BASE' : 'APP',
+                                                 style: TextStyle(
+                                                   fontSize: 10,
+                                                   fontWeight: FontWeight.bold,
+                                                   color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
+                                                 ),
+                                               ),
+                                             ),
+                                             const SizedBox(width: 6),
                                              Text(
                                                s.name,
                                                style: TextStyle(
@@ -557,16 +700,18 @@ class _LegionsPageState extends State<LegionsPage> {
                                      onTap: () => widget.onViewStackContainers?.call(s.name),
                                      borderRadius: BorderRadius.circular(10),
                                      child: Tooltip(
-                                       message: 'View $runningCount/${stackTasks.length} containers for ${s.name}',
+                                       message: runningCount > 0
+                                           ? 'Running $runningCount/${stackTasks.length} containers for ${s.name}'
+                                           : 'Stopped (0/${stackTasks.length} containers) for ${s.name}',
                                        child: Container(
                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                          decoration: BoxDecoration(
-                                           color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                           color: runningCount > 0
                                                ? const Color(0xFF10B981).withValues(alpha: 0.1)
                                                : const Color(0xFFF59E0B).withValues(alpha: 0.1),
                                            borderRadius: BorderRadius.circular(10),
                                            border: Border.all(
-                                             color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                             color: runningCount > 0
                                                  ? const Color(0xFF10B981).withValues(alpha: 0.3)
                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.3),
                                            ),
@@ -574,12 +719,22 @@ class _LegionsPageState extends State<LegionsPage> {
                                          child: Row(
                                            mainAxisSize: MainAxisSize.min,
                                            children: [
+                                             Icon(
+                                               runningCount > 0 ? Icons.play_arrow : Icons.stop,
+                                               size: 12,
+                                               color: runningCount > 0
+                                                   ? const Color(0xFF10B981)
+                                                   : const Color(0xFFF59E0B),
+                                             ),
+                                             const SizedBox(width: 4),
                                              Text(
-                                               '$runningCount/${stackTasks.length}',
+                                               runningCount > 0
+                                                   ? '$runningCount/${stackTasks.length}'
+                                                   : 'Stopped (${stackTasks.length})',
                                                style: TextStyle(
                                                  fontSize: 12,
                                                  fontWeight: FontWeight.w600,
-                                                 color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                                 color: runningCount > 0
                                                      ? const Color(0xFF10B981)
                                                      : const Color(0xFFF59E0B),
                                                ),
@@ -588,7 +743,7 @@ class _LegionsPageState extends State<LegionsPage> {
                                              Icon(
                                                Icons.visibility_outlined,
                                                size: 12,
-                                               color: runningCount == stackTasks.length && stackTasks.isNotEmpty
+                                               color: runningCount > 0
                                                    ? const Color(0xFF10B981)
                                                    : const Color(0xFFF59E0B),
                                              ),
@@ -601,23 +756,43 @@ class _LegionsPageState extends State<LegionsPage> {
                                 DataCell(Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // Dynamic Stop / Start Button
+                                    if (_processingStackIds.contains(s.id))
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 6),
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        ),
+                                      )
+                                    else if (runningCount > 0)
+                                      _actionBtn(
+                                        Icons.stop_circle_outlined,
+                                        'Stop Stack (Stop all containers)',
+                                        const Color(0xFFF59E0B),
+                                        () => _stopStack(s.id, s.name),
+                                      )
+                                    else
+                                      _actionBtn(
+                                        Icons.play_circle_filled,
+                                        'Start Stack (Start compose)',
+                                        const Color(0xFF10B981),
+                                        () => _startStack(s.id, s.name),
+                                      ),
                                     _actionBtn(Icons.receipt_long, 'View Stack Logs & Placement Errors',
                                         const Color(0xFF8B5CF6), () => _showStackLogsDialog(s)),
                                     _actionBtn(Icons.schema_outlined, 'View Schema',
                                         const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
                                     _actionBtn(Icons.code, 'Edit YAML',
                                         const Color(0xFFF97316), () => _openComposeEditor(s)),
-                                    (s.id == 'core-gbnt-stack' || s.id == 'sre-monitor-stack' ||
-                                            s.name.toLowerCase().contains('core-gbnt') ||
-                                            s.name.toLowerCase().contains('monitor'))
+                                    isBase
                                         ? const SizedBox(width: 36)
                                         : _actionBtn(Icons.copy, 'Duplicate',
                                             const Color(0xFF10B981), () => _duplicateStack(s)),
                                     _actionBtn(Icons.rocket_launch, 'Redeploy',
                                         const Color(0xFFD29922), () => _redeployStack(s.id)),
-                                    if (s.id != 'core-gbnt-stack' && s.id != 'sre-monitor-stack' &&
-                                        !s.name.toLowerCase().contains('core-gbnt') &&
-                                        !s.name.toLowerCase().contains('monitor'))
+                                    if (!isBase)
                                       _actionBtn(Icons.swap_horiz, 'Change Target Host',
                                           const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
                                     _actionBtn(

@@ -194,6 +194,8 @@ func Start(ctx context.Context) error {
 			stack.GET("/ls", StackListHandler)
 			stack.GET("/:id/services", StackServicesHandler)
 			stack.DELETE("/:id", StackRmHandler)
+			stack.POST("/:id/stop", StackStopHandler)
+			stack.POST("/:id/start", StackStartHandler)
 			stack.GET("/server-files", StackServerFilesHandler)
 			stack.GET("/server-file", StackServerFileReadHandler)
 			stack.POST("/server-deploy", StackServerDeployHandler)

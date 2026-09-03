@@ -377,6 +377,8 @@ func StartDashboard() {
 		// Operator & Admin write operations (Stacks & Tasks & Shell)
 		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
 		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
+		api.POST("/stack/:id/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stopStackHandler)
+		api.POST("/stack/:id/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), startStackHandler)
 		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
 		api.POST("/stacks/server-deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerDeployWebHandler)
 		api.POST("/examples/deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), exampleDeployWebHandler)
@@ -1122,26 +1124,22 @@ func taskActionHandler(c *gin.Context) {
 		return
 	}
 
-	var err error
-	switch req.Action {
-	case "pause":
-		err = exec.Command("docker", "pause", task.ContainerName).Run()
-	case "unpause":
-		err = exec.Command("docker", "unpause", task.ContainerName).Run()
-	case "restart":
-		err = exec.Command("docker", "restart", task.ContainerName).Run()
-	case "start":
-		err = exec.Command("docker", "start", task.ContainerName).Run()
-	case "stop":
-		err = exec.Command("docker", "stop", task.ContainerName).Run()
-	default:
+	validActions := map[string]bool{"pause": true, "unpause": true, "restart": true, "start": true, "stop": true}
+	if !validActions[req.Action] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown action"})
 		return
 	}
 
+	err := executeContainerDockerAction(task.NodeID, task.ContainerName, req.Action)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to execute docker action: %v", err)})
 		return
+	}
+
+	if req.Action == "stop" {
+		db.DB.Model(&task).Update("status", "stopped")
+	} else if req.Action == "start" || req.Action == "restart" {
+		db.DB.Model(&task).Update("status", "running")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -1746,6 +1744,169 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 		return true
 	}
 	return false
+}
+
+// executeContainerDockerAction runs a docker container action (stop, start, restart, pause, unpause)
+// on either the local manager host or remotely on a worker Centurion via SSH.
+func executeContainerDockerAction(nodeID, containerName, action string) error {
+	if containerName == "" {
+		return nil
+	}
+
+	// 1. Local manager or empty node ID
+	if nodeID == "node-local-manager" || nodeID == "" {
+		return exec.Command("docker", action, containerName).Run()
+	}
+
+	// 2. Remote worker node via SSH
+	var node db.Node
+	if err := db.DB.First(&node, "id = ? OR ip = ?", nodeID, nodeID).Error; err == nil && node.IP != "" && node.IP != "127.0.0.1" {
+		sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
+		keyCandidates := []string{
+			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
+			"/data/id_ed25519", "/data/id_rsa",
+			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			keyCandidates = append(keyCandidates, filepath.Join(home, ".ssh", "id_ed25519"), filepath.Join(home, ".ssh", "id_rsa"))
+		}
+		for _, k := range keyCandidates {
+			if _, err := os.Stat(k); err == nil {
+				sshArgs = append(sshArgs, "-i", k)
+				break
+			}
+		}
+		remoteCmd := fmt.Sprintf("sudo docker %s %s", action, containerName)
+		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
+		return exec.Command("ssh", sshArgs...).Run()
+	}
+
+	// Fallback to local docker command
+	return exec.Command("docker", action, containerName).Run()
+}
+
+func stopStackHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// 1. Special handling for SRE Monitor stack
+	if id == monitor.SREStackID || strings.Contains(strings.ToLower(stack.Name), "monitor") {
+		monitor.StopAll()
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+				"status":       "stopped",
+				"container_ip": "",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": id, "message": "Monitor stack stopped"})
+		return
+	}
+
+	// 2. Special handling for Core stack (CoreDNS + Caddy)
+	if id == coredns.CoreStackID || strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
+		coredns.Stop()
+		caddy.Stop()
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+				"status":       "stopped",
+				"container_ip": "",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": id, "message": "Core stack stopped"})
+		return
+	}
+
+	// 3. User deployed application stacks
+	var services []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&services)
+	stoppedCount := 0
+	for _, svc := range services {
+		var tasks []db.Task
+		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
+		for _, task := range tasks {
+			_ = executeContainerDockerAction(task.NodeID, task.ContainerName, "stop")
+			stoppedCount++
+		}
+		db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+			"status":       "stopped",
+			"container_ip": "",
+		})
+	}
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "stopped",
+		"stack_id":          id,
+		"stopped_containers": stoppedCount,
+	})
+}
+
+func startStackHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// 1. Special handling for SRE Monitor stack
+	if id == monitor.SREStackID || strings.Contains(strings.ToLower(stack.Name), "monitor") {
+		redeploySREStack(c)
+		return
+	}
+
+	// 2. Special handling for Core stack
+	if id == coredns.CoreStackID || strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
+		redeployCoreStack(c)
+		return
+	}
+
+	// 3. User deployed application stacks
+	var services []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&services)
+
+	// Try starting existing stopped containers first
+	startedCount := 0
+	for _, svc := range services {
+		var tasks []db.Task
+		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
+		for _, task := range tasks {
+			err := executeContainerDockerAction(task.NodeID, task.ContainerName, "start")
+			if err == nil {
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "running")
+				startedCount++
+			}
+		}
+	}
+
+	// If no existing containers could be started (e.g. they were removed or never created),
+	// trigger a clean redeploy from the stored compose definition!
+	if startedCount == 0 {
+		redeployStackHandler(c)
+		return
+	}
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "started",
+		"stack_id":          id,
+		"started_containers": startedCount,
+	})
 }
 
 func migrateStackHandler(c *gin.Context) {

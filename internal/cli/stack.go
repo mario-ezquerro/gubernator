@@ -242,6 +242,34 @@ var stackRmCmd = &cobra.Command{
 	},
 }
 
+var stackStopCmd = &cobra.Command{
+	Use:   "stop [stack_id]",
+	Short: "Stop all running containers in a stack without deleting it",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("POST", "/v1/stack/"+args[0]+"/stop", nil)
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Stack %s stopped\n", args[0])
+		} else {
+			fmt.Printf("Failed to stop stack %s\n", args[0])
+		}
+	},
+}
+
+var stackStartCmd = &cobra.Command{
+	Use:   "start [stack_id]",
+	Short: "Start all containers in a stopped stack",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("POST", "/v1/stack/"+args[0]+"/start", nil)
+		if err == nil && resp.StatusCode == 200 {
+			fmt.Printf("Stack %s started\n", args[0])
+		} else {
+			fmt.Printf("Failed to start stack %s\n", args[0])
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(stackCmd)
 	stackCmd.AddCommand(stackDeployCmd)
@@ -249,6 +277,8 @@ func init() {
 	stackCmd.AddCommand(stackServerLsCmd)
 	stackCmd.AddCommand(stackServicesCmd)
 	stackCmd.AddCommand(stackRmCmd)
+	stackCmd.AddCommand(stackStopCmd)
+	stackCmd.AddCommand(stackStartCmd)
 
 	stackDeployCmd.Flags().StringVarP(&composeFile, "compose-file", "c", "", "Path to a local Compose file on your client machine")
 	stackDeployCmd.Flags().StringVarP(&serverComposeFile, "from-server", "s", "", "Path to a Compose file residing on the Master server filesystem")

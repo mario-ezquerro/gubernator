@@ -1,11 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
+	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
@@ -113,4 +116,122 @@ func StackRmHandler(c *gin.Context) {
 	aqueducts.GenerateAllAsync()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Stack removed and containers stopped"})
+}
+
+// @Summary Stop Stack
+// @Description Stop all running containers in a stack without deleting it
+// @Tags stacks
+// @Produce json
+// @Param id path string true "Stack ID"
+// @Success 200 {object} map[string]string
+// @Router /v1/stack/{id}/stop [post]
+func StackStopHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// 1. Special handling for SRE Monitor stack
+	if id == monitor.SREStackID {
+		monitor.StopAll()
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+				"status":       "stopped",
+				"container_ip": "",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "stopped", "message": "Monitor containers stopped"})
+		return
+	}
+
+	// 2. Special handling for Core stack (CoreDNS + Caddy)
+	if id == coredns.CoreStackID {
+		coredns.Stop()
+		caddy.Stop()
+		var services []db.Service
+		db.DB.Where("stack_id = ?", id).Find(&services)
+		for _, svc := range services {
+			db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+				"status":       "stopped",
+				"container_ip": "",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "stopped", "message": "Core containers stopped"})
+		return
+	}
+
+	// 3. User deployed stacks
+	var services []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&services)
+	stoppedCount := 0
+	for _, svc := range services {
+		var tasks []db.Task
+		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
+		for _, task := range tasks {
+			_ = StopTaskOnNode(task)
+			stoppedCount++
+		}
+		db.DB.Model(&db.Task{}).Where("service_id = ?", svc.ID).Updates(map[string]interface{}{
+			"status":       "stopped",
+			"container_ip": "",
+		})
+	}
+
+	aqueducts.GenerateAllAsync()
+	c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": id, "stopped_containers": stoppedCount})
+}
+
+// @Summary Start Stack
+// @Description Start all containers in a stopped stack
+// @Tags stacks
+// @Produce json
+// @Param id path string true "Stack ID"
+// @Success 200 {object} map[string]string
+// @Router /v1/stack/{id}/start [post]
+func StackStartHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// 1. Special handling for SRE Monitor stack
+	if id == monitor.SREStackID {
+		_ = monitor.EnsureNetwork()
+		_ = monitor.WriteConfigs(nil)
+		_ = monitor.DeployManagerStack(os.Getenv("GBNT_WEB_USER"), os.Getenv("GBNT_WEB_PASSWORD"))
+		_ = monitor.RegisterInDB(db.DB)
+		aqueducts.GenerateAllAsync()
+		c.JSON(http.StatusOK, gin.H{"status": "started", "message": "Monitor stack started"})
+		return
+	}
+
+	// 2. Special handling for Core stack
+	if id == coredns.CoreStackID {
+		_ = coredns.EnsureNetwork()
+		_ = coredns.EnsureRunning()
+		_ = caddy.EnsureRunning()
+		_ = coredns.RegisterInDB(db.DB)
+		aqueducts.GenerateAllAsync()
+		c.JSON(http.StatusOK, gin.H{"status": "started", "message": "Core stack started"})
+		return
+	}
+
+	// 3. User deployed stacks
+	if stack.RawComposeFile != "" {
+		if _, err := DeployStackRaw(stack.Name, stack.RawComposeFile, ""); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to start stack: %v", err)})
+			return
+		}
+	}
+
+	aqueducts.GenerateAllAsync()
+	c.JSON(http.StatusOK, gin.H{"status": "started", "stack_id": id})
 }

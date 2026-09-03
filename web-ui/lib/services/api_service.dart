@@ -58,6 +58,18 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Stops all containers in a stack without deleting it.
+  static Future<bool> stopStack(String id) async {
+    final response = await http.post(Uri.parse('/api/stack/$id/stop'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
+  /// Starts all containers in a stopped stack.
+  static Future<bool> startStack(String id) async {
+    final response = await http.post(Uri.parse('/api/stack/$id/start'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
   /// Redeploys a stack.
   static Future<bool> redeployStack(String id) async {
     final response = await http.post(Uri.parse('/api/stack/$id/redeploy'), headers: authHeaders);

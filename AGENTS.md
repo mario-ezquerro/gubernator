@@ -420,6 +420,15 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Seamlessly integrated into `NewStackDialog`, `ComposeStudioPage`, and `LegionsPage` headers alongside workstation PC upload.
 * **Full CLI & REST API Parity:** Added `gbnt examples ls`, `gbnt examples deploy <id|all> [--target-node]`, `gbnt stack server-ls [--dir]`, `gbnt stack deploy --from-server <path>`, and REST APIs (`GET /v1/examples`, `POST /v1/examples/deploy`, `GET /v1/stack/server-files`, `POST /v1/stack/server-deploy`).
 
+### 69. Stacks Categorization, Base vs Deployed Grouping & Dynamic Stop/Start Subsystem (`v2.65.0`)
+* **Base vs Deployed Stacks Grouping Heuristics:** Automatically separates infrastructure foundation stacks (`CORE-GBNT` / CoreDNS + Caddy, `[SRE] Monitor` / Prometheus + Grafana + Loki + Jaeger) from user-deployed application stacks across the dashboard and API.
+* **Interactive Group Segmented Buttons & Visual Badges:** Added a 3-way segmented filter (`All`, `🚀 Deployed Apps`, `🏛️ Base Stacks`) and prominent visual badges (`[BASE]` with purple foundation icon, `[APP]` with blue rocket icon) in the stacks table and overview card.
+* **Dynamic Stop / Start Compose Lifecycle:**
+  - When active, stacks render an amber **Stop** action button (`Icons.stop_circle_outlined`) with confirmation protection; stopping halts all running containers across Manager and Worker nodes (`docker stop` or remote SSH execution) while preserving the stack configuration and volume state.
+  - When stopped, the button dynamically transforms into an emerald **Start** action button (`Icons.play_circle_filled`); starting resumes the stopped containers (`docker start`) or schedules fresh tasks directly from the saved Compose definition (`stack.RawComposeFile`).
+  - Container column visualizes live state (`Running: X/Y` with green play indicator vs `Stopped: 0/Y` with amber stop indicator).
+* **Full CLI & REST API Parity:** Added CLI commands `gbnt stack stop <stack_id>` and `gbnt stack start <stack_id>` along with REST API endpoints `POST /api/stack/:id/stop`, `POST /api/stack/:id/start`, `POST /v1/stack/:id/stop`, and `POST /v1/stack/:id/start`.
+
 
 
 
