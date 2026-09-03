@@ -481,7 +481,8 @@ class _LegionsPageState extends State<LegionsPage> {
       switch (_sortColumnIndex) {
         case 0: getField = (s) => s.id; break;
         case 1: getField = (s) => s.name; break;
-        case 2: getField = (s) => s.createdAt; break;
+        case 2: getField = (s) => s.nodeId; break;
+        case 3: getField = (s) => s.createdAt; break;
         default: getField = (s) => s.id;
       }
       filteredStacks.sort((a, b) {
@@ -634,6 +635,13 @@ class _LegionsPageState extends State<LegionsPage> {
                                 }),
                               ),
                               DataColumn(
+                                label: const Text('HOST NODE'),
+                                onSort: (col, asc) => setState(() {
+                                  _sortColumnIndex = col;
+                                  _sortAscending = asc;
+                                }),
+                              ),
+                              DataColumn(
                                 label: const Text('CREATED'),
                                 onSort: (col, asc) => setState(() {
                                   _sortColumnIndex = col;
@@ -731,6 +739,57 @@ class _LegionsPageState extends State<LegionsPage> {
                                      ),
                                    ),
                                  ),
+                                  DataCell(
+                                    Builder(builder: (context) {
+                                      final hostNode = widget.state.nodes.where((n) => n.id == s.nodeId || (s.nodeId.isNotEmpty && n.ip == s.nodeId)).firstOrNull;
+                                      final isMgr = hostNode != null ? hostNode.role.toLowerCase() == 'manager' : false;
+                                      final hostLabel = hostNode != null 
+                                          ? (hostNode.labels['gbnt.node.hostname'] ?? hostNode.id)
+                                          : (s.nodeId.isNotEmpty ? s.nodeId : 'Auto / Cluster');
+                                      final hostIp = hostNode?.ip ?? '';
+                                      final color = isMgr ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8);
+
+                                      return Tooltip(
+                                        message: hostNode != null
+                                            ? 'Running on ${hostNode.role.toUpperCase()} ($hostLabel - $hostIp)\nClick to migrate to another host'
+                                            : 'Click to migrate to a specific Centurion host',
+                                        child: InkWell(
+                                          onTap: () => _showMigrateStackDialog(s),
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: color.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: color.withValues(alpha: 0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isMgr ? Icons.shield : Icons.computer,
+                                                  size: 13,
+                                                  color: color,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  hostLabel,
+                                                  style: TextStyle(
+                                                    fontFamily: 'Courier New',
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: color,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Icon(Icons.swap_horiz, size: 12, color: color.withValues(alpha: 0.7)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ),
                                  DataCell(Text(_formatDate(s.createdAt))),
                                  DataCell(
                                    InkWell(

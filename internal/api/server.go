@@ -198,6 +198,7 @@ func Start(ctx context.Context) error {
 			stack.POST("/:id/stop", StackStopHandler)
 			stack.POST("/:id/start", StackStartHandler)
 			stack.POST("/:id/reconcile", StackReconcileHandler)
+			stack.POST("/:id/migrate", StackMigrateHandler)
 			stack.GET("/server-files", StackServerFilesHandler)
 			stack.GET("/server-file", StackServerFileReadHandler)
 			stack.POST("/server-deploy", StackServerDeployHandler)

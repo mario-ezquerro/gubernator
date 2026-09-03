@@ -733,4 +733,115 @@ func TestStackSaveDraft(t *testing.T) {
 	}
 }
 
+func TestAtomicStackSchedulingAndBalancing(t *testing.T) {
+	_, tok := setupRouter(t)
+	_ = tok
+
+	// 1. Seed two active worker nodes
+	w1 := db.Node{
+		ID:     "node-test-worker-1",
+		IP:     "192.168.252.101",
+		Role:   "worker",
+		Status: "active",
+		Labels: map[string]string{"gbnt.node.role": "worker"},
+	}
+	w2 := db.Node{
+		ID:     "node-test-worker-2",
+		IP:     "192.168.252.102",
+		Role:   "worker",
+		Status: "active",
+		Labels: map[string]string{"gbnt.node.role": "worker"},
+	}
+	db.DB.Create(&w1)
+	db.DB.Create(&w2)
+	defer db.DB.Delete(&w1)
+	defer db.DB.Delete(&w2)
+
+	// Clean up any residual stacks from test runs
+	db.DB.Where("name IN ?", []string{"atomic-stack-alpha", "atomic-stack-beta"}).Delete(&db.Stack{})
+
+	// 2. Deploy a multi-service stack (e.g. web + db)
+	composeMultiService := `
+version: "3.8"
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+  db:
+    image: postgres:alpine
+`
+	stack1, err := DeployStackRaw("atomic-stack-alpha", composeMultiService, "auto")
+	if err != nil {
+		t.Fatalf("failed to deploy atomic-stack-alpha: %v", err)
+	}
+
+	// Verify stack1 has a NodeID assigned
+	if stack1.NodeID == "" {
+		t.Fatalf("expected stack1.NodeID to be assigned, got empty string")
+	}
+
+	// Verify all tasks belonging to stack1 are on the EXACT SAME host node
+	var tasks1 []db.Task
+	db.DB.Joins("JOIN services ON services.id = tasks.service_id").Where("services.stack_id = ?", stack1.ID).Find(&tasks1)
+	if len(tasks1) != 2 {
+		t.Fatalf("expected 2 tasks for stack1, got %d", len(tasks1))
+	}
+	for _, tk := range tasks1 {
+		if tk.NodeID != stack1.NodeID {
+			t.Errorf("atomic scheduling violation: task %s has NodeID %s, expected stack NodeID %s", tk.ID, tk.NodeID, stack1.NodeID)
+		}
+	}
+
+	// 3. Deploy a second stack (Stack 2)
+	// Because stack1 is on stack1.NodeID, the other worker has 0 stacks.
+	// Stack 2 MUST be balanced onto the other worker node!
+	stack2, err := DeployStackRaw("atomic-stack-beta", composeMultiService, "auto")
+	if err != nil {
+		t.Fatalf("failed to deploy atomic-stack-beta: %v", err)
+	}
+
+	if stack2.NodeID == "" {
+		t.Fatalf("expected stack2.NodeID to be assigned, got empty string")
+	}
+
+	// Stacks must be balanced across the workers!
+	if stack2.NodeID == stack1.NodeID {
+		t.Errorf("stack balancing failure: both stack1 and stack2 were scheduled on the same host %s instead of being balanced across available workers", stack1.NodeID)
+	}
+
+	// Verify all tasks of stack2 are on stack2's host
+	var tasks2 []db.Task
+	db.DB.Joins("JOIN services ON services.id = tasks.service_id").Where("services.stack_id = ?", stack2.ID).Find(&tasks2)
+	for _, tk := range tasks2 {
+		if tk.NodeID != stack2.NodeID {
+			t.Errorf("atomic scheduling violation for stack2: task %s has NodeID %s, expected %s", tk.ID, tk.NodeID, stack2.NodeID)
+		}
+	}
+
+	// 4. Test atomic stack migration
+	// Migrate stack1 to stack2's host
+	targetHost := stack2.NodeID
+	migratedStack, err := MigrateStack(stack1.ID, targetHost)
+	if err != nil {
+		t.Fatalf("failed to migrate stack1 to %s: %v", targetHost, err)
+	}
+	if migratedStack.NodeID != targetHost {
+		t.Errorf("expected migratedStack.NodeID to be %s, got %s", targetHost, migratedStack.NodeID)
+	}
+
+	// Verify all tasks for stack1 are now on the new targetHost
+	var migratedTasks []db.Task
+	db.DB.Joins("JOIN services ON services.id = tasks.service_id").Where("services.stack_id = ?", stack1.ID).Find(&migratedTasks)
+	if len(migratedTasks) != 2 {
+		t.Fatalf("expected 2 tasks after migration, got %d", len(migratedTasks))
+	}
+	for _, tk := range migratedTasks {
+		if tk.NodeID != targetHost {
+			t.Errorf("migration failure: task %s still on %s, expected targetHost %s", tk.ID, tk.NodeID, targetHost)
+		}
+	}
+}
+
+
 

@@ -27,6 +27,17 @@ func StackListHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stacks"})
 		return
 	}
+	for i := range stacks {
+		if stacks[i].NodeID == "" {
+			var firstTask db.Task
+			if err := db.DB.Joins("JOIN services ON services.id = tasks.service_id").
+				Where("services.stack_id = ? AND tasks.node_id != '' AND tasks.node_id != 'none'", stacks[i].ID).
+				First(&firstTask).Error; err == nil && firstTask.NodeID != "" {
+				stacks[i].NodeID = firstTask.NodeID
+				db.DB.Model(&stacks[i]).Update("node_id", firstTask.NodeID)
+			}
+		}
+	}
 	c.JSON(http.StatusOK, stacks)
 }
 

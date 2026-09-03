@@ -74,12 +74,14 @@ class StackModel {
   final String id;
   final String name;
   final String rawComposeFile;
+  final String nodeId;
   final String createdAt;
 
   StackModel({
     required this.id,
     required this.name,
     this.rawComposeFile = '',
+    this.nodeId = '',
     this.createdAt = '',
   });
 
@@ -88,6 +90,7 @@ class StackModel {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       rawComposeFile: json['raw_compose_file'] ?? '',
+      nodeId: json['node_id'] ?? '',
       createdAt: json['created_at'] ?? '',
     );
   }

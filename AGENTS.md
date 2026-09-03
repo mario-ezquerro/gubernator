@@ -532,6 +532,23 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **100% Overflow Immunity:**
   - Zero `RenderFlex` overflow errors on laptops, split-screen windows, or tablets.
 
+### 76. Atomic Stack-Level Scheduling & Host Load Balancing (`v2.70.0`)
+* **Single-Host Atomic Stack Deployment:**
+  - Standard Docker Compose stacks rely inherently on intra-host container networking (`<stack>_default` bridge), local inter-service DNS resolution (`web` reaching `db:3306`), and local shared volume mounts.
+  - Gubernator schedules the entire Compose stack as an **atomic deployment unit** onto a single chosen Centurion host node. All services and containers of that stack are placed and managed together on that host.
+* **Cluster-Wide Stack Load Balancing:**
+  - What Gubernator balances across the cluster Centurions are the **Stacks themselves**, rather than scattering individual containers of the same stack across separate machines.
+  - `SelectOptimalNodeForStack(constraints, targetNode)` counts active stacks on each healthy candidate node (`db.DB.Model(&db.Stack{}).Where("node_id = ?", n.ID).Count(&stackCount)`), with active task count as secondary tie-breaker.
+  - Prioritizes healthy Worker nodes over Manager (Workers first, Manager as fallback or if explicitly constrained).
+* **Atomic Stack Migration & Eviction (`MigrateStack`):**
+  - Moving a stack (`POST /v1/stack/:id/migrate` and `POST /api/stack/:id/migrate`) relocates all containers belonging to that stack together to the destination Centurion, cleaning up on the previous node and starting them on the new host.
+  - Node draining (`drainNodeTasks`) discovers all stacks hosted on the draining node and migrates each stack atomically to an active replacement Centurion.
+* **Watchdog Self-Healing & Host Affinity:**
+  - Reconciler repairs (`reconcileStackInternal`) strictly schedule replacement replicas onto `stack.NodeID`, preserving co-location with sibling containers. If the assigned node is dead/unreachable, the watchdog fails over the entire stack to another active worker.
+* **Web Dashboard Host Residency Badges:**
+  - Stacks (Legions) DataTable in `legions_page.dart` and `dashboard_screen.dart` features a dedicated **`HOST NODE`** column.
+  - Renders a color-coded Centurion badge (icon, hostname, IP, and role: amber for `MANAGER`, sky blue for `WORKER`) with one-click access to the stack migration dialog.
+
 
 
 

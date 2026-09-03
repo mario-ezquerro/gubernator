@@ -1,10 +1,8 @@
 package api
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -251,77 +249,59 @@ func NodeLabelsHandler(c *gin.Context) {
 }
 
 func drainNodeTasks(nodeID string) {
-	var tasks []db.Task
-	if err := db.DB.Where("node_id = ? AND status != ?", nodeID, "dead").Find(&tasks).Error; err != nil {
-		return
+	// Find all distinct user stacks hosted on this draining node
+	var affectedStackIDs []string
+	db.DB.Model(&db.Task{}).
+		Joins("JOIN services ON services.id = tasks.service_id").
+		Where("tasks.node_id = ? AND tasks.status != ?", nodeID, "dead").
+		Distinct("services.stack_id").
+		Pluck("services.stack_id", &affectedStackIDs)
+
+	var assignedStacks []db.Stack
+	db.DB.Where("node_id = ?", nodeID).Find(&assignedStacks)
+	for _, as := range assignedStacks {
+		found := false
+		for _, sID := range affectedStackIDs {
+			if sID == as.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			affectedStackIDs = append(affectedStackIDs, as.ID)
+		}
 	}
 
-	for _, task := range tasks {
-		var svc db.Service
-		if err := db.DB.First(&svc, "id = ?", task.ServiceID).Error; err != nil {
+	for _, stackID := range affectedStackIDs {
+		if isSystemStack(stackID) {
 			continue
 		}
+		slog.Info("draining stack atomically from node", "stack_id", stackID, "draining_node", nodeID)
 
-		// Filter out core system and monitoring stacks
-		if isSystemStack(svc.StackID) {
-			continue
-		}
-
-		slog.Info("Draining task from node", "task_id", task.ID, "node_id", nodeID, "service_id", svc.ID)
-
-		// 1. Stop container on the drained host
-		containerName := task.ContainerName
-		if containerName == "" {
-			containerName = "gbnt-" + task.ID
-		}
-		if task.NodeID == "node-local-manager" {
-			exec.Command("docker", "stop", containerName).Run()
-			exec.Command("docker", "rm", "-f", containerName).Run()
-		} else {
-			var targetNode db.Node
-			if err := db.DB.First(&targetNode, "id = ? OR ip = ?", task.NodeID, task.NodeID).Error; err == nil && targetNode.IP != "" {
-				sshArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=5"}
-				keyCandidates := []string{
-					"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
-					"/data/id_ed25519", "/data/id_rsa",
-					"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
-				}
-				for _, k := range keyCandidates {
-					if _, err := os.Stat(k); err == nil {
-						sshArgs = append(sshArgs, "-i", k)
-						break
-					}
-				}
-				stopCmd := fmt.Sprintf("sudo docker rm -f %s 2>/dev/null || true", containerName)
-				stopSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", targetNode.IP), stopCmd)
-				_ = exec.Command("ssh", stopSSHArgs...).Run()
-			}
-		}
-
-		// 2. Mark the task as dead in DB
-		db.DB.Model(&task).Updates(map[string]interface{}{
-			"status":       "dead",
-			"container_ip": "",
-		})
-
-		// 3. If draining manager, relax any obsolete "node.role == manager" constraint so it can migrate to workers
+		// If draining manager, relax any obsolete "node.role == manager" constraint across stack services
 		var drainingNode db.Node
 		if err := db.DB.First(&drainingNode, "id = ?", nodeID).Error; err == nil && strings.ToLower(drainingNode.Role) == "manager" {
-			cleanConstraints := make([]string, 0, len(svc.Constraints))
-			for _, c := range svc.Constraints {
-				trimmed := strings.TrimSpace(c)
-				if trimmed != "node.role == manager" && trimmed != "node.role==manager" && trimmed != "gbnt.node.role == manager" && trimmed != "gbnt.node.role==manager" {
-					cleanConstraints = append(cleanConstraints, c)
+			var services []db.Service
+			db.DB.Where("stack_id = ?", stackID).Find(&services)
+			for _, svc := range services {
+				cleanConstraints := make([]string, 0, len(svc.Constraints))
+				for _, c := range svc.Constraints {
+					trimmed := strings.TrimSpace(c)
+					if trimmed != "node.role == manager" && trimmed != "node.role==manager" && trimmed != "gbnt.node.role == manager" && trimmed != "gbnt.node.role==manager" {
+						cleanConstraints = append(cleanConstraints, c)
+					}
 				}
-			}
-			if len(cleanConstraints) != len(svc.Constraints) {
-				svc.Constraints = cleanConstraints
-				db.DB.Model(&svc).Update("constraints", svc.Constraints)
+				if len(cleanConstraints) != len(svc.Constraints) {
+					svc.Constraints = cleanConstraints
+					db.DB.Model(&svc).Update("constraints", svc.Constraints)
+				}
 			}
 		}
 
-		// 4. Reschedule a new replica (will be placed on another ACTIVE node)
-		ScheduleService(&svc, "")
+		// Atomically migrate the stack to an available active host
+		if _, err := MigrateStack(stackID, "auto"); err != nil {
+			slog.Error("failed to migrate stack during node drain", "stack_id", stackID, "error", err)
+		}
 	}
 
 	// Regenerate configurations

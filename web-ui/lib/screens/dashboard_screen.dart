@@ -143,6 +143,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           getField = (s) => s.name;
           break;
         case 2:
+          getField = (s) => s.nodeId;
+          break;
+        case 3:
           getField = (s) => s.createdAt;
           break;
         default:
@@ -1653,6 +1656,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       },
                     ),
                     DataColumn(
+                      label: const Text('HOST NODE'),
+                      onSort: (columnIndex, ascending) {
+                        setState(() {
+                          _stackSortColumnIndex = columnIndex;
+                          _stackSortAscending = ascending;
+                          _applySorting();
+                        });
+                      },
+                    ),
+                    DataColumn(
                       label: const Text('CREATED'),
                       onSort: (columnIndex, ascending) {
                         setState(() {
@@ -1722,6 +1735,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                         ],
                       )),
+                      DataCell(
+                        Builder(builder: (context) {
+                          final hostNode = _state.nodes.where((n) => n.id == s.nodeId || (s.nodeId.isNotEmpty && n.ip == s.nodeId)).firstOrNull;
+                          final isMgr = hostNode != null ? hostNode.role.toLowerCase() == 'manager' : false;
+                          final hostLabel = hostNode != null 
+                              ? (hostNode.labels['gbnt.node.hostname'] ?? hostNode.id)
+                              : (s.nodeId.isNotEmpty ? s.nodeId : 'Auto / Cluster');
+                          final hostIp = hostNode?.ip ?? '';
+                          final color = isMgr ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8);
+
+                          return Tooltip(
+                            message: hostNode != null
+                                ? 'Running on ${hostNode.role.toUpperCase()} ($hostLabel - $hostIp)\nClick to migrate to another host'
+                                : 'Click to migrate to a specific Centurion host',
+                            child: InkWell(
+                              onTap: () => _showMigrateStackDialog(s),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isMgr ? Icons.shield : Icons.computer,
+                                      size: 13,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      hostLabel,
+                                      style: TextStyle(
+                                        fontFamily: 'Courier New',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: color,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.swap_horiz, size: 12, color: color.withValues(alpha: 0.7)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
                       DataCell(Text(_formatDate(s.createdAt))),
                       DataCell(Row(
                         mainAxisSize: MainAxisSize.min,

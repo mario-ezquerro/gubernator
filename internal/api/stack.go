@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
@@ -262,10 +263,15 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 
 	if isNew {
 		stackID := uuid.New().String()
+		nodeID := ""
+		if targetNode != "" && targetNode != "auto" {
+			nodeID = targetNode
+		}
 		stack = db.Stack{
 			ID:             stackID,
 			Name:           stackName,
 			RawComposeFile: composeRaw,
+			NodeID:         nodeID,
 		}
 		if err := db.DB.Create(&stack).Error; err != nil {
 			return nil, fmt.Errorf("failed to save stack: %w", err)
@@ -273,6 +279,9 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 	} else {
 		stack.Name = stackName
 		stack.RawComposeFile = composeRaw
+		if targetNode != "" && targetNode != "auto" {
+			stack.NodeID = targetNode
+		}
 		db.DB.Save(&stack)
 	}
 
@@ -393,16 +402,31 @@ func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, err
 		db.DB.Where("id = ?", existingStack.ID).Delete(&db.Stack{})
 	}
 
+	// 1. Collect all constraints across all services to schedule the Stack as an atomic unit
+	var allStackConstraints []string
+	for _, srvDef := range compose.Services {
+		allStackConstraints = append(allStackConstraints, srvDef.Deploy.Placement.Constraints...)
+	}
+
+	// 2. Select the optimal node for the ENTIRE Stack (balances stacks across hosts)
+	selectedNode, err := SelectOptimalNodeForStack(allStackConstraints, targetNode)
+	if err != nil {
+		return nil, fmt.Errorf("stack scheduling failed: %w", err)
+	}
+
+	slog.Info("scheduled stack atomically to host", "stack", stackName, "node_id", selectedNode.ID, "node_ip", selectedNode.IP, "role", selectedNode.Role)
+
 	// Create Stack record
 	stackID := uuid.New().String()
 	stack := db.Stack{
 		ID:             stackID,
 		Name:           stackName,
 		RawComposeFile: composeRaw,
+		NodeID:         selectedNode.ID,
 	}
 	db.DB.Create(&stack)
 
-	// Process Services
+	// Process Services: ALL services and tasks of this stack run together on selectedNode.ID
 	for srvName, srvDef := range compose.Services {
 		replicas := srvDef.Deploy.Replicas
 		if replicas == 0 {
@@ -451,14 +475,219 @@ func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, err
 		}
 		db.DB.Create(&service)
 
-		// Scheduler: assign Tasks to Nodes based on Constraints
-		ScheduleService(&service, targetNode)
+		// Scheduler: assign tasks strictly to the stack's host
+		ScheduleService(&service, selectedNode.ID)
 	}
 
 	// Trigger generation of Prometheus SLO rules
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	return &stack, nil
+}
+
+// SelectOptimalNodeForStack selects a single host node for an entire Docker Compose stack.
+// Gubernator balances STACKS across cluster nodes (not individual containers).
+// All containers belonging to the same stack run together on this single host.
+func SelectOptimalNodeForStack(constraints []string, targetNode string) (*db.Node, error) {
+	// 1. Explicit target node requested (e.g. from UI dropdown or CLI flag)
+	if targetNode != "" && targetNode != "auto" {
+		var n db.Node
+		if err := db.DB.First(&n, "id = ? OR ip = ?", targetNode, targetNode).Error; err == nil {
+			if n.Status == "active" || n.Status == "ready" {
+				return &n, nil
+			}
+			return nil, fmt.Errorf("requested node %s is not active (status: %s)", targetNode, n.Status)
+		}
+		return nil, fmt.Errorf("requested node %s not found in cluster", targetNode)
+	}
+
+	// 2. Query all healthy candidate nodes (excluding drain, pause, maintenance)
+	var allNodes []db.Node
+	if err := db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes).Error; err != nil || len(allNodes) == 0 {
+		return nil, fmt.Errorf("no active or ready cluster nodes available for scheduling")
+	}
+
+	// 3. Count active STACKS and tasks per candidate node to balance stacks across hosts
+	type nodeWithStackLoad struct {
+		node       db.Node
+		stackCount int64
+		taskCount  int64
+	}
+	var workerLoads []nodeWithStackLoad
+	var managerLoads []nodeWithStackLoad
+
+	for _, n := range allNodes {
+		var stackCount int64
+		db.DB.Model(&db.Stack{}).Where("node_id = ?", n.ID).Count(&stackCount)
+
+		var taskCount int64
+		db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", n.ID, []string{"running", "pending", "pulling", "starting"}).Count(&taskCount)
+
+		nl := nodeWithStackLoad{
+			node:       n,
+			stackCount: stackCount,
+			taskCount:  taskCount,
+		}
+
+		if strings.ToLower(n.Role) == "manager" {
+			managerLoads = append(managerLoads, nl)
+		} else {
+			workerLoads = append(workerLoads, nl)
+		}
+	}
+
+	// Sort workers ascending by active stack count (least stacks first), then by task count
+	sort.SliceStable(workerLoads, func(a, b int) bool {
+		if workerLoads[a].stackCount != workerLoads[b].stackCount {
+			return workerLoads[a].stackCount < workerLoads[b].stackCount
+		}
+		return workerLoads[a].taskCount < workerLoads[b].taskCount
+	})
+
+	// Sort managers ascending
+	sort.SliceStable(managerLoads, func(a, b int) bool {
+		if managerLoads[a].stackCount != managerLoads[b].stackCount {
+			return managerLoads[a].stackCount < managerLoads[b].stackCount
+		}
+		return managerLoads[a].taskCount < managerLoads[b].taskCount
+	})
+
+	// Workers ALWAYS prioritized over Manager
+	var orderedNodes []db.Node
+	for _, wl := range workerLoads {
+		orderedNodes = append(orderedNodes, wl.node)
+	}
+	for _, ml := range managerLoads {
+		orderedNodes = append(orderedNodes, ml.node)
+	}
+
+	// 4. Constraint matching with Worker-First priority and Least-Loaded Stack Spread
+	for _, node := range orderedNodes {
+		matchesAll := true
+		for _, constraint := range constraints {
+			parts := strings.Split(constraint, "==")
+			if len(parts) == 2 {
+				leftSide := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+
+				// Support node.role == worker / node.role == manager
+				if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+					if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
+						matchesAll = false
+						break
+					}
+					continue
+				}
+
+				// Support node.hostname == gbnt-worker1 or node.id == ...
+				if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" {
+					if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) {
+						matchesAll = false
+						break
+					}
+					continue
+				}
+
+				if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+					// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
+					continue
+				}
+
+				key := strings.TrimPrefix(leftSide, "node.labels.")
+				if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+					matchesAll = false
+					break
+				}
+			}
+		}
+
+		if matchesAll {
+			return &node, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no active cluster node matches all stack placement constraints: %v", constraints)
+}
+
+// MigrateStack moves an entire stack atomically from its current host to targetNodeID.
+func MigrateStack(stackID string, targetNodeID string) (*db.Stack, error) {
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", stackID, stackID).First(&stack).Error; err != nil {
+		return nil, fmt.Errorf("stack not found: %s", stackID)
+	}
+
+	var targetNode *db.Node
+	if targetNodeID == "" || targetNodeID == "auto" {
+		// Pick an optimal active node other than the current node
+		var services []db.Service
+		db.DB.Where("stack_id = ?", stack.ID).Find(&services)
+		var constraints []string
+		for _, s := range services {
+			constraints = append(constraints, s.Constraints...)
+		}
+		var err error
+		targetNode, err = SelectOptimalNodeForStack(constraints, "auto")
+		if err != nil {
+			return nil, fmt.Errorf("auto-migration failed: %w", err)
+		}
+	} else {
+		var n db.Node
+		if err := db.DB.First(&n, "id = ? OR ip = ?", targetNodeID, targetNodeID).Error; err != nil {
+			return nil, fmt.Errorf("target node %s not found", targetNodeID)
+		}
+		if n.Status != "active" && n.Status != "ready" {
+			return nil, fmt.Errorf("target node %s is not active (status: %s)", n.ID, n.Status)
+		}
+		targetNode = &n
+	}
+
+	slog.Info("migrating stack atomically to target node", "stack", stack.Name, "old_node", stack.NodeID, "new_node", targetNode.ID)
+
+	// 1. Stop and remove all existing containers/tasks for this stack
+	StopStackContainers(stack.ID)
+
+	// 2. Update stack.NodeID in DB
+	stack.NodeID = targetNode.ID
+	db.DB.Model(&stack).Update("node_id", targetNode.ID)
+
+	// 3. Reschedule all services onto targetNode.ID
+	var services []db.Service
+	db.DB.Where("stack_id = ?", stack.ID).Find(&services)
+	for _, svc := range services {
+		db.DB.Where("service_id = ?", svc.ID).Delete(&db.Task{})
+		ScheduleService(&svc, targetNode.ID)
+	}
+
+	// 4. Regenerate DNS & Caddy routes
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	return &stack, nil
+}
+
+// StackMigrateHandler migrates an entire stack atomically to a new host via REST API.
+func StackMigrateHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		TargetNode string `json:"target_node"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	stack, err := MigrateStack(id, req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":      "migrated",
+		"stack_id":    stack.ID,
+		"stack_name":  stack.Name,
+		"target_node": stack.NodeID,
+	})
 }
 
 // ScheduleService assigns desired replicas of a service to cluster nodes.

@@ -226,8 +226,20 @@ func reconcileStackInternal(stack *db.Stack, validContainerNames map[string]bool
 		if len(runningTasks) < desired {
 			missing := desired - len(runningTasks)
 			slog.Info("reconciler: repairing degraded service", "stack", stack.Name, "service", svc.Name, "running", len(runningTasks), "desired", desired, "missing", missing)
+			targetHost := stack.NodeID
+			if targetHost != "" {
+				var targetCheck db.Node
+				if err := db.DB.First(&targetCheck, "id = ?", targetHost).Error; err != nil || (targetCheck.Status != "active" && targetCheck.Status != "ready") {
+					// Host is unreachable or down! Re-evaluate optimal host for stack
+					if newHost, err := SelectOptimalNodeForStack(svc.Constraints, "auto"); err == nil {
+						targetHost = newHost.ID
+						stack.NodeID = newHost.ID
+						db.DB.Model(&stack).Update("node_id", newHost.ID)
+					}
+				}
+			}
 			for i := 0; i < missing; i++ {
-				newTask := ScheduleSingleReplica(&svc, "")
+				newTask := ScheduleSingleReplica(&svc, targetHost)
 				if newTask != nil {
 					rescheduledCount++
 				}
