@@ -576,6 +576,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Network Topology stacks now display the purple **`BASE`** badge with `Icons.foundation`, are categorized under Base infrastructure, and are protected against user app actions (duplicate, host migration).
   - Updated `isSystemStack` in `internal/api/node_crud.go` and `internal/api/watchdog.go` to safeguard topology stacks from watchdog reconciliation and node drain migrations.
 
+### 79. Full UI & Backend BASE Classification for Network Topology Stacks & Containers (`v2.70.3`)
+* **Explicit `[BASE] Net-Topology` Stack Naming:**
+  - Standardized stack naming in `internal/monitor/register.go` to `[BASE] Net-Topology (Manager)` and `[BASE] Net-Topology (<nodeID>)` on workers.
+  - Automatically migrates existing database stack records from `[SUPER]` to `[BASE]`.
+  - Added automatic Scope stack synchronization to `RegisterInDB` whenever Scope is running on node boot or SRE refresh.
+* **Containers Table BASE Badges & Cohort Segmented Filters:**
+  - Enhanced `TasksPage` (`web-ui/lib/screens/pages/tasks_page.dart`) with top segmented button controls: `All`, `Deployed Apps`, and `Base Containers` with dynamic item counts.
+  - Integrated `_isBaseTask` classifier identifying Core, SRE, and Network Topology containers (`gbnt-monitor-scope`, `gbnt-monitor-scope-probe`).
+  - Added purple `BASE` and blue `APP` badges directly in the `STACK` column of the PlutoGrid container table.
+  - Bound dynamic `ValueKey` to PlutoGrid to ensure instant, reactive filtering upon segmented button toggle.
+* **Worker Agent Healthcheck & Reconnection Resilience:**
+  - Worker loop in `internal/cli/legion.go` checks container runtime status locally via `docker inspect` before reporting `dead`, immediately updating alive containers to `running`.
+  - Re-authenticated workers using `--token` and `--manager` flags with current cluster join token.
+  - Added cache-busting query parameter (`flutter_bootstrap.js?v=2.70.3`) to prevent stale browser assets.
+
+
 
 
 

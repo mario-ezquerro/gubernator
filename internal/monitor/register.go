@@ -110,6 +110,11 @@ func RegisterInDB(database *gorm.DB) error {
 	// 2) Sync active Worker SRE Stacks
 	SyncWorkerSreStacks(database)
 
+	// 3) Sync Network Topology stacks if Scope is running
+	if IsScopeRunning() {
+		RegisterScopeStackInDB(database)
+	}
+
 	fmt.Println("📋 Manager and Worker SRE stacks registered in dashboard database.")
 	return nil
 }
@@ -217,7 +222,7 @@ func SyncWorkerSreStacks(database *gorm.DB) {
 func RegisterScopeStackInDB(database *gorm.DB) {
 	now := time.Now()
 	mgrStackID := "super-net-topology-mgr"
-	mgrStackName := "[SUPER] Net-Topology (Manager)"
+	mgrStackName := "[BASE] Net-Topology (Manager)"
 	serviceID := "super-svc-scope-mgr"
 	taskID := "super-task-scope-mgr"
 
@@ -226,11 +231,13 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 		stack := db.Stack{
 			ID:             mgrStackID,
 			Name:           mgrStackName,
-			RawComposeFile: "# Managed by Gubernator Superpower Engine\n# Weave Scope App & Probe (Manager)",
+			RawComposeFile: "# Managed by Gubernator Base Infrastructure Engine\n# Weave Scope App & Probe (Manager)",
 			CreatedAt:      now,
 			UpdatedAt:      now,
 		}
 		database.Create(&stack)
+	} else {
+		database.Model(&existingStack).Update("name", mgrStackName)
 	}
 
 	var existingService db.Service
@@ -315,18 +322,20 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 
 	for _, node := range workerNodes {
 		stackID := "super-scope-stack-" + node.ID
-		stackName := fmt.Sprintf("[SUPER] Net-Topology (%s)", node.ID)
+		stackName := fmt.Sprintf("[BASE] Net-Topology (%s)", node.ID)
 
 		var existingStack db.Stack
 		if err := database.First(&existingStack, "id = ?", stackID).Error; err != nil {
 			stack := db.Stack{
 				ID:             stackID,
 				Name:           stackName,
-				RawComposeFile: fmt.Sprintf("# Managed by Gubernator Superpower Engine\n# Weave Scope Probe (%s)", node.ID),
+				RawComposeFile: fmt.Sprintf("# Managed by Gubernator Base Infrastructure Engine\n# Weave Scope Probe (%s)", node.ID),
 				CreatedAt:      now,
 				UpdatedAt:      now,
 			}
 			database.Create(&stack)
+		} else {
+			database.Model(&existingStack).Update("name", stackName)
 		}
 
 		serviceID := fmt.Sprintf("super-svc-%s-scope", node.ID)

@@ -26,9 +26,48 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
+  String _selectedGroup = 'all'; // 'all', 'deployed', 'base'
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   PlutoGridStateManager? _gridStateManager;
+
+  bool _isBaseTask(Task t) {
+    final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+    final stack = widget.state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
+    final id = (stack?.id ?? svc?.stackId ?? t.id).toLowerCase();
+    final name = (stack?.name ?? '').toLowerCase();
+    final cName = t.containerName.toLowerCase();
+    final sName = (svc?.name ?? '').toLowerCase();
+
+    return id == 'core-gbnt-stack' ||
+        id == 'sre-monitor-stack' ||
+        id == 'super-net-topology-mgr' ||
+        id.startsWith('core-') ||
+        id.startsWith('sre-') ||
+        id.startsWith('super-') ||
+        name.contains('core-gbnt') ||
+        name == 'core' ||
+        name.contains('monitor') ||
+        name.contains('[sre]') ||
+        name == 'sre' ||
+        name.contains('topology') ||
+        name.contains('[super]') ||
+        name.contains('[base]') ||
+        name.contains('scope') ||
+        cName.startsWith('gbnt-coredns') ||
+        cName.startsWith('gbnt-caddy') ||
+        cName.startsWith('gbnt-monitor-') ||
+        sName.contains('scope') ||
+        sName.contains('caddy') ||
+        sName.contains('coredns') ||
+        sName.contains('cadvisor') ||
+        sName.contains('node-exporter') ||
+        sName.contains('promtail') ||
+        sName.contains('prometheus') ||
+        sName.contains('loki') ||
+        sName.contains('jaeger') ||
+        sName.contains('grafana');
+  }
 
   @override
   void initState() {
@@ -344,6 +383,8 @@ class _TasksPageState extends State<TasksPage> {
 
   List<PlutoRow> _getPlutoRows(ThemeData theme) {
     final filteredTasks = widget.state.tasks.where((t) {
+      if (_selectedGroup == 'deployed' && _isBaseTask(t)) return false;
+      if (_selectedGroup == 'base' && !_isBaseTask(t)) return false;
       if (_searchQuery.isEmpty) return true;
       final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
       final stack = widget.state.stacks.where((s) => s.id == svc?.stackId).firstOrNull;
@@ -458,31 +499,63 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ]);
         }),
-      PlutoColumn(title: 'STACK', field: 'stack', type: PlutoColumnType.text(), width: 130,
+      PlutoColumn(title: 'STACK', field: 'stack', type: PlutoColumnType.text(), width: 230,
         renderer: (ctx) {
+          final t = ctx.row.cells['task_raw']!.value as Task;
+          final isBase = _isBaseTask(t);
           final stackName = ctx.cell.value as String;
+
           return Align(
             alignment: Alignment.centerLeft,
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _searchController.text = stackName;
-                  _searchQuery = stackName.toLowerCase();
-                });
-              },
-              borderRadius: BorderRadius.circular(4),
-              child: Tooltip(
-                message: 'Click to filter by stack: $stackName',
-                child: Text(
-                  stackName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                    decoration: TextDecoration.underline,
-                    decorationStyle: TextDecorationStyle.dotted,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Text(
+                    isBase ? 'BASE' : 'APP',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _searchController.text = stackName;
+                        _searchQuery = stackName.toLowerCase();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Tooltip(
+                      message: isBase
+                          ? 'Base Infrastructure Stack: $stackName'
+                          : 'Deployed Application: $stackName',
+                      child: Text(
+                        stackName,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                          decorationStyle: TextDecorationStyle.dotted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -710,26 +783,64 @@ class _TasksPageState extends State<TasksPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search containers, services, nodes, stacks...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
-              ),
+              Builder(builder: (context) {
+                final deployedTaskCount = widget.state.tasks.where((t) => !_isBaseTask(t)).length;
+                final baseTaskCount = widget.state.tasks.where((t) => _isBaseTask(t)).length;
+
+                return Row(
+                  children: [
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                          value: 'all',
+                          icon: const Icon(Icons.layers_outlined, size: 15),
+                          label: Text('All (${widget.state.tasks.length})'),
+                        ),
+                        ButtonSegment(
+                          value: 'deployed',
+                          icon: const Icon(Icons.rocket_launch, size: 15, color: Color(0xFF38BDF8)),
+                          label: Text('Deployed Apps ($deployedTaskCount)'),
+                        ),
+                        ButtonSegment(
+                          value: 'base',
+                          icon: const Icon(Icons.foundation, size: 15, color: Color(0xFF8B5CF6)),
+                          label: Text('Base Containers ($baseTaskCount)'),
+                        ),
+                      ],
+                      selected: {_selectedGroup},
+                      onSelectionChanged: (newSelection) {
+                        setState(() => _selectedGroup = newSelection.first);
+                      },
+                      style: SegmentedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search containers, services, nodes, stacks...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+                      ),
+                    ),
+                  ],
+                );
+              }),
               const SizedBox(height: 16),
               Expanded(
                 child: Container(
@@ -740,6 +851,7 @@ class _TasksPageState extends State<TasksPage> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: PlutoGrid(
+                      key: ValueKey('tasks-grid-$_selectedGroup-$_searchQuery-${widget.state.tasks.length}'),
                       columns: columns,
                       rows: _getPlutoRows(theme),
                       createFooter: (stateManager) {

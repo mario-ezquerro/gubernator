@@ -52,6 +52,7 @@ class _LegionsPageState extends State<LegionsPage> {
         name == 'sre' ||
         name.contains('topology') ||
         name.contains('[super]') ||
+        name.contains('[base]') ||
         name.contains('scope');
   }
 

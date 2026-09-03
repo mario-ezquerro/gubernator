@@ -369,6 +369,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         name == 'sre' ||
         name.contains('topology') ||
         name.contains('[super]') ||
+        name.contains('[base]') ||
         name.contains('scope');
   }
 

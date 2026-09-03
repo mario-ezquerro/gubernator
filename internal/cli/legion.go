@@ -327,30 +327,35 @@ var legionJoinCmd = &cobra.Command{
 						containerName = "gbnt-" + t.Task.ID
 					}
 
-					// Health check for tasks expected to be running
+					// Check if container is actually running locally on this worker
+					inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+					isRunning := false
+					if out, err := inspectCmd.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
+						isRunning = true
+					}
+
+					if isRunning {
+						if t.Task.Status != "running" {
+							reportStatus(t.Task.ID, "running", t.Task.ContainerIP, containerName, "")
+						}
+						continue
+					}
+
+					// Health check for tasks expected to be running but container not running
 					if t.Task.Status == "running" {
-						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
-						if out, err := inspectCmd.Output(); err != nil || strings.TrimSpace(string(out)) != "true" {
-							// Container is dead or stopped: attempt restart
-							fmt.Printf("⚠️ Task %s container %s is not running. Attempting restart...\n", t.Task.ID, containerName)
-							startCmd := exec.Command("docker", "start", containerName)
-							if sErr := startCmd.Run(); sErr != nil {
-								fmt.Printf("❌ Failed to restart container %s: %v. Reporting dead...\n", containerName, sErr)
-								reportStatus(t.Task.ID, "dead", "", containerName, fmt.Sprintf("container exited and restart failed: %v", sErr))
-							} else {
-								fmt.Printf("✅ Container %s restarted successfully.\n", containerName)
-							}
+						// Container is dead or stopped: attempt restart
+						fmt.Printf("⚠️ Task %s container %s is not running. Attempting restart...\n", t.Task.ID, containerName)
+						startCmd := exec.Command("docker", "start", containerName)
+						if sErr := startCmd.Run(); sErr != nil {
+							fmt.Printf("❌ Failed to restart container %s: %v. Reporting dead...\n", containerName, sErr)
+							reportStatus(t.Task.ID, "dead", "", containerName, fmt.Sprintf("container exited and restart failed: %v", sErr))
+						} else {
+							fmt.Printf("✅ Container %s restarted successfully.\n", containerName)
 						}
 						continue
 					}
 
 					if t.Task.Status == "pending" || t.Task.Status == "pulling" || t.Task.Status == "starting" {
-						// If container is already running locally on this worker, report running and continue
-						inspectCmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
-						if out, err := inspectCmd.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
-							reportStatus(t.Task.ID, "running", t.Task.ContainerIP, containerName, "")
-							continue
-						}
 
 						// SRE monitor containers (cAdvisor, Node Exporter, Promtail) are managed as local base daemons
 						if strings.HasPrefix(t.Task.ID, "sre-task-") || strings.HasPrefix(containerName, "gbnt-monitor-") {
