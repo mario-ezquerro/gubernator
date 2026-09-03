@@ -442,6 +442,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Automatic reconciliation on state queries (`/api/state`) ensures the dashboard always displays accurate, normalized container counts.
 * **Full CLI & REST API Parity:** Added CLI commands `gbnt stack reconcile [stack_id]` and `gbnt task prune` along with REST endpoints `POST /api/stack/:id/reconcile`, `POST /api/tasks/prune`, `POST /v1/stack/:id/reconcile`, and `POST /v1/tasks/prune`.
 
+### 71. Compose Studio Resizable Split, Responsive Smart Wizard & Architecture Block Navigator (`v2.67.0`)
+* **Interactive Resizable Vertical Split Divider:**
+  - Added a draggable vertical split handle with `SystemMouseCursors.resizeColumn` between the YAML editor and the Gubernator Copilot panel.
+  - Dynamically resizes the Smart Wizard panel width between `320px` and `920px`, with double-click toggling between standard (`460px`) and wide (`680px`).
+  - Added quick width preset buttons (`460px`, `680px`) directly in the Copilot header.
+* **Adaptive Responsive Smart Wizard Tab Bar:**
+  - Replaced the horizontal clipping row with an adaptive `Wrap` container featuring themed pill buttons (`Docker`, `Resources`, `Caddy`, `SLO`, `Security`, `Nodes`, `Storage`, `Templates`).
+  - All 8 categories cleanly flow and fit into 1 or 2 rows based on the panel width, completely eliminating horizontal scrolling and truncated options.
+  - Each tab pill features a signature accent color (Sky, Emerald, Purple, Amber, Rose, Teal, Orange, Gold) and a live status dot (`●`) indicating whether that architectural block is already configured in the current Compose YAML.
+* **Compose Architecture Blocks Navigator & Visual YAML Markers:**
+  - **Real-Time YAML Block Parser (`_detectComposeBlocks`)**: Automatically scans the Compose document and detects all 7 architectural blocks with their line numbers (`startLine` - `endLine`) and summaries.
+  - **Blocks Navigator Bar**: Positioned directly above the code editor, displaying color-coded chips for each block (`🐳 Docker Core: L3-L12`, `⚡ Resources: L16-L23`, `🌐 Caddy Ingress: L25-L28`, `📈 Sloth SLO: L30-L33`, `💾 Storage: L35-L38`).
+  - **1-Click Jump & Copilot Sync**: Clicking any block chip instantly scrolls and positions the cursor at that block's line in the YAML editor, simultaneously opening the corresponding category in the Smart Wizard.
+  - **Dashed `+ Block` Quick-Add Chips**: Any unconfigured blocks are shown with a dashed outline; clicking one immediately opens the Smart Wizard tab with 1-click production blueprints ready to insert.
+  - **Architecture Block Gutter Strip**: A vertical marker strip beside the CodeField displaying colored block pins matching line positions, toggleable via the editor action bar (`Icons.view_sidebar_outlined`).
+
 
 
 
