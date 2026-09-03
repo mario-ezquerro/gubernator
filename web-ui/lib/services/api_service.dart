@@ -120,6 +120,31 @@ class ApiService {
     }
   }
 
+  /// Saves stack compose definition into DB and ~/.gbnt/stacks/ without deploying/launching containers.
+  static Future<Map<String, dynamic>> saveStack({
+    required String name,
+    required String compose,
+    String? stackId,
+    String? targetNode,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/stack/save'),
+        headers: authHeaders,
+        body: jsonEncode({
+          'id': stackId,
+          'name': name,
+          'compose': compose,
+          'target_node': targetNode,
+        }),
+      );
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return body;
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
   /// Lists Compose stack files found on the Master server host.
   static Future<Map<String, dynamic>> fetchServerStackFiles({String? dir}) async {
     final uri = (dir != null && dir.isNotEmpty)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -183,6 +185,155 @@ func StackDeployHandler(c *gin.Context) {
 		"stack_id": stack.ID,
 		"name":     stack.Name,
 	})
+}
+
+// @Summary Save Stack Definition (Draft / Without Deploying)
+// @Description Save or update stack compose definition in database and server files without deploying containers
+// @Tags stacks
+// @Accept json
+// @Produce json
+// @Param request body StackDeployRequest true "Stack Save Request"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/stack/save [post]
+func StackSaveHandler(c *gin.Context) {
+	var req StackDeployRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stack, err := SaveStackRaw(req.Name, req.ComposeRaw, req.TargetNode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Stack saved successfully (draft mode, containers not deployed)",
+		"stack_id": stack.ID,
+		"name":     stack.Name,
+		"status":   "saved",
+	})
+}
+
+// SaveStackRaw parses compose YAML, creates or updates the db.Stack and db.Service records,
+// saves the .yml file on the server, but DOES NOT schedule or launch containers.
+func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error) {
+	stackName := strings.TrimSpace(reqName)
+
+	var tempCompose ComposeFile
+	if err := yaml.Unmarshal([]byte(composeRawInput), &tempCompose); err == nil {
+		extractedName := ""
+		for _, srv := range tempCompose.Services {
+			for _, constraint := range srv.Deploy.Placement.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+					extractedName = strings.TrimSpace(parts[1])
+					break
+				}
+			}
+			if extractedName != "" {
+				break
+			}
+		}
+		if extractedName != "" {
+			stackName = extractedName
+		} else if stackName == "" && tempCompose.Name != "" {
+			stackName = tempCompose.Name
+		}
+	}
+
+	if stackName == "" {
+		return nil, fmt.Errorf("stack name must be provided or defined in compose file as 'name: <name>' or 'stack.name == <name>' constraint")
+	}
+
+	composeRaw := strings.ReplaceAll(composeRawInput, "{{stack.name}}", stackName)
+
+	var compose ComposeFile
+	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
+		return nil, fmt.Errorf("failed to parse compose YAML: %w", err)
+	}
+
+	var stack db.Stack
+	isNew := true
+	if err := db.DB.Where("name = ?", stackName).First(&stack).Error; err == nil {
+		isNew = false
+	}
+
+	if isNew {
+		stackID := uuid.New().String()
+		stack = db.Stack{
+			ID:             stackID,
+			Name:           stackName,
+			RawComposeFile: composeRaw,
+		}
+		if err := db.DB.Create(&stack).Error; err != nil {
+			return nil, fmt.Errorf("failed to save stack: %w", err)
+		}
+	} else {
+		stack.Name = stackName
+		stack.RawComposeFile = composeRaw
+		db.DB.Save(&stack)
+	}
+
+	var existingTasks []db.Task
+	db.DB.Joins("JOIN services ON services.id = tasks.service_id").Where("services.stack_id = ?", stack.ID).Find(&existingTasks)
+
+	if len(existingTasks) == 0 {
+		db.DB.Where("stack_id = ?", stack.ID).Delete(&db.Service{})
+
+		for srvName, srvDef := range compose.Services {
+			replicas := srvDef.Deploy.Replicas
+			if replicas == 0 {
+				replicas = 1
+			}
+
+			constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
+			for k, v := range srvDef.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+			for k, v := range srvDef.Deploy.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+
+			cpuLimit := string(srvDef.Deploy.Resources.Limits.Cpus)
+			if cpuLimit == "" {
+				cpuLimit = string(srvDef.Cpus)
+			}
+			memLimit := string(srvDef.Deploy.Resources.Limits.Memory)
+			if memLimit == "" {
+				memLimit = string(srvDef.MemLimit)
+			}
+			cpuRes := string(srvDef.Deploy.Resources.Reservations.Cpus)
+			memRes := string(srvDef.Deploy.Resources.Reservations.Memory)
+
+			service := db.Service{
+				ID:                uuid.New().String(),
+				StackID:           stack.ID,
+				Name:              srvName,
+				Image:             srvDef.Image,
+				DesiredReplicas:   replicas,
+				Constraints:       constraints,
+				Ports:             srvDef.Ports,
+				Env:               []string(srvDef.Environment),
+				Volumes:           srvDef.Volumes,
+				Command:           string(srvDef.Command),
+				CpuLimit:          cpuLimit,
+				MemoryLimit:       memLimit,
+				CpuReservation:    cpuRes,
+				MemoryReservation: memRes,
+			}
+			db.DB.Create(&service)
+		}
+	}
+
+	stacksDir := examples.DefaultServerStacksDir()
+	if err := os.MkdirAll(stacksDir, 0755); err == nil {
+		filePath := filepath.Join(stacksDir, fmt.Sprintf("%s.yml", stackName))
+		_ = os.WriteFile(filePath, []byte(composeRaw), 0644)
+	}
+
+	return &stack, nil
 }
 
 // DeployStackRaw parses compose YAML, stops any prior version of the stack, registers services, and schedules tasks.

@@ -382,6 +382,7 @@ func StartDashboard() {
 		api.POST("/stack/:id/reconcile", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), reconcileStackWebHandler)
 		api.POST("/tasks/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), pruneTasksWebHandler)
 		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
+		api.POST("/stack/save", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), saveStackHandler)
 		api.POST("/stacks/server-deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerDeployWebHandler)
 		api.POST("/examples/deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), exampleDeployWebHandler)
 		api.DELETE("/stack/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteStackHandler)
@@ -1480,6 +1481,143 @@ func deployStackHandler(c *gin.Context) {
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
 	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
+}
+
+func saveStackHandler(c *gin.Context) {
+	var req struct {
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		Compose    string `json:"compose" binding:"required"`
+		TargetNode string `json:"target_node"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stackName := strings.TrimSpace(req.Name)
+
+	// Try to infer it from the raw YAML if not provided
+	var tempCompose composeFile
+	if err := yaml.Unmarshal([]byte(req.Compose), &tempCompose); err == nil {
+		extractedName := ""
+		for _, srv := range tempCompose.Services {
+			for _, constraint := range srv.Deploy.Placement.Constraints {
+				parts := strings.Split(constraint, "==")
+				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+					extractedName = strings.TrimSpace(parts[1])
+					break
+				}
+			}
+			if extractedName != "" {
+				break
+			}
+		}
+		if extractedName != "" {
+			stackName = extractedName
+		} else if stackName == "" && tempCompose.Name != "" {
+			stackName = tempCompose.Name
+		}
+	}
+
+	if stackName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name is required"})
+		return
+	}
+
+	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", stackName)
+
+	var compose composeFile
+	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
+		return
+	}
+
+	var stack db.Stack
+	isNew := true
+
+	// Check if updating an existing stack by ID or Name
+	if req.ID != "" && req.ID != "new" {
+		if err := db.DB.First(&stack, "id = ?", req.ID).Error; err == nil {
+			isNew = false
+		}
+	}
+	if isNew {
+		if err := db.DB.First(&stack, "name = ?", stackName).Error; err == nil {
+			isNew = false
+		}
+	}
+
+	if isNew {
+		stackID := uuid.New().String()
+		stack = db.Stack{
+			ID:             stackID,
+			Name:           stackName,
+			RawComposeFile: composeRaw,
+		}
+		if err := db.DB.Create(&stack).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save stack: %v", err)})
+			return
+		}
+	} else {
+		// Existing stack: update name & raw compose file
+		stack.Name = stackName
+		stack.RawComposeFile = composeRaw
+		db.DB.Save(&stack)
+	}
+
+	// For a newly saved stack, or a stack that currently has 0 tasks, register/sync the service definitions
+	var existingTasks []db.Task
+	db.DB.Joins("JOIN services ON services.id = tasks.service_id").Where("services.stack_id = ?", stack.ID).Find(&existingTasks)
+
+	if len(existingTasks) == 0 {
+		// Cleanly recreate services in draft/saved state without touching containers
+		db.DB.Where("stack_id = ?", stack.ID).Delete(&db.Service{})
+
+		for srvName, srvDef := range compose.Services {
+			replicas := srvDef.Deploy.Replicas
+			if replicas == 0 {
+				replicas = 1
+			}
+
+			constraints := append([]string{}, srvDef.Deploy.Placement.Constraints...)
+			for k, v := range srvDef.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+			for k, v := range srvDef.Deploy.Labels {
+				constraints = append(constraints, fmt.Sprintf("%s=%s", k, v))
+			}
+
+			service := db.Service{
+				ID:              uuid.New().String(),
+				StackID:         stack.ID,
+				Name:            srvName,
+				Image:           srvDef.Image,
+				DesiredReplicas: replicas,
+				Constraints:     constraints,
+				Ports:           srvDef.Ports,
+				Env:             []string(srvDef.Environment),
+				Volumes:         srvDef.Volumes,
+				Command:         string(srvDef.Command),
+			}
+			db.DB.Create(&service)
+			// DO NOT call webScheduleService! This is save-only (draft mode).
+		}
+	}
+
+	// Backup compose file to ~/.gbnt/stacks/<name>.yml on the Master server
+	stacksDir := examples.DefaultServerStacksDir()
+	if err := os.MkdirAll(stacksDir, 0755); err == nil {
+		filePath := filepath.Join(stacksDir, fmt.Sprintf("%s.yml", stackName))
+		_ = os.WriteFile(filePath, []byte(composeRaw), 0644)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "saved",
+		"stack_id":   stack.ID,
+		"stack_name": stack.Name,
+		"message":    "Stack saved successfully. Containers have not been deployed.",
+	})
 }
 
 func stackServerFilesWebHandler(c *gin.Context) {

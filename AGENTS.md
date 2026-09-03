@@ -458,6 +458,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Dashed `+ Block` Quick-Add Chips**: Any unconfigured blocks are shown with a dashed outline; clicking one immediately opens the Smart Wizard tab with 1-click production blueprints ready to insert.
   - **Architecture Block Gutter Strip**: A vertical marker strip beside the CodeField displaying colored block pins matching line positions, toggleable via the editor action bar (`Icons.view_sidebar_outlined`).
 
+### 72. Compose Studio Non-Deploying Save Stack & Draft Mode Subsystem (`v2.68.0`)
+* **Strict Separation of Save vs Deploy in Compose Studio:**
+  - Fixed a critical regression where clicking "Save Stack" (`_saveCompose`) when authoring a new stack invoked `ApiService.deployStack`, causing unexpected immediate container launches and scheduling.
+  - "Save Stack" is now strictly decoupled from deployment, operating in pure **Draft / Definition Mode**. It persists the stack and service definitions in the SQLite database and exports to `~/.gbnt/stacks/<name>.yml` on the Master host without creating or scheduling Docker tasks.
+  - Deployment is reserved exclusively for the "Deploy Stack" / "Save & Redeploy" button (`_saveAndDeploy`).
+* **Cluster-Wide Stack Save API (`POST /api/stack/save` & `POST /v1/stack/save`):**
+  - Added dedicated endpoints (`saveStackHandler` in `internal/web/server.go` and `StackSaveHandler` / `SaveStackRaw` in `internal/api/stack.go`).
+  - Automatically validates YAML syntax, extracts stack name, creates or updates `db.Stack` (`raw_compose_file`), registers `db.Service` specifications (replicas, limits, constraints, ports, volumes, environment), and writes the YAML archive to `~/.gbnt/stacks/<name>.yml`.
+  - Guarantees zero tasks (`db.Task`) or Docker containers are scheduled on any cluster node during save operations.
+* **Smart UI State Transition & Informative Feedback:**
+  - Upon saving a new stack, Compose Studio smoothly transitions `_selectedStackId` to the newly generated stack UUID without leaving the editor.
+  - Toolbar buttons display clear contextual tooltips:
+    - "Save Stack": *"Save stack definition (Draft mode: does NOT start containers)"*
+    - "Deploy Stack" / "Save & Redeploy": *"Deploy stack and start all containers on cluster nodes"*
+  - Informative floating SnackBar notifications clearly inform the user: *"Stack <name> saved successfully (Draft mode: containers not deployed)"*.
+
 
 
 

@@ -913,27 +913,46 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 
     setState(() => _saving = true);
     try {
-      if (_selectedStackId == 'new') {
-        // Deploy as new stack
-        final error = await ApiService.deployStack(name, _codeController.text, targetNode: _selectedNode);
-        if (error != null) {
-          throw Exception(error);
-        }
-        widget.onRefresh();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Stack "$name" deployed successfully!'), backgroundColor: Colors.green),
-          );
-        }
-      } else {
-        final ok = await ApiService.updateStackCompose(_selectedStackId, _codeController.text);
-        if (!ok) throw Exception('Failed to update stack compose');
-        _originalYaml = _codeController.text;
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Stack "$name" saved successfully!'), backgroundColor: Colors.green),
-          );
-        }
+      final res = await ApiService.saveStack(
+        name: name,
+        compose: _codeController.text,
+        stackId: _selectedStackId == 'new' ? null : _selectedStackId,
+        targetNode: _selectedNode,
+      );
+
+      if (res['error'] != null) {
+        throw Exception(res['error']);
+      }
+
+      final savedId = res['stack_id'] as String?;
+      if (savedId != null && savedId.isNotEmpty) {
+        setState(() {
+          _selectedStackId = savedId;
+        });
+      }
+      _originalYaml = _codeController.text;
+
+      widget.onRefresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Stack "$name" saved successfully (Draft mode: containers not deployed).',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -965,10 +984,23 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         final ok = await ApiService.redeployStack(_selectedStackId);
         if (!ok) throw Exception('Failed to redeploy stack');
       }
+      _originalYaml = _codeController.text;
       widget.onRefresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Stack "$name" deployed & started!'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.rocket_launch, color: Colors.greenAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Stack "$name" deployed & containers started!'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade800,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
@@ -2390,23 +2422,31 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ),
                 const SizedBox(width: 10),
 
-                // Save Stack Button
-                OutlinedButton.icon(
-                  icon: _saving
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.save, size: 16),
-                  label: const Text('Save Stack'),
-                  onPressed: _saving ? null : _saveCompose,
+                // Save Stack Button (Draft mode: does not deploy)
+                Tooltip(
+                  message: 'Save stack definition (Draft mode: does NOT start containers)',
+                  child: OutlinedButton.icon(
+                    icon: _saving
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.save, size: 16),
+                    label: const Text('Save Stack'),
+                    onPressed: _saving ? null : _saveCompose,
+                  ),
                 ),
                 const SizedBox(width: 10),
 
                 // Save & Deploy Button
-                FilledButton.icon(
-                  icon: _deploying
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.rocket_launch, size: 16),
-                  label: Text(_selectedStackId == 'new' ? 'Deploy Stack' : 'Save & Redeploy'),
-                  onPressed: _deploying ? null : _saveAndDeploy,
+                Tooltip(
+                  message: _selectedStackId == 'new'
+                      ? 'Deploy stack and start all containers on cluster nodes'
+                      : 'Save compose changes and redeploy containers',
+                  child: FilledButton.icon(
+                    icon: _deploying
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.rocket_launch, size: 16),
+                    label: Text(_selectedStackId == 'new' ? 'Deploy Stack' : 'Save & Redeploy'),
+                    onPressed: _deploying ? null : _saveAndDeploy,
+                  ),
                 ),
               ],
             ),

@@ -72,6 +72,7 @@ func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 
 		stack := v1.Group("/stack", authMiddleware)
 		stack.POST("/deploy", StackDeployHandler)
+		stack.POST("/save", StackSaveHandler)
 		stack.GET("/ls", StackListHandler)
 		stack.GET("/:id/services", StackServicesHandler)
 		stack.DELETE("/:id", StackRmHandler)
@@ -663,4 +664,73 @@ services:
 		t.Errorf("unexpected SLO item: %+v", items[0])
 	}
 }
+
+func TestStackSaveDraft(t *testing.T) {
+	r, tok := setupRouter(t)
+
+	composeYAML := `services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    deploy:
+      replicas: 2
+`
+
+	body, _ := json.Marshal(map[string]string{
+		"name":        "my-draft-stack",
+		"compose_raw": composeYAML,
+	})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/stack/save", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", authHeader(tok))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("save stack failed (%d): %s", w.Code, w.Body.String())
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to parse save response: %v", err)
+	}
+
+	if res["status"] != "saved" {
+		t.Errorf("expected status 'saved', got %v", res["status"])
+	}
+
+	stackID, ok := res["stack_id"].(string)
+	if !ok || stackID == "" {
+		t.Fatalf("expected non-empty stack_id, got %v", res["stack_id"])
+	}
+
+	// 1. Verify stack exists in db
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", stackID).Error; err != nil {
+		t.Fatalf("stack not found in db: %v", err)
+	}
+	if stack.Name != "my-draft-stack" {
+		t.Errorf("expected stack name 'my-draft-stack', got %s", stack.Name)
+	}
+
+	// 2. Verify service is created in db
+	var services []db.Service
+	db.DB.Where("stack_id = ?", stackID).Find(&services)
+	if len(services) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(services))
+	}
+	if services[0].Name != "web" || services[0].DesiredReplicas != 2 {
+		t.Errorf("unexpected service values: %+v", services[0])
+	}
+
+	// 3. Crucially: Verify NO tasks (containers) were scheduled or launched
+	var tasks []db.Task
+	db.DB.Where("service_id = ?", services[0].ID).Find(&tasks)
+	if len(tasks) != 0 {
+		t.Fatalf("expected 0 tasks (no containers deployed), but found %d tasks!", len(tasks))
+	}
+}
+
 

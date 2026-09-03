@@ -191,6 +191,7 @@ func Start(ctx context.Context) error {
 		stack := v1.Group("/stack", authMiddleware)
 		{
 			stack.POST("/deploy", StackDeployHandler)
+			stack.POST("/save", StackSaveHandler)
 			stack.GET("/ls", StackListHandler)
 			stack.GET("/:id/services", StackServicesHandler)
 			stack.DELETE("/:id", StackRmHandler)
