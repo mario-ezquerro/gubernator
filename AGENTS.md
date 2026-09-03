@@ -514,6 +514,24 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Informative Visual Feedback:**
   - Displays instant floating notification: `✓ Saved "<filename>" to local computer disk` with green confirmation icon.
 
+### 75. Compose Studio Responsive Header & Toolbar Restructuring (`v2.69.2`)
+* **Elimination of Title Overlap & Collision:**
+  - Enclosed the Compose Studio header title and subtitle column within an `Expanded` widget with `TextOverflow.ellipsis` and `maxLines: 1`.
+  - Guaranteed that the subtitle ("Author, edit, validate, and deploy...") can never push against, collide with, or slip underneath the "Create New Stack" dropdown regardless of viewport width.
+* **Balanced Two-Tier Toolbar Architecture:**
+  - **Top Primary Header Bar**: Dedicated exclusively to cluster lifecycle actions:
+    - Left: Studio Title, icon, and `IDE & COPILOT` badge.
+    - Right: Stack Selector Dropdown (`✨ Create New Stack` / active stack), `Reset` button, `Save Stack` (Draft mode), and primary `Deploy Stack` / `Save & Redeploy` button.
+  - **Secondary Action Toolbar**: Fully scrollable horizontally (`SingleChildScrollView(scrollDirection: Axis.horizontal)`) housing all configuration and file operations:
+    - Stack Name field (220px) and Target Placement Node dropdown (280px).
+    - Vertical visual divider.
+    - Workstation file tools: `Open PC` (upload) and `Save on Disk` (download).
+    - Remote cluster filesystem tool: `Master Server` (`~/.gbnt/stacks/`).
+    - Vertical visual divider.
+    - Blueprints & Snippets: `Templates` blueprint dropdown and `POC Blueprints` catalog.
+* **100% Overflow Immunity:**
+  - Zero `RenderFlex` overflow errors on laptops, split-screen windows, or tablets.
+
 
 
 

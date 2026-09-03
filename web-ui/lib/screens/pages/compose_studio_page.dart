@@ -2514,37 +2514,43 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   child: Icon(Icons.code, color: theme.colorScheme.primary, size: 22),
                 ),
                 const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Compose Studio',
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF58A6FF).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Compose Studio',
+                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                           ),
-                          child: const Text(
-                            'IDE & COPILOT',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF58A6FF)),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF58A6FF).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'IDE & COPILOT',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF58A6FF)),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Author, edit, validate, and deploy Docker Compose stacks with smart suggestions.',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Author, edit, validate, and deploy Docker Compose stacks with smart suggestions.',
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 16),
 
                 // Stack Selector Dropdown
                 Container(
@@ -2585,83 +2591,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         if (val != null) _loadStackYaml(val);
                       },
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // Starters Templates Menu
-                PopupMenuButton<String>(
-                  tooltip: 'Load Blueprint Template',
-                  onSelected: _applyTemplate,
-                  itemBuilder: (context) => _starterTemplates.keys.map((title) => PopupMenuItem(
-                    value: title,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.auto_awesome, size: 16, color: Colors.cyanAccent),
-                        const SizedBox(width: 8),
-                        Text(title),
-                      ],
-                    ),
-                  )).toList(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.widgets_outlined, size: 16),
-                        SizedBox(width: 6),
-                        Text('Quick Snippets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        Icon(Icons.arrow_drop_down, size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Open / Import from Local PC
-                Tooltip(
-                  message: 'Upload / Open Compose YAML from your local workstation',
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.file_open_outlined, size: 16),
-                    label: const Text('Open PC'),
-                    onPressed: _importFile,
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Save on Disk (Local Computer)
-                Tooltip(
-                  message: 'Save / Download Compose YAML directly to your local computer disk',
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.download, size: 16, color: Color(0xFF388BFD)),
-                    label: const Text('Save on Disk', style: TextStyle(color: Color(0xFF388BFD), fontWeight: FontWeight.bold)),
-                    onPressed: _saveOnDisk,
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Load from Master Server Filesystem
-                Tooltip(
-                  message: 'Load Compose YAML from Master server filesystem (~/.gbnt/stacks/)',
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
-                    label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
-                    onPressed: _showServerStackPicker,
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Full POC Blueprints Catalog
-                Tooltip(
-                  message: 'Browse and deploy built-in POC example blueprints',
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.rocket_launch, size: 16, color: Color(0xFFE3B341)),
-                    label: const Text('POC Blueprints', style: TextStyle(color: Color(0xFFE3B341), fontWeight: FontWeight.bold)),
-                    onPressed: _showPOCExamples,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -2711,55 +2640,139 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             ),
           ),
 
-          // Secondary Bar: Stack Name & Node Placement
+          // Secondary Bar: Stack Controls, Files & Templates
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
               border: Border(bottom: BorderSide(color: theme.dividerColor)),
             ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 240,
-                  height: 38,
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Stack Name',
-                      prefixIcon: Icon(Icons.label_outline, size: 16),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 220,
+                    height: 38,
+                    child: TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Stack Name',
+                        prefixIcon: Icon(Icons.label_outline, size: 16),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      ),
+                      style: const TextStyle(fontSize: 13),
                     ),
-                    style: const TextStyle(fontSize: 13),
                   ),
-                ),
-                const SizedBox(width: 16),
-                SizedBox(
-                  width: 320,
-                  height: 38,
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedNode,
-                    decoration: const InputDecoration(
-                      labelText: 'Target Placement Node',
-                      prefixIcon: Icon(Icons.memory, size: 16),
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 280,
+                    height: 38,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Target Placement Node',
+                        prefixIcon: Icon(Icons.memory, size: 16),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      items: [
+                        const DropdownMenuItem(value: 'auto', child: Text('Automatic Scheduler (Spread)')),
+                        ...widget.state.nodes.where((n) => n.status == 'active').map((n) => DropdownMenuItem(
+                          value: n.id,
+                          child: Text('${n.id} (${n.ip} - ${n.role.toUpperCase()})'),
+                        )),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedNode = val);
+                      },
                     ),
-                    style: const TextStyle(fontSize: 13),
-                    items: [
-                      const DropdownMenuItem(value: 'auto', child: Text('Automatic Scheduler (Spread / Least Loaded)')),
-                      ...widget.state.nodes.where((n) => n.status == 'active').map((n) => DropdownMenuItem(
-                        value: n.id,
-                        child: Text('${n.id} (${n.ip} - ${n.role.toUpperCase()})'),
-                      )),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedNode = val);
-                    },
                   ),
-                ),
-              ],
+                  const SizedBox(width: 14),
+                  Container(height: 24, width: 1, color: theme.dividerColor),
+                  const SizedBox(width: 14),
+
+                  // Open / Import from Local PC
+                  Tooltip(
+                    message: 'Upload / Open Compose YAML from your local workstation',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.file_open_outlined, size: 16),
+                      label: const Text('Open PC'),
+                      onPressed: _importFile,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Save on Disk (Local Computer)
+                  Tooltip(
+                    message: 'Save / Download Compose YAML directly to your local computer disk',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.download, size: 16, color: Color(0xFF388BFD)),
+                      label: const Text('Save on Disk', style: TextStyle(color: Color(0xFF388BFD), fontWeight: FontWeight.bold)),
+                      onPressed: _saveOnDisk,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Load from Master Server Filesystem
+                  Tooltip(
+                    message: 'Load Compose YAML from Master server filesystem (~/.gbnt/stacks/)',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
+                      label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
+                      onPressed: _showServerStackPicker,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Container(height: 24, width: 1, color: theme.dividerColor),
+                  const SizedBox(width: 14),
+
+                  // Starters Templates Menu
+                  PopupMenuButton<String>(
+                    tooltip: 'Load Blueprint Template',
+                    onSelected: _applyTemplate,
+                    itemBuilder: (context) => _starterTemplates.keys.map((title) => PopupMenuItem(
+                      value: title,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 16, color: Colors.cyanAccent),
+                          const SizedBox(width: 8),
+                          Text(title),
+                        ],
+                      ),
+                    )).toList(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, size: 16, color: Colors.cyanAccent),
+                          SizedBox(width: 6),
+                          Text('Templates', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          Icon(Icons.arrow_drop_down, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Full POC Blueprints Catalog
+                  Tooltip(
+                    message: 'Browse and deploy built-in POC example blueprints',
+                    child: FilledButton.tonalIcon(
+                      icon: const Icon(Icons.rocket_launch, size: 16, color: Color(0xFFE3B341)),
+                      label: const Text('POC Blueprints', style: TextStyle(color: Color(0xFFE3B341), fontWeight: FontWeight.bold)),
+                      onPressed: _showPOCExamples,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
