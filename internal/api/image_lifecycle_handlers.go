@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 )
 
@@ -50,11 +51,17 @@ func ImageHostDeleteHandler(c *gin.Context) {
 	}
 	targetNode := c.DefaultQuery("node", "all")
 	force := strings.EqualFold(c.DefaultQuery("force", "false"), "true")
+	purgeDB := strings.EqualFold(c.DefaultQuery("purge_db", "true"), "true")
 
 	res, err := docker.RemoveHostImage(targetNode, image, force)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image: " + err.Error()})
 		return
+	}
+
+	if purgeDB && db.DB != nil {
+		db.DB.Where("image_name = ?", image).Delete(&db.ImageScan{})
+		db.DB.Where("image_name = ?", image).Delete(&db.ImageVulnerability{})
 	}
 
 	c.JSON(http.StatusOK, res)

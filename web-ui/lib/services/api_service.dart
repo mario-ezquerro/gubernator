@@ -1853,9 +1853,9 @@ class ApiService {
   }
 
   /// Deletes a physical Docker image from a specific node or all cluster nodes.
-  static Future<Map<String, dynamic>> deleteHostDockerImage(String image, {String node = 'all', bool force = false}) async {
+  static Future<Map<String, dynamic>> deleteHostDockerImage(String image, {String node = 'all', bool force = false, bool purgeDb = true}) async {
     final response = await http.delete(
-      Uri.parse('/api/images/host-delete?image=${Uri.encodeComponent(image)}&node=${Uri.encodeComponent(node)}&force=$force'),
+      Uri.parse('/api/images/host-delete?image=${Uri.encodeComponent(image)}&node=${Uri.encodeComponent(node)}&force=$force&purge_db=$purgeDb'),
       headers: authHeaders,
     );
     if (response.statusCode == 200) {

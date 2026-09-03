@@ -203,32 +203,144 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
   }
 
   Future<void> _deleteHostImage(String imageName) async {
+    String selectedNode = 'all';
+    bool force = true;
+    bool purgeDb = true;
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.delete_forever, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text('Delete Docker Image from Cluster?'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Delete Docker Image', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.layers_outlined, size: 18, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SelectableText(
+                          imageName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace', fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Target Host(s):',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: selectedNode,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('🌐 All Cluster Hosts (Cluster-wide)')),
+                    ...widget.state.nodes.map((n) {
+                      final label = n.role == 'manager' ? '👑 Manager: ${n.id} (${n.ip})' : '💻 Centurion: ${n.id} (${n.ip})';
+                      return DropdownMenuItem(value: n.id, child: Text(label));
+                    }),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDlgState(() => selectedNode = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: const Text('Force removal (-f / --force)', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Force removal even if image is tagged by multiple repositories', style: TextStyle(fontSize: 11)),
+                  value: force,
+                  onChanged: (v) => setDlgState(() => force = v ?? true),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: const Text('Purge scan & SBOM records from Security database', style: TextStyle(fontSize: 13)),
+                  subtitle: const Text('Remove vulnerability CVEs and CycloneDX metadata from cluster DB', style: TextStyle(fontSize: 11)),
+                  value: purgeDb,
+                  onChanged: (v) => setDlgState(() => purgeDb = v ?? true),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 18, color: Colors.redAccent),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This will execute "docker rmi" on the selected node(s) to physically remove the image and reclaim storage.',
+                          style: TextStyle(fontSize: 11.5, color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              icon: const Icon(Icons.delete_forever, size: 16),
+              label: const Text('Delete Image'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
           ],
         ),
-        content: Text('Are you sure you want to delete the physical image "$imageName" from all cluster hosts (docker rmi)?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete from Hosts'),
-          ),
-        ],
       ),
     );
     if (confirm != true) return;
 
     try {
-      _showSnackBar('🗑️ Deleting image $imageName from cluster nodes...');
-      final res = await ApiService.deleteHostDockerImage(imageName, node: 'all', force: true);
+      final targetDesc = selectedNode == 'all' ? 'all cluster hosts' : selectedNode;
+      _showSnackBar('🗑️ Deleting image $imageName from $targetDesc...');
+      final res = await ApiService.deleteHostDockerImage(imageName, node: selectedNode, force: force, purgeDb: purgeDb);
       _showSnackBar('✅ ${res['message'] ?? 'Image deleted from hosts'}');
       _loadAllData();
       widget.onRefresh();
@@ -1316,6 +1428,16 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                               label: const Text('View CVEs'),
                               onPressed: () => _showScanDetailsDialog(s),
                             ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.delete_forever, size: 16, color: Colors.redAccent),
+                              label: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              ),
+                              onPressed: () => _deleteHostImage(s.imageName),
+                            ),
                             if (isOrphan || isVerified) ...[
                               const SizedBox(width: 6),
                               PopupMenuButton<String>(
@@ -1417,6 +1539,15 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                   Uri.parse('/api/security/sbom?image=${Uri.encodeComponent(_selectedSbomImage!)}&format=spdx-json'),
                   mode: LaunchMode.externalApplication,
                 ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.delete_forever, size: 16, color: Colors.redAccent),
+                label: const Text('Delete Image', style: TextStyle(color: Colors.redAccent)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                ),
+                onPressed: () => _deleteHostImage(_selectedSbomImage!),
               ),
             ],
           ],
@@ -1798,6 +1929,16 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                           label: const Text('Unsign', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
                           onPressed: () => _confirmUnsignImage(s.imageName),
                         ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.delete_forever, size: 15, color: Colors.redAccent),
+                          label: const Text('Delete', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          onPressed: () => _deleteHostImage(s.imageName),
+                        ),
                       ],
                     ),
                   ),
@@ -1935,6 +2076,16 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
                           onPressed: () => _showSignImageDialog(initialImage: s.imageName),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.delete_forever, size: 15, color: Colors.redAccent),
+                          label: const Text('Delete', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
+                          onPressed: () => _deleteHostImage(s.imageName),
                         ),
                       ],
                     ),

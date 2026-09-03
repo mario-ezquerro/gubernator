@@ -591,6 +591,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Re-authenticated workers using `--token` and `--manager` flags with current cluster join token.
   - Added cache-busting query parameter (`flutter_bootstrap.js?v=2.70.3`) to prevent stale browser assets.
 
+### 80. Multi-Host Docker Image Deletion & Lifecycle Management (`v2.70.4`)
+* **Dedicated "Delete Image" Button across Security Views:**
+  - Added red outlined **`Delete`** button (`Icons.delete_forever`) directly on every image card in **Vulnerabilities & Scans** (`_buildVulnerabilitiesTab`) next to `View CVEs`.
+  - Added **`Delete Image`** button in the **SBOM Explorer** header toolbar (`_buildSBOMTab`) next to `SPDX JSON`.
+  - Added **`Delete`** button on all signed and unsigned image cards in **Signatures & Cluster Registry** (`_buildSignaturesTab`).
+* **Interactive Target Host & Purge Dialog:**
+  - Upgraded `_deleteHostImage` in `web-ui/lib/screens/pages/image_security_page.dart` into an interactive Material 3 dialog.
+  - Allows selecting target hosts: `All Cluster Hosts (Cluster-wide)` or specific Centurion nodes (`Manager`, `gbnt-worker1`, etc.).
+  - Includes options for forced removal (`-f / --force`) and purging scan & SBOM metadata from the cluster database.
+  - Displays explicit warning regarding physical storage reclamation (`docker rmi`).
+* **Database Scan Purging on Image Removal:**
+  - Enhanced `ImageHostDeleteHandler` (`DELETE /v1/images/host-delete`) and `imageHostDeleteHandler` (`DELETE /api/images/host-delete`) with `purge_db` parameter.
+  - Automatically cascades image deletion to SQLite `image_scans` and `image_vulnerabilities` tables when `purge_db=true`, ensuring UI tables stay clean and in sync.
+
 
 
 
