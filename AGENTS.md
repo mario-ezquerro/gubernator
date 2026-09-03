@@ -474,6 +474,34 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     - "Deploy Stack" / "Save & Redeploy": *"Deploy stack and start all containers on cluster nodes"*
   - Informative floating SnackBar notifications clearly inform the user: *"Stack <name> saved successfully (Draft mode: containers not deployed)"*.
 
+### 73. Compose Studio Smart YAML Merger & Deduplication Subsystem (`v2.69.0`)
+* **Context-Aware In-Place Updates for Singletons (Unique Blocks):**
+  - Solved snippet duplication and YAML bloat when clicking wizard options, copilot presets, or autocompletion chips multiple times.
+  - Distinctly recognizes and handles singleton configuration blocks:
+    - **Resource Limits & Reservations (`deploy.resources`):** Replacing limits (e.g. switching between Micro, Web, DB, ML, or AI presets, or updating via the Custom Resources Builder) modifies the existing `resources:` block in-place with exact indentation, never generating duplicate `deploy:` or duplicate `resources:` blocks.
+    - **Container Restart Policy (`restart:`):** Replaces the restart policy line in-place (e.g. from `unless-stopped` to `always`) rather than appending multiple contradictory `restart:` declarations.
+    - **Container Healthcheck Probes (`healthcheck:`):** Replaces existing healthcheck probes in-place without duplicating test parameters or intervals.
+    - **Placement Constraints Affinity (`deploy.placement.constraints`):** Replaces conflicting single-target constraints (such as `node.role == worker` vs `node.role == manager`, or switching pinned centurions `node.hostname == nodeA` to `node.hostname == nodeB`) in-place while allowing complementary constraints (e.g. role + GPU + hostname) to coexist under a unified `constraints:` block.
+    - **Unique Service Labels (`labels:`):** Replaces matching label keys (such as `ingress.host`, `gbnt.caddy.port`, `gbnt.slo.*`, `gbnt.security.*`) in-place when new values are selected.
+* **Intelligent Deduplication for Multi-Item Collections:**
+  - Enables multiple distinct entries for collections (`volumes:`, `ports:`, `environment:`) while strictly enforcing deduplication:
+    - **Volumes (`volumes:`):** Appends new host/container mounts or shared storage pools (`/var/contenedores/...`) to the existing `volumes:` list. If the exact mount is already present, avoids duplicating lines and warns the user.
+    - **Ports (`ports:`):** Appends newly selected port bindings under existing `ports:` list, skipping duplicate port mappings.
+    - **Environment (`environment:`):** Updates existing environment variable keys in-place (e.g. `NODE_ENV=production`) while cleanly appending new keys under the existing `environment:` block.
+* **Universal Smart Insertion Engine (`ComposeSmartMerger`):**
+  - Integrated across all Compose Studio entrypoints:
+    - Dedicated Smart Copilot side panel tabs (Resources, Docker, Caddy, SLO, Security, Nodes, Storage).
+    - Custom Resources Builder with reactive Max Limits and Min Reservations dropdowns.
+    - Autocomplete Interactive Suggestion Bar chips (`ComposeSuggestionBar`).
+    - Quick Snippets dropdown and Embedded Compose Editor Dialog (`ComposeEditorDialog`).
+* **Instant Visual Feedback & Comprehensive Unit Test Suite:**
+  - Color-coded floating SnackBars provide immediate confirmation of the action taken:
+    - 🔄 **Updated In-Place (Cyan):** Configuration updated without duplicating YAML sections.
+    - ➕ **Added to Existing (Green):** New distinct entry appended to existing collection.
+    - ℹ️ **Already Configured (Amber):** Identical configuration already present in Compose definition.
+    - 📋 **Configured / Inserted (Blue):** New section cleanly created with proper YAML hierarchy.
+  - 100% test coverage with automated unit tests in `web-ui/test/compose_smart_merger_test.dart` validating singleton replacement, collection deduplication, and syntax preservation.
+
 
 
 

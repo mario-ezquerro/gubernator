@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 
+import '../utils/compose_smart_merger.dart';
+
 class ComposeSnippet {
   final String label;
   final String category;
@@ -207,9 +209,16 @@ class ComposeAutocomplete {
     ),
   ];
 
-  static void insertSnippet(CodeController controller, String snippet) {
+  static MergeResult? insertSnippet(CodeController controller, String snippet) {
     final text = controller.text;
     final pos = controller.selection.baseOffset;
+
+    final smart = ComposeSmartMerger.trySmartMerge(text, pos, snippet);
+    if (smart != null) {
+      controller.text = smart.newYaml;
+      return smart;
+    }
+
     if (pos >= 0 && pos <= text.length) {
       controller.text = text.substring(0, pos) + snippet + text.substring(pos);
       controller.selection = TextSelection.collapsed(offset: pos + snippet.length);
@@ -217,6 +226,7 @@ class ComposeAutocomplete {
       controller.text = text + (text.endsWith('\n') ? '' : '\n') + snippet;
       controller.selection = TextSelection.collapsed(offset: controller.text.length);
     }
+    return null;
   }
 }
 
@@ -320,7 +330,7 @@ class _ComposeSuggestionBarState extends State<ComposeSuggestionBar> {
                     controller: _scrollController,
                     scrollDirection: Axis.horizontal,
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    separatorBuilder: (context, index) => const SizedBox(width: 6),
                     itemBuilder: (context, index) {
                       final item = filtered[index];
                       return ActionChip(
@@ -332,7 +342,17 @@ class _ComposeSuggestionBarState extends State<ComposeSuggestionBar> {
                         side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                         backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.08),
                         onPressed: () {
-                          ComposeAutocomplete.insertSnippet(widget.controller, item.snippet);
+                          final res = ComposeAutocomplete.insertSnippet(widget.controller, item.snippet);
+                          if (res != null) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(res.message),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
                           widget.onSnippetInserted?.call(item.label);
                         },
                       );

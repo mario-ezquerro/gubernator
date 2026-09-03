@@ -10,6 +10,7 @@ import 'package:highlight/languages/yaml.dart';
 import '../../models/models.dart' as models;
 import '../../services/api_service.dart';
 import '../../utils/clipboard_service.dart';
+import '../../utils/compose_smart_merger.dart';
 import '../../widgets/compose_autocomplete.dart';
 import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
@@ -1014,6 +1015,53 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     }
   }
 
+  void _applySmartMerge(MergeResult result) {
+    setState(() {
+      _codeController.text = result.newYaml;
+    });
+
+    IconData icon;
+    Color color;
+    switch (result.action) {
+      case MergeActionType.updated:
+        icon = Icons.sync;
+        color = Colors.cyanAccent;
+        break;
+      case MergeActionType.added:
+        icon = Icons.add_circle;
+        color = Colors.greenAccent;
+        break;
+      case MergeActionType.alreadyExists:
+        icon = Icons.info_outline;
+        color = Colors.amberAccent;
+        break;
+      case MergeActionType.inserted:
+        icon = Icons.add_task;
+        color = Colors.blueAccent;
+        break;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(result.message, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Widget _buildCopilotPanel(ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1176,7 +1224,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Limit: 0.25 CPU / 128MB • Reserve: 0.05 CPU / 32MB',
                     icon: Icons.bolt,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "0.25"\n          memory: 128M\n        reservations:\n          cpus: "0.05"\n          memory: 32M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '0.25',
+                        memLimit: '128M',
+                        cpuReserve: '0.05',
+                        memReserve: '32M',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1184,7 +1239,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Limit: 1.0 CPU / 512MB • Reserve: 0.25 CPU / 128MB',
                     icon: Icons.web,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "1.0"\n          memory: 512M\n        reservations:\n          cpus: "0.25"\n          memory: 128M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '1.0',
+                        memLimit: '512M',
+                        cpuReserve: '0.25',
+                        memReserve: '128M',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1192,7 +1254,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Limit: 2.0 CPU / 2GB • Reserve: 0.5 CPU / 512MB',
                     icon: Icons.storage,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "2.0"\n          memory: 2G\n        reservations:\n          cpus: "0.5"\n          memory: 512M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '2.0',
+                        memLimit: '2G',
+                        cpuReserve: '0.5',
+                        memReserve: '512M',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1200,7 +1269,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Limit: 4.0 CPU / 4GB • Reserve: 1.0 CPU / 1GB',
                     icon: Icons.science,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 4G\n        reservations:\n          cpus: "1.0"\n          memory: 1G\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '4.0',
+                        memLimit: '4G',
+                        cpuReserve: '1.0',
+                        memReserve: '1G',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1208,7 +1284,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Limit: 4.0 CPU / 8GB • Reserve: 2.0 CPU / 2GB',
                     icon: Icons.smart_toy,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 8G\n        reservations:\n          cpus: "2.0"\n          memory: 2G\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '4.0',
+                        memLimit: '8G',
+                        cpuReserve: '2.0',
+                        memReserve: '2G',
+                      ));
                     },
                   ),
 
@@ -1328,11 +1411,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                               backgroundColor: Colors.teal,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                            icon: const Icon(Icons.add_task, size: 16),
-                            label: const Text('Insert Custom Resources Block', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            icon: const Icon(Icons.sync, size: 16),
+                            label: const Text('Apply / Update Resources in YAML', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                             onPressed: () {
-                              final snippet = '    deploy:\n      resources:\n        limits:\n          cpus: "$_customLimitCpu"\n          memory: $_customLimitRam\n        reservations:\n          cpus: "$_customReserveCpu"\n          memory: $_customReserveRam\n';
-                              ComposeAutocomplete.insertSnippet(_codeController, snippet);
+                              _applySmartMerge(ComposeSmartMerger.mergeResources(
+                                _codeController.text,
+                                _codeController.selection.baseOffset,
+                                cpuLimit: _customLimitCpu,
+                                memLimit: _customLimitRam,
+                                cpuReserve: _customReserveCpu,
+                                memReserve: _customReserveRam,
+                              ));
                             },
                           ),
                         ),
@@ -1351,7 +1440,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Standard web ingress port bindings',
                     icon: Icons.input,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    ports:\n      - "80:80"\n      - "443:443"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergePorts(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        ['80:80', '443:443'],
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1359,7 +1452,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Expose PostgreSQL database port',
                     icon: Icons.storage,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    ports:\n      - "5432:5432"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergePorts(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        ['5432:5432'],
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1367,7 +1464,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: '/var/contenedores/\${STACK_NAME}/data:/data',
                     icon: Icons.folder_special,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - /var/contenedores/\${STACK_NAME}/data:/data\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeVolumeMount(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        r'/var/contenedores/${STACK_NAME}/data:/data',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1375,7 +1476,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: './config.yml:/etc/app/config.yml:ro',
                     icon: Icons.insert_drive_file,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - ./config.yml:/etc/app/config.yml:ro\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeVolumeMount(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        './config.yml:/etc/app/config.yml:ro',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1383,7 +1488,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Prevent container from starving host resources',
                     icon: Icons.speed,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      resources:\n        limits:\n          cpus: "1.5"\n          memory: 1G\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        cpuLimit: '1.5',
+                        memLimit: '1G',
+                        cpuReserve: '0.5',
+                        memReserve: '256M',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1391,7 +1503,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Auto-restart container on host reboot',
                     icon: Icons.autorenew,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    restart: unless-stopped\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeRestartPolicy(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        'unless-stopped',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1399,7 +1515,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Define NODE_ENV, LOG_LEVEL, and credentials',
                     icon: Icons.tune,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    environment:\n      - NODE_ENV=production\n      - LOG_LEVEL=info\n      - DB_HOST=db\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeEnvironment(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('NODE_ENV', 'production'),
+                          MapEntry('LOG_LEVEL', 'info'),
+                          MapEntry('DB_HOST', 'db'),
+                        ],
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1407,7 +1531,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'HTTP healthcheck every 10 seconds',
                     icon: Icons.favorite,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    healthcheck:\n      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]\n      interval: 10s\n      timeout: 5s\n      retries: 3\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeHealthcheck(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        testCmd: 'http://localhost:8080/health',
+                      ));
                     },
                   ),
                 ],
@@ -1422,7 +1550,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'ingress.host=app.gbnt.local & port=80',
                     icon: Icons.public,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "ingress.host=app.gbnt.local"\n      - "gbnt.caddy.port=80"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('ingress.host', 'app.gbnt.local'),
+                          MapEntry('gbnt.caddy.port', '80'),
+                        ],
+                        categoryTitle: 'Caddy HTTP Ingress',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1430,7 +1566,16 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Automatic Caddy internal certificate',
                     icon: Icons.lock,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "ingress.host=secure.gbnt.local"\n      - "gbnt.caddy.port=443"\n      - "gbnt.caddy.tls=internal"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('ingress.host', 'secure.gbnt.local'),
+                          MapEntry('gbnt.caddy.port', '443'),
+                          MapEntry('gbnt.caddy.tls', 'internal'),
+                        ],
+                        categoryTitle: 'Caddy TLS Ingress',
+                      ));
                     },
                   ),
                 ],
@@ -1445,7 +1590,16 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: '30-day window availability budget',
                     icon: Icons.speed,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.slo.enable=true"\n      - "gbnt.slo.target=99.9"\n      - "gbnt.slo.window=30d"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.slo.enable', 'true'),
+                          MapEntry('gbnt.slo.target', '99.9'),
+                          MapEntry('gbnt.slo.window', '30d'),
+                        ],
+                        categoryTitle: '99.9% Availability SLO',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1453,7 +1607,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Triggers multi-burn alerts on slow requests',
                     icon: Icons.timer,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.slo.enable=true"\n      - "gbnt.slo.target=99.0"\n      - "gbnt.slo.indicator=latency"\n      - "gbnt.slo.latency.threshold=200ms"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.slo.enable', 'true'),
+                          MapEntry('gbnt.slo.target', '99.0'),
+                          MapEntry('gbnt.slo.indicator', 'latency'),
+                          MapEntry('gbnt.slo.latency.threshold', '200ms'),
+                        ],
+                        categoryTitle: 'Latency SLO',
+                      ));
                     },
                   ),
                 ],
@@ -1468,7 +1632,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Blocks deployment if image is not Cosign-signed (Zero-Trust)',
                     icon: Icons.verified_user,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.require-signature=true"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.security.require-signature', 'true'),
+                        ],
+                        categoryTitle: 'Signature Gatekeeper',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1476,7 +1647,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Rejects images with unpatched critical CVEs (CVSS >= 9.0)',
                     icon: Icons.security,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.max-cve-severity=critical"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.security.max-cve-severity', 'critical'),
+                        ],
+                        categoryTitle: 'Critical CVE Policy',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1484,7 +1662,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Stricter threshold rejecting both High and Critical CVEs',
                     icon: Icons.shield_outlined,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    labels:\n      - "gbnt.security.max-cve-severity=high"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.security.max-cve-severity', 'high'),
+                        ],
+                        categoryTitle: 'High CVE Policy',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1492,10 +1677,16 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'Signature check + critical CVE block + reject unfixed CVEs',
                     icon: Icons.verified,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(
-                        _codeController,
-                        '    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n      - "gbnt.security.allow-unfixed-cve=false"\n',
-                      );
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.security.require-signature', 'true'),
+                          MapEntry('gbnt.security.max-cve-severity', 'critical'),
+                          MapEntry('gbnt.security.allow-unfixed-cve', 'false'),
+                        ],
+                        categoryTitle: 'Zero-Trust Suite',
+                      ));
                     },
                   ),
                 ],
@@ -1510,7 +1701,12 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'node.role == worker constraint',
                     icon: Icons.alt_route,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      placement:\n        constraints:\n          - "node.role == worker"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        constraint: 'node.role == worker',
+                        replacePrefix: 'node.role ==',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1518,7 +1714,12 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: 'gbnt.node.gpu == nvidia constraint',
                     icon: Icons.developer_board,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      placement:\n        constraints:\n          - "gbnt.node.gpu == nvidia"\n');
+                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        constraint: 'gbnt.node.gpu == nvidia',
+                        replacePrefix: 'gbnt.node.gpu ==',
+                      ));
                     },
                   ),
                   const Divider(height: 24),
@@ -1539,7 +1740,12 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         icon: const Icon(Icons.add_circle_outline, size: 18),
                         tooltip: 'Pin to ${node.id}',
                         onPressed: () {
-                          ComposeAutocomplete.insertSnippet(_codeController, '    deploy:\n      placement:\n        constraints:\n          - "node.hostname == ${node.id}"\n');
+                          _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                            _codeController.text,
+                            _codeController.selection.baseOffset,
+                            constraint: 'node.hostname == ${node.id}',
+                            replacePrefix: 'node.hostname ==',
+                          ));
                         },
                       ),
                     ),
@@ -1556,7 +1762,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: '/var/contenedores/\${STACK_NAME}/data:/data',
                     icon: Icons.storage,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - /var/contenedores/\${STACK_NAME}/data:/data\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeVolumeMount(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        r'/var/contenedores/${STACK_NAME}/data:/data',
+                      ));
                     },
                   ),
                   _buildSnippetCard(
@@ -1564,7 +1774,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     subtitle: '/var/contenedores/\${STACK_NAME}/db:/var/lib/db',
                     icon: Icons.inventory_2,
                     onTap: () {
-                      ComposeAutocomplete.insertSnippet(_codeController, '    volumes:\n      - /var/contenedores/\${STACK_NAME}/db:/var/lib/db\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeVolumeMount(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        r'/var/contenedores/${STACK_NAME}/db:/var/lib/db',
+                      ));
                     },
                   ),
                 ],

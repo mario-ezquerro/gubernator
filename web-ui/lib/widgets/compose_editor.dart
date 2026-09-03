@@ -10,6 +10,7 @@ import 'package:highlight/languages/yaml.dart';
 import 'compose_autocomplete.dart';
 import '../models/models.dart';
 import '../utils/clipboard_service.dart';
+import '../utils/compose_smart_merger.dart';
 
 class ComposeEditorDialog extends StatefulWidget {
   final String stackName;
@@ -445,32 +446,63 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
     super.dispose();
   }
 
-  void _injectLabel(String labelKey, String labelValue) {
-    // Basic injection logic for demonstration
-    // We append the label at the current cursor position or end of file
-    final text = _controller.text;
-    final pos = _controller.selection.baseOffset;
-    
-    final injection = '        - $labelKey=$labelValue\n';
-    
-    if (pos >= 0 && pos <= text.length) {
-      _controller.text = text.substring(0, pos) + injection + text.substring(pos);
-      _controller.selection = TextSelection.collapsed(offset: pos + injection.length);
-    } else {
-      _controller.text = text + '\n' + injection;
+  void _applySmartMerge(MergeResult result) {
+    setState(() {
+      _controller.text = result.newYaml;
+    });
+
+    IconData icon;
+    Color color;
+    switch (result.action) {
+      case MergeActionType.updated:
+        icon = Icons.sync;
+        color = Colors.cyanAccent;
+        break;
+      case MergeActionType.added:
+        icon = Icons.add_circle;
+        color = Colors.greenAccent;
+        break;
+      case MergeActionType.alreadyExists:
+        icon = Icons.info_outline;
+        color = Colors.amberAccent;
+        break;
+      case MergeActionType.inserted:
+        icon = Icons.add_task;
+        color = Colors.blueAccent;
+        break;
     }
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(result.message, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _injectLabel(String labelKey, String labelValue) {
+    _applySmartMerge(ComposeSmartMerger.mergeLabels(
+      _controller.text,
+      _controller.selection.baseOffset,
+      [MapEntry(labelKey, labelValue)],
+    ));
   }
 
   void _injectVolume() {
-     final injection = '      - /var/contenedores/\${STACK_NAME}/data:/data\n';
-     final pos = _controller.selection.baseOffset;
-     final text = _controller.text;
-     if (pos >= 0 && pos <= text.length) {
-      _controller.text = text.substring(0, pos) + injection + text.substring(pos);
-      _controller.selection = TextSelection.collapsed(offset: pos + injection.length);
-    } else {
-      _controller.text = text + '\n' + injection;
-    }
+    _applySmartMerge(ComposeSmartMerger.mergeVolumeMount(
+      _controller.text,
+      _controller.selection.baseOffset,
+      r'/var/contenedores/${STACK_NAME}/data:/data',
+    ));
   }
 
   Widget _buildCopilotPanel(ThemeData theme) {
@@ -526,7 +558,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () {
-                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "0.25"\n          memory: 128M\n        reservations:\n          cpus: "0.05"\n          memory: 32M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        cpuLimit: '0.25',
+                        memLimit: '128M',
+                        cpuReserve: '0.05',
+                        memReserve: '32M',
+                      ));
                     },
                     icon: const Icon(Icons.bolt, color: Colors.amber),
                     label: const Text('⚡ Micro Service (0.25 CPU / 128M)'),
@@ -534,7 +573,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     onPressed: () {
-                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "1.0"\n          memory: 512M\n        reservations:\n          cpus: "0.25"\n          memory: 128M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        cpuLimit: '1.0',
+                        memLimit: '512M',
+                        cpuReserve: '0.25',
+                        memReserve: '128M',
+                      ));
                     },
                     icon: const Icon(Icons.web, color: Colors.blueAccent),
                     label: const Text('🌐 Standard Web App (1.0 CPU / 512M)'),
@@ -542,7 +588,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     onPressed: () {
-                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "2.0"\n          memory: 2G\n        reservations:\n          cpus: "0.5"\n          memory: 512M\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        cpuLimit: '2.0',
+                        memLimit: '2G',
+                        cpuReserve: '0.5',
+                        memReserve: '512M',
+                      ));
                     },
                     icon: const Icon(Icons.storage, color: Colors.teal),
                     label: const Text('🗄️ Database / Cache (2.0 CPU / 2GB)'),
@@ -550,7 +603,14 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
                     onPressed: () {
-                      ComposeAutocomplete.insertSnippet(_controller, '    deploy:\n      resources:\n        limits:\n          cpus: "4.0"\n          memory: 8G\n        reservations:\n          cpus: "2.0"\n          memory: 2G\n');
+                      _applySmartMerge(ComposeSmartMerger.mergeResources(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        cpuLimit: '4.0',
+                        memLimit: '8G',
+                        cpuReserve: '2.0',
+                        memReserve: '2G',
+                      ));
                     },
                     icon: const Icon(Icons.smart_toy, color: Colors.purpleAccent),
                     label: const Text('🤖 AI / LLM Model (4.0 CPU / 8GB)'),
@@ -613,19 +673,15 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                     trailing: IconButton(
                       icon: const Icon(Icons.add_circle_outline),
                       onPressed: () {
-                        // Note: actual placement constraint is not a label, but standard compose:
-                        // deploy.placement.constraints: [node.hostname == my-node]
-                        final text = _controller.text;
-                        final pos = _controller.selection.baseOffset;
-                        final injection = '      placement:\n        constraints:\n          - "node.hostname==${n.id}"\n';
-                        if (pos >= 0 && pos <= text.length) {
-                          _controller.text = text.substring(0, pos) + injection + text.substring(pos);
-                        } else {
-                          _controller.text = text + '\n' + injection;
-                        }
+                        _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                          _controller.text,
+                          _controller.selection.baseOffset,
+                          constraint: 'node.hostname == ${n.id}',
+                          replacePrefix: 'node.hostname ==',
+                        ));
                       },
                     ),
-                  )).toList(),
+                  )),
                 ],
                 if (_activeTab == 'storage') ...[
                   const Text('Storage Granaries', style: TextStyle(fontWeight: FontWeight.bold)),
