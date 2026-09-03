@@ -48,13 +48,15 @@ services:
 ## 📋 Step-by-Step Instructions
 
 ### Step 1: Configure DNS
-Create an `A` record in your DNS provider:
+Create an `A` record in your DNS provider pointing to your cloud instance's **external public IP**:
 ```text
-demo.fiware.app   300   IN   A   <YOUR_PUBLIC_SERVER_IP>
+demo.fiware.app   300   IN   A   <YOUR_EXTERNAL_PUBLIC_IP>
 ```
+> [!NOTE]
+> **Cloud 1:1 NAT (Google Cloud / AWS / Azure)**: If your VM only displays a private internal IP (e.g. `10.128.0.2` or `172.31.x.x`), point your DNS to the **External Public IP** provided by GCP/AWS. Caddy does not need to know the public IP; the cloud provider forwards incoming traffic from the public IP to the private IP automatically.
 
 ### Step 2: Open Ingress Ports
-Ensure your cloud firewall (AWS Security Group, Hetzner Firewall, GCP Firewall, etc.) allows inbound traffic on:
+Ensure your cloud firewall (AWS Security Group, Hetzner Firewall, GCP VPC Firewall, etc.) allows inbound traffic on:
 * **Port 80 TCP** (HTTP & ACME HTTP-01 challenge)
 * **Port 443 TCP** (HTTPS & ACME TLS-ALPN-01 challenge)
 

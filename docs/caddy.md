@@ -43,6 +43,11 @@ When a public FQDN is specified in `ingress.host`:
 * **Automated Renewal**: Caddy automatically renews certificates 30 days before expiration without interrupting traffic.
 * **Optional ACME Email**: Supply `- ingress.email == admin@fiware.app` (or label `gbnt.ingress.email`) to receive Let's Encrypt renewal notices.
 
+#### ☁️ Cloud Providers & 1:1 NAT (Google Cloud, AWS, Azure, Hetzner)
+In cloud environments, hosts typically have a **private internal IP** (e.g. `10.128.0.2`) on their local network interface (`eth0`), while the cloud provider maps an **external public IP** (e.g. `34.120.x.x`) via 1:1 NAT or Cloud Gateway:
+* **How Caddy Handles it**: ACME verification (**HTTP-01 Challenge**) does not inspect the host's internal IP. Instead, Let's Encrypt queries public DNS for your domain, contacts the external public IP on port `80`, and the cloud provider's NAT transparently forwards the challenge request to Caddy.
+* **Requirements**: Ensure ports `80` and `443` are allowed in your cloud firewall (GCP VPC Firewall rules, AWS Security Groups, etc.), and that your domain's public DNS `A` record points to your cloud instance's external public IP. No manual certificate configuration or local IP binding is required.
+
 ### 2. Local Domains (`*.gbnt.local`, `*.internal`, `localhost`)
 When an internal or private domain is detected:
 * **Internal Root CA**: Caddy automatically applies `tls internal`, signing certificates with its internal Root CA without attempting to contact public ACME servers.
