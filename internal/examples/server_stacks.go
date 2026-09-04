@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -35,8 +36,165 @@ type ServerStackFileContent struct {
 	Size         int64    `json:"size"`
 }
 
+// ServerDirectoryItem represents a directory discovered on the Master server filesystem for interactive navigation.
+type ServerDirectoryItem struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+// ServerStackBrowseResult contains files, subdirectories, current path, and parent path for interactive browsing.
+type ServerStackBrowseResult struct {
+	CurrentDir     string                `json:"current_dir"`
+	ParentDir      string                `json:"parent_dir"`
+	Subdirectories []ServerDirectoryItem `json:"subdirectories"`
+	Files          []ServerStackFile     `json:"files"`
+	StacksDir      string                `json:"stacks_dir"`
+	ExamplesDir    string                `json:"examples_dir"`
+	Total          int                   `json:"total"`
+}
+
+// BrowseServerStackDirectory lists Compose files and navigable subdirectories within a given Master server directory.
+func BrowseServerStackDirectory(customDir string) (*ServerStackBrowseResult, error) {
+	_ = EnsureServerDirectories()
+
+	homeDir, _ := os.UserHomeDir()
+	targetDir := strings.TrimSpace(customDir)
+
+	// Expand ~
+	if strings.HasPrefix(targetDir, "~") {
+		if homeDir != "" {
+			targetDir = filepath.Join(homeDir, strings.TrimPrefix(targetDir, "~"))
+		}
+	}
+
+	if targetDir == "" {
+		targetDir = DefaultServerStacksDir()
+	}
+
+	targetDir = filepath.Clean(targetDir)
+
+	// If directory doesn't exist, try home or default
+	if fi, err := os.Stat(targetDir); err != nil || !fi.IsDir() {
+		targetDir = DefaultServerStacksDir()
+		if fi2, err2 := os.Stat(targetDir); err2 != nil || !fi2.IsDir() {
+			if homeDir != "" {
+				targetDir = homeDir
+			} else {
+				targetDir = "/"
+			}
+		}
+	}
+
+	// Calculate parent directory
+	parentDir := ""
+	parent := filepath.Dir(targetDir)
+	if parent != targetDir && parent != "" {
+		parentDir = parent
+	}
+
+	var subdirs []ServerDirectoryItem
+	// Read directory entries for subdirectories
+	entries, err := os.ReadDir(targetDir)
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				name := e.Name()
+				// Hide hidden dirs but keep .gbnt
+				if strings.HasPrefix(name, ".") && name != ".gbnt" {
+					continue
+				}
+				subdirs = append(subdirs, ServerDirectoryItem{
+					Name: name,
+					Path: filepath.Join(targetDir, name),
+				})
+			}
+		}
+	}
+	sort.Slice(subdirs, func(i, j int) bool {
+		return strings.ToLower(subdirs[i].Name) < strings.ToLower(subdirs[j].Name)
+	})
+
+	// Also find .yml / .yaml files in targetDir (up to 2 levels deep)
+	var files []ServerStackFile
+	seenPaths := make(map[string]bool)
+
+	scanDirs := []string{targetDir}
+	if targetDir == DefaultServerStacksDir() {
+		scanDirs = append(scanDirs, DefaultServerExamplesDir())
+	}
+
+	for _, sDir := range scanDirs {
+		if _, err := os.Stat(sDir); err != nil {
+			continue
+		}
+		_ = filepath.WalkDir(sDir, func(path string, d fs.DirEntry, wErr error) error {
+			if wErr != nil {
+				return nil
+			}
+			if d.IsDir() {
+				rel, relErr := filepath.Rel(sDir, path)
+				if relErr == nil && strings.Count(rel, string(filepath.Separator)) > 2 {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			ext := strings.ToLower(filepath.Ext(path))
+			if ext != ".yml" && ext != ".yaml" {
+				return nil
+			}
+
+			if seenPaths[path] {
+				return nil
+			}
+			seenPaths[path] = true
+
+			info, statErr := d.Info()
+			if statErr != nil {
+				return nil
+			}
+
+			data, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+
+			inferredName := inferStackName(filepath.Base(path), string(data))
+			svcCount := countServicesInYAML(string(data))
+			isExample := strings.Contains(path, "examples")
+
+			files = append(files, ServerStackFile{
+				Path:         path,
+				Filename:     d.Name(),
+				Directory:    filepath.Dir(path),
+				Size:         info.Size(),
+				ModifiedAt:   info.ModTime().Format(time.RFC3339),
+				InferredName: inferredName,
+				IsExample:    isExample,
+				Services:     svcCount,
+			})
+			return nil
+		})
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return strings.ToLower(files[i].Filename) < strings.ToLower(files[j].Filename)
+	})
+
+	return &ServerStackBrowseResult{
+		CurrentDir:     targetDir,
+		ParentDir:      parentDir,
+		Subdirectories: subdirs,
+		Files:          files,
+		StacksDir:      DefaultServerStacksDir(),
+		ExamplesDir:    DefaultServerExamplesDir(),
+		Total:          len(files),
+	}, nil
+}
+
 // ListServerStackFiles scans master server directories for docker-compose files.
 func ListServerStackFiles(customDir string) ([]ServerStackFile, error) {
+
 	_ = EnsureServerDirectories()
 
 	dirsToScan := []string{

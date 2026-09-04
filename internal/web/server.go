@@ -1837,17 +1837,12 @@ func saveStackHandler(c *gin.Context) {
 
 func stackServerFilesWebHandler(c *gin.Context) {
 	customDir := c.Query("dir")
-	files, err := examples.ListServerStackFiles(customDir)
+	res, err := examples.BrowseServerStackDirectory(customDir)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"files":        files,
-		"total":        len(files),
-		"stacks_dir":   examples.DefaultServerStacksDir(),
-		"examples_dir": examples.DefaultServerExamplesDir(),
-	})
+	c.JSON(http.StatusOK, res)
 }
 
 func stackServerFileReadWebHandler(c *gin.Context) {

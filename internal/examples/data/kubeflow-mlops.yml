@@ -1,0 +1,147 @@
+version: "3.8"
+
+# =============================================================================
+# Gubernator (gbnt) - Enterprise Kubeflow MLOps Platform Suite
+# Complete Cloud-Native MLOps stack without Kubernetes complexity
+# Components: MinIO S3 + MLflow + JupyterLab PyTorch + Ollama Inference
+# =============================================================================
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. MinIO S3 Object Storage (Kubeflow S3 Artifact & Dataset Store)
+  # ─────────────────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=kubeflow
+      - MINIO_ROOT_PASSWORD=gubernator123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - /var/contenedores/kubeflow/minio_data:/data
+    labels:
+      - "ingress.host=minio.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=9001"
+      - "gbnt.service.name=minio-s3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == kubeflow-mlops
+          - ingress.host == minio.kubeflow.gbnt.local
+          - gbnt.caddy.port == 9001
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. MLflow Tracking Server & Model Registry (Metadata & Katib Equivalent)
+  # ─────────────────────────────────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    restart: unless-stopped
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --workers 1
+      --allowed-hosts "*"
+      --backend-store-uri sqlite:////data/mlflow.db
+      --default-artifact-root s3://mlflow-artifacts/
+    environment:
+      - AWS_ACCESS_KEY_ID=kubeflow
+      - AWS_SECRET_ACCESS_KEY=gubernator123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local:9000
+      - MLFLOW_S3_IGNORE_TLS=true
+      - MLFLOW_ALLOWED_HOSTS=*
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/contenedores/kubeflow/mlflow_data:/data
+    labels:
+      - "ingress.host=mlflow.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=5000"
+      - "gbnt.service.name=mlflow-tracking"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == kubeflow-mlops
+          - ingress.host == mlflow.kubeflow.gbnt.local
+          - gbnt.caddy.port == 5000
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Interactive JupyterLab & PyTorch Workspaces (Notebook Controller Equivalent)
+  # ─────────────────────────────────────────────────────────────────────────────
+  jupyter-workspace:
+    image: quay.io/jupyter/pytorch-notebook:latest
+    restart: unless-stopped
+    environment:
+      - JUPYTER_TOKEN=gubernator-secret
+      - JUPYTER_ENABLE_LAB=yes
+      - AWS_ACCESS_KEY_ID=kubeflow
+      - AWS_SECRET_ACCESS_KEY=gubernator123
+      - MLFLOW_TRACKING_URI=http://mlflow.kubeflow.gbnt.local:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://minio.kubeflow.gbnt.local:9000
+    ports:
+      - "8888:8888"
+    volumes:
+      - /var/contenedores/kubeflow/workspaces:/home/jovyan/work
+      - /var/contenedores/kubeflow/cache:/home/jovyan/.cache
+    labels:
+      - "ingress.host=notebooks.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=8888"
+      - "gbnt.service.name=jupyterlab"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+      placement:
+        constraints:
+          - stack.name == kubeflow-mlops
+          - ingress.host == notebooks.kubeflow.gbnt.local
+          - gbnt.caddy.port == 8888
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Model Serving & Inference Gateway (KServe & vLLM Equivalent)
+  # ─────────────────────────────────────────────────────────────────────────────
+  inference-engine:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - /var/contenedores/kubeflow/models:/root/.ollama
+    labels:
+      - "ingress.host=inference.kubeflow.gbnt.local"
+      - "gbnt.caddy.port=11434"
+      - "gbnt.service.name=model-serving"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+      placement:
+        constraints:
+          - stack.name == kubeflow-mlops
+          - ingress.host == inference.kubeflow.gbnt.local
+          - gbnt.caddy.port == 11434

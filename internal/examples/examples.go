@@ -119,6 +119,28 @@ var catalog = []POCExample{
 		Icon:         "monitor_heart",
 		Tags:         []string{"monitoring", "metrics", "prometheus", "grafana", "sre"},
 	},
+	{
+		ID:           "kubeflow-mlops",
+		Name:         "Kubeflow MLOps Platform Suite (MinIO + MLflow + PyTorch + Ollama)",
+		Category:     "AI & Data Science",
+		Description:  "Enterprise MLOps platform without Kubernetes complexity: MinIO S3 dataset storage, MLflow model tracking, JupyterLab PyTorch, and Ollama inference gateway with Caddy ingress.",
+		Filename:     "kubeflow-mlops.yml",
+		DefaultStack: "kubeflow-mlops",
+		Services:     []string{"minio", "mlflow", "jupyter-workspace", "inference-engine"},
+		Icon:         "psychology",
+		Tags:         []string{"mlops", "kubeflow", "mlflow", "minio", "s3", "jupyter", "ollama", "ai", "pytorch"},
+	},
+	{
+		ID:           "llama-factory",
+		Name:         "LLaMA-Factory Studio (LLM Fine-Tuning WebUI)",
+		Category:     "AI & Data Science",
+		Description:  "Production-grade fine-tuning studio for open LLMs (LLaMA 3, Mistral, Qwen) with LoRA/QLoRA, HuggingFace dataset integration, and Gradio Web UI.",
+		Filename:     "llama-factory.yml",
+		DefaultStack: "llama-factory",
+		Services:     []string{"llama-factory"},
+		Icon:         "smart_toy",
+		Tags:         []string{"llm", "fine-tuning", "lora", "llama", "huggingface", "ai", "gradio"},
+	},
 }
 
 // GetAllPOCExamples returns all built-in POC examples with their compose definitions populated.

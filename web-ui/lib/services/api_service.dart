@@ -156,8 +156,17 @@ class ApiService {
       final files = (data['files'] as List? ?? [])
           .map((f) => ServerStackFileModel.fromJson(f))
           .toList();
+      final subdirs = (data['subdirectories'] as List? ?? [])
+          .map((s) => {
+                'name': s['name']?.toString() ?? '',
+                'path': s['path']?.toString() ?? '',
+              })
+          .toList();
       return {
         'files': files,
+        'current_dir': data['current_dir'] ?? dir ?? '',
+        'parent_dir': data['parent_dir'] ?? '',
+        'subdirectories': subdirs,
         'stacks_dir': data['stacks_dir'] ?? '',
         'examples_dir': data['examples_dir'] ?? '',
         'total': data['total'] ?? files.length,
