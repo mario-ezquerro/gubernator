@@ -758,15 +758,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Future<void> _updateNodeRole(String id, String role) async {
-    final ok = await ApiService.updateNodeRole(id, role);
-    if (ok) {
-      _showSnackBar('Node role updated successfully!');
-      _fetchData();
-    } else {
-      _showSnackBar('Failed to update node role.', isError: true);
-    }
-  }
 
   Future<void> _updateNodeAvailability(String id, String availability, [Node? node]) async {
     final res = await ApiService.updateNodeAvailability(id, availability);
@@ -2034,10 +2025,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _showNodeInspectDialog(n);
                             } else if (action == 'labels') {
                               _showNodeLabelsDialog(n);
-                            } else if (action == 'promote') {
-                              _updateNodeRole(n.id, 'manager');
-                            } else if (action == 'demote') {
-                              _updateNodeRole(n.id, 'worker');
                             } else if (action == 'reboot') {
                               _rebootNode(n.id);
                             } else if (action == 'activate') {
@@ -2066,9 +2053,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               value: 'inspect',
                               child: Row(
                                 children: [
-                                  Icon(Icons.info_outline, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Inspect'),
+                                    Icon(Icons.info_outline, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Inspect'),
                                 ],
                               ),
                             ),
@@ -2082,29 +2069,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                             ),
-                            const PopupMenuDivider(),
-                            if (n.role == 'worker')
-                              const PopupMenuItem(
-                                value: 'promote',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.trending_up, size: 18, color: Colors.green),
-                                    SizedBox(width: 8),
-                                    Text('Promote to Manager'),
-                                  ],
-                                ),
-                              ),
-                            if (n.role == 'manager')
-                              const PopupMenuItem(
-                                value: 'demote',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.trending_down, size: 18, color: Colors.orange),
-                                    SizedBox(width: 8),
-                                    Text('Demote to Worker'),
-                                  ],
-                                ),
-                              ),
                             const PopupMenuDivider(),
                             if (n.status == 'maintenance')
                               const PopupMenuItem(

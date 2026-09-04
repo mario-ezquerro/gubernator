@@ -123,14 +123,15 @@ var nodeInspectCmd = &cobra.Command{
 }
 
 var nodePromoteCmd = &cobra.Command{
-	Use:   "promote [node_id]",
-	Short: "Promote a worker node to a manager in the legion",
-	Args:  cobra.ExactArgs(1),
+	Use:        "promote [node_id]",
+	Short:      "Promote a worker node to a manager in the legion (Deprecated)",
+	Deprecated: "Gubernator currently operates in Single-Manager architecture. Dynamic promote/demote requires multi-manager distributed Raft consensus (Phase 5 HA).",
+	Args:       cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		payload := `{"role":"manager"}`
 		resp, err := DoAPIRequest("POST", "/v1/node/"+args[0]+"/role", bytes.NewBufferString(payload))
 		if err == nil && resp.StatusCode == 200 {
-			fmt.Printf("Node %s promoted to a manager.\n", args[0])
+			fmt.Printf("Node %s role marked as manager (Note: Full manager daemon promotion requires Phase 5 HA).\n", args[0])
 		} else {
 			fmt.Printf("Failed to promote node.\n")
 		}
@@ -138,14 +139,15 @@ var nodePromoteCmd = &cobra.Command{
 }
 
 var nodeDemoteCmd = &cobra.Command{
-	Use:   "demote [node_id]",
-	Short: "Demote a manager node to a worker in the legion",
-	Args:  cobra.ExactArgs(1),
+	Use:        "demote [node_id]",
+	Short:      "Demote a manager node to a worker in the legion (Deprecated)",
+	Deprecated: "Gubernator currently operates in Single-Manager architecture. Dynamic promote/demote requires multi-manager distributed Raft consensus (Phase 5 HA).",
+	Args:       cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		payload := `{"role":"worker"}`
 		resp, err := DoAPIRequest("POST", "/v1/node/"+args[0]+"/role", bytes.NewBufferString(payload))
 		if err == nil && resp.StatusCode == 200 {
-			fmt.Printf("Node %s demoted to a worker.\n", args[0])
+			fmt.Printf("Node %s role marked as worker.\n", args[0])
 		} else {
 			fmt.Printf("Failed to demote node.\n")
 		}

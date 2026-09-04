@@ -225,11 +225,6 @@ class _CenturionsPageState extends State<CenturionsPage> {
     );
   }
 
-  Future<void> _updateNodeRole(String id, String role) async {
-    final ok = await ApiService.updateNodeRole(id, role);
-    _showSnackBar(ok ? 'Node role updated successfully!' : 'Failed to update node role.', isError: !ok);
-    if (ok) widget.onRefresh();
-  }
 
   Future<void> _updateNodeAvailability(String id, String availability, [Node? node]) async {
     final res = await ApiService.updateNodeAvailability(id, availability);
@@ -695,53 +690,46 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                           ),
                                           DataCell(
                                             PopupMenuButton<String>(
-                                                icon: const Icon(Icons.more_vert, size: 20),
-                                                tooltip: 'Node Actions',
-                                                onSelected: (action) {
-                                                  if (action == 'shell') _viewNodeShell(n.id, n.ip);
-                                                  else if (action == 'inspect') _showNodeInspectDialog(n);
-                                                  else if (action == 'labels') _showNodeLabelsDialog(n);
-                                                  else if (action == 'promote') _updateNodeRole(n.id, 'manager');
-                                                  else if (action == 'demote') _updateNodeRole(n.id, 'worker');
-                                                  else if (action == 'reboot') _rebootNode(n.id);
-                                                  else if (action == 'activate') _updateNodeAvailability(n.id, 'active', n);
-                                                  else if (action == 'maintenance') _updateNodeAvailability(n.id, 'maintenance', n);
-                                                  else if (action == 'block-schedule') _updateNodeAvailability(n.id, 'no_schedule', n);
-                                                  else if (action == 'unblock-schedule') _updateNodeAvailability(n.id, 'active', n);
-                                                  else if (action == 'sync-token') _showTokenMismatchDialog(n);
-                                                  else if (action == 'leave') _leaveNode(n.id);
-                                                },
-                                                itemBuilder: (context) => [
-                                                   if (n.status != 'left' && n.status != 'down')
-                                                     const PopupMenuItem(value: 'shell', child: Row(children: [Icon(Icons.terminal, size: 18), SizedBox(width: 8), Text('Shell')])),
-                                                  const PopupMenuItem(value: 'inspect', child: Row(children: [Icon(Icons.info_outline, size: 18), SizedBox(width: 8), Text('Inspect')])),
-                                                  const PopupMenuItem(value: 'labels', child: Row(children: [Icon(Icons.label_outline, size: 18), SizedBox(width: 8), Text('Edit Labels')])),
-                                                  const PopupMenuDivider(),
-                                                  if (n.status == 'no_schedule')
-                                                    const PopupMenuItem(value: 'unblock-schedule', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Enable Scheduling')]))
-                                                  else
-                                                    const PopupMenuItem(value: 'block-schedule', child: Row(children: [Icon(Icons.block, size: 18, color: Colors.deepOrange), SizedBox(width: 8), Text('Block Scheduling (NoSchedule)')])),
-                                                  const PopupMenuDivider(),
-                                                  if (n.role == 'worker')
-                                                    const PopupMenuItem(value: 'promote', child: Row(children: [Icon(Icons.trending_up, size: 18, color: Colors.green), SizedBox(width: 8), Text('Promote to Manager')])),
-                                                  if (n.role == 'manager')
-                                                    const PopupMenuItem(value: 'demote', child: Row(children: [Icon(Icons.trending_down, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Demote to Worker')])),
-                                                  const PopupMenuDivider(),
-                                                  if (n.status == 'maintenance')
-                                                    const PopupMenuItem(value: 'activate', child: Row(children: [Icon(Icons.check_circle_outline, size: 18, color: Colors.green), SizedBox(width: 8), Text('Exit Maintenance')]))
-                                                  else if (n.status != 'active')
-                                                    const PopupMenuItem(value: 'activate', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Activate Node')]))
-                                                  else
-                                                    const PopupMenuItem(value: 'maintenance', child: Row(children: [Icon(Icons.build_circle_outlined, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Set Maintenance')])),
-                                                  if (n.role == 'worker') ...[
-                                                    const PopupMenuDivider(),
-                                                    const PopupMenuItem(value: 'sync-token', child: Row(children: [Icon(Icons.sync_lock, size: 18, color: Color(0xFFF97316)), SizedBox(width: 8), Text('Sync Auth Token')])),
-                                                  ],
-                                                  const PopupMenuDivider(),
-                                                  const PopupMenuItem(value: 'reboot', child: Row(children: [Icon(Icons.restart_alt, size: 18, color: Colors.orangeAccent), SizedBox(width: 8), Text('Reboot Node')])),
-                                                  PopupMenuItem(value: 'leave', enabled: n.status != 'left', child: const Row(children: [Icon(Icons.exit_to_app, size: 18, color: Colors.redAccent), SizedBox(width: 8), Text('Force Leave')])),
-                                                ],
-                                              ),
+                                                 icon: const Icon(Icons.more_vert, size: 20),
+                                                 tooltip: 'Node Actions',
+                                                 onSelected: (action) {
+                                                   if (action == 'shell') _viewNodeShell(n.id, n.ip);
+                                                   else if (action == 'inspect') _showNodeInspectDialog(n);
+                                                   else if (action == 'labels') _showNodeLabelsDialog(n);
+                                                   else if (action == 'reboot') _rebootNode(n.id);
+                                                   else if (action == 'activate') _updateNodeAvailability(n.id, 'active', n);
+                                                   else if (action == 'maintenance') _updateNodeAvailability(n.id, 'maintenance', n);
+                                                   else if (action == 'block-schedule') _updateNodeAvailability(n.id, 'no_schedule', n);
+                                                   else if (action == 'unblock-schedule') _updateNodeAvailability(n.id, 'active', n);
+                                                   else if (action == 'sync-token') _showTokenMismatchDialog(n);
+                                                   else if (action == 'leave') _leaveNode(n.id);
+                                                 },
+                                                 itemBuilder: (context) => [
+                                                    if (n.status != 'left' && n.status != 'down')
+                                                      const PopupMenuItem(value: 'shell', child: Row(children: [Icon(Icons.terminal, size: 18), SizedBox(width: 8), Text('Shell')])),
+                                                   const PopupMenuItem(value: 'inspect', child: Row(children: [Icon(Icons.info_outline, size: 18), SizedBox(width: 8), Text('Inspect')])),
+                                                   const PopupMenuItem(value: 'labels', child: Row(children: [Icon(Icons.label_outline, size: 18), SizedBox(width: 8), Text('Edit Labels')])),
+                                                   const PopupMenuDivider(),
+                                                   if (n.status == 'no_schedule')
+                                                     const PopupMenuItem(value: 'unblock-schedule', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Enable Scheduling')]))
+                                                   else
+                                                     const PopupMenuItem(value: 'block-schedule', child: Row(children: [Icon(Icons.block, size: 18, color: Colors.deepOrange), SizedBox(width: 8), Text('Block Scheduling (NoSchedule)')])),
+                                                   const PopupMenuDivider(),
+                                                   if (n.status == 'maintenance')
+                                                     const PopupMenuItem(value: 'activate', child: Row(children: [Icon(Icons.check_circle_outline, size: 18, color: Colors.green), SizedBox(width: 8), Text('Exit Maintenance')]))
+                                                   else if (n.status != 'active')
+                                                     const PopupMenuItem(value: 'activate', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Activate Node')]))
+                                                   else
+                                                     const PopupMenuItem(value: 'maintenance', child: Row(children: [Icon(Icons.build_circle_outlined, size: 18, color: Colors.orange), SizedBox(width: 8), Text('Set Maintenance')])),
+                                                   if (n.role == 'worker') ...[
+                                                     const PopupMenuDivider(),
+                                                     const PopupMenuItem(value: 'sync-token', child: Row(children: [Icon(Icons.sync_lock, size: 18, color: Color(0xFFF97316)), SizedBox(width: 8), Text('Sync Auth Token')])),
+                                                   ],
+                                                   const PopupMenuDivider(),
+                                                   const PopupMenuItem(value: 'reboot', child: Row(children: [Icon(Icons.restart_alt, size: 18, color: Colors.orangeAccent), SizedBox(width: 8), Text('Reboot Node')])),
+                                                   PopupMenuItem(value: 'leave', enabled: n.status != 'left', child: const Row(children: [Icon(Icons.exit_to_app, size: 18, color: Colors.redAccent), SizedBox(width: 8), Text('Force Leave')])),
+                                                 ],
+                                               ),
                                           ),
                                         ])).toList(),
                                       ),
