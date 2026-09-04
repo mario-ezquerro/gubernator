@@ -1,5 +1,6 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import '../../widgets/sre_profiles_dialog.dart';
 
 /// Grafana metrics page — embeds the Grafana dashboard with toolbar controls and direct links.
 class GrafanaPage extends StatelessWidget {
@@ -62,6 +63,21 @@ class GrafanaPage extends StatelessWidget {
                 ],
               ),
               const Spacer(),
+              FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF97316).withValues(alpha: 0.15),
+                  foregroundColor: const Color(0xFFF97316),
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const SreProfilesDialog(),
+                  );
+                },
+                icon: const Icon(Icons.auto_awesome_motion, size: 16),
+                label: const Text('SRE Stack Profiles'),
+              ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: () {
                   html.window.open('/grafana/d/gubernator/gubernator-cluster-overview?orgId=1', '_blank');

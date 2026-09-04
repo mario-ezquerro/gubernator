@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/spf13/cobra"
@@ -49,13 +50,6 @@ Access points after deployment:
 			os.Exit(1)
 		}
 
-		// 2. Generate config files
-		if err := monitor.WriteConfigs(nil); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to write configs: %v\n", err)
-			os.Exit(1)
-		}
-
-		// 3. Deploy all containers (pass Gubernator web credentials for Grafana SSO)
 		webUser := os.Getenv("GBNT_WEB_USER")
 		webPass := os.Getenv("GBNT_WEB_PASSWORD")
 		if webUser == "" {
@@ -64,10 +58,26 @@ Access points after deployment:
 		if webPass == "" {
 			webPass = "admin"
 		}
-		if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
-			fmt.Fprintf(os.Stderr, "\n❌ Deployment failed: %v\n", err)
-			fmt.Fprintln(os.Stderr, "Run 'gbnt monitor stop' to clean up partially deployed containers.")
-			os.Exit(1)
+
+		if monitorProfileFlag != "" && monitorProfileFlag != "cloud-native" {
+			if err := monitor.SwitchProfile(monitorProfileFlag, webUser, webPass); err != nil {
+				fmt.Fprintf(os.Stderr, "\n❌ Deployment failed for profile %s: %v\n", monitorProfileFlag, err)
+				os.Exit(1)
+			}
+		} else {
+			// 2. Generate config files
+			if err := monitor.WriteConfigs(nil); err != nil {
+				fmt.Fprintf(os.Stderr, "❌ Failed to write configs: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 3. Deploy all containers (pass Gubernator web credentials for Grafana SSO)
+			if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
+				fmt.Fprintf(os.Stderr, "\n❌ Deployment failed: %v\n", err)
+				fmt.Fprintln(os.Stderr, "Run 'gbnt monitor stop' to clean up partially deployed containers.")
+				os.Exit(1)
+			}
+			_ = monitor.SetActiveProfile("cloud-native")
 		}
 
 		fmt.Println()
@@ -151,11 +161,63 @@ var monitorScopeStopCmd = &cobra.Command{
 	},
 }
 
+var monitorProfilesCmd = &cobra.Command{
+	Use:   "profiles",
+	Short: "List all SRE Observability architecture profiles and sizing recommendations",
+	Run: func(cmd *cobra.Command, args []string) {
+		profiles := monitor.ListProfiles()
+		active := monitor.GetActiveProfile()
+		fmt.Println("\n🛡️  Gubernator SRE Observability Profiles")
+		fmt.Println(strings.Repeat("═", 100))
+		for _, p := range profiles {
+			statusMark := "  "
+			if p.ID == active {
+				statusMark = "✓ "
+			}
+			fmt.Printf("%s[%s] %s (%s)\n", statusMark, p.ID, p.Name, p.Subtitle)
+			fmt.Printf("   🏷️  Hosts: %s   | 📦 Contenedores: %s   | 💾 RAM: %s\n",
+				p.RecommendedHosts, p.RecommendedContainers, p.RecommendedRAM)
+			fmt.Printf("   📝 Entorno ideal: %s\n", p.IdealEnvironment)
+			fmt.Println(strings.Repeat("─", 100))
+		}
+		fmt.Printf("Active Profile: %s\n", active)
+		fmt.Println("To switch profile: gbnt monitor switch <profile_id>")
+		fmt.Println()
+	},
+}
+
+var monitorSwitchCmd = &cobra.Command{
+	Use:   "switch [profile_id]",
+	Short: "Switch the active SRE Observability stack architecture profile",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		targetID := args[0]
+		webUser := os.Getenv("GBNT_WEB_USER")
+		webPass := os.Getenv("GBNT_WEB_PASSWORD")
+		if webUser == "" {
+			webUser = "admin"
+		}
+		if webPass == "" {
+			webPass = "admin"
+		}
+		if err := monitor.SwitchProfile(targetID, webUser, webPass); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Failed to switch SRE profile: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var monitorProfileFlag string
+
 func init() {
 	rootCmd.AddCommand(monitorCmd)
 	monitorCmd.AddCommand(monitorInitCmd)
 	monitorCmd.AddCommand(monitorStatusCmd)
 	monitorCmd.AddCommand(monitorStopCmd)
+	monitorCmd.AddCommand(monitorProfilesCmd)
+	monitorCmd.AddCommand(monitorSwitchCmd)
+
+	monitorInitCmd.Flags().StringVarP(&monitorProfileFlag, "profile", "p", "cloud-native", "Observability architecture profile (ultra-light, cloud-native, unified-otel, enterprise-elk, external-saas)")
 
 	monitorCmd.AddCommand(monitorScopeCmd)
 	monitorScopeCmd.AddCommand(monitorScopeStatusCmd)

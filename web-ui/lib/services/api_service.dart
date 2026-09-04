@@ -2231,6 +2231,32 @@ class ApiService {
       throw Exception(err['error'] ?? 'Failed to configure option on $name');
     }
   }
+
+  /// Fetches SRE Observability architecture profiles.
+  static Future<Map<String, dynamic>> getMonitorProfiles() async {
+    final response = await http.get(
+      Uri.parse('/api/monitor/profiles'),
+      headers: authHeaders,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to load monitor profiles: ${response.statusCode}');
+  }
+
+  /// Switches active SRE Observability stack architecture profile.
+  static Future<Map<String, dynamic>> switchMonitorProfile(String profileId) async {
+    final response = await http.post(
+      Uri.parse('/api/monitor/profiles/switch'),
+      headers: authHeaders,
+      body: jsonEncode({'profile': profileId}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    final err = jsonDecode(response.body);
+    throw Exception(err['error'] ?? 'Failed to switch SRE profile');
+  }
 }
 
 // -----------------------------------------------------------------------------

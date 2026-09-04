@@ -477,6 +477,7 @@ func StartDashboard() {
 		api.GET("/slo/history", sloHistoryHandler)
 		api.GET("/slo/red", sloREDMetricsHandler)
 		api.GET("/slo/notify/config", sloGetNotifyConfigHandler)
+		api.GET("/monitor/profiles", getMonitorProfilesHandler)
 		api.GET("/caddy/status", caddyStatusHandler)
 		api.GET("/caddy/routes", caddyRoutesHandler)
 		api.GET("/caddy/certs", caddyCertsHandler)
@@ -537,6 +538,7 @@ func StartDashboard() {
 		api.POST("/scope/enable", auth.RequireRole(auth.RoleAdmin), scopeEnableHandler)
 		api.POST("/scope/disable", auth.RequireRole(auth.RoleAdmin), scopeDisableHandler)
 		api.POST("/scope/update", auth.RequireRole(auth.RoleAdmin), scopeUpdateHandler)
+		api.POST("/monitor/profiles/switch", auth.RequireRole(auth.RoleAdmin), switchMonitorProfileHandler)
 		api.POST("/update/apply", auth.RequireRole(auth.RoleAdmin), updateApplyHandler)
 		api.POST("/slo/sync", auth.RequireRole(auth.RoleAdmin), sloSyncHandler)
 		api.POST("/slo/validate", auth.RequireRole(auth.RoleAdmin), sloValidateHandler)
@@ -3571,6 +3573,47 @@ func scopeUpdateHandler(c *gin.Context) {
 		"message": "Weave Scope image pulled and updated successfully",
 		"output":  out,
 		"status":  monitor.GetScopeStatus(hostIP),
+	})
+}
+
+func getMonitorProfilesHandler(c *gin.Context) {
+	profiles := monitor.ListProfiles()
+	activeID := monitor.GetActiveProfile()
+	c.JSON(http.StatusOK, gin.H{
+		"profiles":       profiles,
+		"active_profile": activeID,
+	})
+}
+
+type SwitchProfileRequest struct {
+	Profile string `json:"profile" binding:"required"`
+}
+
+func switchMonitorProfileHandler(c *gin.Context) {
+	var req SwitchProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid profile request: " + err.Error()})
+		return
+	}
+
+	webUser := os.Getenv("GBNT_WEB_USER")
+	webPass := os.Getenv("GBNT_WEB_PASSWORD")
+	if webUser == "" {
+		webUser = "admin"
+	}
+	if webPass == "" {
+		webPass = "admin"
+	}
+
+	if err := monitor.SwitchProfile(req.Profile, webUser, webPass); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to switch profile: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "SRE Observability profile switched successfully",
+		"active_profile": monitor.GetActiveProfile(),
+		"profiles":       monitor.ListProfiles(),
 	})
 }
 

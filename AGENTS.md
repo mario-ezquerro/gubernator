@@ -616,6 +616,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Enhanced `_deleteHostImage` in `web-ui/lib/screens/pages/image_security_page.dart` to detect active workloads and display a warning explaining that deleting an in-use image untags it on hosts while leaving running containers operational until their stack is updated.
   - Added immediate optimistic removal from `_scans` upon successful deletion, guaranteeing the image vanishes immediately from the table without delay.
 
+### 82. SRE Observability Architecture Profiles & Presets Subsystem (`v2.71.0`)
+* **Pluggable Observability Architecture Profiles:** Modular SRE monitoring presets tailored to cluster capacity and hardware constraints:
+  - ⚡ `ultra-light` (*VictoriaMetrics + VictoriaLogs + Fluent Bit*): Designed for 1-5 Centurions and <30 containers on budget VPS (2-4GB) and edge with <500MB RAM consumption.
+  - 🌟 `cloud-native` (*Prometheus + Loki + Promtail + Grafana + Sloth*): Recommended default for 3-15 Centurions and 20-100 containers with built-in SLO error budget calculation.
+  - 🚀 `unified-otel` (*ClickHouse + OpenTelemetry Collector + SigNoz*): Next-gen unified columnar storage for microservices with heavy distributed tracing.
+  - 🏢 `enterprise-elk` (*OpenSearch / ELK + Fluent Bit + Metricbeat*): Enterprise full-text search, audit logging, and SIEM compliance for 10+ Centurions and >100 containers.
+  - 🌐 `external-saas` (*Vector / Fluent Bit Forwarder*): Zero-footprint forwarding directly to Datadog, Splunk, or Grafana Cloud with <100MB RAM usage.
+* **Interactive Web UI Profile Selector (`SreProfilesDialog`):** Accessible via "SRE Stack Profiles" in the Monitoring toolbar, rendering rich cards with sizing chips (Hosts, Containers, RAM), ideal environment callouts, component breakdowns, and one-click stack switching.
+* **Full CLI Parity (`gbnt monitor profiles` & `switch`):** Dedicated commands `gbnt monitor profiles`, `gbnt monitor switch <id>`, and `gbnt monitor init --profile=<id>` with formatted tabular sizing summaries.
+* **REST API Endpoints:** Endpoints `GET /api/monitor/profiles` and `POST /api/monitor/profiles/switch` with automatic graceful container stop, network verification, and database stack synchronization.
+
 
 
 
