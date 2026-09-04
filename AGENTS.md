@@ -625,7 +625,21 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - 🌐 `external-saas` (*Vector / Fluent Bit Forwarder*): Zero-footprint forwarding directly to Datadog, Splunk, or Grafana Cloud with <100MB RAM usage.
 * **Interactive Web UI Profile Selector (`SreProfilesDialog`):** Accessible via "SRE Stack Profiles" in the Monitoring toolbar, rendering rich cards with sizing chips (Hosts, Containers, RAM), ideal environment callouts, component breakdowns, and one-click stack switching.
 * **Full CLI Parity (`gbnt monitor profiles` & `switch`):** Dedicated commands `gbnt monitor profiles`, `gbnt monitor switch <id>`, and `gbnt monitor init --profile=<id>` with formatted tabular sizing summaries.
-* **REST API Endpoints:** Endpoints `GET /api/monitor/profiles` and `POST /api/monitor/profiles/switch` with automatic graceful container stop, network verification, and database stack synchronization.
+### 83. Advanced Production POC Blueprints, Documentation & Server Directory Navigation (`v2.72.0`)
+* **6 New Production POC Architectures & Complete Documentation:**
+  - 🧠 `deepseek-vllm` (*DeepSeek & vLLM High-Throughput Inference Engine*): OpenAI-compatible LLM inference server running DeepSeek R1 with vLLM PagedAttention, GPU hardware targeting, and Open-WebUI chat frontend.
+  - 🔍 `pgvector-rag` (*GenAI RAG Search & Vector Database Stack*): Production RAG pipeline featuring PostgreSQL 16 with pgvector extension, Qdrant vector database, and Open-WebUI knowledge base search.
+  - 📊 `kafka-clickhouse` (*Real-Time Data Streaming & Big Data Analytics*): Event-driven data pipeline combining Apache Kafka (KRaft mode - no ZooKeeper), ClickHouse columnar OLAP database, and Kafka-UI web console.
+  - 🔨 `gitea-woodpecker` (*Private GitOps Forge & Container CI/CD Suite*): Lightweight self-hosted DevOps stack: Gitea source control + Woodpecker CI server and distributed worker runners placed on Centurion workers.
+  - ⚡ `valkey-sentinel` (*High-Availability In-Memory Cache & Sentinel Cluster*): Fault-tolerant distributed caching stack using Valkey 7.2 (Linux Foundation Redis) with master-replica replication and quorum Sentinel failover.
+  - 🔑 `keycloak-sso` (*Enterprise Identity & Single Sign-On Suite*): Enterprise IAM with Keycloak 24 and PostgreSQL, providing OAuth2/OIDC federation and direct integration with Gubernator LDAP/AD security.
+* **Expanded POC Library Catalog (16 Total Blueprints):** Fully registered in `internal/examples/examples.go` with embedded compose YAML definitions in `internal/examples/data/` and comprehensive `README.md` guides in `examples/`.
+* **Interactive Master Server Filesystem Navigation (`ServerStackPickerDialog`):**
+  - Enhanced server directory browsing with quick location shortcuts (`~/.gbnt/examples`, `~/.gbnt/stacks`, `/var/contenedores`, `/etc/gubernator/stacks`, `~`).
+  - Interactive breadcrumb navigation trail with parent directory traversal (`[⬆]`).
+  - Navigable subdirectories list allowing users to explore nested folder structures across the master server.
+* **Compose Studio Starter Templates:** Added one-click starter templates in `ComposeStudioPage` for DeepSeek & vLLM, GenAI RAG Search, and Kafka & ClickHouse Analytics.
+
 
 
 

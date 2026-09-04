@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  vllm-engine:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    command: >
+      --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+      --port 8000
+      --max-model-len 4096
+      --trust-remote-code
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/contenedores/vllm/models:/root/.cache/huggingface
+    labels:
+      - "ingress.host=api.deepseek.gbnt.local"
+      - "gbnt.caddy.port=8000"
+      - "gbnt.service.name=deepseek-engine"
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          cpus: "1.0"
+          memory: 4G
+      placement:
+        constraints:
+          - stack.name == deepseek-vllm
+          - ingress.host == api.deepseek.gbnt.local
+          - gbnt.caddy.port == 8000
+
+  chat-ui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    environment:
+      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:8000/v1
+      - OPENAI_API_KEY=gubernator-local
+      - WEBUI_AUTH=False
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/contenedores/open-webui/data:/app/backend/data
+    labels:
+      - "ingress.host=chat.deepseek.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.service.name=deepseek-chat"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == deepseek-vllm
+          - ingress.host == chat.deepseek.gbnt.local
+          - gbnt.caddy.port == 8080

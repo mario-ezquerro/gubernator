@@ -1,0 +1,105 @@
+version: "3.8"
+
+# =============================================================================
+# Gubernator (gbnt) - Real-Time Data Streaming & Big Data Analytics Stack
+# Apache Kafka (KRaft mode) + ClickHouse Columnar DB + Kafka Web Console
+# =============================================================================
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Apache Kafka Event Streaming Broker (KRaft mode - Zero ZooKeeper)
+  # ─────────────────────────────────────────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.7.0
+    restart: unless-stopped
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka.analytics.gbnt.local:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka.analytics.gbnt.local:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_NUM_PARTITIONS=3
+    ports:
+      - "9092:9092"
+    volumes:
+      - /var/contenedores/kafka/data:/tmp/kraft-combined-logs
+    labels:
+      - "ingress.host=kafka.analytics.gbnt.local"
+      - "gbnt.service.name=kafka-broker"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == kafka-clickhouse
+          - ingress.host == kafka.analytics.gbnt.local
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. ClickHouse Ultra-Fast Columnar Analytics Database
+  # ─────────────────────────────────────────────────────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - /var/contenedores/clickhouse/data:/var/lib/clickhouse
+    labels:
+      - "ingress.host=clickhouse.analytics.gbnt.local"
+      - "gbnt.caddy.port=8123"
+      - "gbnt.service.name=clickhouse-server"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == kafka-clickhouse
+          - ingress.host == clickhouse.analytics.gbnt.local
+          - gbnt.caddy.port == 8123
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Kafka UI Web Console for Topic, Partition, and Message Inspection
+  # ─────────────────────────────────────────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    restart: unless-stopped
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=gbnt-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka.analytics.gbnt.local:9092
+      - DYNAMIC_CONFIG_ENABLED=true
+    ports:
+      - "8080:8080"
+    labels:
+      - "ingress.host=ui.analytics.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.service.name=kafka-dashboard"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == kafka-clickhouse
+          - ingress.host == ui.analytics.gbnt.local
+          - gbnt.caddy.port == 8080

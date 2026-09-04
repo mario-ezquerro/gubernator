@@ -1,0 +1,88 @@
+version: "3.8"
+
+services:
+  postgres-vector:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ragdb
+      - POSTGRES_USER=raguser
+      - POSTGRES_PASSWORD=gubernator-secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - /var/contenedores/pgvector/data:/var/lib/postgresql/data
+    labels:
+      - "ingress.host=postgres.rag.gbnt.local"
+      - "gbnt.caddy.port=5432"
+      - "gbnt.service.name=pgvector-db"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == pgvector-rag
+          - ingress.host == postgres.rag.gbnt.local
+          - gbnt.caddy.port == 5432
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - /var/contenedores/qdrant/storage:/qdrant/storage
+    labels:
+      - "ingress.host=qdrant.rag.gbnt.local"
+      - "gbnt.caddy.port=6333"
+      - "gbnt.service.name=qdrant-vector"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == pgvector-rag
+          - ingress.host == qdrant.rag.gbnt.local
+          - gbnt.caddy.port == 6333
+
+  rag-ui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    environment:
+      - WEBUI_AUTH=False
+      - RAG_EMBEDDING_ENGINE=ollama
+      - VECTOR_DB=qdrant
+      - QDRANT_HOST=qdrant.rag.gbnt.local
+      - QDRANT_PORT=6333
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/contenedores/rag-ui/data:/app/backend/data
+    labels:
+      - "ingress.host=search.rag.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.service.name=rag-search-ui"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == pgvector-rag
+          - ingress.host == search.rag.gbnt.local
+          - gbnt.caddy.port == 8080

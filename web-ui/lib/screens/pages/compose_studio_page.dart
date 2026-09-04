@@ -351,6 +351,172 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           cpus: "0.5"
           memory: 1G
 ''',
+    'DeepSeek & vLLM Inference': '''services:
+  vllm-engine:
+    image: vllm/vllm-openai:latest
+    restart: unless-stopped
+    command: >
+      --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+      --port 8000
+      --max-model-len 4096
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/contenedores/vllm/models:/root/.cache/huggingface
+    labels:
+      - "ingress.host=api.deepseek.gbnt.local"
+      - "gbnt.caddy.port=8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+        reservations:
+          cpus: "1.0"
+          memory: 4G
+      placement:
+        constraints:
+          - stack.name == deepseek-vllm
+          - ingress.host == api.deepseek.gbnt.local
+          - gbnt.caddy.port == 8000
+
+  chat-ui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    environment:
+      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:8000/v1
+      - WEBUI_AUTH=False
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/contenedores/open-webui/data:/app/backend/data
+    labels:
+      - "ingress.host=chat.deepseek.gbnt.local"
+      - "gbnt.caddy.port=8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == deepseek-vllm
+          - ingress.host == chat.deepseek.gbnt.local
+          - gbnt.caddy.port == 8080
+''',
+    'GenAI RAG Search (pgvector)': '''services:
+  postgres-vector:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ragdb
+      - POSTGRES_USER=raguser
+      - POSTGRES_PASSWORD=gubernator-secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - /var/contenedores/pgvector/data:/var/lib/postgresql/data
+    labels:
+      - "ingress.host=postgres.rag.gbnt.local"
+      - "gbnt.caddy.port=5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - /var/contenedores/qdrant/storage:/qdrant/storage
+    labels:
+      - "ingress.host=qdrant.rag.gbnt.local"
+      - "gbnt.caddy.port=6333"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  rag-ui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    environment:
+      - WEBUI_AUTH=False
+      - VECTOR_DB=qdrant
+      - QDRANT_HOST=qdrant.rag.gbnt.local
+      - QDRANT_PORT=6333
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/contenedores/rag-ui/data:/app/backend/data
+    labels:
+      - "ingress.host=search.rag.gbnt.local"
+      - "gbnt.caddy.port=8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+''',
+    'Kafka & ClickHouse Analytics': '''services:
+  kafka:
+    image: apache/kafka:3.7.0
+    restart: unless-stopped
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka.analytics.gbnt.local:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka.analytics.gbnt.local:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    ports:
+      - "9092:9092"
+    volumes:
+      - /var/contenedores/kafka/data:/tmp/kraft-combined-logs
+    labels:
+      - "ingress.host=kafka.analytics.gbnt.local"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    volumes:
+      - /var/contenedores/clickhouse/data:/var/lib/clickhouse
+    labels:
+      - "ingress.host=clickhouse.analytics.gbnt.local"
+      - "gbnt.caddy.port=8123"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    restart: unless-stopped
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=gbnt-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka.analytics.gbnt.local:9092
+    ports:
+      - "8080:8080"
+    labels:
+      - "ingress.host=ui.analytics.gbnt.local"
+      - "gbnt.caddy.port=8080"
+''',
   };
 
   final FocusNode _editorFocusNode = FocusNode();

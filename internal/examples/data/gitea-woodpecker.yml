@@ -1,0 +1,89 @@
+version: "3.8"
+
+services:
+  gitea:
+    image: gitea/gitea:latest
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__server__DOMAIN=git.devops.gbnt.local
+      - GITEA__server__ROOT_URL=http://git.devops.gbnt.local
+      - GITEA__server__SSH_PORT=2222
+      - GITEA__security__INSTALL_LOCK=true
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - /var/contenedores/gitea/data:/data
+    labels:
+      - "ingress.host=git.devops.gbnt.local"
+      - "gbnt.caddy.port=3000"
+      - "gbnt.service.name=gitea-forge"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == gitea-woodpecker
+          - ingress.host == git.devops.gbnt.local
+          - gbnt.caddy.port == 3000
+
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:latest
+    restart: unless-stopped
+    environment:
+      - WOODPECKER_OPEN=true
+      - WOODPECKER_HOST=http://ci.devops.gbnt.local
+      - WOODPECKER_GITEA=true
+      - WOODPECKER_GITEA_URL=http://git.devops.gbnt.local:3000
+      - WOODPECKER_AGENT_SECRET=gubernator-devops-secret
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - /var/contenedores/woodpecker/server:/var/lib/woodpecker
+    labels:
+      - "ingress.host=ci.devops.gbnt.local"
+      - "gbnt.caddy.port=8000"
+      - "gbnt.service.name=woodpecker-server"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == gitea-woodpecker
+          - ingress.host == ci.devops.gbnt.local
+          - gbnt.caddy.port == 8000
+
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:latest
+    restart: unless-stopped
+    environment:
+      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_AGENT_SECRET=gubernator-devops-secret
+      - WOODPECKER_MAX_WORKFLOWS=2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == gitea-woodpecker
+          - gbnt.node.role == worker

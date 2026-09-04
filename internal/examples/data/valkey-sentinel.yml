@@ -1,0 +1,83 @@
+version: "3.8"
+
+services:
+  valkey-master:
+    image: valkey/valkey:7.2
+    restart: unless-stopped
+    command: valkey-server --appendonly yes --protected-mode no
+    ports:
+      - "6379:6379"
+    volumes:
+      - /var/contenedores/valkey/master:/data
+    labels:
+      - "ingress.host=master.cache.gbnt.local"
+      - "gbnt.caddy.port=6379"
+      - "gbnt.service.name=valkey-primary"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == valkey-sentinel
+          - ingress.host == master.cache.gbnt.local
+          - gbnt.caddy.port == 6379
+
+  valkey-replica:
+    image: valkey/valkey:7.2
+    restart: unless-stopped
+    command: valkey-server --replicaof valkey-master 6379 --appendonly yes --protected-mode no
+    volumes:
+      - /var/contenedores/valkey/replica:/data
+    labels:
+      - "ingress.host=replica.cache.gbnt.local"
+      - "gbnt.caddy.port=6379"
+      - "gbnt.service.name=valkey-replica"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == valkey-sentinel
+          - gbnt.node.role == worker
+
+  valkey-sentinel:
+    image: valkey/valkey:7.2
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo 'port 26379' > /tmp/sentinel.conf &&
+      echo 'sentinel monitor mymaster valkey-master 6379 1' >> /tmp/sentinel.conf &&
+      echo 'sentinel down-after-milliseconds mymaster 4000' >> /tmp/sentinel.conf &&
+      echo 'sentinel failover-timeout mymaster 30000' >> /tmp/sentinel.conf &&
+      echo 'sentinel parallel-syncs mymaster 1' >> /tmp/sentinel.conf &&
+      echo 'protected-mode no' >> /tmp/sentinel.conf &&
+      valkey-sentinel /tmp/sentinel.conf"
+    ports:
+      - "26379:26379"
+    labels:
+      - "ingress.host=sentinel.cache.gbnt.local"
+      - "gbnt.caddy.port=26379"
+      - "gbnt.service.name=valkey-sentinel"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+      placement:
+        constraints:
+          - stack.name == valkey-sentinel
+          - ingress.host == sentinel.cache.gbnt.local
+          - gbnt.caddy.port == 26379

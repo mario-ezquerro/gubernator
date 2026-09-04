@@ -1,0 +1,72 @@
+version: "3.8"
+
+# =============================================================================
+# Gubernator (gbnt) - Enterprise Identity & Single Sign-On (SSO) Suite
+# Keycloak IAM (OAuth2 / OIDC / SAML 2.0) + Dedicated PostgreSQL Backend
+# =============================================================================
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. PostgreSQL Database for Identity & Realm Persistence
+  # ─────────────────────────────────────────────────────────────────────────────
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=gubernator-sso-secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - /var/contenedores/keycloak/postgres:/var/lib/postgresql/data
+    labels:
+      - "gbnt.service.name=keycloak-db"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+      placement:
+        constraints:
+          - stack.name == keycloak-sso
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Keycloak Enterprise Identity & Access Management (IAM)
+  # ─────────────────────────────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    restart: unless-stopped
+    command: start-dev --http-enabled=true
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=gubernator-sso-secret
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_PROXY_HEADERS=xforwarded
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_ENABLED=true
+    ports:
+      - "8080:8080"
+    labels:
+      - "ingress.host=auth.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.service.name=keycloak-iam"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      placement:
+        constraints:
+          - stack.name == keycloak-sso
+          - ingress.host == auth.gbnt.local
+          - gbnt.caddy.port == 8080
