@@ -53,6 +53,26 @@ class GrafanaPage extends StatelessWidget {
                           style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF97316).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome_motion, size: 12, color: Color(0xFFF97316)),
+                            SizedBox(width: 4),
+                            Text(
+                              'ARQUITECTURA SRE',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFF97316)),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -63,10 +83,12 @@ class GrafanaPage extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              FilledButton.tonalIcon(
+              FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFF97316).withValues(alpha: 0.15),
-                  foregroundColor: const Color(0xFFF97316),
+                  backgroundColor: const Color(0xFFF97316),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () {
                   showDialog(
@@ -75,7 +97,10 @@ class GrafanaPage extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.auto_awesome_motion, size: 16),
-                label: const Text('SRE Stack Profiles'),
+                label: const Text(
+                  'Perfiles SRE / Presets',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(

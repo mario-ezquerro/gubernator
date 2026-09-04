@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/sre_profile_overview_card.dart';
 
 /// Overview page — shows stats row + stacks/nodes side by side (compact).
 class OverviewPage extends StatelessWidget {
@@ -42,7 +43,11 @@ class OverviewPage extends StatelessWidget {
           children: [
             // ─── Stats Cards ───────────────────────────────
             _buildStatsRow(theme, running, activeNodes),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // ─── SRE Observability Architecture Profile Card ───
+            SreProfileOverviewCard(onRefresh: onRefresh),
+            const SizedBox(height: 20),
 
             // ─── Quick Links Row ───────────────────────────
             _buildQuickLinksRow(theme),
