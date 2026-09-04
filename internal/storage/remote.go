@@ -50,7 +50,7 @@ func IsLocalHost(ip string) bool {
 	return false
 }
 
-// GetTargetHostIPs resolves a target_node string ("all", Node ID, or Node IP) into a list of node IPs.
+// GetTargetHostIPs resolves a target_node string ("all", comma-separated list, Node ID, or Node IP) into a list of node IPs.
 func GetTargetHostIPs(targetNode string) []string {
 	targetNode = strings.TrimSpace(strings.ToLower(targetNode))
 	var ips []string
@@ -72,6 +72,24 @@ func GetTargetHostIPs(targetNode string) []string {
 					if n.IP != "" && !containsString(ips, n.IP) {
 						ips = append(ips, n.IP)
 					}
+				}
+			}
+		}
+		return ips
+	}
+
+	// Handle comma-separated list of nodes or IPs
+	if strings.Contains(targetNode, ",") {
+		parts := strings.Split(targetNode, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			subIPs := GetTargetHostIPs(part)
+			for _, sip := range subIPs {
+				if sip != "" && !containsString(ips, sip) {
+					ips = append(ips, sip)
 				}
 			}
 		}

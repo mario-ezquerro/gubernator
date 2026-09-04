@@ -6519,14 +6519,37 @@ volumes:
     int replicaCount = 3;
     bool autoMount = true;
     bool forceRecreate = false;
-    String targetScope = 'all';
     String networkMode = 'storage'; // 'storage', 'management', 'custom'
+
+    // Node selection tracking: default to first 3 nodes if >= 3, or all nodes
+    final clusterNodes = widget.state.nodes;
+    final Set<String> selectedNodeIds = <String>{};
+    if (clusterNodes.length >= 3) {
+      for (int i = 0; i < 3; i++) {
+        selectedNodeIds.add(clusterNodes[i].id);
+      }
+      replicaCount = 3;
+    } else if (clusterNodes.length == 2) {
+      for (final n in clusterNodes) {
+        selectedNodeIds.add(n.id);
+      }
+      replicaCount = 2;
+    } else {
+      for (final n in clusterNodes) {
+        selectedNodeIds.add(n.id);
+      }
+      replicaCount = 2;
+    }
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDlgState) {
+            final totalSelected = selectedNodeIds.length;
+            final isDivisible = totalSelected >= 2 && (totalSelected % replicaCount == 0);
+            final isValid = totalSelected >= 2 && isDivisible;
+
             return AlertDialog(
               title: const Row(
                 children: [
@@ -6536,7 +6559,7 @@ volumes:
                 ],
               ),
               content: SizedBox(
-                width: 560,
+                width: 620,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -6552,19 +6575,33 @@ volumes:
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      // Replication Strategy with clear explanation
                       DropdownButtonFormField<int>(
                         value: replicaCount,
                         decoration: const InputDecoration(
-                          labelText: 'Replication Strategy',
+                          labelText: 'Replication Strategy (Mirror Multiplier)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.copy_all, size: 20),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 3, child: Text('Replica 3 — 3-Way Mirror (Recommended for 3 hosts)')),
-                          DropdownMenuItem(value: 2, child: Text('Replica 2 — 2-Way Mirror (Requires 2 hosts)')),
+                          DropdownMenuItem(
+                            value: 3,
+                            child: Text('Replica 3 — 3-Way Mirror (Requires multiple of 3 nodes: 3, 6)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 2,
+                            child: Text('Replica 2 — 2-Way Mirror (Requires multiple of 2 nodes: 2, 4)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 4,
+                            child: Text('Replica 4 — 4-Way Mirror (Requires 4 nodes)'),
+                          ),
                         ],
                         onChanged: (val) {
-                          if (val != null) setDlgState(() => replicaCount = val);
+                          if (val != null) {
+                            setDlgState(() => replicaCount = val);
+                          }
                         },
                       ),
                       const SizedBox(height: 16),
@@ -6602,7 +6639,7 @@ volumes:
                           controller: customHostsCtrl,
                           decoration: const InputDecoration(
                             labelText: 'Custom Node Storage IPs (Comma-separated)',
-                            hintText: 'e.g. 10.10.100.24, 10.10.100.25, 10.10.100.26',
+                            hintText: 'e.g. 10.10.100.27, 10.10.100.25, 10.10.100.26',
                             helperText: 'Enter specific storage IPs for the manager and worker bricks.',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.lan, size: 20),
@@ -6611,31 +6648,200 @@ volumes:
                       ],
                       const SizedBox(height: 16),
 
-                      DropdownButtonFormField<String>(
-                        value: targetScope,
-                        decoration: const InputDecoration(
-                          labelText: 'Target Centurion Nodes Scope',
-                          helperText: 'Select All Centurions for whole cluster pool or choose a specific node.',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.computer, size: 20),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'all',
-                            child: Text('🌐 All Centurions (Full Cluster Mesh)'),
-                          ),
-                          ...widget.state.nodes.map(
-                            (node) => DropdownMenuItem(
-                              value: node.id,
-                              child: Text('💻 ${node.role.toUpperCase()}: ${node.ip} (${node.id})'),
+                      // Granular Centurion Node Selection Card
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border(
+                            left: BorderSide(
+                              color: isValid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                              width: 4,
                             ),
                           ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDlgState(() => targetScope = val);
-                        },
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.dns, size: 18, color: Color(0xFF10B981)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Target Centurion Nodes ($totalSelected of ${clusterNodes.length} Selected)',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                const Spacer(),
+                                // Preset Quick Select Chips
+                                Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    ActionChip(
+                                      visualDensity: VisualDensity.compact,
+                                      avatar: const Icon(Icons.select_all, size: 14),
+                                      label: const Text('All Nodes', style: TextStyle(fontSize: 11)),
+                                      onPressed: () {
+                                        setDlgState(() {
+                                          selectedNodeIds.clear();
+                                          for (final n in clusterNodes) {
+                                            selectedNodeIds.add(n.id);
+                                          }
+                                          if (selectedNodeIds.length == 4) {
+                                            replicaCount = 2; // Auto-tune 4 nodes to Replica 2
+                                          } else if (selectedNodeIds.length % 3 == 0) {
+                                            replicaCount = 3;
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    if (clusterNodes.length >= 3)
+                                      ActionChip(
+                                        visualDensity: VisualDensity.compact,
+                                        avatar: const Icon(Icons.filter_3, size: 14),
+                                        label: const Text('3 Nodes (R3)', style: TextStyle(fontSize: 11)),
+                                        onPressed: () {
+                                          setDlgState(() {
+                                            selectedNodeIds.clear();
+                                            for (int i = 0; i < 3 && i < clusterNodes.length; i++) {
+                                              selectedNodeIds.add(clusterNodes[i].id);
+                                            }
+                                            replicaCount = 3;
+                                          });
+                                        },
+                                      ),
+                                    if (clusterNodes.length >= 2)
+                                      ActionChip(
+                                        visualDensity: VisualDensity.compact,
+                                        avatar: const Icon(Icons.filter_2, size: 14),
+                                        label: const Text('2 Nodes (R2)', style: TextStyle(fontSize: 11)),
+                                        onPressed: () {
+                                          setDlgState(() {
+                                            selectedNodeIds.clear();
+                                            for (int i = 0; i < 2 && i < clusterNodes.length; i++) {
+                                              selectedNodeIds.add(clusterNodes[i].id);
+                                            }
+                                            replicaCount = 2;
+                                          });
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Select the physical hosts where GlusterFS will place volume bricks. The total number of selected hosts must be divisible by the replica multiplier.',
+                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Node Checkbox List
+                            ...clusterNodes.map((node) {
+                              final isSelected = selectedNodeIds.contains(node.id);
+                              final isMgr = node.role.toLowerCase() == 'manager';
+                              return CheckboxListTile(
+                                dense: true,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                contentPadding: EdgeInsets.zero,
+                                activeColor: const Color(0xFF10B981),
+                                value: isSelected,
+                                title: Row(
+                                  children: [
+                                    Icon(
+                                      isMgr ? Icons.security : Icons.memory,
+                                      size: 16,
+                                      color: isMgr ? Colors.amber : const Color(0xFF3B82F6),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${node.role.toUpperCase()}: ${node.labels['gbnt.node.hostname'] ?? node.id}',
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'IP: ${node.ip}',
+                                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Colors.grey),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onChanged: (val) {
+                                  setDlgState(() {
+                                    if (val == true) {
+                                      selectedNodeIds.add(node.id);
+                                    } else {
+                                      selectedNodeIds.remove(node.id);
+                                    }
+                                    // Automatic smart suggestion of replica count
+                                    if (selectedNodeIds.length == 3) {
+                                      replicaCount = 3;
+                                    } else if (selectedNodeIds.length == 2 || selectedNodeIds.length == 4) {
+                                      replicaCount = 2;
+                                    }
+                                  });
+                                },
+                              );
+                            }),
+
+                            const SizedBox(height: 8),
+
+                            // Dynamic Validation Banner
+                            if (isValid)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, size: 16, color: Color(0xFF10B981)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Valid Topology: $totalSelected bricks with Replica $replicaCount ($totalSelected ÷ $replicaCount = ${totalSelected ~/ replicaCount} subvolume${totalSelected ~/ replicaCount > 1 ? 's' : ''}). GlusterFS create will succeed.',
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFEF4444)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        totalSelected < 2
+                                            ? 'Please select at least 2 Centurion nodes to form a cluster volume.'
+                                            : 'Divisibility Error: $totalSelected selected nodes is not divisible by Replica $replicaCount ($totalSelected % $replicaCount = ${totalSelected % replicaCount}). Please select ${totalSelected - (totalSelected % replicaCount)} or ${(totalSelected - (totalSelected % replicaCount)) + replicaCount} nodes, or change Replica Strategy to Replica ${totalSelected == 4 ? '2' : (totalSelected % 2 == 0 ? '2' : '3')}.',
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFFEF4444), fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
+
                       TextField(
                         controller: brickDirCtrl,
                         decoration: const InputDecoration(
@@ -6679,42 +6885,48 @@ volumes:
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    try {
-                      List<String>? targetNodes;
-                      if (targetScope != 'all') {
-                        targetNodes = [targetScope];
-                      }
-                      List<String>? customHosts;
-                      if (networkMode == 'custom' && customHostsCtrl.text.trim().isNotEmpty) {
-                        customHosts = customHostsCtrl.text
-                            .split(',')
-                            .map((s) => s.trim())
-                            .where((s) => s.isNotEmpty)
-                            .toList();
-                      }
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isValid ? const Color(0xFF10B981) : Colors.grey,
+                  ),
+                  onPressed: !isValid
+                      ? null
+                      : () async {
+                          Navigator.pop(ctx);
+                          try {
+                            List<String>? targetNodes;
+                            if (selectedNodeIds.length == clusterNodes.length) {
+                              targetNodes = ['all'];
+                            } else {
+                              targetNodes = selectedNodeIds.toList();
+                            }
+                            List<String>? customHosts;
+                            if (networkMode == 'custom' && customHostsCtrl.text.trim().isNotEmpty) {
+                              customHosts = customHostsCtrl.text
+                                  .split(',')
+                                  .map((s) => s.trim())
+                                  .where((s) => s.isNotEmpty)
+                                  .toList();
+                            }
 
-                      await ApiService.createGlusterVolume({
-                        'name': nameCtrl.text.trim(),
-                        'replica_count': replicaCount,
-                        'brick_dir': brickDirCtrl.text.trim(),
-                        'network_mode': networkMode,
-                        'custom_hosts': customHosts,
-                        'mount_point': mountPointCtrl.text.trim(),
-                        'auto_mount': autoMount,
-                        'target_nodes': targetNodes,
-                        'force': true,
-                        'force_recreate': forceRecreate,
-                      });
-                      _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
-                      _loadAllData();
-                    } catch (e) {
-                      _showErrorDialog('Volume Creation Failed', 'Failed to create GlusterFS volume ${nameCtrl.text.trim()}:\n\n$e');
-                      _showSnackBar('Failed to create volume: $e', isError: true);
-                    }
-                  },
+                            await ApiService.createGlusterVolume({
+                              'name': nameCtrl.text.trim(),
+                              'replica_count': replicaCount,
+                              'brick_dir': brickDirCtrl.text.trim(),
+                              'network_mode': networkMode,
+                              'custom_hosts': customHosts,
+                              'mount_point': mountPointCtrl.text.trim(),
+                              'auto_mount': autoMount,
+                              'target_nodes': targetNodes,
+                              'force': true,
+                              'force_recreate': forceRecreate,
+                            });
+                            _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
+                            _loadAllData();
+                          } catch (e) {
+                            _showErrorDialog('Volume Creation Failed', 'Failed to create GlusterFS volume ${nameCtrl.text.trim()}:\n\n$e');
+                            _showSnackBar('Failed to create volume: $e', isError: true);
+                          }
+                        },
                   child: const Text('Create & Optimize Volume'),
                 ),
               ],

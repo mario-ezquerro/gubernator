@@ -638,7 +638,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Enhanced server directory browsing with quick location shortcuts (`~/.gbnt/examples`, `~/.gbnt/stacks`, `/var/contenedores`, `/etc/gubernator/stacks`, `~`).
   - Interactive breadcrumb navigation trail with parent directory traversal (`[⬆]`).
   - Navigable subdirectories list allowing users to explore nested folder structures across the master server.
-* **Compose Studio Starter Templates:** Added one-click starter templates in `ComposeStudioPage` for DeepSeek & vLLM, GenAI RAG Search, and Kafka & ClickHouse Analytics.
+### 84. GlusterFS Multi-Node Granular Selection, Topology Validation & Auto-Tuning (`v2.73.0`)
+* **Granular Centurion Node Multi-Selection in GlusterFS Modal:**
+  - Upgraded `_showCreateGlusterVolumeDialog` in `web-ui/lib/screens/pages/storage_page.dart` with interactive host checkboxes for every Centurion in the cluster.
+  - Quick-selection chips: *All Nodes*, *3 Nodes (R3)*, and *2 Nodes (R2)* for instantaneous topology configuration.
+  - Automatically targets selected physical hosts and maps node IDs, host IPs, and dedicated dual-NIC storage interfaces (`10.10.100.0/24`).
+* **Live GlusterFS Topology Divisibility Validation:**
+  - Dynamic mathematical validator verifying that `total_selected_nodes % replica_count == 0` in real time before executing volume creation.
+  - Color-coded status feedback:
+    - ✅ **Green Success Banner:** Confirms topology validity with subvolume breakdown (e.g. `3 bricks ÷ Replica 3 = 1 subvolume`, or `4 bricks ÷ Replica 2 = 2 subvolumes`).
+    - ⚠️ **Amber Warning Banner:** Blocks submission when selection is incompatible (e.g. 4 nodes with Replica 3), detailing exact node adjustment recommendations or suggested replica switches.
+* **Auto-Tuning & Multi-Host Mount Orchestration (`gluster.go` & `remote.go`):**
+  - Backend `CreateGlusterVolume` auto-tunes replica multiplier when unconstrained (automatically configuring 4 nodes into distributed-replicated $2 \times 2$ pools).
+  - Explicit pre-flight validation preventing opaque Gluster CLI crashes with actionable error messages.
+  - Enhanced `GetTargetHostIPs` in `internal/storage/remote.go` to support comma-separated target node lists, enabling targeted automated `/etc/fstab` mounting across specified subsets of cluster nodes.
 
 
 

@@ -531,13 +531,30 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		var nodes []string
 		if len(req.CustomHosts) > 0 {
 			nodes = req.CustomHosts
-		} else if len(req.TargetNodes) > 0 && req.TargetNodes[0] != "all" {
-			nodes = req.TargetNodes
 		} else {
 			// Query cluster storage network report to find dedicated storage IPs or management IPs
-			netReport, err := GetClusterStorageNetworkReport()
-			if err == nil && netReport != nil && len(netReport.Nodes) > 0 {
+			netReport, _ := GetClusterStorageNetworkReport()
+			hasSpecificTargets := len(req.TargetNodes) > 0 && req.TargetNodes[0] != "all"
+			targetSet := make(map[string]bool)
+			if hasSpecificTargets {
+				for _, t := range req.TargetNodes {
+					t = strings.TrimSpace(t)
+					if t != "" {
+						targetSet[t] = true
+					}
+				}
+			}
+
+			if netReport != nil && len(netReport.Nodes) > 0 {
 				for _, n := range netReport.Nodes {
+					// If specific target nodes were requested, match against node_id, host_ip, or storage_ip
+					if hasSpecificTargets {
+						isManagerMatch := (n.NodeRole == "manager" || n.NodeID == "gbnt-manager") && (targetSet["node-local-manager"] || targetSet["gbnt-manager"] || targetSet["manager"])
+						if !targetSet[n.NodeID] && !targetSet[n.HostIP] && !targetSet[n.StorageIP] && !isManagerMatch {
+							continue
+						}
+					}
+
 					chosenIP := n.HostIP
 					if req.NetworkMode != "management" && n.StorageIP != "" {
 						chosenIP = n.StorageIP
@@ -555,8 +572,18 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 				}
 			}
 
-			// Fallback: discover DB nodes (Manager + Workers)
-			if len(nodes) == 0 && db.DB != nil {
+			// If target nodes were provided as raw IPs or not matched in netReport
+			if hasSpecificTargets && len(nodes) == 0 {
+				for _, t := range req.TargetNodes {
+					t = strings.TrimSpace(t)
+					if t != "" && t != "all" {
+						nodes = append(nodes, t)
+					}
+				}
+			}
+
+			// Fallback: discover DB nodes (Manager + Workers) if no target nodes specified
+			if len(nodes) == 0 && !hasSpecificTargets && db.DB != nil {
 				var dbNodes []db.Node
 				_ = db.DB.Find(&dbNodes).Error
 				for _, n := range dbNodes {
@@ -566,8 +593,8 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 				}
 			}
 
-			// Fallback: probed Gluster peers + local IP
-			if len(nodes) == 0 {
+			// Fallback: probed Gluster peers + local IP if no nodes resolved
+			if len(nodes) == 0 && !hasSpecificTargets {
 				localIP := os.Getenv("GBNT_HOST_IP")
 				if localIP != "" && localIP != "127.0.0.1" {
 					nodes = append(nodes, localIP)
@@ -599,6 +626,34 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	if len(bricks) < 2 {
 		return fmt.Errorf("at least 2 brick nodes are required to form a replicated volume (found %d bricks)", len(bricks))
+	}
+
+	// Auto-tune or validate replication strategy to prevent Gluster divisibility errors
+	numBricks := len(bricks)
+	if req.ArbiterCount > 0 {
+		// Arbiter replica requires exactly (replica_count) bricks per subvolume
+		if req.ReplicaCount <= 0 {
+			req.ReplicaCount = 3
+		}
+		if numBricks%req.ReplicaCount != 0 {
+			return fmt.Errorf("invalid arbiter configuration: %d bricks is not divisible by replica count %d", numBricks, req.ReplicaCount)
+		}
+	} else {
+		// If replica count wasn't explicitly provided (or is 0)
+		if req.ReplicaCount <= 0 {
+			if numBricks == 2 || numBricks == 4 {
+				req.ReplicaCount = 2 // 2-brick replica or 4-brick distributed-replicate (2x2)
+			} else if numBricks%3 == 0 {
+				req.ReplicaCount = 3 // 3, 6, 9-brick replica
+			} else {
+				req.ReplicaCount = 2
+			}
+		}
+
+		// Validate divisibility: GlusterFS requires total bricks to be a multiple of replica count
+		if numBricks%req.ReplicaCount != 0 {
+			return fmt.Errorf("invalid GlusterFS replication topology: selected %d node bricks, which is not divisible by Replica %d. GlusterFS requires total bricks to be a multiple of the replica count (e.g. 3 nodes for Replica 3, or 2/4 nodes for Replica 2)", numBricks, req.ReplicaCount)
+		}
 	}
 
 	// 1. Proactively clean stale volume metadata/xattrs and prepare all brick storage directories across target nodes
@@ -641,9 +696,6 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	if req.ReplicaCount > 0 {
 		args = append(args, "replica", strconv.Itoa(req.ReplicaCount))
-	} else if len(bricks) >= 3 && req.ArbiterCount == 0 {
-		args = append(args, "replica", "3")
-		req.ReplicaCount = 3
 	}
 
 	if req.ArbiterCount > 0 {
