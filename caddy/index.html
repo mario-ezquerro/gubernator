@@ -1,0 +1,1434 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../screens/">
+      
+      
+        <link rel="next" href="../coredns/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Caddy Ingress Suite - Gubernator Orchestrator (v2.74.0)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#caddy-ingress-gateway-multi-node-reverse-proxy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v2.74.0)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Caddy Ingress Suite
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../observability/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v2.74.0)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture & UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage-backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage & Backups (The Granaries)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glusterfs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GlusterFS Multi-Node Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image Security & SBOM (The Imperial Seal)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots (v2.13.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-multi-node-proxying" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛 Architecture &amp; Multi-Node Proxying
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automatic-https-smart-domain-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 Automatic HTTPS &amp; Smart Domain Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔒 Automatic HTTPS &amp; Smart Domain Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-public-domains-demofiwareapp-myappcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Public Domains (demo.fiware.app, myapp.com)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Public Domains (demo.fiware.app, myapp.com)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloud-providers-11-nat-google-cloud-aws-azure-hetzner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ☁️ Cloud Providers &amp; 1:1 NAT (Google Cloud, AWS, Azure, Hetzner)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-local-domains-gbntlocal-internal-localhost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Local Domains (*.gbnt.local, *.internal, localhost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#web-ui-visualization-suite-caddy-ui-inspired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎨 Web UI Visualization Suite (caddy-ui Inspired)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-ca-trust-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔐 Root CA Trust Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Root CA Trust Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        macOS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linux-ubuntudebian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux (Ubuntu/Debian)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows-powershell-admin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows (PowerShell Admin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📡 REST API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coredns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CoreDNS Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API & SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../observability/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="caddy-ingress-gateway-multi-node-reverse-proxy">Caddy Ingress Gateway &amp; Multi-Node Reverse Proxy</h1>
+<p>Gubernator features an integrated <strong>Caddy Ingress Subsystem</strong> designed to provide multi-host reverse proxying, TLS termination, dynamic site block routing, and real-time observability across all nodes (Managers and Workers) in a Gubernator cluster.</p>
+<hr />
+<h2 id="architecture-multi-node-proxying">🏛 Architecture &amp; Multi-Node Proxying</h2>
+<p>In a multi-host Gubernator cluster (e.g. 3 nodes), each node runs an instance of the <code>gbnt-caddy</code> container on ports <code>80</code> and <code>443</code>, attached to the <code>gbnt-net</code> Docker network and internal <strong>CoreDNS</strong> resolver (<code>127.0.0.1:53</code>).</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                     +---------------------------------+
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                     |    Gubernator Web Dashboard     |
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                     | (Flutter Web UI - Caddy Suite)  |
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                     +---------------------------------+
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                      |
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                                      v REST API (Port 4000)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                     +---------------------------------+
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                     |   Gubernator Manager (Go API)   |
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                     +---------------------------------+
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                        /             |             \
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                       /              |              \
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                      v               v               v
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>             +------------------+ +------------------+ +------------------+
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>             | Node 1 (Manager) | |  Node 2 (Worker) | |  Node 3 (Worker) |
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>             |  `gbnt-caddy`    | |   `gbnt-caddy`   | |   `gbnt-caddy`   |
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>             |  (Ports 80/443)  | |   (Ports 80/443)  | |   (Ports 80/443)  |
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>             +------------------+ +------------------+ +------------------+
+</span></code></pre></div>
+<p>When you deploy a stack with an <code>ingress.host</code> constraint (or Compose service mapping), Gubernator dynamically generates and broadcasts Caddyfile blocks to all node proxies.</p>
+<hr />
+<h2 id="automatic-https-smart-domain-management">🔒 Automatic HTTPS &amp; Smart Domain Management</h2>
+<p>Gubernator's Ingress engine features <strong>Smart Domain Classification</strong>:</p>
+<h3 id="1-public-domains-demofiwareapp-myappcom">1. Public Domains (<code>demo.fiware.app</code>, <code>myapp.com</code>)</h3>
+<p>When a public FQDN is specified in <code>ingress.host</code>:
+* <strong>Zero-Touch Let's Encrypt / ZeroSSL</strong>: Gubernator omits <code>tls internal</code>, allowing Caddy's built-in ACME engine to automatically request, verify (HTTP-01 / TLS-ALPN-01 on ports 80/443), install, and manage official, globally trusted X.509 certificates.
+* <strong>Auto-Redirection</strong>: Port 80 (HTTP) automatically redirects to port 443 (HTTPS).
+* <strong>Automated Renewal</strong>: Caddy automatically renews certificates 30 days before expiration without interrupting traffic.
+* <strong>Optional ACME Email</strong>: Supply <code>- ingress.email == admin@fiware.app</code> (or label <code>gbnt.ingress.email</code>) to receive Let's Encrypt renewal notices.</p>
+<h4 id="cloud-providers-11-nat-google-cloud-aws-azure-hetzner">☁️ Cloud Providers &amp; 1:1 NAT (Google Cloud, AWS, Azure, Hetzner)</h4>
+<p>In cloud environments, hosts typically have a <strong>private internal IP</strong> (e.g. <code>10.128.0.2</code>) on their local network interface (<code>eth0</code>), while the cloud provider maps an <strong>external public IP</strong> (e.g. <code>34.120.x.x</code>) via 1:1 NAT or Cloud Gateway:
+* <strong>How Caddy Handles it</strong>: ACME verification (<strong>HTTP-01 Challenge</strong>) does not inspect the host's internal IP. Instead, Let's Encrypt queries public DNS for your domain, contacts the external public IP on port <code>80</code>, and the cloud provider's NAT transparently forwards the challenge request to Caddy.
+* <strong>Requirements</strong>: Ensure ports <code>80</code> and <code>443</code> are allowed in your cloud firewall (GCP VPC Firewall rules, AWS Security Groups, etc.), and that your domain's public DNS <code>A</code> record points to your cloud instance's external public IP. No manual certificate configuration or local IP binding is required.</p>
+<h3 id="2-local-domains-gbntlocal-internal-localhost">2. Local Domains (<code>*.gbnt.local</code>, <code>*.internal</code>, <code>localhost</code>)</h3>
+<p>When an internal or private domain is detected:
+* <strong>Internal Root CA</strong>: Caddy automatically applies <code>tls internal</code>, signing certificates with its internal Root CA without attempting to contact public ACME servers.
+* <strong>Root CA Trust</strong>: Download <code>root.crt</code> from the Web UI or via API (<code>GET /v1/caddy/ca.crt</code>) to trust local HTTPS certificates in your browser.</p>
+<hr />
+<h2 id="web-ui-visualization-suite-caddy-ui-inspired">🎨 Web UI Visualization Suite (<code>caddy-ui</code> Inspired)</h2>
+<p>Access <strong>Caddy Ingress</strong> in the Web Dashboard (Port 4001) to interact with 7 specialized sub-tabs:</p>
+<ol>
+<li><strong>Dashboard</strong>: Live server status across all cluster Caddies, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
+<li><strong>Route Manager</strong>: Reverse proxy routes table, live upstream health checks, uptime %, domain search/filter, clickable links, and per-route notes.</li>
+<li><strong>Caddyfile Editor</strong>: Real-time Caddyfile viewer &amp; editor, syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
+<li><strong>TLS Certificates</strong>: Full lifecycle management with:</li>
+<li><strong>Multi-Node Cluster Sync</strong>: 1-click <strong>"Sync to All Nodes"</strong> button (<code>POST /api/caddy/certs/sync</code>) and automatic background broadcast whenever new certificates are uploaded or rotated.</li>
+<li><strong>X.509 Inspector</strong>: Deep inspection of Subject, Issuer, SANs, validity dates, serial number, SHA-256 fingerprint, and key algorithm.</li>
+<li><strong>Forced Renewal / Rotation</strong>: 1-click certificate rotation via API and UI.</li>
+<li><strong>Domain Cert Download</strong>: Direct download of domain-specific <code>.crt</code> / <code>.pem</code> files.</li>
+<li><strong>Root CA Download</strong>: Export <code>root.crt</code> for OS trust installation.</li>
+<li><strong>Custom TLS Upload</strong>: Install custom commercial/corporate certificates and private keys.</li>
+<li><strong>Orphan Pruning</strong>: Clean up stale certificates from deleted stacks.</li>
+<li><strong>Access Logs</strong>: Streaming log tailing with SSE, keyword search, log level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>), and JSON/TXT log export.</li>
+<li><strong>Log Configuration</strong>: Toggle JSON access logging per site block directly from the UI.</li>
+<li><strong>Metrics</strong>: Real-time request count, RPS gauge, avg latency, HTTP status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and latency percentiles (<code>p50</code>, <code>p95</code>, <code>p99</code>) powered by Caddy's <code>:2019/metrics</code> Prometheus endpoint.</li>
+</ol>
+<hr />
+<h2 id="root-ca-trust-guide">🔐 Root CA Trust Guide</h2>
+<p>To trust self-signed HTTPS certificates generated by Caddy for local domains (<code>.gbnt.local</code>):</p>
+<h3 id="macos">macOS</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>root.crt<span class="w"> </span>http://localhost:4000/v1/caddy/ca.crt
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>sudo<span class="w"> </span>security<span class="w"> </span>add-trusted-cert<span class="w"> </span>-d<span class="w"> </span>-r<span class="w"> </span>trustRoot<span class="w"> </span>-k<span class="w"> </span>/Library/Keychains/System.keychain<span class="w"> </span>./root.crt
+</span></code></pre></div>
+<h3 id="linux-ubuntudebian">Linux (Ubuntu/Debian)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-o<span class="w"> </span>/usr/local/share/ca-certificates/caddy-root.crt<span class="w"> </span>http://localhost:4000/v1/caddy/ca.crt
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sudo<span class="w"> </span>update-ca-certificates
+</span></code></pre></div>
+<h3 id="windows-powershell-admin">Windows (PowerShell Admin)</h3>
+<div class="language-powershell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">"http://localhost:4000/v1/caddy/ca.crt"</span> <span class="n">-OutFile</span> <span class="s2">"root.crt"</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">Import-Certificate</span> <span class="n">-FilePath</span> <span class="s2">".\root.crt"</span> <span class="n">-CertStoreLocation</span> <span class="n">Cert</span><span class="p">:\</span><span class="n">LocalMachine</span><span class="p">\</span><span class="n">Root</span>
+</span></code></pre></div>
+<hr />
+<h2 id="rest-api-reference">📡 REST API Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/v1/caddy/status</code></td>
+<td><code>GET</code></td>
+<td>Get process info, uptime, memory, and active instance count</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/routes</code></td>
+<td><code>GET</code></td>
+<td>Get active reverse proxy route matrix and upstream health</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs</code></td>
+<td><code>GET</code></td>
+<td>Get managed TLS certificates with full X.509 metadata</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/download</code></td>
+<td><code>GET</code></td>
+<td>Download certificate <code>.crt</code> file for a specific domain</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/inspect</code></td>
+<td><code>GET</code></td>
+<td>Inspect complete X.509 properties and SHA-256 fingerprint</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/renew</code></td>
+<td><code>POST</code></td>
+<td>Force immediate renewal and rotation of a domain certificate</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/custom</code></td>
+<td><code>POST</code></td>
+<td>Upload and install a custom TLS certificate and private key</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/certs/orphaned</code></td>
+<td><code>DELETE</code></td>
+<td>Prune orphaned certificates no longer in any Caddyfile</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/ca.crt</code></td>
+<td><code>GET</code></td>
+<td>Download Root CA certificate (<code>root.crt</code>)</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/logs</code></td>
+<td><code>GET</code></td>
+<td>Get container access log stream lines</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/metrics</code></td>
+<td><code>GET</code></td>
+<td>Get Prometheus request counts, RPS, and percentiles</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/fmt</code></td>
+<td><code>POST</code></td>
+<td>Format Caddyfile via <code>caddy fmt</code></td>
+</tr>
+</tbody>
+</table>
+<p>For full specification, refer to <a href="https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md"><code>SPEC-caddy.md</code></a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

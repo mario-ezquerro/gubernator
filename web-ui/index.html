@@ -1,0 +1,2005 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../auth-rbac/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Web UI Dashboard - Gubernator Orchestrator (v2.74.0)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#web-ui-dashboard" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v2.74.0)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Web UI Dashboard
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../observability/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v2.74.0)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture & UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web UI Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enabling-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling the Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technology Stack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-gear-icon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Settings (Gear Icon)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Settings (Gear Icon)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#profile-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile Tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#password-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Password Tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#appearance-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appearance Tab
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard Sections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dashboard Sections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stats-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stats Bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legions-stacks-centurions-nodes-split-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legions (Stacks) &amp; Centurions (Nodes) Split Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legions-stacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legions (Stacks)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#centurions-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Centurions (Nodes)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Centurions (Nodes)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#node-context-menu-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node Context Menu Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cohorts-tasks-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cohorts &amp; Tasks (Containers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#coredns-management-suite-corednspage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CoreDNS Management Suite (CoreDnsPage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability-grafana-metrics-network-monitor-jaeger-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability: Grafana Metrics, Network Monitor &amp; Jaeger Traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compose-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose Editor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Compose Editor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editor-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editor Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stack-redeploy-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stack Redeploy Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caddy-ingress-visualization-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caddy Ingress Visualization Suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#slo-error-budgets-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SLO &amp; Error Budgets Suite
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#centurions-universal-onboarding-suite-addnodedialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛️ Centurions &amp; Universal Onboarding Suite (AddNodeDialog)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏛️ Centurions &amp; Universal Onboarding Suite (AddNodeDialog)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-quick-join-copy-paste-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. ⚡ Quick Join (Copy &amp; Paste Commands)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-remote-ssh-provisioning-live-terminal-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 🚀 Remote SSH Provisioning + Live Terminal Console
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cloud-init-automation-iac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. ☁️ Cloud-Init &amp; Automation (IaC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-security-auto-remediation-safe-rollback-imageremediationdialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Image Security Auto-Remediation &amp; Safe Rollback (ImageRemediationDialog)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-endpoints-used-by-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Endpoints Used by the Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enterprise-login-security-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Enterprise Login &amp; Security Suite
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛡️ Enterprise Login &amp; Security Suite">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-modern-login-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Modern Login Screen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-active-directory-ldap-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Active Directory &amp; LDAP Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-the-flutter-ui-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building the Flutter UI from Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage-backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage & Backups (The Granaries)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glusterfs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GlusterFS Multi-Node Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image Security & SBOM (The Imperial Seal)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots (v2.13.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../caddy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy Ingress Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coredns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CoreDNS Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    REST API & SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../observability/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="web-ui-dashboard">Web UI Dashboard</h1>
+<p>Gubernator includes a built-in <strong>Flutter Web Dashboard</strong> on port <code>:4001</code> that provides full lifecycle management of your cluster without requiring the CLI.</p>
+<p>The dashboard is built with <strong>Flutter Web</strong> and <strong>Material Design 3</strong>, offering a premium, responsive interface with dark/light theme support.</p>
+<hr />
+<h2 id="enabling-the-dashboard">Enabling the Dashboard</h2>
+<p>The Web UI is disabled by default. Enable it by setting environment variables before starting the Manager:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">GBNT_WEB</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">GBNT_WEB_USER</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nv">GBNT_WEB_PASSWORD</span><span class="o">=</span>yourpassword<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nv">GBNT_API_TOKEN</span><span class="o">=</span>yourtoken<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>./gbnt<span class="w"> </span>serve
+</span></code></pre></div>
+<p>Or via Docker:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="m">4000</span>:4000<span class="w"> </span>-p<span class="w"> </span><span class="m">4001</span>:4001<span class="w"> </span>-p<span class="w"> </span><span class="m">4002</span>:4002<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-v<span class="w"> </span>/var/run/docker.sock:/var/run/docker.sock<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">GBNT_WEB</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">GBNT_WEB_USER</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">GBNT_WEB_PASSWORD</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">GBNT_API_TOKEN</span><span class="o">=</span>admin<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span>marioezquerro/gubernator:latest<span class="w"> </span>serve
+</span></code></pre></div></p>
+<p>Then open: <strong><a href="http://localhost:4001">http://localhost:4001</a></strong></p>
+<hr />
+<h2 id="technology-stack">Technology Stack</h2>
+<p>The dashboard is built with:</p>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Flutter 3.44+</strong></td>
+<td>UI framework (compiled to web)</td>
+</tr>
+<tr>
+<td><strong>Material Design 3</strong></td>
+<td>Design system with dark/light themes</td>
+</tr>
+<tr>
+<td><strong>Dart</strong></td>
+<td>Programming language</td>
+</tr>
+<tr>
+<td><strong>Go (Gin)</strong></td>
+<td>Backend API + embedded static serving</td>
+</tr>
+</tbody>
+</table>
+<p>The compiled Flutter web assets are embedded directly into the Go binary via <code>go:embed</code>, so the dashboard requires <strong>no external dependencies</strong> at runtime.</p>
+<hr />
+<h2 id="settings-gear-icon">⚙️ Settings (Gear Icon)</h2>
+<p>Click the <strong>gear icon</strong> (⚙️) in the top-right corner of the app bar to access user settings. The settings dialog has three tabs:</p>
+<h3 id="profile-tab">Profile Tab</h3>
+<ul>
+<li><strong>Avatar</strong> — Display avatar with camera icon overlay (future: upload custom photo)</li>
+<li><strong>Display Name</strong> — Editable text field for your display name</li>
+<li>Profile data is stored locally in the browser</li>
+</ul>
+<h3 id="password-tab">Password Tab</h3>
+<ul>
+<li><strong>Change Password</strong> — Update your web dashboard password</li>
+<li>Requires current password verification</li>
+<li>New password confirmation field</li>
+<li>Updates <code>GBNT_WEB_PASSWORD</code> for the running process</li>
+</ul>
+<h3 id="appearance-tab">Appearance Tab</h3>
+<ul>
+<li><strong>Theme Toggle</strong> — Switch between <strong>Light</strong> and <strong>Dark</strong> mode</li>
+<li>Visual theme selection cards with checkmark indicator</li>
+<li>Quick toggle switch for fast switching</li>
+<li>Theme preference applied immediately across the entire dashboard</li>
+</ul>
+<hr />
+<h2 id="dashboard-sections">Dashboard Sections</h2>
+<h3 id="stats-bar">Stats Bar</h3>
+<p>Displays real-time cluster summary (auto-refreshes every 5 seconds):</p>
+<table>
+<thead>
+<tr>
+<th>Counter</th>
+<th>Icon</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nodes</td>
+<td>🖥️</td>
+<td>Total registered cluster nodes</td>
+</tr>
+<tr>
+<td>Stacks</td>
+<td>📚</td>
+<td>Total deployed stacks</td>
+</tr>
+<tr>
+<td>Services</td>
+<td>⚙️</td>
+<td>Total services across all stacks</td>
+</tr>
+<tr>
+<td>Tasks</td>
+<td>📋</td>
+<td>Total container instances</td>
+</tr>
+<tr>
+<td>Running</td>
+<td>▶️</td>
+<td>Tasks currently in <code>running</code> state (green)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="legions-stacks-centurions-nodes-split-layout">Legions (Stacks) &amp; Centurions (Nodes) Split Layout</h3>
+<p>By default, the upper dashboard area allocates <strong>1/3 width to Legions (Stacks)</strong> and <strong>2/3 width to Centurions (Nodes)</strong>, offering optimal visibility for node clusters. A drag handle between the panels allows custom width adjustments.</p>
+<h3 id="legions-stacks">Legions (Stacks)</h3>
+<p>Header includes the <strong><code>+ Add Stack</code></strong> button for immediate Compose deployment.</p>
+<p>Lists all deployed stacks with actions per row:</p>
+<table>
+<thead>
+<tr>
+<th>Button</th>
+<th>Icon</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Edit YAML</strong></td>
+<td>📝</td>
+<td>Opens the compose editor dialog</td>
+</tr>
+<tr>
+<td><strong>Redeploy</strong></td>
+<td>🚀</td>
+<td>Stops current containers and re-deploys immediately</td>
+</tr>
+<tr>
+<td><strong>Delete</strong></td>
+<td>🗑️</td>
+<td>Stops containers and removes stack from DB</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="centurions-nodes">Centurions (Nodes)</h3>
+<p>Lists all registered cluster nodes with their:
+- <strong>ID</strong> (first 8 chars, monospace)
+- <strong>IP</strong> address
+- <strong>Role</strong> badge — <code>manager</code> (blue) or <code>worker</code> (cyan)
+- <strong>Status</strong> badge — <code>active</code> (green), <code>maintenance</code> (amber/orange), <code>pause</code> (amber), <code>drain</code> (amber/red), <code>down</code> (red)</p>
+<h4 id="node-context-menu-actions">Node Context Menu Actions</h4>
+<p>Clicking the <code>⋮</code> (Node Actions) button on a node opens a context menu with streamlined, mutually exclusive actions:
+- <strong>Pausar Nodo / Pause Node</strong>: Keeps existing containers running on the host, but stops scheduling any new tasks (<code>pause</code> status).
+- <strong>Reanudar Nodo (Activar) / Resume Node</strong>: Displayed when a node is paused; restores its status to <code>active</code> to allow scheduling new tasks.
+- <strong>Poner en Mantenimiento / Enter Maintenance</strong>: Evacuates/drains all running containers off the host and sets its status to <code>maintenance</code>.
+- <strong>Sacar de Mantenimiento / Exit Maintenance</strong>: Displayed when a node is in <code>maintenance</code> or <code>drain</code> mode; restores status to <code>active</code>.
+- <strong>Reiniciar Nodo / Reboot Node</strong>: Prompts confirmation to evacuate all containers, set status to <code>maintenance</code>, and trigger a host system reboot (<code>sudo reboot</code>).
+- <strong>Forzar Salida / Force Leave</strong>: Drains user containers to active nodes, terminates system worker stacks (<code>CORE-GBNT</code> and <code>[SRE] Monitor</code>), and removes node &amp; its system stacks from the cluster.
+- <strong>Shell</strong>: Opens an embedded web shell to the host node.
+- <strong>Edit Labels / Inspect / Promote / Demote</strong>: Modify node labels, view JSON inspect data, or switch node roles.</p>
+<hr />
+<h3 id="cohorts-tasks-containers">Cohorts &amp; Tasks (Containers)</h3>
+<p>Features a checkbox selection column with header select-all support (persists across search criteria) and a <strong>Bulk Actions Toolbar</strong>:
+- <strong>Start</strong>: Batch-starts all checked containers.
+- <strong>Stop</strong>: Batch-stops all checked containers.
+- <strong>Restart</strong>: Batch-restarts all checked containers.
+- <strong>Remove</strong>: Batch-deletes all checked containers after confirmation.</p>
+<p>Lists all container instances with:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Checkbox</td>
+<td>Row selection for batch operations</td>
+</tr>
+<tr>
+<td>Task ID</td>
+<td>First 8 chars of UUID</td>
+</tr>
+<tr>
+<td>Service</td>
+<td>Service name + Docker image</td>
+</tr>
+<tr>
+<td>Container</td>
+<td>Docker container name (<code>gbnt-&lt;uuid&gt;</code>)</td>
+</tr>
+<tr>
+<td>Node</td>
+<td>Node that is running this task</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><code>running</code> / <code>pending</code> / <code>starting</code> / <code>dead</code></td>
+</tr>
+<tr>
+<td>IP</td>
+<td>Container's internal Docker network IP</td>
+</tr>
+<tr>
+<td>Ports</td>
+<td><strong>Clickable chips</strong> for each port mapping (e.g. <code>8080:80</code>). Clicking opens <code>http://&lt;nodeIP&gt;:&lt;hostPort&gt;</code> in a new browser tab. Supports multiple ports per container.</td>
+</tr>
+<tr>
+<td>Stop</td>
+<td>Executes <code>docker stop + docker rm</code> and removes from DB</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="coredns-management-suite-corednspage">CoreDNS Management Suite (<code>CoreDnsPage</code>)</h3>
+<p>The dashboard features a full-featured <strong>4-Tab CoreDNS Management Suite</strong> with real-time status telemetry and zero-downtime hot reloading:</p>
+<ul>
+<li><strong>5 KPI Summary Cards:</strong> Live <strong>Server Status</strong>, <strong>Cluster Base Domain</strong> (with interactive one-click edit dialog), <strong>Listener Port</strong> (<code>53 / 5354</code>), <strong>Total DNS Records</strong>, and <strong>Active Upstream Forwarders</strong>.</li>
+<li><strong>Tab 1: Auto-Discovered DNS Records:</strong> Real-time host-qualified internal service discovery mapping container IPs to <code>&lt;node&gt;.&lt;service&gt;.&lt;cluster_domain&gt;</code> (e.g. <code>node-gbnt-worker1.caddy.acme.corp</code>) and stack records <code>&lt;service&gt;.&lt;stack&gt;.&lt;cluster_domain&gt;</code> with copyable <code>curl</code> testing chips.</li>
+<li><strong>Tab 2: Custom Static DNS Records:</strong> Create, edit, and delete custom static <code>A</code>, <code>AAAA</code>, <code>CNAME</code>, <code>TXT</code>, and <code>PTR</code> records with instant synchronization into <code>/etc/coredns/gubernator.hosts</code>.</li>
+<li><strong>Tab 3: Interactive DNS Playground (<code>Dig / Nslookup</code>):</strong> Execute live DNS queries directly from the browser against CoreDNS (<code>127.0.0.1:5354</code>) with latency benchmarking (ms) and raw answer inspection.</li>
+<li><strong>Tab 4: Upstream Forwarders &amp; Corefile Editor:</strong> Quick-select upstream DNS providers (Cloudflare, Google, Quad9) or edit and save raw <code>Corefile</code> configurations with automatic SIGHUP reloads.</li>
+</ul>
+<hr />
+<h3 id="observability-grafana-metrics-network-monitor-jaeger-traces">Observability: Grafana Metrics, Network Monitor &amp; Jaeger Traces</h3>
+<p>The dashboard integrates full SRE Observability via tabs and top app bar quick action buttons:
+- <strong>Grafana Metrics Tab &amp; Quick Link</strong>: Direct access to Grafana dashboards (<code>/grafana/</code> or port <code>:3000</code>) for system and cluster metrics.
+- <strong>Network Monitor Tab</strong>: A dedicated view showing unified network traffic (In/Out) across all hosts and pods in the cluster, leveraging <code>node-exporter</code> data.
+- <strong>Jaeger Traces Tab &amp; Quick Link</strong>: Embedded view to Jaeger UI (<code>/jaeger/</code> or port <code>:16686</code>) for distributed trace visualization. Receives application traces over OTLP gRPC (<code>:4317</code>) and OTLP HTTP (<code>:4318</code>). Access is authenticated using your Gubernator credentials.</p>
+<hr />
+<h2 id="compose-editor">Compose Editor</h2>
+<p>Click <strong>Edit YAML</strong> on any stack to open the compose editor dialog:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>┌──────────────────────────────────────────────────────────┐
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>│  📝 Edit Compose: mystack                            [×] │
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├──────────────────────────────────────────────────────────┤
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│  services:                                               │
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│    web:                                                  │
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│      image: nginx:alpine                                 │
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│      ports:                                              │
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│        - "8080:80"                                       │
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│      deploy:                                             │
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>│        replicas: 2                                       │
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>│                                                          │
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├──────────────────────────────────────────────────────────┤
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>│  [Reset]            [Save]  [Save &amp; Redeploy 🚀]        │
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>└──────────────────────────────────────────────────────────┘
+</span></code></pre></div>
+<h3 id="editor-actions">Editor Actions</h3>
+<table>
+<thead>
+<tr>
+<th>Button</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Save</strong></td>
+<td>Saves the edited YAML to the database (no containers affected yet)</td>
+</tr>
+<tr>
+<td><strong>Save &amp; Redeploy</strong></td>
+<td>Saves the YAML, stops existing containers, schedules new tasks</td>
+</tr>
+<tr>
+<td><strong>Reset</strong></td>
+<td>Reverts the editor to the last saved state</td>
+</tr>
+<tr>
+<td><strong>Click backdrop</strong></td>
+<td>Closes the modal without saving</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="stack-redeploy-flow">Stack Redeploy Flow</h2>
+<p>When you click <strong>Save &amp; Redeploy</strong> (or the <strong>Redeploy</strong> button on the table):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>1. Save new YAML to DB
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>2. Find all running Tasks for this Stack
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>3. docker stop &lt;container_name&gt; + docker rm -f &lt;container_name&gt;
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>4. Delete Task records from DB
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>5. Call POST /v1/stack/deploy with the updated compose
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>6. Scheduler assigns new Tasks to active nodes
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>7. Local Executor picks up pending Tasks and starts new containers
+</span></code></pre></div>
+<hr />
+<h2 id="caddy-ingress-visualization-suite">Caddy Ingress Visualization Suite</h2>
+<p>The dashboard includes a full-featured <strong>Caddy Ingress Visualization Suite</strong> inspired by <code>caddy-ui</code> featuring 7 sub-tabs:</p>
+<ol>
+<li><strong>Dashboard</strong> — Live server status, TLS state, process info (version, uptime, memory, last reload timestamp).</li>
+<li><strong>Route Manager</strong> — Reverse proxy routes matrix, live upstream health checks, uptime %, search/filter by domain.</li>
+<li><strong>Caddyfile Editor</strong> — Syntax validation, <code>caddy fmt</code> formatting, backup history, and 1-click rollback.</li>
+<li><strong>TLS Certificates</strong> — Full certificate lifecycle manager: X.509 deep inspection modal (Subject, Issuer, SANs, serial, SHA-256 fingerprint), 1-click forced renewal/rotation, individual domain <code>.crt</code> download, custom cert &amp; key upload modal, orphaned certificate cleanup, and <strong>Root CA Download</strong> (<code>root.crt</code>).</li>
+<li><strong>Access Logs</strong> — Streaming log tailing with keyword search and level filters (<code>ERROR</code>, <code>WARN</code>, <code>INFO</code>).</li>
+<li><strong>Log Configuration</strong> — Toggle access logging per site block directly from the UI.</li>
+<li><strong>Metrics</strong> — RPS gauge, average response latency, status code breakdown (<code>2xx</code>, <code>3xx</code>, <code>4xx</code>, <code>5xx</code>), and p50/p95/p99 percentiles.</li>
+</ol>
+<hr />
+<h2 id="slo-error-budgets-suite">SLO &amp; Error Budgets Suite</h2>
+<p>The dashboard includes a dedicated <strong>5-tab SLO Management Suite</strong> inspired by Slok and Pyrra:</p>
+<ol>
+<li><strong>Overview &amp; Error Budgets</strong> — Live status cards, real-time text search, multi-field sorting (Lowest Budget, Highest Burn, Name), Cards vs Data Table view toggle, clickable label chips, and detail modals with RED metrics &amp; historical trend charts.</li>
+<li><strong>User Journeys</strong> — Composite journey topology, aggregated availability targets, average error budget, and bottleneck service identification.</li>
+<li><strong>Deployment Correlation</strong> — Timeline graph cross-referencing stack updates and container restarts with service burn rate spikes.</li>
+<li><strong>SLI Templates &amp; PromQL Generator</strong> — Interactive catalog of built-in SLI query templates (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>).</li>
+<li><strong>Backtest &amp; Validator</strong> — Form for pasting Compose YAML to run instant dry-run PromQL backtests against historical Prometheus metrics.</li>
+</ol>
+<hr />
+<h2 id="centurions-universal-onboarding-suite-addnodedialog">🏛️ Centurions &amp; Universal Onboarding Suite (<code>AddNodeDialog</code>)</h2>
+<p>Accessible from <strong>Centurions [Host] ➔ Add Centurion</strong>, the onboarding suite offers 3 workflows:</p>
+<h3 id="1-quick-join-copy-paste-commands">1. ⚡ Quick Join (Copy &amp; Paste Commands)</h3>
+<ul>
+<li>Instant 1-click command cards for:</li>
+<li><strong>One-Liner Automated Installer</strong> (<code>curl -fsSL .../join.sh | sudo bash -s ...</code>).</li>
+<li><strong>Docker Container</strong> (<code>sudo docker run ... legion join</code>).</li>
+<li><strong>Gubernator CLI Binary</strong> (<code>sudo gbnt legion join</code>).</li>
+<li>Shows real-time cluster pulse bar with current manager IP and registered node count.</li>
+</ul>
+<h3 id="2-remote-ssh-provisioning-live-terminal-console">2. 🚀 Remote SSH Provisioning + Live Terminal Console</h3>
+<ul>
+<li>Manager connects via SSH into the remote machine.</li>
+<li>Supports <strong>Password</strong>, <strong>SSH Private Key (.pem)</strong>, or <strong>Manager Public Key Auto-Discovery</strong>.</li>
+<li>Displays an authentic Linux-style monospace terminal console streaming live execution progress (<code>SSH Handshake</code>, <code>Hardware Discovery</code>, <code>Docker Engine Check</code>, <code>Agent Deployment</code>, <code>System Stacks</code>, <code>Aqueducts &amp; Telemetry</code>).</li>
+</ul>
+<h3 id="3-cloud-init-automation-iac">3. ☁️ Cloud-Init &amp; Automation (IaC)</h3>
+<ul>
+<li>Formatted <code>#cloud-config</code> YAML blueprint ready to paste into Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, or Terraform.</li>
+</ul>
+<hr />
+<h2 id="image-security-auto-remediation-safe-rollback-imageremediationdialog">🛡️ Image Security Auto-Remediation &amp; Safe Rollback (<code>ImageRemediationDialog</code>)</h2>
+<p>Accessible via the <strong><code>⚡ Fix Image</code></strong> action button on any scanned container image with CVEs or inside the <strong>View CVEs</strong> details modal:</p>
+<ol>
+<li><strong>Intelligent Version Recommendations:</strong> Suggests low-risk security patches (same major version, Alpine minimal base) and modern stable releases.</li>
+<li><strong>Operational Risk Assessment:</strong> Displays calculated risk level (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>) with context on breaking changes, database migrations, and persistent volume requirements.</li>
+<li><strong>Safe Automated Rollback:</strong> Takes an instant cryptographic backup of the <code>docker-compose.yml</code> prior to redeploying; automatically reverts to the previous working Compose file if the new container crashes or fails health checks within 20 seconds.</li>
+<li><strong>Live Execution Terminal:</strong> Monospace console streaming real-time logs (<code>Backup Compose</code>, <code>Image Patch</code>, <code>Database Update</code>, <code>Service Redeploy</code>, <code>Health Probe</code>, <code>Auto-Rollback</code>, <code>Security Re-Scan</code>).</li>
+<li><strong>Compose Studio Deep Link:</strong> <code>Open in Compose Studio</code> button opens the stack directly in the Compose IDE for manual adjustments.</li>
+</ol>
+<hr />
+<h2 id="api-endpoints-used-by-the-dashboard">API Endpoints Used by the Dashboard</h2>
+<p>The Web UI communicates with the internal <code>/api</code> routes (on port 4001, protected by Basic Auth):</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/auth/providers</code></td>
+<td>Lists available auth domains and directories</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/login</code></td>
+<td>Authenticates against Local Admin or Active Directory</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/auth/me</code></td>
+<td>Retrieves active user identity and permissions</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/logout</code></td>
+<td>Clears user session</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/auth/ldap</code></td>
+<td>Lists configured LDAP/AD servers (Admin only)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/ldap</code></td>
+<td>Saves/updates an LDAP/AD server (Admin only)</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/auth/ldap/:id</code></td>
+<td>Deletes an LDAP/AD directory connection</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/auth/ldap/test</code></td>
+<td>Live connection &amp; user lookup diagnostic tool</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/state</code></td>
+<td>Returns all nodes, stacks, services, tasks, user</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/stack/:id/compose</code></td>
+<td>Fetches raw YAML for a stack</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/stack/:id/compose</code></td>
+<td>Updates raw YAML in DB</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/stack/:id/redeploy</code></td>
+<td>Stop + redeploy a stack</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/stack/:id</code></td>
+<td>Stop containers + delete stack</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/task/:id</code></td>
+<td>Stop container + delete task record</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/settings</code></td>
+<td>Get user settings (display name, theme)</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/settings</code></td>
+<td>Update user settings</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/settings/password</code></td>
+<td>Change web dashboard password</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/status</code></td>
+<td>Checks Loki aggregator readiness</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/labels</code></td>
+<td>Returns available containers, nodes, and streams</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/query</code></td>
+<td>Multi-dimensional LogQL cluster log search</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/logs/export</code></td>
+<td>Downloads filtered log stream attachment</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="enterprise-login-security-suite">🛡️ Enterprise Login &amp; Security Suite</h2>
+<h3 id="1-modern-login-screen">1. Modern Login Screen</h3>
+<p>The dashboard features an enterprise SSO login interface supporting both Microsoft Active Directory and emergency Local Administrator access:</p>
+<p><img alt="Login Screen" src="../images/login_screen.png" /></p>
+<h3 id="2-active-directory-ldap-management">2. Active Directory &amp; LDAP Management</h3>
+<p>Admins can manage identity providers directly from the <strong>Seguridad &amp; AD</strong> screen, test connectivity in real-time, and inspect assigned RBAC roles:</p>
+<p><img alt="Security &amp; AD Management" src="../images/security_ad.png" /></p>
+<hr />
+<h2 id="building-the-flutter-ui-from-source">Building the Flutter UI from Source</h2>
+<p>If you need to modify the dashboard:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Install Flutter SDK</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>brew<span class="w"> </span>install<span class="w"> </span>--cask<span class="w"> </span>flutter
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Navigate to the web-ui directory</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="nb">cd</span><span class="w"> </span>web-ui
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Install dependencies</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>flutter<span class="w"> </span>pub<span class="w"> </span>get
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># Build for production</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>flutter<span class="w"> </span>build<span class="w"> </span>web<span class="w"> </span>--release<span class="w"> </span>--base-href<span class="w"> </span><span class="s2">"/"</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># Copy build output to Go embed directory</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>rm<span class="w"> </span>-rf<span class="w"> </span>../internal/web/flutter
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>cp<span class="w"> </span>-r<span class="w"> </span>build/web<span class="w"> </span>../internal/web/flutter
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="c1"># Rebuild Go binary</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="nb">cd</span><span class="w"> </span>..<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>go<span class="w"> </span>build<span class="w"> </span>./cmd/gbnt
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1618 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../cli-full/">
+      
+      
+        <link rel="next" href="../observability/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Docker Compose Reference - Gubernator Orchestrator (v2.74.0)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#gubernator-compose-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v2.74.0)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Docker Compose Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../observability/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v2.74.0)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v2.74.0)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v2.74.0)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../architecture/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-full/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-auto-naming-stacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Auto-Naming Stacks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Auto-Naming Stacks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-the-stackname-constraint-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: The stack.name constraint (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-top-level-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Top-level name
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-dynamic-stack-variables-stackname" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Dynamic Stack Variables {{stack.name}}
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-caddy-ingress-routing-automatic-https" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Caddy Ingress Routing &amp; Automatic HTTPS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Caddy Ingress Routing &amp; Automatic HTTPS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-local-domains-gbntlocal-internal-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A. Local Domains (*.gbnt.local) — Internal TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-public-domains-demofiwareapp-automatic-lets-encrypt-ssltls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B. Public Domains (demo.fiware.app) — Automatic Let's Encrypt SSL/TLS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="B. Public Domains (demo.fiware.app) — Automatic Let&#39;s Encrypt SSL/TLS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-deploying-a-public-domain-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Deploying a Public Domain Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-format-with-service-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative Format with Service Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-ingress-constraints-labels-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C. Ingress Constraints &amp; Labels Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d-prerequisites-for-public-https-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D. Prerequisites for Public HTTPS Domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-security-gatekeeper-image-signing-labels-gbntsecurity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Security Gatekeeper &amp; Image Signing Labels (gbnt.security.*)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Security Gatekeeper &amp; Image Signing Labels (gbnt.security.*)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-labels-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Labels Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-google-sre-slo-engine-labels-gbntslo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Google SRE SLO Engine Labels (gbnt.slo.*)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-granaries-persistent-shared-storage-varcontenedores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Granaries &amp; Persistent Shared Storage (/var/contenedores/)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-supported-compose-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Supported Compose Fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-loading-stacks-from-master-server-filesystem-workstations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Loading Stacks from Master Server Filesystem &amp; Workstations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Loading Stacks from Master Server Filesystem &amp; Workstations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deployment-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployment Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listing-server-stack-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Listing Server Stack Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-built-in-poc-examples-library-bootstrap-auto-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Built-in POC Examples Library &amp; Bootstrap Auto-Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Built-in POC Examples Library &amp; Bootstrap Auto-Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deploying-poc-examples-during-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploying POC Examples During Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#on-demand-poc-deployment-via-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On-Demand POC Deployment via CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../observability/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="gubernator-compose-reference">Gubernator Compose Reference</h1>
+<p>Gubernator uses standard <code>docker-compose.yml</code> files to deploy stacks, but it extends their functionality by dynamically parsing certain fields for cluster scheduling, auto-naming, and Ingress routing.</p>
+<p>This guide explains how to properly write and adjust your <code>docker-compose.yml</code> files for Gubernator.</p>
+<hr />
+<h2 id="1-auto-naming-stacks">1. Auto-Naming Stacks</h2>
+<p>Gubernator allows you to define the name of your stack directly inside the <code>docker-compose.yml</code> file. This means you can deploy your stack without specifying the name in the CLI (<code>gbnt stack deploy -c file.yml</code>) or the Web UI.</p>
+<p>Gubernator resolves the stack name in the following order:</p>
+<ol>
+<li><strong><code>stack.name</code> constraint</strong> (Highest Priority - Overrides all other methods).</li>
+<li><strong>Explicit argument</strong> (e.g., CLI <code>[name]</code> argument or Web UI input).</li>
+<li><strong>Top-level <code>name</code> property</strong> (Native Docker Compose standard).</li>
+</ol>
+<h3 id="option-a-the-stackname-constraint-recommended">Option A: The <code>stack.name</code> constraint (Recommended)</h3>
+<p>Because Gubernator makes heavy use of placement constraints for its engine, the recommended way to name your stack is within the first service's placement constraints using <code>stack.name == &lt;name&gt;</code>:
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">web</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == my-app-stack</span>
+</span></code></pre></div></p>
+<h3 id="option-b-top-level-name">Option B: Top-level <code>name</code></h3>
+<p>Alternatively, you can use the standard Compose <code>name</code> attribute at the root level of your file:
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-stack</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">web</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
+</span></code></pre></div></p>
+<hr />
+<h2 id="2-dynamic-stack-variables-stackname">2. Dynamic Stack Variables <code>{{stack.name}}</code></h2>
+<p>Gubernator includes a real-time templating engine for Compose files. Any occurrence of <code>{{stack.name}}</code> inside your <code>docker-compose.yml</code> will be <strong>automatically replaced</strong> by the resolved stack name at deployment time.</p>
+<p>This is highly useful for internal DNS resolution and naming volumes, ensuring that multiple deployments of the same file don't collide.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">db</span><span class="p">:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:16</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">app</span><span class="p">:</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-backend</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">      </span><span class="c1"># Automatically resolves to the internal CoreDNS record (e.g., postgres.my-stack.gbnt)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">      </span><span class="nt">DB_HOST</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres.{{stack.name}}.gbnt</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">      </span><span class="c1"># Ensures this volume is unique per stack</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data_{{stack.name}}:/app/data</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="nt">volumes</span><span class="p">:</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">data_{{stack.name}}</span><span class="p p-Indicator">:</span>
+</span></code></pre></div>
+<hr />
+<h2 id="3-caddy-ingress-routing-automatic-https">3. Caddy Ingress Routing &amp; Automatic HTTPS</h2>
+<p>Gubernator automatically configures a high-performance reverse proxy (<strong>Caddy</strong>) across all cluster nodes. You don't need to manually expose host ports (<code>80:80</code>) for web applications.</p>
+<p>Instead, define the <code>ingress.host</code> constraint (or label) in your service. Gubernator dynamically resolves the internal container IPs, configures upstream load balancing, and manages SSL/TLS certificates.</p>
+<h3 id="a-local-domains-gbntlocal-internal-tls">A. Local Domains (<code>*.gbnt.local</code>) — Internal TLS</h3>
+<p>For development and local testing, use a <code>.local</code>, <code>.internal</code>, or <code>*.gbnt.local</code> domain. Gubernator will instruct Caddy to use its internal self-signed Root Certificate Authority (<code>tls internal</code>):</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">webapp</span><span class="p">:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"80"</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == dev-app</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == myapp.gbnt.local</span>
+</span></code></pre></div>
+<blockquote>
+<p>[!TIP]
+To trust local certificates in your browser without security warnings, download the Root CA (<code>root.crt</code>) from the Web Dashboard (<strong>Caddy Ingress ➔ TLS Certs</strong>) or via <code>http://&lt;manager-ip&gt;:4000/v1/caddy/ca.crt</code>.</p>
+</blockquote>
+<hr />
+<h3 id="b-public-domains-demofiwareapp-automatic-lets-encrypt-ssltls">B. Public Domains (<code>demo.fiware.app</code>) — Automatic Let's Encrypt SSL/TLS</h3>
+<p>When you provide a real, public FQDN (e.g., <code>demo.fiware.app</code>, <code>api.mycompany.com</code>), Gubernator automatically enables <strong>Caddy Automatic HTTPS</strong>:</p>
+<ol>
+<li><strong>Zero-Touch Provisioning</strong>: Caddy contacts <strong>Let's Encrypt</strong> / <strong>ZeroSSL</strong> via the ACME protocol.</li>
+<li><strong>Instant Verification</strong>: Caddy validates domain ownership over ports <code>80</code>/<code>443</code> (HTTP-01 / TLS-ALPN-01 challenges).</li>
+<li><strong>Official X.509 Certificate</strong>: A valid, globally trusted certificate is issued, installed, and HTTPS is activated in seconds.</li>
+<li><strong>Automatic HTTP ➔ HTTPS Redirect</strong>: Port 80 traffic is redirected to port 443 automatically.</li>
+<li><strong>Background Auto-Renewal</strong>: Certificates are automatically renewed 30 days before expiration.</li>
+</ol>
+<h4 id="example-deploying-a-public-domain-stack">Example: Deploying a Public Domain Stack</h4>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">frontend</span><span class="p">:</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"80"</span><span class="w"> </span><span class="c1"># Target container port</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == production-demo</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">          </span><span class="c1"># Public domain for Automatic Let's Encrypt HTTPS:</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == demo.fiware.app</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">          </span><span class="c1"># (Optional) ACME email for certificate expiration alerts:</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.email == admin@fiware.app</span>
+</span></code></pre></div>
+<h4 id="alternative-format-with-service-labels">Alternative Format with Service Labels</h4>
+<p>You can also use standard Docker Compose <code>labels</code>:
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">frontend</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:latest</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"80"</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">      </span><span class="nt">gbnt.ingress.host</span><span class="p">:</span><span class="w"> </span><span class="s">"demo.fiware.app"</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">      </span><span class="nt">gbnt.ingress.email</span><span class="p">:</span><span class="w"> </span><span class="s">"admin@fiware.app"</span>
+</span></code></pre></div></p>
+<hr />
+<h3 id="c-ingress-constraints-labels-reference">C. Ingress Constraints &amp; Labels Reference</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Constraint / Label</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>ingress.host == &lt;domain&gt;</code></td>
+<td style="text-align: left;">Domain to route to this service</td>
+<td style="text-align: left;"><code>- ingress.host == demo.fiware.app</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.email == &lt;email&gt;</code></td>
+<td style="text-align: left;">ACME contact email for Let's Encrypt</td>
+<td style="text-align: left;"><code>- ingress.email == admin@fiware.app</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.tls == internal</code></td>
+<td style="text-align: left;">Force Caddy internal self-signed CA</td>
+<td style="text-align: left;"><code>- ingress.tls == internal</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ingress.tls == off</code></td>
+<td style="text-align: left;">Disable TLS (plain HTTP on port 80 only)</td>
+<td style="text-align: left;"><code>- ingress.tls == off</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.ingress.host</code></td>
+<td style="text-align: left;">Label equivalent of <code>ingress.host</code></td>
+<td style="text-align: left;"><code>gbnt.ingress.host: "demo.fiware.app"</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.ingress.email</code></td>
+<td style="text-align: left;">Label equivalent of <code>ingress.email</code></td>
+<td style="text-align: left;"><code>gbnt.ingress.email: "admin@fiware.app"</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="d-prerequisites-for-public-https-domains">D. Prerequisites for Public HTTPS Domains</h3>
+<ol>
+<li><strong>DNS Record</strong>: In your DNS provider (Cloudflare, Route53, GoDaddy, OVH, etc.), configure an <code>A</code> record pointing <code>demo.fiware.app</code> to the <strong>public IP</strong> of your Gubernator Manager or Ingress node:
+   <div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>demo.fiware.app.   300   IN   A   &lt;YOUR_PUBLIC_SERVER_IP&gt;
+</span></code></pre></div></li>
+<li><strong>Firewall / Security Group</strong>: Ensure inbound traffic on ports <strong><code>80</code> (HTTP)</strong> and <strong><code>443</code> (HTTPS)</strong> is open to the internet (<code>0.0.0.0/0</code>).</li>
+</ol>
+<hr />
+<hr />
+<h2 id="4-security-gatekeeper-image-signing-labels-gbntsecurity">4. Security Gatekeeper &amp; Image Signing Labels (<code>gbnt.security.*</code>)</h2>
+<p>Gubernator features a native pre-deployment <strong>Admission Gatekeeper</strong> (<em>The Imperial Seal</em>). Stacks can enforce Zero-Trust container security policies directly in their <code>docker-compose.yml</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">secure-payment-api</span><span class="p">:</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">company/payment-api:2.1.0</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">      </span><span class="c1"># 1. Require valid cryptographic Cosign signature</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">      </span><span class="nt">gbnt.security.require-signature</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">      </span><span class="c1"># 2. Block deployment if image contains Critical CVEs (CVSS &gt;= 9.0)</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">      </span><span class="nt">gbnt.security.max-cve-severity</span><span class="p">:</span><span class="w"> </span><span class="s">"critical"</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">      </span><span class="c1"># 3. Block deployment even if no upstream patch exists yet</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">      </span><span class="nt">gbnt.security.allow-unfixed-cve</span><span class="p">:</span><span class="w"> </span><span class="s">"false"</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">      </span><span class="c1"># 4. (Optional) Enforce signature from a specific key identity</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">      </span><span class="nt">gbnt.security.signer</span><span class="p">:</span><span class="w"> </span><span class="s">"Cluster</span><span class="nv"> </span><span class="s">Administrator"</span>
+</span></code></pre></div>
+<h3 id="security-labels-reference">Security Labels Reference</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Label</th>
+<th style="text-align: left;">Values</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.require-signature</code></td>
+<td style="text-align: left;"><code>true</code>, <code>false</code></td>
+<td style="text-align: left;">Enforces that the container image must be signed with a trusted ECDSA keypair before deployment.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.max-cve-severity</code></td>
+<td style="text-align: left;"><code>critical</code>, <code>high</code>, <code>medium</code>, <code>none</code></td>
+<td style="text-align: left;">Sets the maximum tolerated CVE vulnerability threshold. Deployments exceeding this will be blocked.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.allow-unfixed-cve</code></td>
+<td style="text-align: left;"><code>true</code>, <code>false</code></td>
+<td style="text-align: left;">When <code>false</code>, blocks images with CVEs even if no vendor fix/patch is currently available.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.signer</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Restricts admission to images signed by a specific signer identity or organization.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-google-sre-slo-engine-labels-gbntslo">5. Google SRE SLO Engine Labels (<code>gbnt.slo.*</code>)</h2>
+<p>Gubernator integrates the <strong>Sloth SLO Engine</strong> to automatically translate service labels into Prometheus recording rules and multi-window burn-rate alerts:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">api</span><span class="p">:</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-service:latest</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">      </span><span class="nt">gbnt.slo.enable</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">      </span><span class="nt">gbnt.slo.target</span><span class="p">:</span><span class="w"> </span><span class="s">"99.9"</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">      </span><span class="nt">gbnt.slo.window</span><span class="p">:</span><span class="w"> </span><span class="s">"30d"</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">      </span><span class="nt">gbnt.slo.indicator</span><span class="p">:</span><span class="w"> </span><span class="s">"latency"</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">      </span><span class="nt">gbnt.slo.latency.threshold</span><span class="p">:</span><span class="w"> </span><span class="s">"200ms"</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Label</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>gbnt.slo.enable</code></td>
+<td style="text-align: left;">Activates SLO tracking for this service</td>
+<td style="text-align: left;"><code>true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.slo.target</code></td>
+<td style="text-align: left;">Target availability objective %</td>
+<td style="text-align: left;"><code>99.9</code> (Three Nines), <code>99.99</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.slo.window</code></td>
+<td style="text-align: left;">Rolling error budget evaluation window</td>
+<td style="text-align: left;"><code>30d</code>, <code>7d</code>, <code>90d</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.slo.indicator</code></td>
+<td style="text-align: left;">Type of Service Level Indicator</td>
+<td style="text-align: left;"><code>availability</code> (HTTP 5xx error rate) or <code>latency</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.slo.latency.threshold</code></td>
+<td style="text-align: left;">Maximum latency objective</td>
+<td style="text-align: left;"><code>200ms</code>, <code>500ms</code>, <code>1s</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-granaries-persistent-shared-storage-varcontenedores">6. Granaries &amp; Persistent Shared Storage (<code>/var/contenedores/</code>)</h2>
+<p>For persistent data mobility across Centurion nodes, mount host directories under <code>/var/contenedores/</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nt">database</span><span class="p">:</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:16-alpine</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/contenedores/${STACK_NAME}/pgdata:/var/lib/postgresql/data</span>
+</span></code></pre></div>
+<hr />
+<h2 id="7-supported-compose-fields">7. Supported Compose Fields</h2>
+<p>Gubernator's parser focuses on the fields necessary for container scheduling, security admission, and networking:</p>
+<ul>
+<li><code>image</code>: The container image to pull, verify signatures, and run.</li>
+<li><code>labels</code>: Service-level metadata for Ingress routing, Security Gatekeeper, and Sloth SLOs.</li>
+<li><code>ports</code>: Ports to expose (also used for Ingress target detection).</li>
+<li><code>environment</code>: Environment variables (supports both map and array formats).</li>
+<li><code>volumes</code>: Local, shared <code>/var/contenedores/</code>, and named volume mounts.</li>
+<li><code>command</code>: Overrides the default container command.</li>
+<li><code>depends_on</code>: Ensures proper startup ordering of services.</li>
+<li><code>deploy.replicas</code>: Number of container instances to spawn.</li>
+<li><code>deploy.placement.constraints</code>: Node hardware affinity (e.g. <code>gbnt.node.gpu == nvidia</code>, <code>node.role == worker</code>) and stack constraints.</li>
+</ul>
+<hr />
+<h2 id="8-loading-stacks-from-master-server-filesystem-workstations">8. Loading Stacks from Master Server Filesystem &amp; Workstations</h2>
+<p>Gubernator supports flexible stack loading from both your client browser/workstation and the <strong>Master server filesystem</strong>:</p>
+<h3 id="deployment-methods">Deployment Methods</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Source</th>
+<th style="text-align: left;">UI Action</th>
+<th style="text-align: left;">CLI Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Client Workstation</strong></td>
+<td style="text-align: left;">Local PC disk</td>
+<td style="text-align: left;">Click <strong>"My PC"</strong> in Stacks / Studio</td>
+<td style="text-align: left;"><code>gbnt stack deploy my-stack -f ./local-compose.yml</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Master Server Filesystem</strong></td>
+<td style="text-align: left;">Manager host disk</td>
+<td style="text-align: left;">Click <strong>"Master Server"</strong> in Stacks / Studio</td>
+<td style="text-align: left;"><code>gbnt stack deploy my-stack -s ~/.gbnt/stacks/app.yml</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Built-in POC Blueprints</strong></td>
+<td style="text-align: left;">In-cluster embedded library</td>
+<td style="text-align: left;">Click <strong>"POC Blueprints"</strong> in Stacks / Studio</td>
+<td style="text-align: left;"><code>gbnt examples deploy &lt;id&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="server-directory-structure">Server Directory Structure</h3>
+<p>When Gubernator starts, it automatically ensures and indexes the following directories on the Master host:</p>
+<ul>
+<li><code>~/.gbnt/stacks/</code>: User-defined Docker Compose stacks. Drop <code>.yml</code> or <code>.yaml</code> files here to manage them directly on the server.</li>
+<li><code>~/.gbnt/examples/</code>: Bundled production POC example blueprints exported for inspection and modification.</li>
+<li><code>/etc/gubernator/stacks/</code>: System-wide shared stacks directory.</li>
+</ul>
+<h3 id="listing-server-stack-files">Listing Server Stack Files</h3>
+<p>To inspect stack files available on the Master host:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># List files in default directories (~/.gbnt/stacks and ~/.gbnt/examples)</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>server-ls
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># List files in a custom directory on the Master host</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>server-ls<span class="w"> </span>--dir<span class="w"> </span>/opt/docker-stacks
+</span></code></pre></div>
+<hr />
+<h2 id="9-built-in-poc-examples-library-bootstrap-auto-deployment">9. Built-in POC Examples Library &amp; Bootstrap Auto-Deployment</h2>
+<p>Gubernator includes an embedded catalog of <strong>8 production-grade proof-of-concept (POC) blueprints</strong> designed to demonstrate clustering, service discovery, persistent storage, security, and observability out of the box:</p>
+<ol>
+<li><strong><code>hello-loadbalancer</code></strong>: High-availability web app with 2 replicas, Caddy load balancing, and CoreDNS discovery.</li>
+<li><strong><code>wordpress-mysql</code></strong>: WordPress CMS with MySQL 8.0 backend and persistent storage mounts.</li>
+<li><strong><code>public-https</code></strong>: Automatic Let's Encrypt / ZeroSSL public TLS reverse proxy via Caddy.</li>
+<li><strong><code>sloth-slo</code></strong>: Microservice with Google SRE Sloth SLO labels and multi-window burn-rate alert rules.</li>
+<li><strong><code>n8n-workflow</code></strong>: Self-hosted workflow automation platform with PostgreSQL persistence.</li>
+<li><strong><code>jaeger-tracing</code></strong>: Distributed tracing service with OpenTelemetry export and Jaeger UI.</li>
+<li><strong><code>jupyter-datascience</code></strong>: Interactive Python data science notebook workspace.</li>
+<li><strong><code>sre-observability</code></strong>: Microservice exporting Prometheus metrics for full observability validation.</li>
+</ol>
+<h3 id="deploying-poc-examples-during-installation">Deploying POC Examples During Installation</h3>
+<p>To deploy all POC examples automatically when initializing a new cluster:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Option A: Deploy during cluster initialization</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>gbnt<span class="w"> </span>legion<span class="w"> </span>init<span class="w"> </span>--with-examples
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Option B: Environment variable flag on manager startup</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GBNT_DEPLOY_EXAMPLES</span><span class="o">=</span><span class="nb">true</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>gbnt<span class="w"> </span>serve
+</span></code></pre></div>
+<h3 id="on-demand-poc-deployment-via-cli">On-Demand POC Deployment via CLI</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># List all available POC blueprints</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>gbnt<span class="w"> </span>examples<span class="w"> </span>ls
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Deploy a specific POC blueprint</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>gbnt<span class="w"> </span>examples<span class="w"> </span>deploy<span class="w"> </span>hello-loadbalancer
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># Deploy all POC blueprints into the cluster</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>gbnt<span class="w"> </span>examples<span class="w"> </span>deploy<span class="w"> </span>all
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
