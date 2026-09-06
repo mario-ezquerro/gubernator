@@ -388,7 +388,7 @@ class _CenturionsPageState extends State<CenturionsPage> {
         state: widget.state,
         initialNodeId: nodeId,
         onConfigApplied: () {
-          _showSnackBar('Configuración de Docker daemon aplicada.');
+          _showSnackBar('Docker daemon configuration applied successfully.');
           widget.onRefresh();
         },
       ),

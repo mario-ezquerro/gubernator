@@ -70,7 +70,6 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
 
   // Cluster Host Statuses
   List<dynamic> _hostStatuses = [];
-  Map<String, dynamic> _presets = {};
 
   // Action options
   String _action = 'apply_and_reload'; // apply_and_reload, apply_and_restart, save_only
@@ -126,7 +125,6 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
 
       setState(() {
         _hostStatuses = res['hosts'] as List? ?? [];
-        _presets = res['presets'] as Map<String, dynamic>? ?? {};
         _isLoading = false;
 
         // If we loaded a specific host that has an existing config, populate it
@@ -140,61 +138,9 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al consultar estado de Docker daemon: $e';
+        _errorMessage = 'Error fetching Docker daemon status: $e';
       });
     }
-  }
-
-  void _applyPreset(String presetKey) {
-    if (!_presets.containsKey(presetKey)) {
-      // Fallback local presets
-      if (presetKey == 'production') {
-        _liveRestore = true;
-        _logDriver = 'json-file';
-        _logMaxSize = '20m';
-        _logMaxFile = '3';
-        _dnsController.text = '1.1.1.1, 8.8.8.8';
-        _maxDownloads = 10;
-        _enableNvidia = false;
-        _defaultRuntime = 'runc';
-        _enableMetrics = false;
-      } else if (presetKey == 'gpu') {
-        _liveRestore = true;
-        _logDriver = 'json-file';
-        _logMaxSize = '20m';
-        _logMaxFile = '3';
-        _dnsController.text = '1.1.1.1, 8.8.8.8';
-        _maxDownloads = 10;
-        _enableNvidia = true;
-        _defaultRuntime = 'nvidia';
-      } else if (presetKey == 'sre') {
-        _liveRestore = true;
-        _logDriver = 'json-file';
-        _logMaxSize = '20m';
-        _logMaxFile = '3';
-        _dnsController.text = '1.1.1.1, 8.8.8.8';
-        _enableMetrics = true;
-        _metricsAddrController.text = '0.0.0.0:9323';
-        _experimental = true;
-      } else if (presetKey == 'minimal') {
-        _liveRestore = true;
-        _logDriver = 'json-file';
-        _logMaxSize = '10m';
-        _logMaxFile = '3';
-        _enableNvidia = false;
-        _enableMetrics = false;
-      }
-    } else {
-      final p = _presets[presetKey] as Map<String, dynamic>;
-      _populateFromMap(p);
-    }
-    _syncFormToJson();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Preset "$presetKey" aplicado con éxito'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   void _populateFromMap(Map<String, dynamic> map) {
@@ -343,12 +289,12 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     try {
       final decoded = json.decode(val);
       if (decoded is! Map) {
-        setState(() => _jsonSyntaxError = 'El JSON debe ser un objeto {}');
+        setState(() => _jsonSyntaxError = 'JSON must be an object {}');
         return;
       }
       setState(() => _jsonSyntaxError = null);
     } catch (e) {
-      setState(() => _jsonSyntaxError = 'Sintaxis inválida: $e');
+      setState(() => _jsonSyntaxError = 'Invalid syntax: $e');
     }
   }
 
@@ -358,7 +304,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     try {
       json.decode(raw);
     } catch (e) {
-      setState(() => _errorMessage = 'Corrige los errores de sintaxis JSON antes de aplicar: $e');
+      setState(() => _errorMessage = 'Please fix JSON syntax errors before applying: $e');
       return;
     }
 
@@ -383,9 +329,9 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
       setState(() {
         _isSaving = false;
         if (hasFailures) {
-          _errorMessage = 'Se completó con advertencias. Revisa los resultados por nodo.';
+          _errorMessage = 'Completed with warnings. Check results per node.';
         } else {
-          _successMessage = '¡Configuración de Docker aplicada exitosamente en ${results.length} nodo(s)!';
+          _successMessage = 'Docker daemon configuration applied successfully to ${results.length} node(s)!';
         }
       });
 
@@ -394,7 +340,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     } catch (e) {
       setState(() {
         _isSaving = false;
-        _errorMessage = 'Error al aplicar configuración: $e';
+        _errorMessage = 'Error applying configuration: $e';
       });
     }
   }
@@ -456,7 +402,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Configura rotación de logs, cero caídas (live-restore), GPU NVIDIA, DNS y métricas en todos o nodos seleccionados.',
+                          'Configure log rotation, zero-downtime (live-restore), NVIDIA GPU, DNS, and metrics across all or targeted cluster nodes.',
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.65)),
                         ),
                       ],
@@ -476,14 +422,14 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
               color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF0F2F5),
               child: Row(
                 children: [
-                  const Text('Ámbito de Aplicación:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text('Target Scope:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(width: 12),
                   SegmentedButton<String>(
                     segments: const [
-                      ButtonSegment(value: 'all', label: Text('Todos'), icon: Icon(Icons.language, size: 16)),
-                      ButtonSegment(value: 'gpu', label: Text('Nodos GPU'), icon: Icon(Icons.bolt, size: 16)),
+                      ButtonSegment(value: 'all', label: Text('All Nodes'), icon: Icon(Icons.language, size: 16)),
+                      ButtonSegment(value: 'gpu', label: Text('GPU Nodes'), icon: Icon(Icons.bolt, size: 16)),
                       ButtonSegment(value: 'manager', label: Text('Manager'), icon: Icon(Icons.shield, size: 16)),
-                      ButtonSegment(value: 'node', label: Text('Específico'), icon: Icon(Icons.dns, size: 16)),
+                      ButtonSegment(value: 'node', label: Text('Specific Node'), icon: Icon(Icons.dns, size: 16)),
                     ],
                     selected: {_targetScope},
                     onSelectionChanged: (val) {
@@ -519,28 +465,6 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                         },
                       ),
                     ),
-                  ] else ...[
-                    const Spacer(),
-                    // Preset Quick Chips
-                    const Text('Presets Rápidos:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(Icons.star, size: 14, color: Colors.amber),
-                      label: const Text('Producción', style: TextStyle(fontSize: 11)),
-                      onPressed: () => _applyPreset('production'),
-                    ),
-                    const SizedBox(width: 6),
-                    ActionChip(
-                      avatar: const Icon(Icons.bolt, size: 14, color: Colors.green),
-                      label: const Text('GPU NVIDIA', style: TextStyle(fontSize: 11)),
-                      onPressed: () => _applyPreset('gpu'),
-                    ),
-                    const SizedBox(width: 6),
-                    ActionChip(
-                      avatar: const Icon(Icons.query_stats, size: 14, color: Colors.purpleAccent),
-                      label: const Text('SRE Prometheus', style: TextStyle(fontSize: 11)),
-                      onPressed: () => _applyPreset('sre'),
-                    ),
                   ],
                 ],
               ),
@@ -557,13 +481,13 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 tabAlignment: TabAlignment.start,
                 labelColor: theme.colorScheme.primary,
                 tabs: const [
-                  Tab(icon: Icon(Icons.receipt_long, size: 18), text: 'Logs & Cero Paradas'),
-                  Tab(icon: Icon(Icons.language, size: 18), text: 'Redes & DNS'),
-                  Tab(icon: Icon(Icons.lock_outline, size: 18), text: 'Registros'),
+                  Tab(icon: Icon(Icons.receipt_long, size: 18), text: 'Logs & Live Restore'),
+                  Tab(icon: Icon(Icons.language, size: 18), text: 'Networking & DNS'),
+                  Tab(icon: Icon(Icons.lock_outline, size: 18), text: 'Registries'),
                   Tab(icon: Icon(Icons.memory, size: 18), text: 'GPU & Runtimes'),
-                  Tab(icon: Icon(Icons.bar_chart, size: 18), text: 'Métricas & Almacenamiento'),
-                  Tab(icon: Icon(Icons.code, size: 18), text: 'Editor JSON Raw'),
-                  Tab(icon: Icon(Icons.dvr, size: 18), text: 'Estado en Clúster'),
+                  Tab(icon: Icon(Icons.bar_chart, size: 18), text: 'Metrics & Storage'),
+                  Tab(icon: Icon(Icons.code, size: 18), text: 'Raw JSON Editor'),
+                  Tab(icon: Icon(Icons.dvr, size: 18), text: 'Cluster Status'),
                 ],
               ),
             ),
@@ -637,7 +561,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                     value: _createBackup,
                     onChanged: (v) => setState(() => _createBackup = v ?? true),
                   ),
-                  const Text('Crear copia de respaldo (.bak) automática', style: TextStyle(fontSize: 13)),
+                  const Text('Create automated backup (.bak) file', style: TextStyle(fontSize: 13)),
                   const Spacer(),
                   // Action selector
                   Container(
@@ -656,7 +580,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                               children: [
                                 Icon(Icons.bolt, color: Colors.amber, size: 16),
                                 SizedBox(width: 8),
-                                Text('Aplicar y Recargar (SIGHUP - Sin caídas)'),
+                                Text('Apply & Reload (SIGHUP - Zero Downtime)'),
                               ],
                             ),
                           ),
@@ -666,7 +590,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                               children: [
                                 Icon(Icons.restart_alt, color: Colors.orange, size: 16),
                                 SizedBox(width: 8),
-                                Text('Aplicar y Reiniciar servicio Docker'),
+                                Text('Apply & Restart Docker Service'),
                               ],
                             ),
                           ),
@@ -676,7 +600,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                               children: [
                                 Icon(Icons.save, color: Colors.blue, size: 16),
                                 SizedBox(width: 8),
-                                Text('Solo Guardar fichero daemon.json'),
+                                Text('Save daemon.json File Only'),
                               ],
                             ),
                           ),
@@ -693,7 +617,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                     icon: _isSaving
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.rocket_launch, size: 18),
-                    label: Text(_isSaving ? 'Aplicando...' : 'Aplicar en Clúster'),
+                    label: Text(_isSaving ? 'Applying...' : 'Apply to Cluster'),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -708,7 +632,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 1: Logs & Cero Paradas ─────────────────────────────────────────────
+  // ── TAB 1: Logs & Live Restore ────────────────────────────────────────────
   Widget _buildLogsTab(ThemeData theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -731,8 +655,8 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 subtitle: const Padding(
                   padding: EdgeInsets.only(top: 6),
                   child: Text(
-                    'Permite reiniciar o recargar el servicio de Docker sin apagar ni reiniciar los contenedores en ejecución. '
-                    'Recomendado para entornos de producción y clústeres de alta disponibilidad.',
+                    'Enables restarting or reloading the Docker daemon without stopping running containers. '
+                    'Recommended for production and high-availability clusters.',
                     style: TextStyle(fontSize: 12),
                   ),
                 ),
@@ -747,10 +671,10 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
           const SizedBox(height: 20),
 
           // Log Driver & Rotation Options
-          Text('Rotación de Logs de Contenedores', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Container Log Rotation', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           const Text(
-            'Evita que los archivos de logs de los contenedores crezcan indefinidamente y llenen el disco de los Centurions.',
+            'Prevents container log files from growing indefinitely and exhausting Centurion host disk space.',
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -761,13 +685,13 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: DropdownButtonFormField<String>(
                   value: _logDriver,
                   decoration: const InputDecoration(
-                    labelText: 'Controlador de Logs (log-driver)',
+                    labelText: 'Log Driver (log-driver)',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'json-file', child: Text('json-file (Recomendado)')),
-                    DropdownMenuItem(value: 'local', child: Text('local (Binario eficiente)')),
-                    DropdownMenuItem(value: 'syslog', child: Text('syslog (Integración SO)')),
+                    DropdownMenuItem(value: 'json-file', child: Text('json-file (Recommended)')),
+                    DropdownMenuItem(value: 'local', child: Text('local (Efficient binary)')),
+                    DropdownMenuItem(value: 'syslog', child: Text('syslog (OS integration)')),
                     DropdownMenuItem(value: 'journald', child: Text('journald (systemd)')),
                   ],
                   onChanged: (val) {
@@ -783,12 +707,12 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: DropdownButtonFormField<String>(
                   value: _logMaxSize,
                   decoration: const InputDecoration(
-                    labelText: 'Tamaño Máximo por Archivo (max-size)',
+                    labelText: 'Max Size per File (max-size)',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
                     DropdownMenuItem(value: '10m', child: Text('10 MB')),
-                    DropdownMenuItem(value: '20m', child: Text('20 MB (Recomendado)')),
+                    DropdownMenuItem(value: '20m', child: Text('20 MB (Recommended)')),
                     DropdownMenuItem(value: '50m', child: Text('50 MB')),
                     DropdownMenuItem(value: '100m', child: Text('100 MB')),
                     DropdownMenuItem(value: '200m', child: Text('200 MB')),
@@ -806,14 +730,14 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: DropdownButtonFormField<String>(
                   value: _logMaxFile,
                   decoration: const InputDecoration(
-                    labelText: 'Archivos a Conservar (max-file)',
+                    labelText: 'Files to Keep (max-file)',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: '2', child: Text('2 archivos')),
-                    DropdownMenuItem(value: '3', child: Text('3 archivos (Recomendado)')),
-                    DropdownMenuItem(value: '5', child: Text('5 archivos')),
-                    DropdownMenuItem(value: '10', child: Text('10 archivos')),
+                    DropdownMenuItem(value: '2', child: Text('2 files')),
+                    DropdownMenuItem(value: '3', child: Text('3 files (Recommended)')),
+                    DropdownMenuItem(value: '5', child: Text('5 files')),
+                    DropdownMenuItem(value: '10', child: Text('10 files')),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -830,21 +754,21 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 2: Redes & DNS ─────────────────────────────────────────────────────
+  // ── TAB 2: Networking & DNS ────────────────────────────────────────────────
   Widget _buildNetworkTab(ThemeData theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Servidores DNS Globales del Motor', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Global Docker Engine DNS Servers', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Direcciones IP de resolución DNS por defecto para todos los contenedores creados.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text('Default DNS resolution IP addresses for all newly spawned containers.', style: TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 12),
           TextFormField(
             controller: _dnsController,
             decoration: const InputDecoration(
-              labelText: 'Servidores DNS (separados por coma)',
+              labelText: 'DNS Servers (comma-separated)',
               hintText: '1.1.1.1, 8.8.8.8',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.dns),
@@ -855,7 +779,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
           TextFormField(
             controller: _dnsSearchController,
             decoration: const InputDecoration(
-              labelText: 'Dominios de Búsqueda DNS (dns-search)',
+              labelText: 'DNS Search Domains (dns-search)',
               hintText: 'corp.internal, gbnt.local',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.search),
@@ -864,7 +788,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
           ),
           const SizedBox(height: 24),
 
-          Text('Rangos de Red y Subredes de Puente', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Bridge Network & Address Pool Subnets', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -872,7 +796,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: TextFormField(
                   controller: _bipController,
                   decoration: const InputDecoration(
-                    labelText: 'IP Puente docker0 (bip)',
+                    labelText: 'Bridge docker0 IP (bip)',
                     hintText: '172.26.0.1/16',
                     border: OutlineInputBorder(),
                   ),
@@ -884,7 +808,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: TextFormField(
                   controller: _addrPoolBaseController,
                   decoration: const InputDecoration(
-                    labelText: 'Piscina Automática (base)',
+                    labelText: 'Address Pool Base (base)',
                     hintText: '10.200.0.0/16',
                     border: OutlineInputBorder(),
                   ),
@@ -896,7 +820,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: TextFormField(
                   controller: _addrPoolSizeController,
                   decoration: const InputDecoration(
-                    labelText: 'Tamaño Subred (size)',
+                    labelText: 'Subnet Size (size)',
                     hintText: '24',
                     border: OutlineInputBorder(),
                   ),
@@ -912,8 +836,8 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text('Comunicación Entre Contenedores (icc)'),
-                  subtitle: const Text('Permite el tráfico directo entre contenedores en la misma red bridge.'),
+                  title: const Text('Inter-Container Communication (icc)'),
+                  subtitle: const Text('Allows direct network traffic between containers on the default bridge network.'),
                   value: _icc,
                   onChanged: (v) {
                     setState(() => _icc = v);
@@ -922,8 +846,8 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
-                  title: const Text('Reenvío IP del Kernel (ip-forward)'),
-                  subtitle: const Text('Habilita net.ipv4.ip_forward para permitir que los contenedores enruten a internet.'),
+                  title: const Text('Kernel IP Forwarding (ip-forward)'),
+                  subtitle: const Text('Enables net.ipv4.ip_forward to allow containers to route traffic to the external network/internet.'),
                   value: _ipForward,
                   onChanged: (v) {
                     setState(() => _ipForward = v);
@@ -932,8 +856,8 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
-                  title: const Text('Gestión de Reglas iptables (iptables)'),
-                  subtitle: const Text('Permite a Docker manipular tablas de iptables para exponer puertos mapeados.'),
+                  title: const Text('iptables Rules Management (iptables)'),
+                  subtitle: const Text('Allows Docker to manipulate iptables rules for exposed container ports.'),
                   value: _iptables,
                   onChanged: (v) {
                     setState(() => _iptables = v);
@@ -948,16 +872,16 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 3: Registros & Espejos ─────────────────────────────────────────────
+  // ── TAB 3: Registries & Mirrors ───────────────────────────────────────────
   Widget _buildRegistriesTab(ThemeData theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Registros Privados Inseguros (HTTP / Certs Autofirmados)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Insecure Private Registries (HTTP / Self-Signed Certs)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Permite hacer pull y push a registros Docker locales sin SSL obligatorio.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text('Allows pull and push operations to local Docker registries without mandatory valid HTTPS certificates.', style: TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 12),
           TextFormField(
             controller: _insecureRegsController,
@@ -970,9 +894,9 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
           ),
           const SizedBox(height: 24),
 
-          Text('Espejos de Registro (Registry Mirrors)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Registry Mirrors', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
-          const Text('Acelera descargas de Docker Hub utilizando espejos de caché locales o de proveedores cloud.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text('Accelerates Docker Hub image pulls using local cache mirrors or cloud provider mirrors.', style: TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 12),
           TextFormField(
             controller: _regMirrorsController,
@@ -1004,14 +928,13 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   children: [
                     Icon(Icons.bolt, color: Colors.green, size: 24),
                     SizedBox(width: 10),
-                    Text('Activar NVIDIA Container Runtime', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Enable NVIDIA Container Runtime', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
                 subtitle: const Padding(
                   padding: EdgeInsets.only(top: 6),
                   child: Text(
-                    'Permite el paso de tarjetas gráficas NVIDIA hacia contenedores para tareas de inferencia de IA, '
-                    'DeepSeek, Ollama, vLLM, PyTorch y CUDA.',
+                    'Enables NVIDIA GPU passthrough into containers for AI inference, DeepSeek, Ollama, vLLM, PyTorch, and CUDA workloads.',
                     style: TextStyle(fontSize: 12),
                   ),
                 ),
@@ -1039,12 +962,12 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   child: DropdownButtonFormField<String>(
                     value: _defaultRuntime,
                     decoration: const InputDecoration(
-                      labelText: 'Runtime por Defecto (default-runtime)',
+                      labelText: 'Default Runtime (default-runtime)',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'runc', child: Text('runc (Estándar Linux)')),
-                      DropdownMenuItem(value: 'nvidia', child: Text('nvidia (Aceleración GPU por defecto)')),
+                      DropdownMenuItem(value: 'runc', child: Text('runc (Linux standard)')),
+                      DropdownMenuItem(value: 'nvidia', child: Text('nvidia (Default GPU acceleration)')),
                     ],
                     onChanged: (val) {
                       if (val != null) {
@@ -1059,7 +982,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   child: TextFormField(
                     controller: _nvidiaPathController,
                     decoration: const InputDecoration(
-                      labelText: 'Ruta del Ejecutable NVIDIA Runtime',
+                      labelText: 'NVIDIA Runtime Binary Path',
                       hintText: 'nvidia-container-runtime',
                       border: OutlineInputBorder(),
                     ),
@@ -1082,8 +1005,8 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Al aplicar este runtime, cualquier servicio con deploy.resources.reservations.devices '
-                      'o runtime: nvidia podrá comunicarse directamente con la GPU del Centurion.',
+                      'When this runtime is active, any stack service configured with deploy.resources.reservations.devices '
+                      'or runtime: nvidia can directly access host GPU hardware.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),
@@ -1096,7 +1019,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 5: Métricas & Almacenamiento ───────────────────────────────────────
+  // ── TAB 5: Metrics & Storage ───────────────────────────────────────────────
   Widget _buildMetricsStorageTab(ThemeData theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1115,13 +1038,13 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                       children: [
                         Icon(Icons.query_stats, color: Colors.purpleAccent, size: 22),
                         SizedBox(width: 10),
-                        Text('Exponer Métricas Prometheus Nativas', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('Expose Native Prometheus Metrics', style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     subtitle: const Padding(
                       padding: EdgeInsets.only(top: 6),
                       child: Text(
-                        'Expone el endpoint de telemetría de Docker Engine en formato Prometheus para monitorización con Sloth / Grafana.',
+                        'Exposes Docker Engine telemetry endpoint in Prometheus format for Sloth / Grafana monitoring.',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
@@ -1139,7 +1062,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                     TextFormField(
                       controller: _metricsAddrController,
                       decoration: const InputDecoration(
-                        labelText: 'Dirección de Métricas (metrics-addr)',
+                        labelText: 'Metrics Listen Address (metrics-addr)',
                         hintText: '0.0.0.0:9323',
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -1153,7 +1076,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
           ),
           const SizedBox(height: 24),
 
-          Text('Rutas de Almacenamiento y Concurrencia', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Storage Paths & Concurrency Limits', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1162,7 +1085,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: TextFormField(
                   controller: _dataRootController,
                   decoration: const InputDecoration(
-                    labelText: 'Directorio Raíz de Datos (data-root)',
+                    labelText: 'Data Root Directory (data-root)',
                     hintText: '/var/lib/docker',
                     border: OutlineInputBorder(),
                   ),
@@ -1175,11 +1098,11 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 child: DropdownButtonFormField<String>(
                   value: _storageDriver,
                   decoration: const InputDecoration(
-                    labelText: 'Controlador (storage-driver)',
+                    labelText: 'Storage Driver (storage-driver)',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'overlay2', child: Text('overlay2 (Recomendado)')),
+                    DropdownMenuItem(value: 'overlay2', child: Text('overlay2 (Recommended)')),
                     DropdownMenuItem(value: 'btrfs', child: Text('btrfs')),
                     DropdownMenuItem(value: 'zfs', child: Text('zfs')),
                   ],
@@ -1202,7 +1125,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   initialValue: _maxDownloads.toString(),
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Descargas Simultáneas (max-concurrent-downloads)',
+                    labelText: 'Concurrent Downloads (max-concurrent-downloads)',
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (val) {
@@ -1217,7 +1140,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                   initialValue: _maxUploads.toString(),
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Subidas Simultáneas (max-concurrent-uploads)',
+                    labelText: 'Concurrent Uploads (max-concurrent-uploads)',
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (val) {
@@ -1233,7 +1156,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 6: Editor JSON Raw ─────────────────────────────────────────────────
+  // ── TAB 6: Raw JSON Editor ─────────────────────────────────────────────────
   Widget _buildJsonEditorTab(ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1244,7 +1167,7 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
         children: [
           Row(
             children: [
-              Text('Editor Directo de /etc/docker/daemon.json', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Direct /etc/docker/daemon.json Editor', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
               const Spacer(),
               OutlinedButton.icon(
                 onPressed: () {
@@ -1253,17 +1176,17 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                     _rawJsonController.text = const JsonEncoder.withIndent('  ').convert(dec);
                     setState(() => _jsonSyntaxError = null);
                   } catch (e) {
-                    setState(() => _jsonSyntaxError = 'Error al formatear: $e');
+                    setState(() => _jsonSyntaxError = 'Formatting error: $e');
                   }
                 },
                 icon: const Icon(Icons.format_align_left, size: 16),
-                label: const Text('Formatear JSON'),
+                label: const Text('Format JSON'),
               ),
               const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: _syncFormToJson,
                 icon: const Icon(Icons.sync, size: 16),
-                label: const Text('Sincronizar desde Formulario'),
+                label: const Text('Sync from Form'),
               ),
             ],
           ),
@@ -1307,10 +1230,10 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
     );
   }
 
-  // ── TAB 7: Estado en Clúster ───────────────────────────────────────────────
+  // ── TAB 7: Cluster Status ──────────────────────────────────────────────────
   Widget _buildClusterStatusTab(ThemeData theme) {
     if (_hostStatuses.isEmpty) {
-      return const Center(child: Text('No hay información disponible para los nodos seleccionados.'));
+      return const Center(child: Text('No daemon information available for the selected nodes.'));
     }
 
     return ListView.builder(
@@ -1388,26 +1311,26 @@ class _DockerDaemonDialogState extends State<DockerDaemonDialog> with SingleTick
                 ),
                 const SizedBox(height: 12),
                 if (error != null && error.isNotEmpty) ...[
-                  Text('Error de comunicación: $error', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                  Text('Communication error: $error', style: const TextStyle(color: Colors.red, fontSize: 12)),
                 ] else ...[
                   Row(
                     children: [
-                      Text('Archivo /etc/docker/daemon.json: ', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 12)),
-                      Text(configExists ? 'Presente' : 'No configurado (valores por defecto)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: configExists ? Colors.blue : Colors.grey)),
+                      Text('/etc/docker/daemon.json file: ', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 12)),
+                      Text(configExists ? 'Present' : 'Not configured (defaults)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: configExists ? Colors.blue : Colors.grey)),
                       if (lastMod.isNotEmpty) ...[
                         const SizedBox(width: 16),
-                        Text('Modificado: $lastMod', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 11)),
+                        Text('Modified: $lastMod', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5), fontSize: 11)),
                       ],
                       const Spacer(),
                       if (raw.isNotEmpty)
                         TextButton.icon(
                           icon: const Icon(Icons.download, size: 14),
-                          label: const Text('Cargar a Editor', style: TextStyle(fontSize: 12)),
+                          label: const Text('Load into Editor', style: TextStyle(fontSize: 12)),
                           onPressed: () {
                             _populateFromRawJson(raw);
                             _tabController.animateTo(5); // Switch to Raw JSON tab
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Configuración de $nodeID cargada al editor')),
+                              SnackBar(content: Text('Configuration for $nodeID loaded into editor')),
                             );
                           },
                         ),
