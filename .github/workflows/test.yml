@@ -17,9 +17,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -v -race ./...
 
   lint:
     name: Lint
@@ -31,10 +32,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
-          args: --timeout=5m
-          install-mode: goinstall
+          version: v1.64.5
+          args: --timeout=5m --config=.golangci.yml

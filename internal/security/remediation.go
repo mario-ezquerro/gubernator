@@ -256,7 +256,6 @@ func PreviewRemediation(image string) (*RemediationPreview, error) {
 	db.DB.Find(&allStacks)
 
 	affectedStacks := make([]AffectedStackInfo, 0)
-	allAvailableStacks := make([]AffectedStackInfo, 0)
 	seenAffected := make(map[string]bool)
 
 	cleanImg := cleanImageName(image)
@@ -270,13 +269,6 @@ func PreviewRemediation(image string) (*RemediationPreview, error) {
 		if len(services) > 0 {
 			primarySvcName = services[0].Name
 		}
-
-		allAvailableStacks = append(allAvailableStacks, AffectedStackInfo{
-			StackID:     st.ID,
-			StackName:   st.Name,
-			ServiceName: primarySvcName,
-			Replicas:    1,
-		})
 
 		for _, s := range services {
 			if imageMatches(s.Image, image) || strings.Contains(st.RawComposeFile, image) || strings.Contains(st.RawComposeFile, cleanImg) {

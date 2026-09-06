@@ -14,9 +14,9 @@ build:
 test:
 	go test -race -v ./...
 
-## lint: run golangci-lint (requires golangci-lint on PATH)
+## lint: run golangci-lint
 lint:
-	golangci-lint run --timeout=5m
+	@which golangci-lint >/dev/null 2>&1 && golangci-lint run --timeout=5m || go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5 run --timeout=5m
 
 ## swagger: regenerate Swagger docs (requires swag on PATH)
 swagger:

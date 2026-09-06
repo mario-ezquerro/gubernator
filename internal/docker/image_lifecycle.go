@@ -3,6 +3,7 @@ package docker
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -387,7 +388,7 @@ func BuildHostImage(req ImageBuildRequest) (*ImageBuildResult, error) {
 
 	startTime := time.Now()
 	buildID := fmt.Sprintf("gbnt-build-%d", time.Now().UnixNano())
-	remoteWorkDir := filepath.Join("/tmp", buildID)
+	remoteWorkDir := filepath.Join(os.TempDir(), buildID)
 
 	// Prepare build command args
 	buildArgsStr := ""
@@ -701,11 +702,4 @@ func formatBytes(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
