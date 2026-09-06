@@ -50,7 +50,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.59.0"
+var Version = "v2.74.0"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -569,6 +569,10 @@ func StartDashboard() {
 		api.POST("/storage/mounts/:id/unmount", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageUnmountActionHandler)
 		api.GET("/storage/fstab/raw", storageFstabRawHandler)
 		api.POST("/storage/fstab/raw", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), storageFstabSaveRawHandler)
+
+		// Docker Daemon Management Subsystem (/etc/docker/daemon.json)
+		api.GET("/docker/daemon", dockerDaemonGetHandler)
+		api.POST("/docker/daemon", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), dockerDaemonSaveHandler)
 
 		// GlusterFS Cluster Storage Subsystem
 		api.GET("/storage/gluster/status", glusterStatusHandler)
@@ -5839,6 +5843,56 @@ func storageFstabSaveRawHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Configuration /etc/fstab successfully updated and backed up on target: %s", req.Node),
 		"node":    req.Node,
+	})
+}
+
+func dockerDaemonGetHandler(c *gin.Context) {
+	scope := c.DefaultQuery("scope", "all")
+	node := c.DefaultQuery("node", "")
+	statuses, err := docker.GetClusterDockerDaemonStatus(scope, node)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"scope":   scope,
+		"node":    node,
+		"hosts":   statuses,
+		"presets": docker.BuiltinDaemonPresets(),
+	})
+}
+
+func dockerDaemonSaveHandler(c *gin.Context) {
+	var req struct {
+		TargetScope string `json:"target_scope"`
+		NodeID      string `json:"node_id"`
+		RawJSON     string `json:"raw_json"`
+		Action      string `json:"action"`
+		Backup      *bool  `json:"backup"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.TargetScope == "" {
+		req.TargetScope = "all"
+	}
+	backup := true
+	if req.Backup != nil {
+		backup = *req.Backup
+	}
+
+	results, err := docker.SaveAndApplyDockerDaemonConfig(req.TargetScope, req.NodeID, req.RawJSON, req.Action, backup)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Docker daemon configuration processed successfully",
+		"results": results,
+		"action":  req.Action,
+		"scope":   req.TargetScope,
 	})
 }
 

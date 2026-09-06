@@ -7,6 +7,7 @@ import '../../widgets/common_widgets.dart';
 import '../../widgets/node_labels_dialog.dart';
 import '../../widgets/shell_dialog.dart';
 import '../../widgets/add_node_dialog.dart';
+import '../../widgets/docker_daemon_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Centurions page — full-width nodes table with all actions.
@@ -379,6 +380,21 @@ class _CenturionsPageState extends State<CenturionsPage> {
     );
   }
 
+  void _showDockerDaemonDialog([String? nodeId]) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => DockerDaemonDialog(
+        state: widget.state,
+        initialNodeId: nodeId,
+        onConfigApplied: () {
+          _showSnackBar('Configuración de Docker daemon aplicada.');
+          widget.onRefresh();
+        },
+      ),
+    );
+  }
+
   List<Node> _filterNodes(List<Node> nodes) {
     if (_searchQuery.isEmpty) return nodes;
     return nodes.where((n) =>
@@ -465,6 +481,12 @@ class _CenturionsPageState extends State<CenturionsPage> {
                   onPressed: widget.onRefresh,
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('Refresh'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.tonalIcon(
+                  onPressed: () => _showDockerDaemonDialog(),
+                  icon: const Icon(Icons.tune, size: 18, color: Color(0xFF2496ED)),
+                  label: const Text('Docker Config'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
@@ -696,6 +718,7 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                                    if (action == 'shell') _viewNodeShell(n.id, n.ip);
                                                    else if (action == 'inspect') _showNodeInspectDialog(n);
                                                    else if (action == 'labels') _showNodeLabelsDialog(n);
+                                                   else if (action == 'docker-daemon') _showDockerDaemonDialog(n.id);
                                                    else if (action == 'reboot') _rebootNode(n.id);
                                                    else if (action == 'activate') _updateNodeAvailability(n.id, 'active', n);
                                                    else if (action == 'maintenance') _updateNodeAvailability(n.id, 'maintenance', n);
@@ -709,6 +732,7 @@ class _CenturionsPageState extends State<CenturionsPage> {
                                                       const PopupMenuItem(value: 'shell', child: Row(children: [Icon(Icons.terminal, size: 18), SizedBox(width: 8), Text('Shell')])),
                                                    const PopupMenuItem(value: 'inspect', child: Row(children: [Icon(Icons.info_outline, size: 18), SizedBox(width: 8), Text('Inspect')])),
                                                    const PopupMenuItem(value: 'labels', child: Row(children: [Icon(Icons.label_outline, size: 18), SizedBox(width: 8), Text('Edit Labels')])),
+                                                   const PopupMenuItem(value: 'docker-daemon', child: Row(children: [Icon(Icons.tune, size: 18, color: Color(0xFF2496ED)), SizedBox(width: 8), Text('Docker Daemon (/etc/docker)')])),
                                                    const PopupMenuDivider(),
                                                    if (n.status == 'no_schedule')
                                                      const PopupMenuItem(value: 'unblock-schedule', child: Row(children: [Icon(Icons.play_arrow, size: 18, color: Colors.green), SizedBox(width: 8), Text('Enable Scheduling')]))

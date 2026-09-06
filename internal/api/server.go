@@ -272,6 +272,12 @@ func Start(ctx context.Context) error {
 			storageRoute.GET("/fstab/raw", StorageFstabRawHandler)
 		}
 
+		dockerDaemonRoute := v1.Group("/docker/daemon", authMiddleware)
+		{
+			dockerDaemonRoute.GET("", DockerDaemonGetHandler)
+			dockerDaemonRoute.POST("", DockerDaemonSaveHandler)
+		}
+
 		backupRoute := v1.Group("/backup", authMiddleware)
 		{
 			backupRoute.GET("/ls", BackupListHandler)

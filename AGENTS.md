@@ -653,6 +653,27 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Explicit pre-flight validation preventing opaque Gluster CLI crashes with actionable error messages.
   - Enhanced `GetTargetHostIPs` in `internal/storage/remote.go` to support comma-separated target node lists, enabling targeted automated `/etc/fstab` mounting across specified subsets of cluster nodes.
 
+### 85. Multi-Host Docker Daemon (/etc/docker/daemon.json) Management Subsystem (`v2.74.0`)
+* **Centralized Cluster-Wide Docker Engine Orchestration:**
+  - Complete control and synchronization of `/etc/docker/daemon.json` across all hosts in the cluster with automatic syntax pre-validation and timestamped backups (`/etc/docker/daemon.json.bak.<ts>`).
+  - Supports zero-downtime hot reloading via `systemctl reload docker` (SIGHUP) alongside `systemctl restart docker` and offline save-only options.
+* **Flexible Targeting Scope:**
+  - 🌐 **All Centurions:** Broadcasts and applies daemon configurations cluster-wide.
+  - ⚡ **GPU Nodes Only:** Dynamically targets Centurions with GPU hardware labels (`gbnt.node.gpu=nvidia`, `gpu=true`, `cuda`) or auto-detected NVIDIA hardware.
+  - 👑 **Manager Only:** Isolates changes strictly to the Gubernator manager host.
+  - 💻 **Specific Centurion:** Granular targeting to any individual cluster node.
+* **1-Click Production Presets & Blueprints:**
+  - 🌟 `Producción Recomendada`: Container log rotation (`json-file`, `max-size: 20m`, `max-file: 3`), `live-restore: true` (zero container downtime on reload/restart), `storage-driver: overlay2`, DNS `1.1.1.1, 8.8.8.8`, and concurrency optimizations (`max-concurrent-downloads: 10`).
+  - 🚀 `Nodo IA & GPU NVIDIA`: Production blueprint + native `nvidia-container-runtime` integration and default GPU runtime activation for AI, LLM, vLLM, and PyTorch workloads.
+  - 📈 `Prometheus & SRE Observability`: Production blueprint + native Docker Prometheus telemetry exporter on `:9323` with experimental flags.
+  - 🧹 `Mínimo / Limpio`: Streamlined baseline with log rotation and live-restore.
+* **Modern Web Dashboard Dialog (`DockerDaemonDialog`):**
+  - Accessible via "Docker Config" header button on Centurions view and per-node context menu.
+  - 7 categorized tabs: *Logs & Cero Paradas*, *Redes & DNS*, *Registros & Espejos*, *GPU & Runtimes*, *Métricas & Almacenamiento*, *Editor JSON Raw* (with live syntax checking and formatter), and *Estado en Clúster* (real-time node daemon badges and one-click host config inspector).
+* **Full CLI Parity (`gbnt node daemon`):**
+  - `gbnt node daemon inspect [--scope=all|gpu|manager|node] [--node=<id>]`
+  - `gbnt node daemon apply [--scope=...] [--node=...] [--preset=production|gpu|sre|minimal] [--file=<path>] [--action=apply_and_reload|apply_and_restart|save_only]`
+
 
 
 

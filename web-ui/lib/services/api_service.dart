@@ -1569,6 +1569,47 @@ class ApiService {
     throw Exception(data['error'] ?? 'Failed to save /etc/fstab');
   }
 
+  // ── Docker Daemon Management (/etc/docker/daemon.json) ──────────────────────
+
+  /// Fetches the status and configuration of /etc/docker/daemon.json across nodes.
+  static Future<Map<String, dynamic>> fetchDockerDaemonConfig({String? scope, String? node}) async {
+    final params = <String>[];
+    if (scope != null && scope.isNotEmpty) params.add('scope=${Uri.encodeComponent(scope)}');
+    if (node != null && node.isNotEmpty) params.add('node=${Uri.encodeComponent(node)}');
+    final query = params.isNotEmpty ? '?${params.join('&')}' : '';
+    final response = await http.get(Uri.parse('/api/docker/daemon$query'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to fetch Docker daemon status: ${response.statusCode}');
+  }
+
+  /// Saves, backs up, and applies /etc/docker/daemon.json to target nodes.
+  static Future<Map<String, dynamic>> saveDockerDaemonConfig({
+    required String targetScope,
+    String? nodeId,
+    required String rawJson,
+    required String action,
+    bool backup = true,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/docker/daemon'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'target_scope': targetScope,
+        'node_id': nodeId ?? '',
+        'raw_json': rawJson,
+        'action': action,
+        'backup': backup,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    }
+    throw Exception(data['error'] ?? 'Failed to apply Docker daemon configuration');
+  }
+
   // ── Image Security & SBOM API Methods ──────────────────────────────────────
 
   /// Fetches all image vulnerability scans and cluster security summary.
