@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "dev"
+var Version = "v2.75.0"
 
 var rootCmd = &cobra.Command{
 	Use:   "gbnt",

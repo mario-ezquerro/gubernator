@@ -29,6 +29,12 @@ func GenerateCaddyfile() {
 	hostUpstreams := make(map[string][]string)
 	// hostTLS stores optional custom TLS configuration per hostname (e.g. email, "internal", "off").
 	hostTLS := make(map[string]string)
+	// hostLBPolicy stores the load balancing algorithm per hostname (round_robin, least_conn, ip_hash)
+	hostLBPolicy := make(map[string]string)
+	// hostHealthURI stores the active healthcheck URI per hostname (e.g. /health)
+	hostHealthURI := make(map[string]string)
+	hostHealthInterval := make(map[string]string)
+	hostHealthTimeout := make(map[string]string)
 	// Preserve insertion order for deterministic output.
 	var hostOrder []string
 
@@ -37,6 +43,10 @@ func GenerateCaddyfile() {
 		var ingressEmail string
 		var ingressTLS string
 		var caddyPort string
+		var caddyLB string
+		var healthURI string
+		var healthInterval string
+		var healthTimeout string
 
 		for _, constraint := range svc.Constraints {
 			var key, val string
@@ -63,11 +73,32 @@ func GenerateCaddyfile() {
 				ingressTLS = strings.ToLower(val)
 			case "gbnt.caddy.port", "ingress.port":
 				caddyPort = strings.TrimSpace(val)
+			case "gbnt.caddy.lb", "ingress.lb", "gbnt.lb_policy":
+				caddyLB = strings.TrimSpace(val)
+			case "gbnt.caddy.health_uri", "ingress.health_uri":
+				healthURI = strings.TrimSpace(val)
+			case "gbnt.caddy.health_interval", "ingress.health_interval":
+				healthInterval = strings.TrimSpace(val)
+			case "gbnt.caddy.health_timeout", "ingress.health_timeout":
+				healthTimeout = strings.TrimSpace(val)
 			}
 		}
 
 		if ingressHost == "" {
 			continue
+		}
+
+		if caddyLB != "" {
+			hostLBPolicy[ingressHost] = caddyLB
+		}
+		if healthURI != "" {
+			hostHealthURI[ingressHost] = healthURI
+		}
+		if healthInterval != "" {
+			hostHealthInterval[ingressHost] = healthInterval
+		}
+		if healthTimeout != "" {
+			hostHealthTimeout[ingressHost] = healthTimeout
 		}
 
 		// Only include running tasks with a real IP or status running.
@@ -98,8 +129,11 @@ func GenerateCaddyfile() {
 				targetPort = caddyPort
 			}
 
-			if t.NodeID == "node-local-manager" || t.NodeID == "" {
+			if t.NodeID == "node-local-manager" || t.NodeID == "" || strings.Contains(strings.ToLower(t.NodeID), "manager") {
 				targetIP = t.ContainerIP
+				if targetIP == "" || targetIP == "invalid" {
+					targetIP = "127.0.0.1"
+				}
 			} else {
 				// Remote worker task: lookup worker node IP
 				var node db.Node
@@ -130,7 +164,19 @@ func GenerateCaddyfile() {
 			if _, seen := hostUpstreams[ingressHost]; !seen {
 				hostOrder = append(hostOrder, ingressHost)
 			}
-			hostUpstreams[ingressHost] = append(hostUpstreams[ingressHost], fmt.Sprintf("%s:%s", targetIP, targetPort))
+
+			upstreamAddr := fmt.Sprintf("%s:%s", targetIP, targetPort)
+			// Deduplicate upstreams
+			alreadyIn := false
+			for _, u := range hostUpstreams[ingressHost] {
+				if u == upstreamAddr {
+					alreadyIn = true
+					break
+				}
+			}
+			if !alreadyIn {
+				hostUpstreams[ingressHost] = append(hostUpstreams[ingressHost], upstreamAddr)
+			}
 
 			// Record TLS preference
 			if ingressTLS != "" {
@@ -145,6 +191,9 @@ func GenerateCaddyfile() {
 
 	for _, host := range hostOrder {
 		upstreams := hostUpstreams[host]
+		if len(upstreams) == 0 {
+			continue
+		}
 		tlsDirective := ""
 
 		tlsOpt := hostTLS[host]
@@ -159,12 +208,44 @@ func GenerateCaddyfile() {
 		} else if tlsOpt != "" && tlsOpt != "letsencrypt" && tlsOpt != "auto" {
 			tlsDirective = fmt.Sprintf("\ttls %s\n", tlsOpt)
 		}
-		// For public domains without explicit flags, omit 'tls internal' so Caddy
-		// automatically requests and manages public Let's Encrypt / ZeroSSL certificates!
+
+		lbPolicy := hostLBPolicy[host]
+		if lbPolicy == "" {
+			lbPolicy = "round_robin"
+		}
+		healthURI := hostHealthURI[host]
+
+		var proxyDirectives []string
+		if len(upstreams) > 1 || lbPolicy != "round_robin" || healthURI != "" {
+			proxyDirectives = append(proxyDirectives, fmt.Sprintf("\t\tlb_policy %s", lbPolicy))
+			if healthURI != "" {
+				if !strings.HasPrefix(healthURI, "/") {
+					healthURI = "/" + healthURI
+				}
+				proxyDirectives = append(proxyDirectives, fmt.Sprintf("\t\thealth_uri %s", healthURI))
+				interval := hostHealthInterval[host]
+				if interval == "" {
+					interval = "5s"
+				}
+				proxyDirectives = append(proxyDirectives, fmt.Sprintf("\t\thealth_interval %s", interval))
+				timeout := hostHealthTimeout[host]
+				if timeout == "" {
+					timeout = "2s"
+				}
+				proxyDirectives = append(proxyDirectives, fmt.Sprintf("\t\thealth_timeout %s", timeout))
+			}
+		}
+
+		proxyBlock := ""
+		if len(proxyDirectives) > 0 {
+			proxyBlock = fmt.Sprintf("\treverse_proxy %s {\n%s\n\t}\n", strings.Join(upstreams, " "), strings.Join(proxyDirectives, "\n"))
+		} else {
+			proxyBlock = fmt.Sprintf("\treverse_proxy %s\n", strings.Join(upstreams, " "))
+		}
 
 		content += fmt.Sprintf(
-			"%s {\n%s\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
-			host, tlsDirective, strings.Join(upstreams, " "),
+			"%s {\n%s%s}\n\n",
+			host, tlsDirective, proxyBlock,
 		)
 	}
 

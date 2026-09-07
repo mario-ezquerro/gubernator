@@ -674,6 +674,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - `gbnt node daemon inspect [--scope=all|gpu|manager|node] [--node=<id>]`
   - `gbnt node daemon apply [--scope=...] [--node=...] [--preset=production|gpu|sre|minimal] [--file=<path>] [--action=apply_and_reload|apply_and_restart|save_only]`
 
+### 86. Multi-Host Service Placement, Anti-Affinity & Dynamic Caddy Load Balancing Subsystem (`v2.75.0`)
+* **Multi-Host Service Placement & Anti-Affinity Spread (`internal/api/stack.go`):**
+  - Upgraded stack scheduling engine to evaluate placement constraints and spread strategies per service rather than enforcing single-host atomic co-location for all workloads.
+  - Detects multi-host intent via `spread: node.id` in `deploy.placement.preferences`, `gbnt.placement.strategy=spread` in service labels, multi-replica services with Caddy load balancing, or distinct service-level placement constraints.
+  - Anti-affinity algorithm sequentially distributes replicas of the same service across distinct physical Centurion nodes before assigning secondary replicas to least-loaded nodes.
+* **Specialized Hardware Affinity & Node Pinning:**
+  - Independent placement of compute/AI services to GPU nodes (`gbnt.node.gpu == nvidia`) while keeping stateful databases pinned to specific hosts (`node.hostname == ...`) and web APIs across general workers (`node.role == worker`).
+* **Dynamic Caddy Multi-Upstream Load Balancing (`internal/aqueducts/ingress.go`):**
+  - Automatically queries all live, running container instances across all Centurions for each `ingress.host` and emits a dynamic multi-upstream Caddyfile reverse proxy block.
+  - Configurable load balancing algorithms via labels: `gbnt.caddy.lb` (`round_robin`, `least_conn`, `ip_hash`, `first`, `random`).
+  - Active upstream healthcheck probes with automatic failover via `gbnt.caddy.health_uri` (e.g. `/health`), `gbnt.caddy.health_interval` (default `5s`), and `gbnt.caddy.health_timeout` (default `2s`).
+* **Dedicated Compose Studio & Copilot Suite:**
+  - Upgraded Copilot tab to **"Placement & LB"** (cyan hub icon) with 1-click anti-affinity snippets, Caddy load balancing policy presets (Round Robin, Least Conn, IP Hash), active health probe cards, and hardware affinity chips.
+  - Smart autocompletion chips for `placement.spread`, `gbnt.placement.strategy`, `gbnt.caddy.lb`, and `gbnt.caddy.health_uri`.
+  - Added new starter blueprint: **"Multi-Host Load Balanced Web"** in the Compose Studio template library.
+
 
 
 

@@ -51,7 +51,17 @@ func startLocalExecutor(ctx context.Context) {
 				continue
 			}
 
-			if task.NodeID == localManagerNodeID {
+			var targetNode db.Node
+			isLocal := (task.NodeID == localManagerNodeID || task.NodeID == "" || strings.Contains(strings.ToLower(task.NodeID), "manager"))
+			if !isLocal {
+				if err := db.DB.Where("id = ? OR ip = ?", task.NodeID, task.NodeID).First(&targetNode).Error; err == nil {
+					if strings.ToLower(targetNode.Role) == "manager" || targetNode.IP == "127.0.0.1" {
+						isLocal = true
+					}
+				}
+			}
+
+			if isLocal {
 				// Local Manager Execution
 				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
 					"status": "pulling",
@@ -60,8 +70,10 @@ func startLocalExecutor(ctx context.Context) {
 				go executeTask(task, svc)
 			} else {
 				// Remote Worker Node Execution
-				var targetNode db.Node
-				if err := db.DB.Where("id = ? OR ip = ?", task.NodeID, task.NodeID).First(&targetNode).Error; err == nil && targetNode.IP != "" && targetNode.IP != "127.0.0.1" {
+				if targetNode.IP == "" {
+					_ = db.DB.Where("id = ? OR ip = ?", task.NodeID, task.NodeID).First(&targetNode)
+				}
+				if targetNode.IP != "" && targetNode.IP != "127.0.0.1" {
 					db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
 						"status": "pulling",
 						"error":  fmt.Sprintf("Worker node %s (%s): pulling image %s...", targetNode.ID, targetNode.IP, svc.Image),

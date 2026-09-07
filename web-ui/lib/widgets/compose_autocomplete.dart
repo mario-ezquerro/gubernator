@@ -37,6 +37,20 @@ class ComposeAutocomplete {
       snippet: '        - "gbnt.caddy.port=8080"\n',
     ),
     ComposeSnippet(
+      label: 'gbnt.caddy.lb',
+      category: 'Caddy',
+      description: 'Load balancing algorithm for multi-host upstreams (round_robin, least_conn, ip_hash)',
+      icon: Icons.balance,
+      snippet: '        - "gbnt.caddy.lb=round_robin"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.caddy.health_uri',
+      category: 'Caddy',
+      description: 'Active upstream health check endpoint for automatic failover',
+      icon: Icons.health_and_safety,
+      snippet: '        - "gbnt.caddy.health_uri=/health"\n',
+    ),
+    ComposeSnippet(
       label: 'gbnt.caddy.tls',
       category: 'Caddy',
       description: 'Force internal or custom TLS certificate',
@@ -104,6 +118,20 @@ class ComposeAutocomplete {
       description: 'Pin service to worker nodes or specific hostnames',
       icon: Icons.memory,
       snippet: '      placement:\n        constraints:\n          - "node.role == worker"\n',
+    ),
+    ComposeSnippet(
+      label: 'placement.spread',
+      category: 'Placement',
+      description: 'Anti-affinity: spread service replicas across distinct Centurion nodes',
+      icon: Icons.alt_route,
+      snippet: '      placement:\n        preferences:\n          - spread: node.id\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.placement.strategy',
+      category: 'Placement',
+      description: 'Multi-host distributed placement strategy across cluster',
+      icon: Icons.hub,
+      snippet: '        - "gbnt.placement.strategy=spread"\n',
     ),
     ComposeSnippet(
       label: 'placement.gpu',

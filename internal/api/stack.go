@@ -121,6 +121,39 @@ type ComposeFile struct {
 	Services map[string]ComposeService `yaml:"services"`
 }
 
+// PlacementPreference captures Docker Compose deploy.placement.preferences entries (e.g. spread: node.id).
+type PlacementPreference struct {
+	Spread string `yaml:"spread"`
+}
+
+// PlacementPreferences handles unmarshaling of placement preferences from YAML sequences or mappings.
+type PlacementPreferences []PlacementPreference
+
+func (p *PlacementPreferences) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.SequenceNode {
+		var list []map[string]string
+		if err := value.Decode(&list); err == nil {
+			var prefs []PlacementPreference
+			for _, m := range list {
+				if s, ok := m["spread"]; ok {
+					prefs = append(prefs, PlacementPreference{Spread: s})
+				}
+			}
+			*p = prefs
+			return nil
+		}
+	} else if value.Kind == yaml.MappingNode {
+		var m map[string]string
+		if err := value.Decode(&m); err == nil {
+			if s, ok := m["spread"]; ok {
+				*p = []PlacementPreference{{Spread: s}}
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
 // ComposeService maps a docker-compose service definition, capturing all
 // fields needed to run a container: image, replicas, ports, env, volumes, command, placement.
 type ComposeService struct {
@@ -138,7 +171,8 @@ type ComposeService struct {
 		Replicas  int       `yaml:"replicas"`
 		Labels    LabelsMap `yaml:"labels"`
 		Placement struct {
-			Constraints []string `yaml:"constraints"`
+			Constraints []string             `yaml:"constraints"`
+			Preferences PlacementPreferences `yaml:"preferences"`
 		} `yaml:"placement"`
 		Resources struct {
 			Limits struct {
@@ -345,37 +379,115 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 	return &stack, nil
 }
 
-// DeployStackRaw parses compose YAML, stops any prior version of the stack, registers services, and schedules tasks.
-func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error) {
-	stackName := strings.TrimSpace(reqName)
 
-	// Try to infer it from the raw YAML if present
-	var tempCompose ComposeFile
-	if err := yaml.Unmarshal([]byte(composeRawInput), &tempCompose); err == nil {
-		extractedName := ""
-		// Fallback: search for stack.name == XXX in constraints
-		for _, srv := range tempCompose.Services {
-			for _, constraint := range srv.Deploy.Placement.Constraints {
-				parts := strings.Split(constraint, "==")
-				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
-					extractedName = strings.TrimSpace(parts[1])
-					break
-				}
-			}
-			if extractedName != "" {
-				break
+
+// isMultiHostStack determines whether a Docker Compose stack should have its services
+// and replicas distributed across multiple Centurion cluster nodes (multi-host)
+// rather than scheduled atomically to a single host.
+func isMultiHostStack(compose *ComposeFile, requestedTargetNode string) bool {
+	// If user explicitly picked "multi-host" or "spread" from UI or CLI
+	if strings.EqualFold(requestedTargetNode, "multi-host") || strings.EqualFold(requestedTargetNode, "spread") {
+		return true
+	}
+
+	// If user explicitly targeted a single host (e.g. "gbnt-worker1"), honor atomic placement
+	if requestedTargetNode != "" && requestedTargetNode != "auto" {
+		return false
+	}
+
+	var hasExplicitSpread bool
+	nodeConstraintsByService := make(map[string][]string)
+
+	for srvName, srv := range compose.Services {
+		// 1. Check deploy.placement.preferences for spread
+		for _, pref := range srv.Deploy.Placement.Preferences {
+			if pref.Spread != "" {
+				hasExplicitSpread = true
 			}
 		}
-		
-		if extractedName != "" {
-			stackName = extractedName // Constraint has highest priority
-		} else if stackName == "" && tempCompose.Name != "" {
-			stackName = tempCompose.Name
+
+		// 2. Check labels for placement strategy
+		for k, v := range srv.Labels {
+			if k == "gbnt.placement.strategy" && (v == "spread" || v == "multi-host") {
+				hasExplicitSpread = true
+			}
+		}
+		for k, v := range srv.Deploy.Labels {
+			if k == "gbnt.placement.strategy" && (v == "spread" || v == "multi-host") {
+				hasExplicitSpread = true
+			}
+		}
+
+		// 3. Check if service has multiple replicas AND caddy load balancing configured
+		if srv.Deploy.Replicas > 1 {
+			for k := range srv.Labels {
+				if strings.HasPrefix(k, "gbnt.caddy.lb") || k == "ingress.lb" {
+					hasExplicitSpread = true
+				}
+			}
+		}
+
+		// 4. Collect node targeting constraints per service
+		for _, c := range srv.Deploy.Placement.Constraints {
+			parts := strings.Split(c, "==")
+			if len(parts) == 2 {
+				leftSide := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+				if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
+					nodeConstraintsByService[srvName] = append(nodeConstraintsByService[srvName], val)
+				}
+			}
 		}
 	}
 
-	if stackName == "" {
-		return nil, fmt.Errorf("stack name must be provided or defined in compose file as 'name: <name>' or 'stack.name == <name>' constraint")
+	if hasExplicitSpread {
+		return true
+	}
+
+	// If different services explicitly target different nodes (e.g. srv1 -> worker1, srv2 -> worker2)
+	var firstTarget string
+	for _, targets := range nodeConstraintsByService {
+		for _, t := range targets {
+			if firstTarget == "" {
+				firstTarget = t
+			} else if !strings.EqualFold(firstTarget, t) {
+				return true // Distinct host targets across services in the same stack!
+			}
+		}
+	}
+
+	return false
+}
+
+// DeployStackRaw parses compose YAML and schedules services across cluster nodes.
+func DeployStackRaw(stackName string, composeRawInput string, targetNode string) (*db.Stack, error) {
+	if strings.TrimSpace(composeRawInput) == "" {
+		return nil, fmt.Errorf("empty compose file")
+	}
+
+	// Auto-generate stack name or infer from constraints/name
+	if strings.TrimSpace(stackName) == "" {
+		var tempCompose ComposeFile
+		if err := yaml.Unmarshal([]byte(composeRawInput), &tempCompose); err == nil {
+			for _, srv := range tempCompose.Services {
+				for _, constraint := range srv.Deploy.Placement.Constraints {
+					parts := strings.Split(constraint, "==")
+					if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
+						stackName = strings.TrimSpace(parts[1])
+						break
+					}
+				}
+				if stackName != "" {
+					break
+				}
+			}
+			if stackName == "" && tempCompose.Name != "" {
+				stackName = tempCompose.Name
+			}
+		}
+		if stackName == "" {
+			stackName = "stack-" + uuid.New().String()[:8]
+		}
 	}
 
 	// Replace placeholders like {{stack.name}} with the actual stack name
@@ -402,19 +514,31 @@ func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, err
 		db.DB.Where("id = ?", existingStack.ID).Delete(&db.Stack{})
 	}
 
-	// 1. Collect all constraints across all services to schedule the Stack as an atomic unit
-	var allStackConstraints []string
-	for _, srvDef := range compose.Services {
-		allStackConstraints = append(allStackConstraints, srvDef.Deploy.Placement.Constraints...)
-	}
+	// Determine if this stack requires Multi-Host Service Placement
+	multiHost := isMultiHostStack(&compose, targetNode)
 
-	// 2. Select the optimal node for the ENTIRE Stack (balances stacks across hosts)
-	selectedNode, err := SelectOptimalNodeForStack(allStackConstraints, targetNode)
-	if err != nil {
-		return nil, fmt.Errorf("stack scheduling failed: %w", err)
-	}
+	var selectedNode *db.Node
+	var stackNodeID string
 
-	slog.Info("scheduled stack atomically to host", "stack", stackName, "node_id", selectedNode.ID, "node_ip", selectedNode.IP, "role", selectedNode.Role)
+	if multiHost {
+		stackNodeID = "multi-host"
+		slog.Info("scheduling stack in multi-host distributed mode", "stack", stackName)
+	} else {
+		// 1. Collect all constraints across all services to schedule the Stack as an atomic unit
+		var allStackConstraints []string
+		for _, srvDef := range compose.Services {
+			allStackConstraints = append(allStackConstraints, srvDef.Deploy.Placement.Constraints...)
+		}
+
+		// 2. Select the optimal node for the ENTIRE Stack (balances stacks across hosts)
+		var err error
+		selectedNode, err = SelectOptimalNodeForStack(allStackConstraints, targetNode)
+		if err != nil {
+			return nil, fmt.Errorf("stack scheduling failed: %w", err)
+		}
+		stackNodeID = selectedNode.ID
+		slog.Info("scheduled stack atomically to host", "stack", stackName, "node_id", selectedNode.ID, "node_ip", selectedNode.IP, "role", selectedNode.Role)
+	}
 
 	// Create Stack record
 	stackID := uuid.New().String()
@@ -422,11 +546,11 @@ func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, err
 		ID:             stackID,
 		Name:           stackName,
 		RawComposeFile: composeRaw,
-		NodeID:         selectedNode.ID,
+		NodeID:         stackNodeID,
 	}
 	db.DB.Create(&stack)
 
-	// Process Services: ALL services and tasks of this stack run together on selectedNode.ID
+	// Process Services
 	for srvName, srvDef := range compose.Services {
 		replicas := srvDef.Deploy.Replicas
 		if replicas == 0 {
@@ -475,12 +599,52 @@ func DeployStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, err
 		}
 		db.DB.Create(&service)
 
-		// Scheduler: assign tasks strictly to the stack's host
-		ScheduleService(&service, selectedNode.ID)
+		if multiHost {
+			// Multi-Host placement: evaluate service-specific constraints & spread
+			serviceTargetNode := "auto"
+			serviceSpread := false
+
+			for _, pref := range srvDef.Deploy.Placement.Preferences {
+				if pref.Spread != "" {
+					serviceSpread = true
+				}
+			}
+			if srvDef.Labels["gbnt.placement.strategy"] == "spread" || srvDef.Deploy.Labels["gbnt.placement.strategy"] == "spread" {
+				serviceSpread = true
+			}
+			if replicas > 1 {
+				serviceSpread = true
+			}
+
+			// Check if service targets a specific node
+			for _, c := range constraints {
+				parts := strings.Split(c, "==")
+				if len(parts) == 2 {
+					leftSide := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
+						serviceTargetNode = val
+						serviceSpread = false
+						break
+					}
+				}
+			}
+
+			ScheduleServiceWithSpread(&service, serviceTargetNode, serviceSpread)
+		} else {
+			// Single-host atomic placement
+			ScheduleService(&service, selectedNode.ID)
+		}
 	}
 
 	// Trigger generation of Prometheus SLO rules
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	stacksDir := examples.DefaultServerStacksDir()
+	if err := os.MkdirAll(stacksDir, 0755); err == nil {
+		filePath := filepath.Join(stacksDir, fmt.Sprintf("%s.yml", stackName))
+		_ = os.WriteFile(filePath, []byte(composeRaw), 0644)
+	}
 
 	return &stack, nil
 }
@@ -692,18 +856,31 @@ func StackMigrateHandler(c *gin.Context) {
 
 // ScheduleService assigns desired replicas of a service to cluster nodes.
 func ScheduleService(service *db.Service, targetNode string) {
+	ScheduleServiceWithSpread(service, targetNode, false)
+}
+
+// ScheduleServiceWithSpread assigns desired replicas of a service to cluster nodes,
+// supporting anti-affinity spread across distinct Centurion nodes.
+func ScheduleServiceWithSpread(service *db.Service, targetNode string, spread bool) {
+	assignedNodeIDs := make(map[string]int)
 	for i := 0; i < service.DesiredReplicas; i++ {
-		ScheduleSingleReplica(service, targetNode)
+		ScheduleSingleReplicaWithSpread(service, targetNode, spread, assignedNodeIDs)
 	}
 }
 
 // ScheduleSingleReplica assigns one replica of a service to the optimal cluster node.
 func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
+	return ScheduleSingleReplicaWithSpread(service, targetNode, false, make(map[string]int))
+}
+
+// ScheduleSingleReplicaWithSpread assigns one replica of a service to a cluster node,
+// respecting hardware affinity (GPU, arch, role), host constraints, and anti-affinity spread.
+func ScheduleSingleReplicaWithSpread(service *db.Service, targetNode string, spread bool, assignedNodeIDs map[string]int) *db.Task {
 	var selectedNode *db.Node
 
 	if targetNode != "" && targetNode != "auto" {
 		var n db.Node
-		if err := db.DB.First(&n, "id = ?", targetNode).Error; err == nil {
+		if err := db.DB.First(&n, "id = ? OR ip = ?", targetNode, targetNode).Error; err == nil {
 			// Check if targeted node is not in pause/drain/no_schedule status
 			if n.Status == "active" || n.Status == "ready" {
 				selectedNode = &n
@@ -716,48 +893,18 @@ func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
 		// Fetch all active or ready nodes (excluding drain, pause, no_schedule, maintenance)
 		db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes)
 
-		// Calculate real-time task load per node (Workers prioritized first, Manager last)
-		type nodeWithLoad struct {
-			node db.Node
-			load int64
-		}
-		var workerLoads []nodeWithLoad
-		var managerLoads []nodeWithLoad
-
-		for _, n := range allNodes {
-			var count int64
-			db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", n.ID, []string{"running", "pending", "pulling", "starting"}).Count(&count)
-			nl := nodeWithLoad{node: n, load: count}
-			if strings.ToLower(n.Role) == "manager" {
-				managerLoads = append(managerLoads, nl)
-			} else {
-				workerLoads = append(workerLoads, nl)
-			}
+		type candidateNode struct {
+			node            db.Node
+			serviceReplicas int
+			totalTaskLoad   int64
+			isManager       bool
 		}
 
-		// Sort workers by active task load ascending (least-loaded worker first)
-		sort.SliceStable(workerLoads, func(a, b int) bool {
-			return workerLoads[a].load < workerLoads[b].load
-		})
-		// Sort managers by active task load ascending
-		sort.SliceStable(managerLoads, func(a, b int) bool {
-			return managerLoads[a].load < managerLoads[b].load
-		})
+		var candidates []candidateNode
 
-		// Workers ALWAYS prioritized over Manager
-		var orderedNodes []db.Node
-		for _, wl := range workerLoads {
-			orderedNodes = append(orderedNodes, wl.node)
-		}
-		for _, ml := range managerLoads {
-			orderedNodes = append(orderedNodes, ml.node)
-		}
-
-		// Constraint matching with Worker-First priority and Least-Loaded Spread
-		for _, node := range orderedNodes {
+		for _, node := range allNodes {
 			matchesAll := true
 			for _, constraint := range service.Constraints {
-				// Constraint example: "node.labels.gbnt.node.gpu == nvidia"
 				parts := strings.Split(constraint, "==")
 				if len(parts) == 2 {
 					leftSide := strings.TrimSpace(parts[0])
@@ -772,27 +919,78 @@ func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
 						continue
 					}
 
+					// Support node.hostname == ... or node.id == ...
+					if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.id" {
+						if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) && !strings.EqualFold(node.IP, val) {
+							matchesAll = false
+							break
+						}
+						continue
+					}
+
 					if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
-						// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
+						// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port, gbnt.caddy.lb)
 						continue
 					}
 
 					key := strings.TrimPrefix(leftSide, "node.labels.")
-					if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
+					nodeVal, exists := node.Labels[key]
+					if !exists {
+						if strings.HasPrefix(key, "gbnt.node.") {
+							nodeVal, exists = node.Labels[strings.TrimPrefix(key, "gbnt.node.")]
+						} else {
+							nodeVal, exists = node.Labels["gbnt.node."+key]
+						}
+					}
+					if !exists || !strings.EqualFold(nodeVal, val) {
 						matchesAll = false
 						break
 					}
 				}
 			}
 
-			if matchesAll {
-				selectedNode = &node
-				break // Found a matching node (Workers prioritized first, Manager last)
+			if !matchesAll {
+				continue
 			}
+
+			var totalLoad int64
+			db.DB.Model(&db.Task{}).Where("node_id = ? AND status IN ?", node.ID, []string{"running", "pending", "pulling", "starting"}).Count(&totalLoad)
+
+			var svcTaskCount int64
+			db.DB.Model(&db.Task{}).Where("service_id = ? AND node_id = ? AND status != 'dead'", service.ID, node.ID).Count(&svcTaskCount)
+			inMemoryReplicas := assignedNodeIDs[node.ID]
+			totalSvcReplicas := int(svcTaskCount) + inMemoryReplicas
+
+			candidates = append(candidates, candidateNode{
+				node:            node,
+				serviceReplicas: totalSvcReplicas,
+				totalTaskLoad:   totalLoad,
+				isManager:       strings.ToLower(node.Role) == "manager",
+			})
+		}
+
+		if len(candidates) > 0 {
+			sort.SliceStable(candidates, func(a, b int) bool {
+				// 1. If spread is enabled, prioritize nodes with fewer replicas of THIS service (anti-affinity)
+				if spread {
+					if candidates[a].serviceReplicas != candidates[b].serviceReplicas {
+						return candidates[a].serviceReplicas < candidates[b].serviceReplicas
+					}
+				}
+				// 2. Prioritize Workers before Manager
+				if candidates[a].isManager != candidates[b].isManager {
+					return !candidates[a].isManager && candidates[b].isManager
+				}
+				// 3. Least loaded node first (total tasks)
+				return candidates[a].totalTaskLoad < candidates[b].totalTaskLoad
+			})
+
+			selectedNode = &candidates[0].node
 		}
 	}
 
 	if selectedNode != nil {
+		assignedNodeIDs[selectedNode.ID]++
 		task := db.Task{
 			ID:                uuid.New().String(),
 			ServiceID:         service.ID,
@@ -804,21 +1002,22 @@ func ScheduleSingleReplica(service *db.Service, targetNode string) *db.Task {
 			MemoryReservation: service.MemoryReservation,
 		}
 		db.DB.Create(&task)
-		return &task
-	} else {
-		fmt.Printf("Warning: Could not find a suitable node for service %s\n", service.Name)
-		task := db.Task{
-			ID:                uuid.New().String(),
-			ServiceID:         service.ID,
-			NodeID:            "none", // Or a dummy node ID
-			Status:            "dead",
-			CpuLimit:          service.CpuLimit,
-			MemoryLimit:       service.MemoryLimit,
-			CpuReservation:    service.CpuReservation,
-			MemoryReservation: service.MemoryReservation,
-			Error:             "No suitable node found for placement constraints",
-		}
-		db.DB.Create(&task)
+		slog.Info("scheduled service replica", "service", service.Name, "task_id", task.ID[:8], "node_id", selectedNode.ID, "node_ip", selectedNode.IP, "spread", spread)
 		return &task
 	}
+
+	slog.Warn("could not find suitable node for service", "service", service.Name, "constraints", service.Constraints)
+	task := db.Task{
+		ID:                uuid.New().String(),
+		ServiceID:         service.ID,
+		NodeID:            "none",
+		Status:            "dead",
+		CpuLimit:          service.CpuLimit,
+		MemoryLimit:       service.MemoryLimit,
+		CpuReservation:    service.CpuReservation,
+		MemoryReservation: service.MemoryReservation,
+		Error:             "No suitable node found for placement constraints",
+	}
+	db.DB.Create(&task)
+	return &task
 }

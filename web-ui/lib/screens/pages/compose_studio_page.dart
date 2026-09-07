@@ -95,6 +95,32 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 ''';
 
   static const Map<String, String> _starterTemplates = {
+    'Multi-Host Load Balanced Web': '''services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    labels:
+      - "ingress.host=multi-web.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.caddy.lb=round_robin"
+      - "gbnt.caddy.health_uri=/"
+      - "gbnt.placement.strategy=spread"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+        constraints:
+          - "node.role == worker"
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+''',
     'Web Ingress': '''services:
   web:
     image: nginx:alpine
@@ -1383,7 +1409,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       _buildAdaptiveTabPill('Caddy', 'caddy', Icons.public, const Color(0xFF8B5CF6), blocksMap['caddy']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('SLO', 'slo', Icons.show_chart, const Color(0xFFF59E0B), blocksMap['slo']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Security', 'security', Icons.security, const Color(0xFFEC4899), blocksMap['security']?.isPresent ?? false, theme, isDark),
-                      _buildAdaptiveTabPill('Nodes', 'nodes', Icons.memory, const Color(0xFF06B6D4), blocksMap['nodes']?.isPresent ?? false, theme, isDark),
+                      _buildAdaptiveTabPill('Placement & LB', 'nodes', Icons.alt_route, const Color(0xFF06B6D4), blocksMap['nodes']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Storage', 'storage', Icons.storage, const Color(0xFFF97316), blocksMap['storage']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Templates', 'templates', Icons.dashboard_customize, const Color(0xFFEAB308), false, theme, isDark),
                     ],
@@ -1879,14 +1905,152 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ],
 
                 if (_activeCopilotTab == 'nodes') ...[
-                  const Text('Node Placement & Centurions', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  const Text('Pin service containers to specific hardware or active nodes.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF06B6D4).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.hub, color: Color(0xFF06B6D4), size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Multi-Host Placement & LB', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text('Distribute replicas across nodes & balance HTTP traffic.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF06B6D4).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.25)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: Color(0xFF06B6D4)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Multi-Host Spread distributes service replicas across distinct Centurion nodes for high availability. Caddy Ingress automatically balances traffic across all running replicas.',
+                            style: TextStyle(fontSize: 11, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
+                  const Text('Distribution Strategy & Anti-Affinity:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _buildSnippetCard(
+                    title: 'Anti-Affinity (Spread Across Nodes)',
+                    subtitle: 'deploy.placement.preferences: spread: node.id',
+                    icon: Icons.alt_route,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        constraint: 'spread: node.id',
+                        replacePrefix: 'spread:',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Spread Strategy Label',
+                    subtitle: 'gbnt.placement.strategy=spread',
+                    icon: Icons.share,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.placement.strategy', 'spread'),
+                        ],
+                        categoryTitle: 'Spread Strategy',
+                      ));
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Caddy Ingress Dynamic Load Balancing:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _buildSnippetCard(
+                    title: 'Round Robin Policy (Default)',
+                    subtitle: 'gbnt.caddy.lb=round_robin',
+                    icon: Icons.balance,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.caddy.lb', 'round_robin'),
+                        ],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Least Connections Policy',
+                    subtitle: 'gbnt.caddy.lb=least_conn',
+                    icon: Icons.speed,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.caddy.lb', 'least_conn'),
+                        ],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'IP Hash (Sticky Sessions)',
+                    subtitle: 'gbnt.caddy.lb=ip_hash',
+                    icon: Icons.pin_drop,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.caddy.lb', 'ip_hash'),
+                        ],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Active Health Check Probe',
+                    subtitle: 'gbnt.caddy.health_uri=/health (5s interval)',
+                    icon: Icons.health_and_safety,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.caddy.health_uri', '/health'),
+                          MapEntry('gbnt.caddy.health_interval', '5s'),
+                        ],
+                        categoryTitle: 'Caddy Health Check',
+                      ));
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Hardware Affinity & Node Pinning:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
                   _buildSnippetCard(
                     title: 'Worker Nodes Only',
                     subtitle: 'node.role == worker constraint',
-                    icon: Icons.alt_route,
+                    icon: Icons.group_work,
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
                         _codeController.text,
@@ -2135,13 +2299,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         }
       }
 
-      // Nodes
+      // Nodes & Placement
       if (trimmed.startsWith('placement:') ||
           trimmed.startsWith('constraints:') ||
+          trimmed.startsWith('preferences:') ||
+          trimmed.contains('spread:') ||
           trimmed.contains('node.role') ||
-          trimmed.contains('gbnt.node.')) {
+          trimmed.contains('gbnt.node.') ||
+          trimmed.contains('gbnt.placement.') ||
+          trimmed.contains('gbnt.caddy.lb')) {
         blockLines['nodes']!.add(lineNum);
-        if (trimmed.contains('node.role') && summaries['nodes']!.isEmpty) {
+        if ((trimmed.contains('spread:') || trimmed.contains('gbnt.caddy.lb') || trimmed.contains('node.role')) && summaries['nodes']!.isEmpty) {
           summaries['nodes'] = trimmed.replaceAll('"', '').replaceAll("'", "").replaceAll('- ', '').trim();
         }
       }
@@ -2163,7 +2331,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       ('caddy', 'Caddy Ingress', Icons.public, const Color(0xFF8B5CF6)),
       ('slo', 'Sloth SLO', Icons.show_chart, const Color(0xFFF59E0B)),
       ('security', 'Security', Icons.security, const Color(0xFFEC4899)),
-      ('nodes', 'Node Affinity', Icons.memory, const Color(0xFF06B6D4)),
+      ('nodes', 'Placement & LB', Icons.alt_route, const Color(0xFF06B6D4)),
       ('storage', 'Storage', Icons.storage, const Color(0xFFF97316)),
     ];
 
