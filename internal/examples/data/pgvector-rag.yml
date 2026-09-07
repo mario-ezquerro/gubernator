@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=raguser
       - POSTGRES_PASSWORD=gubernator-secret
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - /var/contenedores/pgvector/data:/var/lib/postgresql/data
     labels:
@@ -27,8 +27,6 @@ services:
       placement:
         constraints:
           - stack.name == pgvector-rag
-          - ingress.host == postgres.rag.gbnt.local
-          - gbnt.caddy.port == 5432
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -53,8 +51,6 @@ services:
       placement:
         constraints:
           - stack.name == pgvector-rag
-          - ingress.host == qdrant.rag.gbnt.local
-          - gbnt.caddy.port == 6333
 
   rag-ui:
     image: ghcr.io/open-webui/open-webui:main
@@ -63,15 +59,16 @@ services:
       - WEBUI_AUTH=False
       - RAG_EMBEDDING_ENGINE=ollama
       - VECTOR_DB=qdrant
+      - QDRANT_URI=http://qdrant.rag.gbnt.local:6333
       - QDRANT_HOST=qdrant.rag.gbnt.local
       - QDRANT_PORT=6333
     ports:
-      - "8080:8080"
+      - "8082:8080"
     volumes:
       - /var/contenedores/rag-ui/data:/app/backend/data
     labels:
       - "ingress.host=search.rag.gbnt.local"
-      - "gbnt.caddy.port=8080"
+      - "gbnt.caddy.port=8082"
       - "gbnt.service.name=rag-search-ui"
     deploy:
       resources:
@@ -84,5 +81,3 @@ services:
       placement:
         constraints:
           - stack.name == pgvector-rag
-          - ingress.host == search.rag.gbnt.local
-          - gbnt.caddy.port == 8080

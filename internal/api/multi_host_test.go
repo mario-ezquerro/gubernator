@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gopkg.in/yaml.v3"
 )
@@ -108,9 +109,12 @@ func TestIsMultiHostStack(t *testing.T) {
 
 func TestScheduleServiceWithSpreadAndAffinity(t *testing.T) {
 	testDBMutex.Lock()
-	defer testDBMutex.Unlock()
+	defer func() {
+		aqueducts.WG.Wait()
+		testDBMutex.Unlock()
+	}()
 
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
 	if err := db.Init(dsn); err != nil {
 		t.Fatalf("db.Init failed: %v", err)
 	}

@@ -24,6 +24,8 @@ var (
 	composeFile       string
 	serverComposeFile string
 	serverDirFilter   string
+	deployForce       bool
+	deployAutoRemap   bool
 )
 
 var stackDeployCmd = &cobra.Command{
@@ -87,9 +89,11 @@ var stackDeployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		payload := map[string]string{
-			"name":        name,
-			"compose_raw": string(yamlData),
+		payload := map[string]interface{}{
+			"name":             name,
+			"compose_raw":      string(yamlData),
+			"force":            deployForce,
+			"auto_remap_ports": deployAutoRemap,
 		}
 
 		body, _ := json.Marshal(payload)
@@ -99,6 +103,50 @@ var stackDeployCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusConflict {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			var conflictResp struct {
+				Error     string `json:"error"`
+				Message   string `json:"message"`
+				Conflicts []struct {
+					HostPort           int    `json:"host_port"`
+					Protocol           string `json:"protocol"`
+					Service            string `json:"service"`
+					ConflictingStack   string `json:"conflicting_stack"`
+					ConflictingService string `json:"conflicting_service"`
+					NodeID             string `json:"node_id"`
+					NodeIP             string `json:"node_ip"`
+					SuggestedPort      int    `json:"suggested_port"`
+				} `json:"conflicts"`
+			}
+			if err := json.Unmarshal(bodyBytes, &conflictResp); err == nil && len(conflictResp.Conflicts) > 0 {
+				fmt.Fprintln(os.Stderr, "\n⚠️  PORT CONFLICT DETECTED")
+				fmt.Fprintln(os.Stderr, "Cannot deploy stack because requested published host ports are already in use:")
+				fmt.Fprintln(os.Stderr)
+
+				w := tabwriter.NewWriter(os.Stderr, 0, 0, 2, ' ', 0)
+				fmt.Fprintln(w, "  SERVICE\tPORT\tCONFLICTING STACK\tCONFLICTING SERVICE\tNODE\tSUGGESTION")
+				for _, c := range conflictResp.Conflicts {
+					suggestion := fmt.Sprintf("Change to %d:%d", c.SuggestedPort, c.HostPort)
+					nodeDesc := c.NodeID
+					if c.NodeIP != "" && c.NodeIP != c.NodeID {
+						nodeDesc = fmt.Sprintf("%s (%s)", c.NodeID, c.NodeIP)
+					}
+					fmt.Fprintf(w, "  %s\t%d/%s\t%s\t%s\t%s\t%s\n",
+						c.Service, c.HostPort, c.Protocol, c.ConflictingStack, c.ConflictingService, nodeDesc, suggestion)
+				}
+				w.Flush()
+
+				fmt.Fprintln(os.Stderr, "\nOptions to resolve:")
+				fmt.Fprintln(os.Stderr, "  1) Update host port mapping in your compose file according to the suggestions above.")
+				fmt.Fprintln(os.Stderr, "  2) Run with '--auto-remap-ports' to assign available ports automatically:")
+				fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --auto-remap-ports\n", composeFile)
+				fmt.Fprintln(os.Stderr, "  3) Run with '--force' to bypass port collision verification:")
+				fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --force\n\n", composeFile)
+				os.Exit(1)
+			}
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
@@ -120,6 +168,9 @@ var stackDeployCmd = &cobra.Command{
 		}
 
 		fmt.Printf("🚀 Stack '%s' deployed successfully!\n", resolvedName)
+		if remapped, ok := successResp["remapped_conflicts"].([]interface{}); ok && len(remapped) > 0 {
+			fmt.Println("ℹ️  Note: Conflicting host ports were automatically remapped to free available ports.")
+		}
 		fmt.Println("The Governor has dispatched the Centurions to schedule the tasks.")
 	},
 }
@@ -309,5 +360,7 @@ func init() {
 
 	stackDeployCmd.Flags().StringVarP(&composeFile, "compose-file", "c", "", "Path to a local Compose file on your client machine")
 	stackDeployCmd.Flags().StringVarP(&serverComposeFile, "from-server", "s", "", "Path to a Compose file residing on the Master server filesystem")
+	stackDeployCmd.Flags().BoolVar(&deployForce, "force", false, "Bypass port conflict verification and force stack deployment")
+	stackDeployCmd.Flags().BoolVar(&deployAutoRemap, "auto-remap-ports", false, "Automatically remap conflicting host ports to suggested free ports")
 	stackServerLsCmd.Flags().StringVarP(&serverDirFilter, "dir", "d", "", "Specific directory on Master server to scan for Compose files")
 }

@@ -1577,11 +1577,259 @@ func updateStackComposeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "saved"})
 }
 
+type WebPortConflict struct {
+	HostPort           int    `json:"host_port"`
+	Protocol           string `json:"protocol"`
+	Service            string `json:"service"`
+	ConflictingStack   string `json:"conflicting_stack"`
+	ConflictingService string `json:"conflicting_service"`
+	NodeID             string `json:"node_id"`
+	NodeIP             string `json:"node_ip"`
+	SuggestedPort      int    `json:"suggested_port"`
+}
+
+func webParsePortMapping(portSpec string) (hostPort int, containerPort int, protocol string, isHostBound bool) {
+	protocol = "tcp"
+	spec := strings.TrimSpace(portSpec)
+	if idx := strings.Index(spec, "/"); idx != -1 {
+		protocol = strings.ToLower(spec[idx+1:])
+		spec = spec[:idx]
+	}
+
+	parts := strings.Split(spec, ":")
+	switch len(parts) {
+	case 1:
+		cp, err := strconv.Atoi(parts[0])
+		if err == nil {
+			return 0, cp, protocol, false
+		}
+	case 2:
+		hStr := parts[0]
+		if hRange := strings.Split(hStr, "-"); len(hRange) == 2 {
+			hStr = hRange[0]
+		}
+		cStr := parts[1]
+		if cRange := strings.Split(cStr, "-"); len(cRange) == 2 {
+			cStr = cRange[0]
+		}
+		hp, err1 := strconv.Atoi(hStr)
+		cp, err2 := strconv.Atoi(cStr)
+		if err1 == nil && err2 == nil {
+			return hp, cp, protocol, true
+		}
+	case 3:
+		hStr := parts[1]
+		if hRange := strings.Split(hStr, "-"); len(hRange) == 2 {
+			hStr = hRange[0]
+		}
+		cStr := parts[2]
+		if cRange := strings.Split(cStr, "-"); len(cRange) == 2 {
+			cStr = cRange[0]
+		}
+		hp, err1 := strconv.Atoi(hStr)
+		cp, err2 := strconv.Atoi(cStr)
+		if err1 == nil && err2 == nil {
+			return hp, cp, protocol, true
+		}
+	}
+	return 0, 0, protocol, false
+}
+
+func webAutoRemapComposePorts(composeRaw string, conflicts []WebPortConflict) string {
+	res := composeRaw
+	for _, c := range conflicts {
+		if c.SuggestedPort > 0 && c.HostPort != c.SuggestedPort {
+			oldPortStr := strconv.Itoa(c.HostPort)
+			newPortStr := strconv.Itoa(c.SuggestedPort)
+
+			re := regexp.MustCompile(fmt.Sprintf(`(?m)(["']?)(?:(\d+\.\d+\.\d+\.\d+):)?%s:(\d+)(/?(?:tcp|udp)?)(["']?)`, oldPortStr))
+			res = re.ReplaceAllStringFunc(res, func(match string) string {
+				sub := re.FindStringSubmatch(match)
+				quote1 := sub[1]
+				ip := sub[2]
+				containerPort := sub[3]
+				proto := sub[4]
+				quote2 := sub[5]
+
+				if ip != "" {
+					return fmt.Sprintf("%s%s:%s:%s%s%s", quote1, ip, newPortStr, containerPort, proto, quote2)
+				}
+				return fmt.Sprintf("%s%s:%s%s%s", quote1, newPortStr, containerPort, proto, quote2)
+			})
+		}
+	}
+	return res
+}
+
+func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentStackName string) []WebPortConflict {
+	var conflicts []WebPortConflict
+
+	type allocatedPort struct {
+		stackName   string
+		serviceName string
+		nodeID      string
+		nodeIP      string
+	}
+
+	allocated := make(map[string]allocatedPort)
+	usedPortsCluster := make(map[int]bool)
+
+	var nodes []db.Node
+	db.DB.Find(&nodes)
+	nodeMap := make(map[string]db.Node)
+	for _, n := range nodes {
+		nodeMap[n.ID] = n
+		nodeMap[n.IP] = n
+	}
+
+	var tasks []db.Task
+	db.DB.Where("status != ?", "dead").Find(&tasks)
+
+	var services []db.Service
+	db.DB.Find(&services)
+	serviceMap := make(map[string]db.Service)
+	for _, s := range services {
+		serviceMap[s.ID] = s
+	}
+
+	var stacks []db.Stack
+	db.DB.Find(&stacks)
+	stackMap := make(map[string]db.Stack)
+	for _, st := range stacks {
+		stackMap[st.ID] = st
+	}
+
+	for _, t := range tasks {
+		svc, hasSvc := serviceMap[t.ServiceID]
+		if !hasSvc {
+			continue
+		}
+		stk, hasStk := stackMap[svc.StackID]
+		if hasStk && stk.Name == currentStackName {
+			continue
+		}
+		stkName := "unknown"
+		if hasStk {
+			stkName = stk.Name
+		}
+
+		nodeIP := t.NodeID
+		if n, ok := nodeMap[t.NodeID]; ok && n.IP != "" {
+			nodeIP = n.IP
+		}
+
+		for _, pStr := range svc.Ports {
+			hp, _, proto, isHost := webParsePortMapping(pStr)
+			if isHost && hp > 0 {
+				usedPortsCluster[hp] = true
+				key := fmt.Sprintf("%s:%d/%s", t.NodeID, hp, proto)
+				allocated[key] = allocatedPort{
+					stackName:   stkName,
+					serviceName: svc.Name,
+					nodeID:      t.NodeID,
+					nodeIP:      nodeIP,
+				}
+			}
+		}
+	}
+
+	managerReserved := []int{80, 443, 53, 5354, 3000, 3100, 4317, 4318, 8081, 9090, 16686}
+	for _, p := range managerReserved {
+		usedPortsCluster[p] = true
+	}
+
+	findFreePort := func(start int) int {
+		p := start + 1
+		for p < 65535 {
+			if !usedPortsCluster[p] {
+				usedPortsCluster[p] = true
+				return p
+			}
+			p++
+		}
+		return start + 1000
+	}
+
+	type composePortEntry struct {
+		serviceName string
+		hostPort    int
+		proto       string
+	}
+	var requestedPorts []composePortEntry
+
+	for srvName, srv := range compose.Services {
+		for _, pStr := range srv.Ports {
+			hp, _, proto, isHost := webParsePortMapping(pStr)
+			if !isHost || hp <= 0 {
+				continue
+			}
+
+			for _, prev := range requestedPorts {
+				if prev.hostPort == hp && prev.proto == proto {
+					suggested := findFreePort(hp)
+					conflicts = append(conflicts, WebPortConflict{
+						HostPort:           hp,
+						Protocol:           proto,
+						Service:            srvName,
+						ConflictingStack:   currentStackName + " (same compose)",
+						ConflictingService: prev.serviceName,
+						NodeID:             targetNodeID,
+						SuggestedPort:      suggested,
+					})
+				}
+			}
+			requestedPorts = append(requestedPorts, composePortEntry{
+				serviceName: srvName,
+				hostPort:    hp,
+				proto:       proto,
+			})
+
+			if targetNodeID != "" && targetNodeID != "auto" && targetNodeID != "multi-host" {
+				key := fmt.Sprintf("%s:%d/%s", targetNodeID, hp, proto)
+				if alloc, exists := allocated[key]; exists {
+					suggested := findFreePort(hp)
+					conflicts = append(conflicts, WebPortConflict{
+						HostPort:           hp,
+						Protocol:           proto,
+						Service:            srvName,
+						ConflictingStack:   alloc.stackName,
+						ConflictingService: alloc.serviceName,
+						NodeID:             alloc.nodeID,
+						NodeIP:             alloc.nodeIP,
+						SuggestedPort:      suggested,
+					})
+				}
+			} else {
+				for key, alloc := range allocated {
+					if strings.HasSuffix(key, fmt.Sprintf(":%d/%s", hp, proto)) {
+						suggested := findFreePort(hp)
+						conflicts = append(conflicts, WebPortConflict{
+							HostPort:           hp,
+							Protocol:           proto,
+							Service:            srvName,
+							ConflictingStack:   alloc.stackName,
+							ConflictingService: alloc.serviceName,
+							NodeID:             alloc.nodeID,
+							NodeIP:             alloc.nodeIP,
+							SuggestedPort:      suggested,
+						})
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return conflicts
+}
+
 func deployStackHandler(c *gin.Context) {
 	var req struct {
-		Name       string `json:"name"`
-		Compose    string `json:"compose" binding:"required"`
-		TargetNode string `json:"target_node"`
+		Name           string `json:"name"`
+		Compose        string `json:"compose" binding:"required"`
+		TargetNode     string `json:"target_node"`
+		Force          bool   `json:"force"`
+		AutoRemapPorts bool   `json:"auto_remap_ports"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -1589,12 +1837,11 @@ func deployStackHandler(c *gin.Context) {
 	}
 
 	stackName := req.Name
+	composeRaw := req.Compose
 
-	// Try to infer it from the raw YAML if present
 	var tempCompose composeFile
-	if err := yaml.Unmarshal([]byte(req.Compose), &tempCompose); err == nil {
+	if err := yaml.Unmarshal([]byte(composeRaw), &tempCompose); err == nil {
 		extractedName := ""
-		// Fallback: search for stack.name == XXX in constraints
 		for _, srv := range tempCompose.Services {
 			for _, constraint := range srv.Deploy.Placement.Constraints {
 				parts := strings.Split(constraint, "==")
@@ -1609,41 +1856,67 @@ func deployStackHandler(c *gin.Context) {
 		}
 
 		if extractedName != "" {
-			stackName = extractedName // Constraint has highest priority
+			stackName = extractedName
 		} else if stackName == "" && tempCompose.Name != "" {
 			stackName = tempCompose.Name
 		}
 	}
 
 	if stackName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Stack name is required"})
-		return
+		stackName = "stack-" + uuid.New().String()[:8]
 	}
 
-	// Replace placeholders like {{stack.name}} with the actual stack name
-	composeRaw := strings.ReplaceAll(req.Compose, "{{stack.name}}", stackName)
+	composeRaw = strings.ReplaceAll(composeRaw, "{{stack.name}}", stackName)
 
-	// Re-parse the compose YAML
 	var compose composeFile
 	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse YAML: %v", err)})
 		return
 	}
 
-	// Check if stack name already exists to prevent duplicate/collisions
-	var existing db.Stack
-	if err := db.DB.First(&existing, "name = ?", stackName).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Stack with name '%s' already exists", stackName)})
-		return
+	// Check port conflicts
+	force := req.Force || c.Query("force") == "true"
+	autoRemap := req.AutoRemapPorts || c.Query("auto_remap_ports") == "true"
+	var conflicts []WebPortConflict
+
+	if !force {
+		conflicts = webDetectPortConflicts(&compose, req.TargetNode, stackName)
+		if len(conflicts) > 0 {
+			if autoRemap {
+				slog.Info("auto-remapping conflicting host ports in web stack deploy", "stack", stackName, "conflicts", len(conflicts))
+				composeRaw = webAutoRemapComposePorts(composeRaw, conflicts)
+				if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to re-parse YAML after port remapping: %v", err)})
+					return
+				}
+			} else {
+				c.JSON(http.StatusConflict, gin.H{
+					"error":     "port_conflict",
+					"message":   fmt.Sprintf("Port conflict detected: %d host port(s) already in use by active stacks", len(conflicts)),
+					"conflicts": conflicts,
+				})
+				return
+			}
+		}
 	}
 
-	// 1. Collect all constraints across all services to schedule the Stack as an atomic unit
+	// Clean up existing stack with the same name if redeploying
+	var existing db.Stack
+	if err := db.DB.First(&existing, "name = ?", stackName).Error; err == nil {
+		var oldServices []db.Service
+		db.DB.Where("stack_id = ?", existing.ID).Find(&oldServices)
+		for _, s := range oldServices {
+			db.DB.Where("service_id = ?", s.ID).Delete(&db.Task{})
+		}
+		db.DB.Where("stack_id = ?", existing.ID).Delete(&db.Service{})
+		db.DB.Where("id = ?", existing.ID).Delete(&db.Stack{})
+	}
+
 	var allStackConstraints []string
 	for _, srvDef := range compose.Services {
 		allStackConstraints = append(allStackConstraints, srvDef.Deploy.Placement.Constraints...)
 	}
 
-	// 2. Select the optimal node for the ENTIRE Stack (balances stacks across hosts)
 	selectedNode, err := webSelectOptimalNodeForStack(allStackConstraints, req.TargetNode)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Stack scheduling failed: %v", err)})
@@ -1691,7 +1964,11 @@ func deployStackHandler(c *gin.Context) {
 
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
-	c.JSON(http.StatusOK, gin.H{"status": "deployed", "stack_id": stackID})
+	resp := gin.H{"status": "deployed", "stack_id": stackID, "name": stackName}
+	if len(conflicts) > 0 {
+		resp["remapped_conflicts"] = conflicts
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func saveStackHandler(c *gin.Context) {

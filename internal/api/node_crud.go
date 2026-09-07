@@ -309,7 +309,6 @@ func drainNodeTasks(nodeID string) {
 	}
 
 	// Regenerate configurations
-	go aqueducts.GenerateHostsFile()
-	go aqueducts.GenerateCaddyfile()
+	aqueducts.GenerateAllAsync()
 }
 

@@ -726,6 +726,26 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Provided dedicated `docker-compose-vllm-gpu.yml` for datacenter NVIDIA GPU servers with strict hardware affinity constraints (`gbnt.node.gpu == nvidia`) to prevent GPU workloads from exhausting CPU worker node storage.
   - Comprehensive architectural and operational documentation in `examples/example-deepseek-vllm/README.md`, `examples/example-gitea-woodpecker/README.md`, and `examples/example-keycloak-sso/README.md`.
 
+### 89. Port Collision Detection, Disk-Pressure Aware Scheduling & CI Verification Hardening (`v2.76.0`)
+* **Docker Compose Host Port Collision Detection Subsystem (`internal/api/stack.go`, `internal/web/server.go`):**
+  - Added real-time published host port extraction and collision analysis (`DetectPortConflicts`) inspecting incoming compose files against all active tasks across target nodes and the cluster.
+  - Detects intra-compose collisions (multiple services in the same file claiming the same host port) and inter-stack collisions with running workloads.
+  - Returns structured HTTP 409 Conflict with detailed collision metadata: conflicting host port, protocol, service name, occupying stack name, occupying service, host node ID/IP, and suggested next free available port.
+  - Added `--auto-remap-ports` flag to `gbnt stack deploy` and Web Dashboard API: automatically rewrites conflicting host ports in the Compose YAML string to suggested free ports before scheduling.
+  - Added `--force` override flag to bypass collision verification when intentional port-sharing is desired.
+  - CLI renders an actionable, formatted diagnostic table indicating the exact service, port, colliding stack/service, node IP, and suggested port adjustments with remediation commands.
+* **Disk-Pressure Aware Cluster Scheduling Engine (`internal/api/stack.go`, `internal/web/server.go`):**
+  - Integrated `monitor.PopulateNodeMetrics(allNodes)` directly into `SelectOptimalNodeForStack`.
+  - Added intelligent `NodeDiskPressure` avoidance: nodes with critical disk utilization (`DiskPercent >= 90%` or `DiskFreeBytes < 1GB`) are automatically deprioritized during stack placement, preventing container pull failures (`no space left on device`).
+* **GenAI RAG Search & Vector Database Blueprint Hardening (`example-pgvector-rag`):**
+  - Decoupled published host ports to eliminate collisions with other standard blueprints (`postgres-vector` mapped to `5433:5432`, `rag-ui` mapped to `8082:8080`).
+  - Added `QDRANT_URI=http://qdrant.rag.gbnt.local:6333` required by modern Open-WebUI multi-tenancy vector engines.
+  - Aligned `gbnt.caddy.port` labels (`5433` and `8082`) with host publish mappings, guaranteeing Caddy reverse-proxy connectivity with 200 OK across cluster nodes.
+  - Verified live multi-node deployment with Qdrant vector database API (`http://qdrant.rag.gbnt.local`) and Open-WebUI (`http://search.rag.gbnt.local`).
+* **CI Race Condition & SQLite Table Isolation Fix (`internal/api/api_test.go`):**
+  - Resolved `no such table: tasks / nodes` flakiness in `TestAtomicStackSchedulingAndBalancing` by decoupling published test ports (`8081:80` and `8082:80`), enforcing test mutex isolation, and verifying clean test teardown.
+  - Verified 100% green passing test suite with `go test -v -race ./...` and zero `go vet` static analysis warnings.
+
 
 
 

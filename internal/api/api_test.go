@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -33,7 +34,7 @@ func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 
 	gin.SetMode(gin.TestMode)
 
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
 	if err := db.Init(dsn); err != nil {
 		t.Fatalf("db.Init: %v", err)
 	}
@@ -761,17 +762,27 @@ func TestAtomicStackSchedulingAndBalancing(t *testing.T) {
 	db.DB.Where("name IN ?", []string{"atomic-stack-alpha", "atomic-stack-beta"}).Delete(&db.Stack{})
 
 	// 2. Deploy a multi-service stack (e.g. web + db)
-	composeMultiService := `
+	composeMultiService1 := `
 version: "3.8"
 services:
   web:
     image: nginx:alpine
     ports:
-      - "8080:80"
+      - "8081:80"
   db:
     image: postgres:alpine
 `
-	stack1, err := DeployStackRaw("atomic-stack-alpha", composeMultiService, "auto")
+	composeMultiService2 := `
+version: "3.8"
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8082:80"
+  db:
+    image: postgres:alpine
+`
+	stack1, err := DeployStackRaw("atomic-stack-alpha", composeMultiService1, "auto")
 	if err != nil {
 		t.Fatalf("failed to deploy atomic-stack-alpha: %v", err)
 	}
@@ -796,7 +807,7 @@ services:
 	// 3. Deploy a second stack (Stack 2)
 	// Because stack1 is on stack1.NodeID, the other worker has 0 stacks.
 	// Stack 2 MUST be balanced onto the other worker node!
-	stack2, err := DeployStackRaw("atomic-stack-beta", composeMultiService, "auto")
+	stack2, err := DeployStackRaw("atomic-stack-beta", composeMultiService2, "auto")
 	if err != nil {
 		t.Fatalf("failed to deploy atomic-stack-beta: %v", err)
 	}
@@ -843,5 +854,130 @@ services:
 	}
 }
 
+func TestAutoRemapComposePorts(t *testing.T) {
+	raw := `version: "3.8"
+services:
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+  web:
+    image: nginx:alpine
+    ports:
+      - 8080:80
+`
+	conflicts := []PortConflict{
+		{HostPort: 5432, SuggestedPort: 5433},
+		{HostPort: 8080, SuggestedPort: 8082},
+	}
 
+	remapped := AutoRemapComposePorts(raw, conflicts)
+	if !strings.Contains(remapped, "5433:5432") {
+		t.Errorf("expected 5433:5432 in remapped compose, got:\n%s", remapped)
+	}
+	if !strings.Contains(remapped, "8082:80") {
+		t.Errorf("expected 8082:80 in remapped compose, got:\n%s", remapped)
+	}
+}
 
+func TestPortConflictDetectionAndAutoRemap(t *testing.T) {
+	_, tok := setupRouter(t)
+	_ = tok
+
+	// Seed an active worker node
+	worker := db.Node{
+		ID:     "node-test-port-worker",
+		IP:     "192.168.252.200",
+		Role:   "worker",
+		Status: "active",
+	}
+	db.DB.Create(&worker)
+	defer db.DB.Delete(&worker)
+
+	composeA := `version: "3.8"
+services:
+  app-a:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+      - "5432:5432"
+`
+	// Deploy first stack
+	stackA, _, err := DeployStackWithOptions("stack-alpha-port", composeA, worker.ID, false, false)
+	if err != nil {
+		t.Fatalf("failed to deploy stack-alpha-port: %v", err)
+	}
+	defer db.DB.Delete(stackA)
+
+	// Deploy second stack colliding on 8080 without force -> must fail with conflict
+	composeB := `version: "3.8"
+services:
+  app-b:
+    image: nginx:alpine
+    ports:
+      - "8080:8080"
+`
+	_, conflicts, err := DeployStackWithOptions("stack-beta-port", composeB, worker.ID, false, false)
+	if err == nil {
+		t.Fatalf("expected port conflict error for port 8080, got nil")
+	}
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].HostPort != 8080 {
+		t.Errorf("expected conflict on port 8080, got %d", conflicts[0].HostPort)
+	}
+	if conflicts[0].ConflictingStack != "stack-alpha-port" {
+		t.Errorf("expected conflicting stack stack-alpha-port, got %s", conflicts[0].ConflictingStack)
+	}
+	if conflicts[0].SuggestedPort <= 8080 {
+		t.Errorf("expected suggested port > 8080, got %d", conflicts[0].SuggestedPort)
+	}
+
+	// Deploy second stack with force=true -> must succeed
+	stackBForce, _, err := DeployStackWithOptions("stack-beta-force", composeB, worker.ID, true, false)
+	if err != nil {
+		t.Fatalf("expected forced deployment to succeed, got: %v", err)
+	}
+	defer db.DB.Delete(stackBForce)
+
+	// Deploy third stack with autoRemap=true -> must succeed and remap port
+	composeC := `version: "3.8"
+services:
+  app-c:
+    image: redis:alpine
+    ports:
+      - "5432:5432"
+`
+	stackCAuto, remappedConflicts, err := DeployStackWithOptions("stack-gamma-auto", composeC, worker.ID, false, true)
+	if err != nil {
+		t.Fatalf("expected auto-remap deployment to succeed, got: %v", err)
+	}
+	defer db.DB.Delete(stackCAuto)
+	if len(remappedConflicts) != 1 {
+		t.Errorf("expected 1 remapped conflict, got %d", len(remappedConflicts))
+	}
+
+	// Intra-compose conflict: single compose with two services having same port
+	composeIntra := `version: "3.8"
+services:
+  web1:
+    image: nginx:alpine
+    ports:
+      - "7777:80"
+  web2:
+    image: nginx:alpine
+    ports:
+      - "7777:8080"
+`
+	_, intraConflicts, err := DeployStackWithOptions("stack-intra-collision", composeIntra, worker.ID, false, false)
+	if err == nil {
+		t.Fatalf("expected intra-compose port conflict error, got nil")
+	}
+	if len(intraConflicts) == 0 {
+		t.Fatalf("expected intra-compose conflict reported, got 0")
+	}
+	if intraConflicts[0].HostPort != 7777 {
+		t.Errorf("expected intra conflict on 7777, got %d", intraConflicts[0].HostPort)
+	}
+}

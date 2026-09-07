@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"gopkg.in/yaml.v3"
 )
@@ -188,9 +191,11 @@ type ComposeService struct {
 }
 
 type StackDeployRequest struct {
-	Name       string `json:"name"` // Optional if provided in compose file
-	ComposeRaw string `json:"compose_raw" binding:"required"`
-	TargetNode string `json:"target_node"`
+	Name           string `json:"name"` // Optional if provided in compose file
+	ComposeRaw     string `json:"compose_raw" binding:"required"`
+	TargetNode     string `json:"target_node"`
+	Force          bool   `json:"force"`            // Bypass port conflict verification
+	AutoRemapPorts bool   `json:"auto_remap_ports"` // Automatically remap conflicting host ports to suggested free ports
 }
 
 // @Summary Deploy a Stack
@@ -201,6 +206,7 @@ type StackDeployRequest struct {
 // @Param request body StackDeployRequest true "Stack Deploy Request"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]interface{}
 // @Router /v1/stack/deploy [post]
 func StackDeployHandler(c *gin.Context) {
 	var req StackDeployRequest
@@ -209,17 +215,32 @@ func StackDeployHandler(c *gin.Context) {
 		return
 	}
 
-	stack, err := DeployStackRaw(req.Name, req.ComposeRaw, req.TargetNode)
+	force := req.Force || c.Query("force") == "true"
+	autoRemap := req.AutoRemapPorts || c.Query("auto_remap_ports") == "true"
+
+	stack, conflicts, err := DeployStackWithOptions(req.Name, req.ComposeRaw, req.TargetNode, force, autoRemap)
 	if err != nil {
+		if len(conflicts) > 0 {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":     "port_conflict",
+				"message":   fmt.Sprintf("Port conflict detected: %d host port(s) already in use by active stacks on target node(s)", len(conflicts)),
+				"conflicts": conflicts,
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"message":  "Stack deployed successfully",
 		"stack_id": stack.ID,
 		"name":     stack.Name,
-	})
+	}
+	if len(conflicts) > 0 {
+		resp["remapped_conflicts"] = conflicts
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // @Summary Save Stack Definition (Draft / Without Deploying)
@@ -459,10 +480,278 @@ func isMultiHostStack(compose *ComposeFile, requestedTargetNode string) bool {
 	return false
 }
 
-// DeployStackRaw parses compose YAML and schedules services across cluster nodes.
+// PortConflict describes an overlapping published host port collision.
+type PortConflict struct {
+	HostPort           int    `json:"host_port"`
+	Protocol           string `json:"protocol"` // "tcp" or "udp"
+	Service            string `json:"service"`
+	ConflictingStack   string `json:"conflicting_stack"`
+	ConflictingService string `json:"conflicting_service"`
+	NodeID             string `json:"node_id"`
+	NodeIP             string `json:"node_ip"`
+	SuggestedPort      int    `json:"suggested_port"`
+}
+
+// ParsePortMapping parses a compose port string into hostPort, containerPort, protocol, and whether a host port is bound.
+func ParsePortMapping(portSpec string) (hostPort int, containerPort int, protocol string, isHostBound bool) {
+	protocol = "tcp"
+	spec := strings.TrimSpace(portSpec)
+	if idx := strings.Index(spec, "/"); idx != -1 {
+		protocol = strings.ToLower(spec[idx+1:])
+		spec = spec[:idx]
+	}
+
+	parts := strings.Split(spec, ":")
+	switch len(parts) {
+	case 1:
+		// Just container port, e.g. "80" (ephemeral host port)
+		cp, err := strconv.Atoi(parts[0])
+		if err == nil {
+			return 0, cp, protocol, false
+		}
+	case 2:
+		// Host:Container, e.g. "8080:80" or "8080:8080"
+		hStr := parts[0]
+		if hRange := strings.Split(hStr, "-"); len(hRange) == 2 {
+			hStr = hRange[0]
+		}
+		cStr := parts[1]
+		if cRange := strings.Split(cStr, "-"); len(cRange) == 2 {
+			cStr = cRange[0]
+		}
+		hp, err1 := strconv.Atoi(hStr)
+		cp, err2 := strconv.Atoi(cStr)
+		if err1 == nil && err2 == nil {
+			return hp, cp, protocol, true
+		}
+	case 3:
+		// IP:Host:Container, e.g. "0.0.0.0:8080:80"
+		hStr := parts[1]
+		if hRange := strings.Split(hStr, "-"); len(hRange) == 2 {
+			hStr = hRange[0]
+		}
+		cStr := parts[2]
+		if cRange := strings.Split(cStr, "-"); len(cRange) == 2 {
+			cStr = cRange[0]
+		}
+		hp, err1 := strconv.Atoi(hStr)
+		cp, err2 := strconv.Atoi(cStr)
+		if err1 == nil && err2 == nil {
+			return hp, cp, protocol, true
+		}
+	}
+	return 0, 0, protocol, false
+}
+
+// AutoRemapComposePorts replaces conflicting host ports in Compose YAML with suggested free ports.
+func AutoRemapComposePorts(composeRaw string, conflicts []PortConflict) string {
+	res := composeRaw
+	for _, c := range conflicts {
+		if c.SuggestedPort > 0 && c.HostPort != c.SuggestedPort {
+			oldPortStr := strconv.Itoa(c.HostPort)
+			newPortStr := strconv.Itoa(c.SuggestedPort)
+
+			re := regexp.MustCompile(fmt.Sprintf(`(?m)(["']?)(?:(\d+\.\d+\.\d+\.\d+):)?%s:(\d+)(/?(?:tcp|udp)?)(["']?)`, oldPortStr))
+			res = re.ReplaceAllStringFunc(res, func(match string) string {
+				sub := re.FindStringSubmatch(match)
+				quote1 := sub[1]
+				ip := sub[2]
+				containerPort := sub[3]
+				proto := sub[4]
+				quote2 := sub[5]
+
+				if ip != "" {
+					return fmt.Sprintf("%s%s:%s:%s%s%s", quote1, ip, newPortStr, containerPort, proto, quote2)
+				}
+				return fmt.Sprintf("%s%s:%s%s%s", quote1, newPortStr, containerPort, proto, quote2)
+			})
+		}
+	}
+	return res
+}
+
+// DetectPortConflicts checks if any published host ports in compose collide with active services in the cluster.
+func DetectPortConflicts(compose *ComposeFile, targetNodeID string, currentStackName string) []PortConflict {
+	var conflicts []PortConflict
+
+	type allocatedPort struct {
+		stackName   string
+		serviceName string
+		nodeID      string
+		nodeIP      string
+	}
+
+	allocated := make(map[string]allocatedPort)
+	usedPortsCluster := make(map[int]bool)
+
+	// Fetch all nodes to resolve IPs
+	var nodes []db.Node
+	db.DB.Find(&nodes)
+	nodeMap := make(map[string]db.Node)
+	for _, n := range nodes {
+		nodeMap[n.ID] = n
+		nodeMap[n.IP] = n
+	}
+
+	// Fetch all active tasks
+	var tasks []db.Task
+	db.DB.Where("status != ?", "dead").Find(&tasks)
+
+	// Fetch all services
+	var services []db.Service
+	db.DB.Find(&services)
+	serviceMap := make(map[string]db.Service)
+	for _, s := range services {
+		serviceMap[s.ID] = s
+	}
+
+	// Fetch all stacks
+	var stacks []db.Stack
+	db.DB.Find(&stacks)
+	stackMap := make(map[string]db.Stack)
+	for _, st := range stacks {
+		stackMap[st.ID] = st
+	}
+
+	for _, t := range tasks {
+		svc, hasSvc := serviceMap[t.ServiceID]
+		if !hasSvc {
+			continue
+		}
+		stk, hasStk := stackMap[svc.StackID]
+		if hasStk && stk.Name == currentStackName {
+			continue
+		}
+		stkName := "unknown"
+		if hasStk {
+			stkName = stk.Name
+		}
+
+		nodeIP := t.NodeID
+		if n, ok := nodeMap[t.NodeID]; ok && n.IP != "" {
+			nodeIP = n.IP
+		}
+
+		for _, pStr := range svc.Ports {
+			hp, _, proto, isHost := ParsePortMapping(pStr)
+			if isHost && hp > 0 {
+				usedPortsCluster[hp] = true
+				key := fmt.Sprintf("%s:%d/%s", t.NodeID, hp, proto)
+				allocated[key] = allocatedPort{
+					stackName:   stkName,
+					serviceName: svc.Name,
+					nodeID:      t.NodeID,
+					nodeIP:      nodeIP,
+				}
+			}
+		}
+	}
+
+	// Reserved well-known ports on managers
+	managerReserved := []int{80, 443, 53, 5354, 3000, 3100, 4317, 4318, 8081, 9090, 16686}
+	for _, p := range managerReserved {
+		usedPortsCluster[p] = true
+	}
+
+	// Helper to find a free port
+	findFreePort := func(start int) int {
+		p := start + 1
+		for p < 65535 {
+			if !usedPortsCluster[p] {
+				usedPortsCluster[p] = true
+				return p
+			}
+			p++
+		}
+		return start + 1000
+	}
+
+	// Intra-compose tracking
+	type composePortEntry struct {
+		serviceName string
+		hostPort    int
+		proto       string
+	}
+	var requestedPorts []composePortEntry
+
+	for srvName, srv := range compose.Services {
+		for _, pStr := range srv.Ports {
+			hp, _, proto, isHost := ParsePortMapping(pStr)
+			if !isHost || hp <= 0 {
+				continue
+			}
+
+			// Check intra-compose conflict
+			for _, prev := range requestedPorts {
+				if prev.hostPort == hp && prev.proto == proto {
+					suggested := findFreePort(hp)
+					conflicts = append(conflicts, PortConflict{
+						HostPort:           hp,
+						Protocol:           proto,
+						Service:            srvName,
+						ConflictingStack:   currentStackName + " (same compose)",
+						ConflictingService: prev.serviceName,
+						NodeID:             targetNodeID,
+						SuggestedPort:      suggested,
+					})
+				}
+			}
+			requestedPorts = append(requestedPorts, composePortEntry{
+				serviceName: srvName,
+				hostPort:    hp,
+				proto:       proto,
+			})
+
+			// Check cluster / target node conflict
+			if targetNodeID != "" && targetNodeID != "auto" && targetNodeID != "multi-host" {
+				key := fmt.Sprintf("%s:%d/%s", targetNodeID, hp, proto)
+				if alloc, exists := allocated[key]; exists {
+					suggested := findFreePort(hp)
+					conflicts = append(conflicts, PortConflict{
+						HostPort:           hp,
+						Protocol:           proto,
+						Service:            srvName,
+						ConflictingStack:   alloc.stackName,
+						ConflictingService: alloc.serviceName,
+						NodeID:             alloc.nodeID,
+						NodeIP:             alloc.nodeIP,
+						SuggestedPort:      suggested,
+					})
+				}
+			} else {
+				for key, alloc := range allocated {
+					if strings.HasSuffix(key, fmt.Sprintf(":%d/%s", hp, proto)) {
+						suggested := findFreePort(hp)
+						conflicts = append(conflicts, PortConflict{
+							HostPort:           hp,
+							Protocol:           proto,
+							Service:            srvName,
+							ConflictingStack:   alloc.stackName,
+							ConflictingService: alloc.serviceName,
+							NodeID:             alloc.nodeID,
+							NodeIP:             alloc.nodeIP,
+							SuggestedPort:      suggested,
+						})
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return conflicts
+}
+
+// DeployStackRaw parses compose YAML and schedules services across cluster nodes (compatibility wrapper).
 func DeployStackRaw(stackName string, composeRawInput string, targetNode string) (*db.Stack, error) {
+	stack, _, err := DeployStackWithOptions(stackName, composeRawInput, targetNode, false, false)
+	return stack, err
+}
+
+// DeployStackWithOptions parses compose YAML, detects port collisions, and schedules services across cluster nodes.
+func DeployStackWithOptions(stackName string, composeRawInput string, targetNode string, force bool, autoRemap bool) (*db.Stack, []PortConflict, error) {
 	if strings.TrimSpace(composeRawInput) == "" {
-		return nil, fmt.Errorf("empty compose file")
+		return nil, nil, fmt.Errorf("empty compose file")
 	}
 
 	// Auto-generate stack name or infer from constraints/name
@@ -496,7 +785,24 @@ func DeployStackRaw(stackName string, composeRawInput string, targetNode string)
 	// Parse YAML for actual deployment
 	var compose ComposeFile
 	if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
-		return nil, fmt.Errorf("failed to parse compose YAML: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse compose YAML: %w", err)
+	}
+
+	// Detect published host port conflicts before scheduling
+	var conflicts []PortConflict
+	if !force {
+		conflicts = DetectPortConflicts(&compose, targetNode, stackName)
+		if len(conflicts) > 0 {
+			if autoRemap {
+				slog.Info("auto-remapping conflicting host ports in stack compose", "stack", stackName, "conflicts", len(conflicts))
+				composeRaw = AutoRemapComposePorts(composeRaw, conflicts)
+				if err := yaml.Unmarshal([]byte(composeRaw), &compose); err != nil {
+					return nil, conflicts, fmt.Errorf("failed to re-parse compose after port remapping: %w", err)
+				}
+			} else {
+				return nil, conflicts, fmt.Errorf("port conflict detected: %d host port(s) already in use", len(conflicts))
+			}
+		}
 	}
 
 	// Clean up existing stack with the same name if redeploying
@@ -534,7 +840,7 @@ func DeployStackRaw(stackName string, composeRawInput string, targetNode string)
 		var err error
 		selectedNode, err = SelectOptimalNodeForStack(allStackConstraints, targetNode)
 		if err != nil {
-			return nil, fmt.Errorf("stack scheduling failed: %w", err)
+			return nil, nil, fmt.Errorf("stack scheduling failed: %w", err)
 		}
 		stackNodeID = selectedNode.ID
 		slog.Info("scheduled stack atomically to host", "stack", stackName, "node_id", selectedNode.ID, "node_ip", selectedNode.IP, "role", selectedNode.Role)
@@ -646,7 +952,7 @@ func DeployStackRaw(stackName string, composeRawInput string, targetNode string)
 		_ = os.WriteFile(filePath, []byte(composeRaw), 0644)
 	}
 
-	return &stack, nil
+	return &stack, conflicts, nil
 }
 
 // SelectOptimalNodeForStack selects a single host node for an entire Docker Compose stack.
@@ -670,6 +976,7 @@ func SelectOptimalNodeForStack(constraints []string, targetNode string) (*db.Nod
 	if err := db.DB.Where("status IN ?", []string{"active", "ready"}).Find(&allNodes).Error; err != nil || len(allNodes) == 0 {
 		return nil, fmt.Errorf("no active or ready cluster nodes available for scheduling")
 	}
+	monitor.PopulateNodeMetrics(allNodes)
 
 	// 3. Count active STACKS and tasks per candidate node to balance stacks across hosts
 	type nodeWithStackLoad struct {
@@ -700,8 +1007,13 @@ func SelectOptimalNodeForStack(constraints []string, targetNode string) (*db.Nod
 		}
 	}
 
-	// Sort workers ascending by active stack count (least stacks first), then by task count
+	// Sort workers: avoid nodes under critical disk pressure (DiskPercent >= 90.0 or free < 1GB)
 	sort.SliceStable(workerLoads, func(a, b int) bool {
+		aFull := workerLoads[a].node.DiskPercent >= 90.0 || (workerLoads[a].node.DiskTotalBytes > 0 && workerLoads[a].node.DiskFreeBytes < 1024*1024*1024)
+		bFull := workerLoads[b].node.DiskPercent >= 90.0 || (workerLoads[b].node.DiskTotalBytes > 0 && workerLoads[b].node.DiskFreeBytes < 1024*1024*1024)
+		if aFull != bFull {
+			return !aFull // Prefer nodes with available disk capacity
+		}
 		if workerLoads[a].stackCount != workerLoads[b].stackCount {
 			return workerLoads[a].stackCount < workerLoads[b].stackCount
 		}
@@ -710,6 +1022,11 @@ func SelectOptimalNodeForStack(constraints []string, targetNode string) (*db.Nod
 
 	// Sort managers ascending
 	sort.SliceStable(managerLoads, func(a, b int) bool {
+		aFull := managerLoads[a].node.DiskPercent >= 90.0 || (managerLoads[a].node.DiskTotalBytes > 0 && managerLoads[a].node.DiskFreeBytes < 1024*1024*1024)
+		bFull := managerLoads[b].node.DiskPercent >= 90.0 || (managerLoads[b].node.DiskTotalBytes > 0 && managerLoads[b].node.DiskFreeBytes < 1024*1024*1024)
+		if aFull != bFull {
+			return !aFull
+		}
 		if managerLoads[a].stackCount != managerLoads[b].stackCount {
 			return managerLoads[a].stackCount < managerLoads[b].stackCount
 		}
@@ -823,8 +1140,7 @@ func MigrateStack(stackID string, targetNodeID string) (*db.Stack, error) {
 	}
 
 	// 4. Regenerate DNS & Caddy routes
-	go aqueducts.GenerateHostsFile()
-	go aqueducts.GenerateCaddyfile()
+	aqueducts.GenerateAllAsync()
 
 	return &stack, nil
 }

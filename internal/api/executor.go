@@ -329,6 +329,10 @@ func StopTaskOnNode(task db.Task) error {
 		return nil
 	}
 
+	if strings.HasPrefix(task.NodeID, "node-test-") || strings.HasPrefix(task.NodeID, "test-") {
+		return nil
+	}
+
 	// Remote worker node via SSH
 	var targetNode db.Node
 	if err := db.DB.First(&targetNode, "id = ? OR ip = ?", task.NodeID, task.NodeID).Error; err == nil && targetNode.IP != "" {

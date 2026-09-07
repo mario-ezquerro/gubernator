@@ -36,6 +36,12 @@ func Init(dbPath string) error {
 		return fmt.Errorf("connect to database: %w", err)
 	}
 
+	if sqlDB, err := DB.DB(); err == nil {
+		if strings.Contains(dbPath, "mode=memory") || dbPath == ":memory:" {
+			sqlDB.SetMaxOpenConns(1)
+		}
+	}
+
 	slog.Info("database connection established")
 
 	err = DB.AutoMigrate(
