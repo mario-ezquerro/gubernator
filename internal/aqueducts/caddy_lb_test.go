@@ -22,6 +22,11 @@ func TestGenerateCaddyfile_MultiUpstreamLoadBalancing(t *testing.T) {
 		t.Fatalf("db.Init failed: %v", err)
 	}
 
+	caddyDir := caddy.CaddyDir()
+	if err := os.MkdirAll(caddyDir, 0755); err != nil {
+		t.Fatalf("failed to create caddy directory: %v", err)
+	}
+
 	// Clean tables
 	db.DB.Where("1 = 1").Delete(&db.Node{})
 	db.DB.Where("1 = 1").Delete(&db.Task{})

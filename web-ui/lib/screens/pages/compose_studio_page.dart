@@ -121,6 +121,49 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           cpus: "0.25"
           memory: 128M
 ''',
+    'Multi-Host Server Echo': r'''services:
+  echo:
+    image: python:3.11-alpine
+    restart: unless-stopped
+    volumes:
+      - /etc/hostname:/etc/host_hostname:ro
+    ports:
+      - "8080:8080"
+    labels:
+      - "ingress.host=echo.gbnt.local"
+      - "gbnt.caddy.lb=round_robin"
+      - "gbnt.caddy.health_uri=/health"
+      - "gbnt.placement.strategy=spread"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+    command:
+      - python3
+      - -c
+      - |
+        import os, socket, json, time
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        req_count = 0
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                global req_count; req_count += 1
+                if self.path == '/health':
+                    self.send_response(200); self.end_headers(); self.wfile.write(b'OK'); return
+                nid = os.environ.get('GBNT_NODE_ID', '')
+                if not nid:
+                    try: nid = open('/etc/host_hostname').read().strip()
+                    except: nid = 'unknown'
+                nip = os.environ.get('GBNT_NODE_IP', 'unknown')
+                cid = socket.gethostname()
+                body = f"🏛️ Gubernator Multi-Host Ingress\nCenturion Node: {nid}\nNode IP:        {nip}\nContainer ID:   {cid}\nRequest:        #{req_count}\n"
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(body.encode('utf-8'))
+        HTTPServer(('0.0.0.0', 8080), H).serve_forever()
+''',
     'Web Ingress': '''services:
   web:
     image: nginx:alpine

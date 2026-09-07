@@ -690,6 +690,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Smart autocompletion chips for `placement.spread`, `gbnt.placement.strategy`, `gbnt.caddy.lb`, and `gbnt.caddy.health_uri`.
   - Added new starter blueprint: **"Multi-Host Load Balanced Web"** in the Compose Studio template library.
 
+### 87. Node Metadata Injection, CI Caddyfile Resilience & Multi-Host Server Echo Examples (`v2.75.1`)
+* **Automated Node Metadata Environment Injection (`internal/api/tasks.go`, `internal/api/executor.go`):**
+  - Containers deployed on any Centurion worker or manager automatically receive cluster node context: `GBNT_NODE_ID`, `GBNT_NODE_IP`, `GBNT_NODE_ROLE`, `GBNT_TASK_ID`, and `GBNT_SERVICE_NAME`.
+  - Enables web apps, microservices, and metrics collectors to natively identify which physical machine and task instance is processing requests without requiring manual compose boilerplate.
+* **CI & Headless Caddyfile Resilience (`internal/aqueducts/ingress.go`):**
+  - Hardened `GenerateCaddyfile()` with automated `os.MkdirAll(filepath.Dir(caddyfilePath), 0755)` ensuring headless runners (such as GitHub Actions) and fresh node boots write reverse proxy configs reliably without directory missing errors.
+* **Multi-Host Server Echo & WhoAmI Examples (`examples/example-loadbalancer/`):**
+  - Added `02-multi-host-affinity.yml`: an interactive Python 3 Alpine dashboard displaying physical Centurion node ID, node IP, container ID, and unique node color badges (Green for Worker 1, Blue for Worker 2, Purple for Worker 3) with live 2-second auto-refresh and `/health` probes.
+  - Added `03-whoami-affinity.yml`: standard `traefik/whoami` anti-affinity deployment with least-connections load balancing.
+  - Added starter template **"Multi-Host Server Echo"** in Compose Studio.
+
 
 
 

@@ -1,0 +1,246 @@
+# Gubernator — Multi-Host Anti-Affinity & Caddy Load Balancing Example
+# This stack deploys 3 replicas across DIFFERENT physical Centurion nodes (spread: node.id)
+# and exposes them through Caddy Ingress with round-robin balancing and active health checks.
+
+services:
+  cluster-echo:
+    image: python:3.11-alpine
+    restart: unless-stopped
+    command:
+      - python3
+      - -c
+      - |
+        import os, socket, json, time
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+
+        req_count = 0
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                global req_count
+                req_count += 1
+
+                if self.path == '/health':
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/plain')
+                    self.end_headers()
+                    self.wfile.write(b'OK')
+                    return
+
+                # Detect physical Centurion node
+                node_id = os.environ.get('GBNT_NODE_ID', '')
+                if not node_id:
+                    try:
+                        with open('/etc/host_hostname') as f:
+                            node_id = f.read().strip()
+                    except Exception:
+                        node_id = 'unknown'
+
+                node_ip = os.environ.get('GBNT_NODE_IP', 'unknown')
+                node_role = os.environ.get('GBNT_NODE_ROLE', 'worker')
+                task_id = os.environ.get('GBNT_TASK_ID', 'local-task')
+                container_id = socket.gethostname()
+                client_ip = self.client_address[0]
+                user_agent = self.headers.get('User-Agent', '')
+
+                # Color badge based on node identifier
+                colors = {
+                    'worker1': ('#10b981', 'Worker 1 (Centurion Alpha)'),
+                    'worker2': ('#3b82f6', 'Worker 2 (Centurion Beta)'),
+                    'worker3': ('#8b5cf6', 'Worker 3 (Centurion Gamma)'),
+                    'manager': ('#f59e0b', 'Manager (Imperial Palace)'),
+                }
+                badge_color, node_label = ('#06b6d4', node_id)
+                for key, (color, label) in colors.items():
+                    if key in node_id.lower():
+                        badge_color = color
+                        node_label = label
+                        break
+
+                data = {
+                    'node_id': node_id,
+                    'node_label': node_label,
+                    'node_ip': node_ip,
+                    'node_role': node_role,
+                    'container_id': container_id,
+                    'task_id': task_id,
+                    'request_number': req_count,
+                    'client_ip': client_ip,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime()),
+                }
+
+                if 'application/json' in self.headers.get('Accept', '') or self.path == '/json':
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(data, indent=2).encode('utf-8'))
+                    return
+
+                html = f"""<!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Gubernator — Multi-Host Load Balancer</title>
+          <style>
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body {{
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              background: #090d16;
+              color: #f1f5f9;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              padding: 20px;
+            }}
+            .card {{
+              background: #131b2e;
+              border: 1px solid #1e293b;
+              border-top: 5px solid {badge_color};
+              border-radius: 16px;
+              padding: 32px;
+              max-width: 620px;
+              width: 100%;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+              text-align: center;
+            }}
+            .badge {{
+              display: inline-block;
+              background: {badge_color};
+              color: #ffffff;
+              font-weight: 700;
+              font-size: 14px;
+              padding: 6px 16px;
+              border-radius: 9999px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 16px;
+            }}
+            h1 {{ font-size: 26px; margin-bottom: 8px; font-weight: 800; }}
+            .subtitle {{ color: #94a3b8; font-size: 14px; margin-bottom: 24px; }}
+            .grid {{
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+              text-align: left;
+              margin-bottom: 24px;
+            }}
+            .item {{
+              background: #1e293b;
+              padding: 12px 16px;
+              border-radius: 8px;
+            }}
+            .item .label {{
+              font-size: 11px;
+              color: #94a3b8;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              margin-bottom: 4px;
+            }}
+            .item .val {{
+              font-size: 14px;
+              font-weight: 600;
+              font-family: monospace;
+              color: #38bdf8;
+            }}
+            .refresh-box {{
+              margin-top: 16px;
+              padding-top: 16px;
+              border-top: 1px solid #1e293b;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }}
+            button {{
+              background: #3b82f6;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: background 0.2s;
+            }}
+            button:hover {{ background: #2563eb; }}
+            .counter {{ font-size: 13px; color: #64748b; }}
+          </style>
+          <script>
+            let auto = false;
+            let timer = null;
+            function toggleAuto() {{
+              auto = !auto;
+              document.getElementById('autoBtn').innerText = auto ? '⏸ Stop Auto-Refresh' : '▶ Start Auto-Refresh (2s)';
+              if (auto) timer = setInterval(() => window.location.reload(), 2000);
+              else clearInterval(timer);
+            }}
+          </script>
+        </head>
+        <body>
+          <div class="card">
+            <div class="badge">{node_label}</div>
+            <h1>🏛️ Multi-Host Ingress Active</h1>
+            <p class="subtitle">This request was served by Gubernator Anti-Affinity Scheduler & Caddy Load Balancer</p>
+            <div class="grid">
+              <div class="item">
+                <div class="label">Physical Host (Node ID)</div>
+                <div class="val">{node_id}</div>
+              </div>
+              <div class="item">
+                <div class="label">Node IP Address</div>
+                <div class="val">{node_ip}</div>
+              </div>
+              <div class="item">
+                <div class="label">Container ID (Hostname)</div>
+                <div class="val">{container_id}</div>
+              </div>
+              <div class="item">
+                <div class="label">Cluster Role</div>
+                <div class="val">{node_role}</div>
+              </div>
+              <div class="item">
+                <div class="label">Total Node Requests</div>
+                <div class="val">#{req_count}</div>
+              </div>
+              <div class="item">
+                <div class="label">Timestamp (UTC)</div>
+                <div class="val">{time.strftime('%H:%M:%S', time.gmtime())}</div>
+              </div>
+            </div>
+            <div class="refresh-box">
+              <span class="counter">Reload the page to see another Centurion host respond</span>
+              <div>
+                <button id="autoBtn" onclick="toggleAuto()" style="margin-right: 8px; background: #334155;">▶ Auto-Refresh (2s)</button>
+                <button onclick="window.location.reload()">🔄 Reload Now</button>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>"""
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(html.encode('utf-8'))
+
+        server = HTTPServer(('0.0.0.0', 8080), Handler)
+        print("Starting cluster echo server on port 8080...")
+        server.serve_forever()
+
+    volumes:
+      - /etc/hostname:/etc/host_hostname:ro
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+        constraints:
+          - ingress.host == echo.gbnt.local
+          - gbnt.caddy.lb == round_robin
+          - gbnt.caddy.health_uri == /health
+          - gbnt.caddy.health_interval == 2s
+          - gbnt.caddy.health_timeout == 1s
+          - gbnt.placement.strategy == spread

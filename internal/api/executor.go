@@ -133,6 +133,30 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 	for _, e := range svc.Env {
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'%s'", strings.ReplaceAll(e, "'", "'\\''")))
 	}
+
+	hasEnv := func(prefix string) bool {
+		for _, e := range svc.Env {
+			if strings.HasPrefix(e, prefix+"=") {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasEnv("GBNT_NODE_ID") && node.ID != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_NODE_ID=%s'", node.ID))
+	}
+	if !hasEnv("GBNT_NODE_IP") && node.IP != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_NODE_IP=%s'", node.IP))
+	}
+	if !hasEnv("GBNT_NODE_ROLE") && node.Role != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_NODE_ROLE=%s'", node.Role))
+	}
+	if !hasEnv("GBNT_TASK_ID") && task.ID != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_TASK_ID=%s'", task.ID))
+	}
+	if !hasEnv("GBNT_SERVICE_NAME") && svc.Name != "" {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_SERVICE_NAME=%s'", svc.Name))
+	}
 	for _, v := range svc.Volumes {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "'\\''")))
 	}
@@ -205,11 +229,36 @@ func executeTask(task db.Task, svc db.Service) {
 		"error":  "Starting container...",
 	})
 
+	localEnv := append([]string{}, svc.Env...)
+	hasLocalEnv := func(prefix string) bool {
+		for _, e := range localEnv {
+			if strings.HasPrefix(e, prefix+"=") {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasLocalEnv("GBNT_NODE_ID") {
+		localEnv = append(localEnv, fmt.Sprintf("GBNT_NODE_ID=%s", task.NodeID))
+	}
+	if !hasLocalEnv("GBNT_NODE_IP") {
+		localEnv = append(localEnv, "GBNT_NODE_IP=127.0.0.1")
+	}
+	if !hasLocalEnv("GBNT_NODE_ROLE") {
+		localEnv = append(localEnv, "GBNT_NODE_ROLE=manager")
+	}
+	if !hasLocalEnv("GBNT_TASK_ID") {
+		localEnv = append(localEnv, fmt.Sprintf("GBNT_TASK_ID=%s", task.ID))
+	}
+	if !hasLocalEnv("GBNT_SERVICE_NAME") {
+		localEnv = append(localEnv, fmt.Sprintf("GBNT_SERVICE_NAME=%s", svc.Name))
+	}
+
 	cfg := docker.ContainerConfig{
 		TaskID:            task.ID,
 		Image:             svc.Image,
 		Ports:             svc.Ports,
-		Env:               svc.Env,
+		Env:               localEnv,
 		Volumes:           svc.Volumes,
 		Command:           svc.Command,
 		CpuLimit:          svc.CpuLimit,

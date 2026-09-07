@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
@@ -255,6 +256,10 @@ func GenerateCaddyfile() {
 	}
 
 	caddyfilePath := caddy.CaddyfilePath()
+	if err := os.MkdirAll(filepath.Dir(caddyfilePath), 0755); err != nil {
+		slog.Error("failed to create Caddy directory", "err", err)
+		return
+	}
 	if err := os.WriteFile(caddyfilePath, []byte(content), 0644); err != nil {
 		slog.Error("failed to write Caddyfile", "err", err)
 		return

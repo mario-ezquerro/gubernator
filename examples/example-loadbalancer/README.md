@@ -104,10 +104,98 @@ curl -k https://hello.gbnt.local
 
 ---
 
-## Step 4: Clean Up
+## Example 2: Multi-Host Anti-Affinity & Physical Server Identification
 
-Stop and remove the stack:
+When running a multi-node cluster (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`, `gbnt-worker3`), you can spread container replicas across **different physical Centurion nodes** and have the web application display exactly which physical host is responding.
+
+### Compose File: `02-multi-host-affinity.yml`
+
+This stack uses:
+- `deploy.placement.preferences: [spread: node.id]` to prevent container co-location.
+- `gbnt.placement.strategy: spread` and `gbnt.caddy.lb: round_robin`.
+- Automated injection of `$GBNT_NODE_ID`, `$GBNT_NODE_IP`, and `$GBNT_NODE_ROLE`.
+- Bind-mount `/etc/hostname:/etc/host_hostname:ro` for bare-metal physical host verification.
+- Active health check probes on `/health`.
+
+```yaml
+services:
+  cluster-echo:
+    image: python:3.11-alpine
+    restart: unless-stopped
+    volumes:
+      - /etc/hostname:/etc/host_hostname:ro
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+        constraints:
+          - ingress.host == echo.gbnt.local
+          - gbnt.caddy.lb == round_robin
+          - gbnt.caddy.health_uri == /health
+```
+
+### Deploy to Cluster
+
+```bash
+./gbnt stack deploy -c examples/example-loadbalancer/02-multi-host-affinity.yml cluster-echo
+```
+
+Check task distribution across Centurion hosts:
+```bash
+./gbnt task ls
+```
+You will see replicas distributed across `gbnt-worker1`, `gbnt-worker2`, `gbnt-worker3`:
+```
+ID        SERVICE       NODE            STATUS    PORTS
+a1b2c3d4  cluster-echo  gbnt-worker1    running   192.168.252.36:8080
+e5f6g7h8  cluster-echo  gbnt-worker2    running   192.168.252.37:8080
+i9j0k1l2  cluster-echo  gbnt-worker3    running   192.168.252.38:8080
+```
+
+### Test via CLI (Curl)
+
+Send requests to see the physical host and container change with each request:
+
+```bash
+# JSON response showing node ID, IP, and container
+for i in {1..6}; do
+  curl -k -s --resolve echo.gbnt.local:443:192.168.252.35 https://echo.gbnt.local/json | grep -E '"node_id"|"node_ip"'
+done
+```
+
+Output:
+```json
+  "node_id": "gbnt-worker1",
+  "node_ip": "192.168.252.36",
+  "node_id": "gbnt-worker2",
+  "node_ip": "192.168.252.37",
+  "node_id": "gbnt-worker3",
+  "node_ip": "192.168.252.38",
+```
+
+### Test in Web Browser
+
+1. Add to your workstation's `/etc/hosts` (replace with your manager IP):
+   ```
+   192.168.252.35 echo.gbnt.local whoami.gbnt.local
+   ```
+2. Open `https://echo.gbnt.local` in your browser.
+3. You will see an interactive dashboard displaying:
+   - **Centurion Badge**: Unique color per worker node (Green for Worker 1, Blue for Worker 2, Purple for Worker 3).
+   - **Physical Host ID**: Machine hostname from `/etc/hostname`.
+   - **Node IP**: Cluster overlay/LAN IP.
+   - **Live Auto-Refresh**: Click "▶ Auto-Refresh (2s)" to watch requests seamlessly cycle through all cluster nodes!
+
+---
+
+## Clean Up
+
+Stop and remove stacks:
 
 ```bash
 ./gbnt stack rm hello-lb
+./gbnt stack rm cluster-echo
 ```

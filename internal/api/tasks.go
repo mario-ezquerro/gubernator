@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -59,11 +60,37 @@ func NodeTasksHandler(c *gin.Context) {
 	for _, t := range tasks {
 		var svc db.Service
 		db.DB.First(&svc, "id = ?", t.ServiceID)
+
+		env := append([]string{}, svc.Env...)
+		hasEnv := func(prefix string) bool {
+			for _, e := range env {
+				if strings.HasPrefix(e, prefix+"=") {
+					return true
+				}
+			}
+			return false
+		}
+		if !hasEnv("GBNT_NODE_ID") && t.NodeID != "" {
+			env = append(env, fmt.Sprintf("GBNT_NODE_ID=%s", t.NodeID))
+		}
+		if !hasEnv("GBNT_NODE_IP") && node.IP != "" {
+			env = append(env, fmt.Sprintf("GBNT_NODE_IP=%s", node.IP))
+		}
+		if !hasEnv("GBNT_NODE_ROLE") && node.Role != "" {
+			env = append(env, fmt.Sprintf("GBNT_NODE_ROLE=%s", node.Role))
+		}
+		if !hasEnv("GBNT_TASK_ID") && t.ID != "" {
+			env = append(env, fmt.Sprintf("GBNT_TASK_ID=%s", t.ID))
+		}
+		if !hasEnv("GBNT_SERVICE_NAME") && svc.Name != "" {
+			env = append(env, fmt.Sprintf("GBNT_SERVICE_NAME=%s", svc.Name))
+		}
+
 		response = append(response, TaskWithImage{
 			Task:        t,
 			Image:       svc.Image,
 			Ports:       svc.Ports,
-			Env:         svc.Env,
+			Env:         env,
 			Volumes:     svc.Volumes,
 			Command:     svc.Command,
 			Constraints: svc.Constraints,

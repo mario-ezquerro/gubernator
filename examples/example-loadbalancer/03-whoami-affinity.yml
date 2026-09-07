@@ -1,0 +1,18 @@
+# Gubernator — Multi-Host Traefik WhoAmI with Anti-Affinity
+# Deploys traefik/whoami across multiple Centurions with least-connections load balancing.
+
+services:
+  whoami:
+    image: traefik/whoami:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+        constraints:
+          - ingress.host == whoami.gbnt.local
+          - gbnt.caddy.lb == least_conn
+          - gbnt.placement.strategy == spread
