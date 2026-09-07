@@ -35,7 +35,7 @@ services:
           - gbnt.caddy.port == 3000
 
   woodpecker-server:
-    image: woodpeckerci/woodpecker-server:latest
+    image: woodpeckerci/woodpecker-server:v3
     restart: unless-stopped
     environment:
       - WOODPECKER_OPEN=true
@@ -67,10 +67,10 @@ services:
           - gbnt.caddy.port == 8000
 
   woodpecker-agent:
-    image: woodpeckerci/woodpecker-agent:latest
+    image: woodpeckerci/woodpecker-agent:v3
     restart: unless-stopped
     environment:
-      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_SERVER=woodpecker-server.gitea-woodpecker.gbnt.local:9000
       - WOODPECKER_AGENT_SECRET=gubernator-devops-secret
       - WOODPECKER_MAX_WORKFLOWS=2
     volumes:

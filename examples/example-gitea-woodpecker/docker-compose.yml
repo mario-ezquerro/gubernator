@@ -46,7 +46,7 @@ services:
   # 2. Woodpecker CI Server (Pipeline Orchestration)
   # ─────────────────────────────────────────────────────────────────────────────
   woodpecker-server:
-    image: woodpeckerci/woodpecker-server:latest
+    image: woodpeckerci/woodpecker-server:v3
     restart: unless-stopped
     environment:
       - WOODPECKER_OPEN=true
@@ -81,10 +81,10 @@ services:
   # 3. Woodpecker CI Distributed Agent (Docker-in-Docker Runner on Workers)
   # ─────────────────────────────────────────────────────────────────────────────
   woodpecker-agent:
-    image: woodpeckerci/woodpecker-agent:latest
+    image: woodpeckerci/woodpecker-agent:v3
     restart: unless-stopped
     environment:
-      - WOODPECKER_SERVER=woodpecker-server:9000
+      - WOODPECKER_SERVER=woodpecker-server.gitea-woodpecker.gbnt.local:9000
       - WOODPECKER_AGENT_SECRET=gubernator-devops-secret
       - WOODPECKER_MAX_WORKFLOWS=2
     volumes:

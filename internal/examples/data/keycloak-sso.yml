@@ -57,5 +57,4 @@ services:
       placement:
         constraints:
           - stack.name == keycloak-sso
-          - ingress.host == auth.gbnt.local
-          - gbnt.caddy.port == 8080
+

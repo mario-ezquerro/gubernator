@@ -49,6 +49,13 @@ func PullImage(imageName string) error {
 	return nil
 }
 
+var DefaultDNS string
+
+// SetDefaultDNS sets the fallback DNS server IP for container execution.
+func SetDefaultDNS(dns string) {
+	DefaultDNS = strings.TrimSpace(dns)
+}
+
 // StartContainer creates and starts a container with full compose-like config.
 // Returns the container name and its internal IP address.
 // All managed containers are automatically connected to gbnt-net for DNS resolution.
@@ -85,13 +92,30 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 
 	// Volume mounts: -v host:container
 	for _, v := range cfg.Volumes {
+		parts := strings.Split(v, ":")
+		if len(parts) > 0 && strings.HasPrefix(parts[0], "/") {
+			// Ensure host directory exists with 0777 permissions before container start
+			// so non-root containers (like Gitea, Woodpecker, Postgres, Redis) can write to it
+			_ = os.MkdirAll(parts[0], 0777)
+			_ = os.Chmod(parts[0], 0777)
+		}
 		args = append(args, "-v", v)
 	}
 
-	// Set CoreDNS as resolver if running
-	dnsIP := coredns.GetContainerIP()
+	// Set CoreDNS as resolver if running or configured
+	dnsIP := DefaultDNS
+	if dnsIP == "" {
+		dnsIP = coredns.GetContainerIP()
+	}
+	if dnsIP == "" {
+		dnsIP = os.Getenv("GBNT_DNS_SERVER")
+	}
+	if dnsIP == "" {
+		dnsIP = os.Getenv("GBNT_MANAGER_IP")
+	}
 	if dnsIP != "" {
 		args = append(args, "--dns", dnsIP)
+		args = append(args, "--dns-search", "gbnt.local")
 	}
 
 	args = append(args, cfg.Image)

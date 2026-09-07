@@ -154,6 +154,9 @@ var legionJoinCmd = &cobra.Command{
 		if managerIP == "" {
 			managerIP = "127.0.0.1"
 		}
+		_ = os.Setenv("GBNT_MANAGER_IP", managerIP)
+		_ = os.Setenv("GBNT_DNS_SERVER", managerIP)
+		docker.SetDefaultDNS(managerIP)
 
 		// ── SSH Key Exchange: Fetch Manager's public key and install on worker host ──
 		fmt.Println("🔑 Fetching Manager SSH public key for remote shell access...")

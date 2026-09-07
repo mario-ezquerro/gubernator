@@ -181,9 +181,18 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 		t.Errorf("missing manager loki entry")
 	}
 
-	// Verify user app stack-scoped entries
+	// Verify user app stack-scoped entries and inter-service aliases
 	if !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt.local") {
 		t.Errorf("missing user stack-scoped domain app.wordpress.gbnt.local")
+	}
+	if !strings.Contains(content, "192.168.1.101\tapp.wordpress") {
+		t.Errorf("missing user stack alias app.wordpress")
+	}
+	if !strings.Contains(content, "192.168.1.101\tapp.gbnt.local") {
+		t.Errorf("missing user domain alias app.gbnt.local")
+	}
+	if !strings.Contains(content, "192.168.1.101\tapp") {
+		t.Errorf("missing bare user service alias app")
 	}
 
 	// CRITICAL TEST: Verify that generic "caddy.gbnt.local" or "loki.gbnt.local" are NOT present to prevent collisions

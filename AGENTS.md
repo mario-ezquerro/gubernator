@@ -699,7 +699,33 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Host Server Echo & WhoAmI Examples (`examples/example-loadbalancer/`):**
   - Added `02-multi-host-affinity.yml`: an interactive Python 3 Alpine dashboard displaying physical Centurion node ID, node IP, container ID, and unique node color badges (Green for Worker 1, Blue for Worker 2, Purple for Worker 3) with live 2-second auto-refresh and `/health` probes.
   - Added `03-whoami-affinity.yml`: standard `traefik/whoami` anti-affinity deployment with least-connections load balancing.
-  - Added starter template **"Multi-Host Server Echo"** in Compose Studio.
+### 88. Built-in POC Blueprints Hardening & Multi-Architecture Modernization (`v2.75.2`)
+* **Stack Lookup by ID or Name Across All Lifecycle Handlers (`internal/api/stack_crud.go`):**
+  - Upgraded `StackServicesHandler`, `StackRmHandler`, `StackStopHandler`, `StackStartHandler`, and `StackReconcileHandler` to locate stacks by `id = ? OR name = ?`.
+  - Enables engineers and automated scripts to manage stacks by human-readable name (`gbnt stack rm gitea-woodpecker`, `gbnt stack stop deepseek-vllm`) seamlessly without requiring GUID lookups.
+* **Woodpecker CI v3 Migration & Image Lifecycle Hardening (`gitea-woodpecker`):**
+  - Replaced deprecated `:latest` tags with production SemVer `:v3` for `woodpeckerci/woodpecker-server` and `woodpeckerci/woodpecker-agent`.
+  - Eliminates fatal crash loops (exit code 30) caused by upstream Woodpecker image tag deprecation policies.
+* **Storage Mount Permission Pre-allocation (`internal/docker/engine.go`):**
+  - Enhanced `StartContainer` to automatically pre-create host bind-mount target directories under `/var/contenedores/...` with `0777` POSIX permissions before invoking Docker run.
+  - Guarantees non-root container workloads (Gitea UID 1000, Woodpecker Server UID 10000, PostgreSQL, Valkey) have write access to shared persistent storage without permission denied errors.
+* **CoreDNS Cluster-Wide Inter-Service Aliases (`internal/aqueducts/dns.go`):**
+  - In `GenerateHostsFile()`, non-system user application stacks now automatically register bare `<service>`, `<service>.<stack>`, and `<service>.<domain>` records pointing to target container/node IPs.
+  - Provides frictionless inter-service networking (e.g. `woodpecker-agent` reaching `woodpecker-server` or `woodpecker-server.gitea-woodpecker.gbnt.local`).
+* **Worker Node Container Cluster DNS Injection (`internal/cli/legion.go`, `internal/docker/engine.go`):**
+  - Workers automatically inherit manager IP via `GBNT_DNS_SERVER` and `GBNT_MANAGER_IP` upon `gbnt legion join`.
+  - Automatically injects `--dns <manager_ip>` into containers running on Centurion workers, bridging worker tasks directly to cluster-wide CoreDNS resolution across all nodes.
+* **Keycloak IAM & Multi-Node Database Networking (`keycloak-sso`):**
+  - Resolved `ERROR: Failed to obtain JDBC connection: keycloak-db` by integrating `hosts /etc/coredns/gubernator.hosts` into CoreDNS root `.` fallback zone block in `DefaultCorefile()`, ensuring single-label hostnames (`keycloak-db`, `postgres`, `gitea`) resolve directly via CoreDNS before falling back to public DNS forwarders.
+  - Added `--dns <manager_ip>` and `--dns-search gbnt.local` to `executeRemoteTask` in `internal/api/executor.go` and `StartContainer` in `internal/docker/engine.go`, ensuring all containers on workers can resolve inter-service names cluster-wide.
+  - Added automatic remote volume directory pre-creation (`mkdir -p && chmod 777`) via SSH in `internal/api/executor.go` before container start, preventing storage permission errors on worker hosts.
+  - Added automatic post-start CoreDNS hosts and Caddy ingress regeneration (`GenerateHostsFile()` / `GenerateCaddyfile()`) when remote worker tasks reach `running` state in `executor.go`, ensuring Caddy Ingress immediately provisions reverse proxy routes (`auth.gbnt.local`, `ci.devops.gbnt.local`, etc.) instead of showing the default fallback page.
+  - Cleaned up misplaced `ingress.host` and `gbnt.caddy.port` under `placement.constraints` in `examples/example-keycloak-sso/docker-compose.yml` and `internal/examples/data/keycloak-sso.yml`.
+* **DeepSeek Universal Multi-Arch Support & GPU Segregation (`deepseek-vllm`):**
+  - Replaced the monolithic 16GB CUDA-only x86_64 vLLM image in the default blueprint with **Ollama** (`ollama/ollama:latest`), enabling fast, lightweight (~1.5GB) deployment across Apple Silicon (ARM64), Linux AMD64/ARM64, and CPU-only testing environments.
+  - Provided dedicated `docker-compose-vllm-gpu.yml` for datacenter NVIDIA GPU servers with strict hardware affinity constraints (`gbnt.node.gpu == nvidia`) to prevent GPU workloads from exhausting CPU worker node storage.
+  - Comprehensive architectural and operational documentation in `examples/example-deepseek-vllm/README.md`, `examples/example-gitea-woodpecker/README.md`, and `examples/example-keycloak-sso/README.md`.
+
 
 
 

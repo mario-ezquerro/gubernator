@@ -136,12 +136,15 @@ func GenerateHostsFile() {
 			addRecord(targetIP, fmt.Sprintf("manager.%s.%s", cleanSvc, clusterDomain))
 		}
 
-		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.<clusterDomain>)
+		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.<clusterDomain>) and inter-service aliases
 		if !isSystemStack(stack.ID, stack.Name) {
 			cleanStack := SanitizeDNSLabel(stack.Name)
 			if cleanStack != "" {
 				addRecord(targetIP, fmt.Sprintf("%s.%s.%s", cleanSvc, cleanStack, clusterDomain))
+				addRecord(targetIP, fmt.Sprintf("%s.%s", cleanSvc, cleanStack))
 			}
+			addRecord(targetIP, fmt.Sprintf("%s.%s", cleanSvc, clusterDomain))
+			addRecord(targetIP, cleanSvc)
 		}
 	}
 

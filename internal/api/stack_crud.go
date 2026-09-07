@@ -50,6 +50,10 @@ func StackListHandler(c *gin.Context) {
 // @Router /v1/stack/{id}/services [get]
 func StackServicesHandler(c *gin.Context) {
 	id := c.Param("id")
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err == nil {
+		id = stack.ID
+	}
 	var services []db.Service
 	if err := db.DB.Where("stack_id = ?", id).Find(&services).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch services"})
@@ -62,7 +66,7 @@ func StackServicesHandler(c *gin.Context) {
 // @Description Delete a stack, stop its containers, and remove all related records
 // @Tags stacks
 // @Produce json
-// @Param id path string true "Stack ID"
+// @Param id path string true "Stack ID or Name"
 // @Success 200 {object} map[string]string
 // @Router /v1/stack/{id} [delete]
 func StackRmHandler(c *gin.Context) {
@@ -105,21 +109,29 @@ func StackRmHandler(c *gin.Context) {
 		return
 	}
 
+	// Resolve stack by ID or Name
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+	realID := stack.ID
+
 	// Stop all running containers for this stack first
-	StopStackContainers(id)
+	StopStackContainers(realID)
 
 	// Delete tasks related to this stack's services
 	var services []db.Service
-	db.DB.Where("stack_id = ?", id).Find(&services)
+	db.DB.Where("stack_id = ?", realID).Find(&services)
 	for _, svc := range services {
 		db.DB.Where("service_id = ?", svc.ID).Delete(&db.Task{})
 	}
 
 	// Delete services
-	db.DB.Where("stack_id = ?", id).Delete(&db.Service{})
+	db.DB.Where("stack_id = ?", realID).Delete(&db.Service{})
 
 	// Delete stack
-	if res := db.DB.Where("id = ?", id).Delete(&db.Stack{}); res.Error != nil || res.RowsAffected == 0 {
+	if res := db.DB.Where("id = ?", realID).Delete(&db.Stack{}); res.Error != nil || res.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
 		return
 	}
@@ -139,12 +151,6 @@ func StackRmHandler(c *gin.Context) {
 // @Router /v1/stack/{id}/stop [post]
 func StackStopHandler(c *gin.Context) {
 	id := c.Param("id")
-
-	var stack db.Stack
-	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
-		return
-	}
 
 	// 1. Special handling for SRE Monitor stack
 	if id == monitor.SREStackID {
@@ -177,9 +183,16 @@ func StackStopHandler(c *gin.Context) {
 		return
 	}
 
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+	realID := stack.ID
+
 	// 3. User deployed stacks: strictly enforce desired replicas
 	var services []db.Service
-	db.DB.Where("stack_id = ?", id).Find(&services)
+	db.DB.Where("stack_id = ?", realID).Find(&services)
 	stoppedCount := 0
 	for _, svc := range services {
 		desired := svc.DesiredReplicas
@@ -208,24 +221,18 @@ func StackStopHandler(c *gin.Context) {
 	}
 
 	aqueducts.GenerateAllAsync()
-	c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": id, "stopped_containers": stoppedCount})
+	c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": realID, "stopped_containers": stoppedCount})
 }
 
 // @Summary Start Stack
 // @Description Start all containers in a stopped stack
 // @Tags stacks
 // @Produce json
-// @Param id path string true "Stack ID"
+// @Param id path string true "Stack ID or Name"
 // @Success 200 {object} map[string]string
 // @Router /v1/stack/{id}/start [post]
 func StackStartHandler(c *gin.Context) {
 	id := c.Param("id")
-
-	var stack db.Stack
-	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
-		return
-	}
 
 	// 1. Special handling for SRE Monitor stack
 	if id == monitor.SREStackID {
@@ -249,6 +256,12 @@ func StackStartHandler(c *gin.Context) {
 		return
 	}
 
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
 	// 3. User deployed stacks
 	if stack.RawComposeFile != "" {
 		if _, err := DeployStackRaw(stack.Name, stack.RawComposeFile, ""); err != nil {
@@ -258,7 +271,7 @@ func StackStartHandler(c *gin.Context) {
 	}
 
 	aqueducts.GenerateAllAsync()
-	c.JSON(http.StatusOK, gin.H{"status": "started", "stack_id": id})
+	c.JSON(http.StatusOK, gin.H{"status": "started", "stack_id": stack.ID})
 }
 
 // @Summary Reconcile Stack
@@ -270,6 +283,10 @@ func StackStartHandler(c *gin.Context) {
 // @Router /v1/stack/{id}/reconcile [post]
 func StackReconcileHandler(c *gin.Context) {
 	id := c.Param("id")
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", id, id).First(&stack).Error; err == nil {
+		id = stack.ID
+	}
 	pruned, rescheduled, err := ReconcileSingleStack(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

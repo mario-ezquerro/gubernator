@@ -136,6 +136,11 @@ func DefaultCorefile() string {
 }
 
 . {
+    hosts /etc/coredns/gubernator.hosts {
+        ttl 5
+        reload 3s
+        fallthrough
+    }
     forward . %s
     cache 30
     log

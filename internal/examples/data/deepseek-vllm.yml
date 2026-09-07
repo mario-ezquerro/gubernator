@@ -1,44 +1,38 @@
 version: "3.8"
 
 services:
-  vllm-engine:
-    image: vllm/vllm-openai:latest
+  deepseek-engine:
+    image: ollama/ollama:latest
     restart: unless-stopped
-    command: >
-      --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
-      --port 8000
-      --max-model-len 4096
-      --trust-remote-code
-    environment:
-      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
     ports:
-      - "8000:8000"
+      - "11434:11434"
     volumes:
-      - /var/contenedores/vllm/models:/root/.cache/huggingface
+      - /var/contenedores/deepseek/models:/root/.ollama
     labels:
       - "ingress.host=api.deepseek.gbnt.local"
-      - "gbnt.caddy.port=8000"
+      - "gbnt.caddy.port=11434"
       - "gbnt.service.name=deepseek-engine"
     deploy:
       resources:
         limits:
-          cpus: "4.0"
-          memory: 8G
+          cpus: "2.0"
+          memory: 3G
         reservations:
-          cpus: "1.0"
-          memory: 4G
+          cpus: "0.5"
+          memory: 1G
       placement:
         constraints:
           - stack.name == deepseek-vllm
           - ingress.host == api.deepseek.gbnt.local
-          - gbnt.caddy.port == 8000
+          - gbnt.caddy.port == 11434
 
   chat-ui:
     image: ghcr.io/open-webui/open-webui:main
     restart: unless-stopped
     environment:
-      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:8000/v1
-      - OPENAI_API_KEY=gubernator-local
+      - OLLAMA_BASE_URL=http://api.deepseek.gbnt.local:11434
+      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:11434/v1
+      - OPENAI_API_KEY=ollama
       - WEBUI_AUTH=False
     ports:
       - "8080:8080"

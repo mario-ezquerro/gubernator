@@ -157,6 +157,15 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 	if !hasEnv("GBNT_SERVICE_NAME") && svc.Name != "" {
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_SERVICE_NAME=%s'", svc.Name))
 	}
+	// Lookup Manager DNS IP (use the manager's reachable LAN IP for remote worker nodes)
+	var managerNode db.Node
+	managerDNS := "127.0.0.1"
+	if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
+		managerDNS = managerNode.IP
+	}
+	dockerArgs = append(dockerArgs, "--dns", fmt.Sprintf("'%s'", managerDNS))
+	dockerArgs = append(dockerArgs, "--dns-search", "'gbnt.local'")
+
 	for _, v := range svc.Volumes {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "'\\''")))
 	}
@@ -167,7 +176,15 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		}
 	}
 
-	runCmd := strings.Join(dockerArgs, " ")
+	var prepCmds []string
+	for _, v := range svc.Volumes {
+		parts := strings.Split(v, ":")
+		if len(parts) > 0 && strings.HasPrefix(parts[0], "/") {
+			prepCmds = append(prepCmds, fmt.Sprintf("sudo mkdir -p '%s' && sudo chmod 777 '%s'", parts[0], parts[0]))
+		}
+	}
+	prepCmds = append(prepCmds, strings.Join(dockerArgs, " "))
+	runCmd := strings.Join(prepCmds, " && ")
 	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), runCmd)
 
 	var runStdout, runStderr bytes.Buffer
@@ -208,6 +225,12 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		"memory_limit":   svc.MemoryLimit,
 		"error":          "",
 	})
+
+	// Update CoreDNS and Caddy ingress routes
+	go func() {
+		aqueducts.GenerateHostsFile()
+		aqueducts.GenerateCaddyfile()
+	}()
 }
 
 // executeTask pulls the image and starts the container for a given task+service.

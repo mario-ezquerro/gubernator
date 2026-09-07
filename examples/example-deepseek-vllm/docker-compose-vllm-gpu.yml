@@ -1,38 +1,46 @@
 version: "3.8"
 
 # =============================================================================
-# Gubernator (gbnt) - DeepSeek AI Inference Stack & Open-WebUI
-# Universal Multi-Arch (CPU, ARM64, AMD64 & GPU) using Ollama engine
+# Gubernator (gbnt) - DeepSeek & vLLM High-Throughput GPU Inference Stack
+# Requires NVIDIA GPU Nodes (gbnt.node.gpu == nvidia) with CUDA / PagedAttention
 # =============================================================================
 
 services:
   # ─────────────────────────────────────────────────────────────────────────────
-  # 1. DeepSeek High-Performance Inference Engine (Ollama Universal Multi-Arch)
+  # 1. vLLM High-Throughput Inference Engine (DeepSeek R1 Distill / Qwen / LLaMA)
   # ─────────────────────────────────────────────────────────────────────────────
-  deepseek-engine:
-    image: ollama/ollama:latest
+  vllm-engine:
+    image: vllm/vllm-openai:latest
     restart: unless-stopped
+    command: >
+      --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+      --port 8000
+      --max-model-len 4096
+      --trust-remote-code
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
     ports:
-      - "11434:11434"
+      - "8000:8000"
     volumes:
-      - /var/contenedores/deepseek/models:/root/.ollama
+      - /var/contenedores/vllm/models:/root/.cache/huggingface
     labels:
       - "ingress.host=api.deepseek.gbnt.local"
-      - "gbnt.caddy.port=11434"
+      - "gbnt.caddy.port=8000"
       - "gbnt.service.name=deepseek-engine"
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 3G
+          cpus: "4.0"
+          memory: 8G
         reservations:
-          cpus: "0.5"
-          memory: 1G
+          cpus: "1.0"
+          memory: 4G
       placement:
         constraints:
           - stack.name == deepseek-vllm
+          - gbnt.node.gpu == nvidia
           - ingress.host == api.deepseek.gbnt.local
-          - gbnt.caddy.port == 11434
+          - gbnt.caddy.port == 8000
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Open-WebUI Interactive Chat Interface
@@ -41,9 +49,8 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     restart: unless-stopped
     environment:
-      - OLLAMA_BASE_URL=http://api.deepseek.gbnt.local:11434
-      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:11434/v1
-      - OPENAI_API_KEY=ollama
+      - OPENAI_API_BASE_URL=http://api.deepseek.gbnt.local:8000/v1
+      - OPENAI_API_KEY=gubernator-local
       - WEBUI_AUTH=False
     ports:
       - "8080:8080"
