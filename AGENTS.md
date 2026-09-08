@@ -763,6 +763,28 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Added `ApiService.deployStackDetailed` supporting `autoRemapPorts` and `force` flags with structured conflict decoding.
   - Updated backend endpoint to return remapped YAML content in responses for live UI synchronization.
 
+### 91. Enterprise OIDC & OAuth2 Single Sign-On (SSO) Subsystem (`v2.77.0`)
+* **Multi-Provider SSO Authentication:** Native OpenID Connect (OIDC) and OAuth2 authentication supporting Google Cloud, GitHub, GitLab, Keycloak, Azure AD / Microsoft Entra, and custom generic identity providers.
+* **PKCE & Cryptographic State Security:** High-security Authorization Code Grant with Proof Key for Code Exchange (PKCE SHA-256) and randomized state tokens protecting against replay and authorization code interception attacks.
+* **Auto-Provisioning & RBAC Claims Mapping:** Automatic user profile provisioning with token signature verification, dynamic email extraction, and role assignment (`admin`, `operator`, `readonly`).
+* **Web UI SSO Integration:** Seamless dual-mode authentication in Flutter Web login dialog with instant OAuth redirects, provider preset templates, and administrative provider management in Settings.
+
+### 92. eBPF Kernel Network Observability, Socket Probing & Live Service Mesh Subsystem (`v2.78.0`)
+* **Dual-Engine Architecture (Native Linux eBPF + Resilient Emulation):**
+  - High-performance non-invasive observability inspecting Linux tracefs (`/sys/kernel/tracing`, `/sys/kernel/debug/tracing`), BPF filesystem (`/sys/fs/bpf`), and socket filters without requiring CGO or external clang toolchains.
+  - Built-in resilient kernel emulation and socket correlate engine for macOS, Windows, and unprivileged container environments ensuring 100% development and testing parity.
+* **L4/L7 Protocol Decoding & Socket Correlation:**
+  - Correlates kernel socket tables (`/proc/net/tcp`, `/proc/net/tcp6`, `/proc/net/udp`, `/proc/net/udp6`) and interface statistics (`/proc/net/dev`) with Docker containers and Gubernator task metadata.
+  - Decodes protocols (HTTP, gRPC, DNS, TCP, UDP, Redis, Postgres), calculating round-trip time (RTT latency ms), throughput (Bps), retransmits, and dropped packets.
+* **Real-Time Streaming & REST API:**
+  - Manager REST API (Port 4000) and Web API (Port 4001): `GET /v1/ebpf/stats`, `GET /v1/ebpf/flows`, `GET /v1/ebpf/topology`, `POST /v1/ebpf/simulate`, and Server-Sent Events (SSE) `GET /v1/ebpf/stream`.
+* **Flutter Web Dashboard — eBPF Live Hub (`web-ui/lib/screens/pages/ebpf_page.dart`):**
+  - **Live Captured Flows Stream:** Real-time auto-refreshing data table with protocol filters, health/error status chips, search query, RTT thermometers, throughput rates, and modal flow inspector.
+  - **Service Mesh Topology View:** Visual interactive service mesh graph showing connected services, directional arrows, throughput MB/s, RTT latency, and error rates.
+  - **Kernel Probes & Diagnostics:** Kernel version telemetry, active attach points list (`kprobe/tcp_v4_connect`, `tracepoint/sock_sendmsg`, etc.), protocol distribution charts, interface packet counters, and on-demand traffic simulator.
+* **Full CLI Parity (`gbnt ebpf ...`):**
+  - Dedicated CLI commands for `gbnt ebpf status`, `gbnt ebpf flows`, `gbnt ebpf topology`, and `gbnt ebpf simulate`.
+
 
 
 

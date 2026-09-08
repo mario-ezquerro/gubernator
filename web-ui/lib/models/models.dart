@@ -2713,3 +2713,341 @@ class DeployStackResult {
     this.stackId,
   });
 }
+
+// ── eBPF Live Hub Models ──────────────────────────────────────────────────
+
+class EbpfInterfaceStats {
+  final String name;
+  final int rxBytes;
+  final int txBytes;
+  final int rxPackets;
+  final int txPackets;
+  final int rxErrors;
+  final int txErrors;
+  final int rxDrops;
+  final int txDrops;
+
+  EbpfInterfaceStats({
+    required this.name,
+    this.rxBytes = 0,
+    this.txBytes = 0,
+    this.rxPackets = 0,
+    this.txPackets = 0,
+    this.rxErrors = 0,
+    this.txErrors = 0,
+    this.rxDrops = 0,
+    this.txDrops = 0,
+  });
+
+  factory EbpfInterfaceStats.fromJson(Map<String, dynamic> json) {
+    return EbpfInterfaceStats(
+      name: json['name'] ?? '',
+      rxBytes: (json['rx_bytes'] as num?)?.toInt() ?? 0,
+      txBytes: (json['tx_bytes'] as num?)?.toInt() ?? 0,
+      rxPackets: (json['rx_packets'] as num?)?.toInt() ?? 0,
+      txPackets: (json['tx_packets'] as num?)?.toInt() ?? 0,
+      rxErrors: (json['rx_errors'] as num?)?.toInt() ?? 0,
+      txErrors: (json['tx_errors'] as num?)?.toInt() ?? 0,
+      rxDrops: (json['rx_drops'] as num?)?.toInt() ?? 0,
+      txDrops: (json['tx_drops'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class EbpfStats {
+  final String kernelVersion;
+  final bool ebpfSupported;
+  final String mode;
+  final int activeProbes;
+  final List<String> probesList;
+  final int totalFlows;
+  final int activeFlows;
+  final double packetsPerSec;
+  final double bytesPerSec;
+  final int droppedPackets;
+  final List<EbpfInterfaceStats> interfaces;
+  final Map<String, int> protocolCounts;
+  final Map<String, int> statusCounts;
+
+  EbpfStats({
+    required this.kernelVersion,
+    required this.ebpfSupported,
+    this.mode = 'kernel',
+    this.activeProbes = 0,
+    this.probesList = const [],
+    this.totalFlows = 0,
+    this.activeFlows = 0,
+    this.packetsPerSec = 0.0,
+    this.bytesPerSec = 0.0,
+    this.droppedPackets = 0,
+    this.interfaces = const [],
+    this.protocolCounts = const {},
+    this.statusCounts = const {},
+  });
+
+  factory EbpfStats.fromJson(Map<String, dynamic> json) {
+    final ifacesList = <EbpfInterfaceStats>[];
+    if (json['interfaces'] != null && json['interfaces'] is List) {
+      for (final item in json['interfaces']) {
+        if (item is Map<String, dynamic>) {
+          ifacesList.add(EbpfInterfaceStats.fromJson(item));
+        }
+      }
+    }
+
+    final probes = <String>[];
+    if (json['probes_list'] != null && json['probes_list'] is List) {
+      for (final p in json['probes_list']) {
+        probes.add(p.toString());
+      }
+    }
+
+    final protoCounts = <String, int>{};
+    if (json['protocol_counts'] != null && json['protocol_counts'] is Map) {
+      json['protocol_counts'].forEach((k, v) {
+        protoCounts[k.toString()] = (v as num?)?.toInt() ?? 0;
+      });
+    }
+
+    final statCounts = <String, int>{};
+    if (json['status_counts'] != null && json['status_counts'] is Map) {
+      json['status_counts'].forEach((k, v) {
+        statCounts[k.toString()] = (v as num?)?.toInt() ?? 0;
+      });
+    }
+
+    return EbpfStats(
+      kernelVersion: json['kernel_version'] ?? '',
+      ebpfSupported: json['ebpf_supported'] == true,
+      mode: json['mode'] ?? 'kernel',
+      activeProbes: (json['active_probes'] as num?)?.toInt() ?? 0,
+      probesList: probes,
+      totalFlows: (json['total_flows'] as num?)?.toInt() ?? 0,
+      activeFlows: (json['active_flows'] as num?)?.toInt() ?? 0,
+      packetsPerSec: (json['packets_per_sec'] as num?)?.toDouble() ?? 0.0,
+      bytesPerSec: (json['bytes_per_sec'] as num?)?.toDouble() ?? 0.0,
+      droppedPackets: (json['dropped_packets'] as num?)?.toInt() ?? 0,
+      interfaces: ifacesList,
+      protocolCounts: protoCounts,
+      statusCounts: statCounts,
+    );
+  }
+}
+
+class EbpfFlow {
+  final String id;
+  final String sourceId;
+  final String sourceName;
+  final String sourceIp;
+  final int sourcePort;
+  final String destId;
+  final String destName;
+  final String destIp;
+  final int destPort;
+  final String protocol;
+  final String method;
+  final String path;
+  final int statusCode;
+  final double latencyMs;
+  final int bytesSent;
+  final int bytesReceived;
+  final double throughputBps;
+  final int retransmits;
+  final int drops;
+  final String status;
+  final DateTime timestamp;
+
+  EbpfFlow({
+    required this.id,
+    required this.sourceId,
+    required this.sourceName,
+    required this.sourceIp,
+    this.sourcePort = 0,
+    required this.destId,
+    required this.destName,
+    required this.destIp,
+    this.destPort = 0,
+    required this.protocol,
+    this.method = '',
+    this.path = '',
+    this.statusCode = 0,
+    this.latencyMs = 0.0,
+    this.bytesSent = 0,
+    this.bytesReceived = 0,
+    this.throughputBps = 0.0,
+    this.retransmits = 0,
+    this.drops = 0,
+    required this.status,
+    required this.timestamp,
+  });
+
+  factory EbpfFlow.fromJson(Map<String, dynamic> json) {
+    DateTime ts = DateTime.now();
+    if (json['timestamp'] != null) {
+      ts = DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now();
+    }
+
+    return EbpfFlow(
+      id: json['id'] ?? '',
+      sourceId: json['source_id'] ?? '',
+      sourceName: json['source_name'] ?? '',
+      sourceIp: json['source_ip'] ?? '',
+      sourcePort: (json['source_port'] as num?)?.toInt() ?? 0,
+      destId: json['dest_id'] ?? '',
+      destName: json['dest_name'] ?? '',
+      destIp: json['dest_ip'] ?? '',
+      destPort: (json['dest_port'] as num?)?.toInt() ?? 0,
+      protocol: json['protocol'] ?? 'TCP',
+      method: json['method'] ?? '',
+      path: json['path'] ?? '',
+      statusCode: (json['status_code'] as num?)?.toInt() ?? 0,
+      latencyMs: (json['latency_ms'] as num?)?.toDouble() ?? 0.0,
+      bytesSent: (json['bytes_sent'] as num?)?.toInt() ?? 0,
+      bytesReceived: (json['bytes_received'] as num?)?.toInt() ?? 0,
+      throughputBps: (json['throughput_bps'] as num?)?.toDouble() ?? 0.0,
+      retransmits: (json['retransmits'] as num?)?.toInt() ?? 0,
+      drops: (json['drops'] as num?)?.toInt() ?? 0,
+      status: json['status'] ?? 'healthy',
+      timestamp: ts,
+    );
+  }
+}
+
+class EbpfTopologyNode {
+  final String id;
+  final String name;
+  final String type;
+  final String stack;
+  final String nodeHost;
+  final String ip;
+  final String status;
+  final double inboundBps;
+  final double outboundBps;
+  final int activeFlows;
+  final double errorRate;
+  final double cpuPercent;
+  final double memPercent;
+
+  EbpfTopologyNode({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.stack = '',
+    this.nodeHost = '',
+    this.ip = '',
+    this.status = 'running',
+    this.inboundBps = 0.0,
+    this.outboundBps = 0.0,
+    this.activeFlows = 0,
+    this.errorRate = 0.0,
+    this.cpuPercent = 0.0,
+    this.memPercent = 0.0,
+  });
+
+  factory EbpfTopologyNode.fromJson(Map<String, dynamic> json) {
+    return EbpfTopologyNode(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      type: json['type'] ?? 'container',
+      stack: json['stack'] ?? '',
+      nodeHost: json['node_host'] ?? '',
+      ip: json['ip'] ?? '',
+      status: json['status'] ?? 'running',
+      inboundBps: (json['inbound_bps'] as num?)?.toDouble() ?? 0.0,
+      outboundBps: (json['outbound_bps'] as num?)?.toDouble() ?? 0.0,
+      activeFlows: (json['active_flows'] as num?)?.toInt() ?? 0,
+      errorRate: (json['error_rate'] as num?)?.toDouble() ?? 0.0,
+      cpuPercent: (json['cpu_percent'] as num?)?.toDouble() ?? 0.0,
+      memPercent: (json['mem_percent'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class EbpfTopologyEdge {
+  final String id;
+  final String sourceId;
+  final String targetId;
+  final String protocol;
+  final double throughputBps;
+  final double rttMs;
+  final int activeFlows;
+  final double errorRate;
+  final String status;
+  final DateTime lastSeen;
+
+  EbpfTopologyEdge({
+    required this.id,
+    required this.sourceId,
+    required this.targetId,
+    required this.protocol,
+    this.throughputBps = 0.0,
+    this.rttMs = 0.0,
+    this.activeFlows = 0,
+    this.errorRate = 0.0,
+    this.status = 'healthy',
+    required this.lastSeen,
+  });
+
+  factory EbpfTopologyEdge.fromJson(Map<String, dynamic> json) {
+    DateTime ls = DateTime.now();
+    if (json['last_seen'] != null) {
+      ls = DateTime.tryParse(json['last_seen'].toString()) ?? DateTime.now();
+    }
+    return EbpfTopologyEdge(
+      id: json['id'] ?? '',
+      sourceId: json['source_id'] ?? '',
+      targetId: json['target_id'] ?? '',
+      protocol: json['protocol'] ?? 'TCP',
+      throughputBps: (json['throughput_bps'] as num?)?.toDouble() ?? 0.0,
+      rttMs: (json['rtt_ms'] as num?)?.toDouble() ?? 0.0,
+      activeFlows: (json['active_flows'] as num?)?.toInt() ?? 0,
+      errorRate: (json['error_rate'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] ?? 'healthy',
+      lastSeen: ls,
+    );
+  }
+}
+
+class EbpfTopology {
+  final List<EbpfTopologyNode> nodes;
+  final List<EbpfTopologyEdge> edges;
+  final DateTime updatedAt;
+
+  EbpfTopology({
+    required this.nodes,
+    required this.edges,
+    required this.updatedAt,
+  });
+
+  factory EbpfTopology.fromJson(Map<String, dynamic> json) {
+    final nList = <EbpfTopologyNode>[];
+    if (json['nodes'] != null && json['nodes'] is List) {
+      for (final n in json['nodes']) {
+        if (n is Map<String, dynamic>) {
+          nList.add(EbpfTopologyNode.fromJson(n));
+        }
+      }
+    }
+
+    final eList = <EbpfTopologyEdge>[];
+    if (json['edges'] != null && json['edges'] is List) {
+      for (final e in json['edges']) {
+        if (e is Map<String, dynamic>) {
+          eList.add(EbpfTopologyEdge.fromJson(e));
+        }
+      }
+    }
+
+    DateTime u = DateTime.now();
+    if (json['updated_at'] != null) {
+      u = DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now();
+    }
+
+    return EbpfTopology(
+      nodes: nList,
+      edges: eList,
+      updatedAt: u,
+    );
+  }
+}
+

@@ -135,7 +135,7 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
           if (widget.onOpenInComposeStudio != null) {
             widget.onOpenInComposeStudio!(sId);
           } else if (widget.onNavigateTab != null) {
-            widget.onNavigateTab!(15); // Compose Studio tab
+            widget.onNavigateTab!(16); // Compose Studio tab
           }
         },
       ),
@@ -195,7 +195,7 @@ class _ImageSecurityPageState extends State<ImageSecurityPage> with SingleTicker
           if (widget.onOpenInComposeStudio != null) {
             widget.onOpenInComposeStudio!('');
           } else if (widget.onNavigateTab != null) {
-            widget.onNavigateTab!(15); // Compose Studio tab
+            widget.onNavigateTab!(16); // Compose Studio tab
           }
         },
       ),

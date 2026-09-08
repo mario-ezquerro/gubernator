@@ -34,6 +34,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
+	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
@@ -50,7 +51,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.77.2"
+var Version = "v2.78.0"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -503,6 +504,13 @@ func StartDashboard() {
 		api.GET("/logs/labels", logsLabelsHandler)
 		api.GET("/logs/query", logsQueryHandler)
 		api.GET("/logs/export", logsExportHandler)
+
+		// eBPF Live Hub & Kernel Network Observability
+		api.GET("/ebpf/stats", ebpfStatsWebHandler)
+		api.GET("/ebpf/flows", ebpfFlowsWebHandler)
+		api.GET("/ebpf/topology", ebpfTopologyWebHandler)
+		api.POST("/ebpf/simulate", ebpfSimulateWebHandler)
+		api.GET("/ebpf/stream", ebpfStreamWebHandler)
 
 		// Server Stacks & Built-in POC Examples
 		api.GET("/stacks/server-files", stackServerFilesWebHandler)
@@ -7417,6 +7425,73 @@ func imageDistributeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// ── eBPF Live Hub Web Handlers ──────────────────────────────────────────────
 
+func ebpfStatsWebHandler(c *gin.Context) {
+	eng := ebpf.GetEngine()
+	stats := eng.Probe.GetStats()
+	c.JSON(http.StatusOK, stats)
+}
 
+func ebpfFlowsWebHandler(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 {
+		limit = 50
+	}
+	proto := c.Query("protocol")
+	status := c.Query("status")
+	query := c.Query("q")
 
+	eng := ebpf.GetEngine()
+	flows := eng.Probe.GetRecentFlows(limit, proto, status, query)
+	if flows == nil {
+		flows = []ebpf.Flow{}
+	}
+	c.JSON(http.StatusOK, flows)
+}
+
+func ebpfTopologyWebHandler(c *gin.Context) {
+	eng := ebpf.GetEngine()
+	topo := eng.Probe.BuildTopology()
+	c.JSON(http.StatusOK, topo)
+}
+
+func ebpfSimulateWebHandler(c *gin.Context) {
+	var profile ebpf.SimulationProfile
+	if err := c.ShouldBindJSON(&profile); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid simulation payload: " + err.Error()})
+		return
+	}
+
+	eng := ebpf.GetEngine()
+	eng.SimulateTraffic(profile)
+	c.JSON(http.StatusOK, gin.H{"status": "Simulation triggered successfully", "pattern": profile.Pattern})
+}
+
+func ebpfStreamWebHandler(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+
+	eng := ebpf.GetEngine()
+	ch := eng.Probe.Subscribe()
+	defer eng.Probe.Unsubscribe(ch)
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-c.Request.Context().Done():
+			return false
+		case flow, ok := <-ch:
+			if !ok {
+				return false
+			}
+			data, err := json.Marshal(flow)
+			if err == nil {
+				c.SSEvent("flow", string(data))
+			}
+			return true
+		}
+	})
+}

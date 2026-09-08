@@ -19,6 +19,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
+	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
@@ -85,6 +86,7 @@ func Start(ctx context.Context) error {
 	go startTelemetryServer(ctx)
 	go startLocalExecutor(ctx)
 	go StartSelfHealingWatchdog(ctx)
+	ebpf.GetEngine()
 
 	// Auto-deploy SRE Monitoring Stack if GBNT_MONITOR=true
 	monitorEnabled := strings.ToLower(os.Getenv("GBNT_MONITOR"))
@@ -319,6 +321,16 @@ func Start(ctx context.Context) error {
 			imagesRoute.POST("/prune", ImagePruneHandler)
 			imagesRoute.POST("/build", ImageBuildHandler)
 			imagesRoute.POST("/distribute", ImageDistributeHandler)
+		}
+
+		ebpfRoute := v1.Group("/ebpf", authMiddleware)
+		{
+			ebpfRoute.GET("/stats", EBPFStatsHandler)
+			ebpfRoute.GET("/status", EBPFStatsHandler)
+			ebpfRoute.GET("/flows", EBPFFlowsHandler)
+			ebpfRoute.GET("/topology", EBPFTopologyHandler)
+			ebpfRoute.POST("/simulate", EBPFSimulateHandler)
+			ebpfRoute.GET("/stream", EBPFStreamHandler)
 		}
 
 		systemRoute := v1.Group("/system")

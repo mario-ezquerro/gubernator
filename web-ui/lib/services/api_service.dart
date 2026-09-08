@@ -2458,6 +2458,72 @@ class ApiService {
     final err = jsonDecode(response.body);
     throw Exception(err['error'] ?? 'Failed to switch SRE profile');
   }
+
+  // ── eBPF Live Hub & Kernel Network Observability ───────────────────────────
+
+  /// Fetches global eBPF kernel stats and telemetry counters.
+  static Future<EbpfStats> fetchEbpfStats() async {
+    final response = await http.get(Uri.parse('/api/ebpf/stats'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return EbpfStats.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch eBPF stats: ${response.statusCode}');
+  }
+
+  /// Fetches recent captured L4/L7 network flows.
+  static Future<List<EbpfFlow>> fetchEbpfFlows({
+    int limit = 50,
+    String? protocol,
+    String? status,
+    String? query,
+  }) async {
+    final params = <String, String>{'limit': limit.toString()};
+    if (protocol != null && protocol.isNotEmpty && protocol != 'ALL') {
+      params['protocol'] = protocol;
+    }
+    if (status != null && status.isNotEmpty && status != 'ALL') {
+      params['status'] = status;
+    }
+    if (query != null && query.isNotEmpty) {
+      params['q'] = query;
+    }
+    final uri = Uri.parse('/api/ebpf/flows').replace(queryParameters: params);
+    final response = await http.get(uri, headers: authHeaders);
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List;
+      return list.map((item) => EbpfFlow.fromJson(item)).toList();
+    }
+    throw Exception('Failed to fetch eBPF flows: ${response.statusCode}');
+  }
+
+  /// Fetches synthesized eBPF service mesh topology graph.
+  static Future<EbpfTopology> fetchEbpfTopology() async {
+    final response = await http.get(Uri.parse('/api/ebpf/topology'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return EbpfTopology.fromJson(jsonDecode(response.body));
+    }
+    throw Exception('Failed to fetch eBPF topology: ${response.statusCode}');
+  }
+
+  /// Triggers on-demand eBPF traffic simulation.
+  static Future<bool> simulateEbpfTraffic({
+    String pattern = 'burst',
+    int rate = 15,
+    int durationS = 10,
+    double errorPct = 0.0,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/ebpf/simulate'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'pattern': pattern,
+        'rate': rate,
+        'duration_s': durationS,
+        'error_pct': errorPct,
+      }),
+    );
+    return response.statusCode == 200;
+  }
 }
 
 // -----------------------------------------------------------------------------

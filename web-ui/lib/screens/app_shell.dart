@@ -22,6 +22,7 @@ import 'pages/security_page.dart';
 import 'pages/storage_page.dart';
 import 'pages/image_security_page.dart';
 import 'pages/compose_studio_page.dart';
+import 'pages/ebpf_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -222,6 +223,11 @@ class _AppShellState extends State<AppShell> {
         label: 'Network Topology',
       ),
       const SidebarItem(
+        icon: Icons.grain_outlined,
+        activeIcon: Icons.grain,
+        label: 'eBPF Live Hub',
+      ),
+      const SidebarItem(
         icon: Icons.shield_outlined,
         activeIcon: Icons.shield,
         label: 'Security & Directory',
@@ -251,6 +257,7 @@ class _AppShellState extends State<AppShell> {
     'Network Monitor',
     'Jaeger',
     'Network Topology',
+    'eBPF Live Hub',
     'Security & Directory',
     'Compose Studio',
   ];
@@ -324,8 +331,10 @@ class _AppShellState extends State<AppShell> {
       case 13:
         return const ScopePage();
       case 14:
-        return SecurityPage(state: _state, onRefresh: _fetchData);
+        return const EbpfPage();
       case 15:
+        return SecurityPage(state: _state, onRefresh: _fetchData);
+      case 16:
         return ComposeStudioPage(state: _state, onRefresh: _fetchData);
       default:
         return OverviewPage(
