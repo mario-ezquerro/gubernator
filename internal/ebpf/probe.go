@@ -152,6 +152,9 @@ func (p *Probe) EmitFlow(f Flow) {
 		}
 	}
 	p.subMu.Unlock()
+
+	// Asynchronously export flow as OpenTelemetry span to Jaeger (port 4318)
+	go pushSpanToJaeger(f)
 }
 
 // RefreshEndpoints queries local/cluster database and docker state to update container mappings.

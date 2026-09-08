@@ -1,8 +1,11 @@
 package ebpf
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -309,6 +312,113 @@ func generateTraceID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+func generateSpanID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
+// pushSpanToJaeger exports a flow as an OpenTelemetry span directly to Jaeger's OTLP HTTP receiver (:4318).
+func pushSpanToJaeger(f Flow) {
+	if f.TraceID == "" {
+		return
+	}
+
+	startNano := f.Timestamp.UnixNano()
+	endNano := startNano + int64(f.LatencyMs*1e6)
+
+	statusCode := 1 // STATUS_CODE_OK
+	errMsg := ""
+	if f.Status == FlowStatusError {
+		statusCode = 2 // STATUS_CODE_ERROR
+		errMsg = fmt.Sprintf("HTTP %d Error", f.StatusCode)
+	}
+
+	attrs := []map[string]interface{}{
+		{"key": "http.method", "value": map[string]interface{}{"stringValue": f.Method}},
+		{"key": "http.target", "value": map[string]interface{}{"stringValue": f.Path}},
+		{"key": "http.status_code", "value": map[string]interface{}{"intValue": f.StatusCode}},
+		{"key": "network.protocol.name", "value": map[string]interface{}{"stringValue": f.Protocol}},
+		{"key": "client.address", "value": map[string]interface{}{"stringValue": f.SourceIP}},
+		{"key": "server.address", "value": map[string]interface{}{"stringValue": f.DestIP}},
+		{"key": "server.port", "value": map[string]interface{}{"intValue": f.DestPort}},
+		{"key": "ebpf.throughput_bps", "value": map[string]interface{}{"doubleValue": f.ThroughputBps}},
+		{"key": "ebpf.source_service", "value": map[string]interface{}{"stringValue": f.SourceName}},
+		{"key": "ebpf.target_service", "value": map[string]interface{}{"stringValue": f.DestName}},
+	}
+	if errMsg != "" {
+		attrs = append(attrs, map[string]interface{}{
+			"key": "error", "value": map[string]interface{}{"stringValue": "true"},
+		}, map[string]interface{}{
+			"key": "exception.message", "value": map[string]interface{}{"stringValue": errMsg},
+		})
+	}
+
+	spanName := fmt.Sprintf("%s %s", f.Method, f.Path)
+	if spanName == " " {
+		spanName = fmt.Sprintf("%s -> %s", f.SourceName, f.DestName)
+	}
+
+	payload := map[string]interface{}{
+		"resourceSpans": []map[string]interface{}{
+			{
+				"resource": map[string]interface{}{
+					"attributes": []map[string]interface{}{
+						{"key": "service.name", "value": map[string]interface{}{"stringValue": f.SourceName}},
+						{"key": "telemetry.sdk.name", "value": map[string]interface{}{"stringValue": "gubernator-ebpf"}},
+						{"key": "telemetry.sdk.language", "value": map[string]interface{}{"stringValue": "go"}},
+					},
+				},
+				"scopeSpans": []map[string]interface{}{
+					{
+						"scope": map[string]interface{}{
+							"name":    "github.com/mario-ezquerro/gubernator/internal/ebpf",
+							"version": "v2.79.0",
+						},
+						"spans": []map[string]interface{}{
+							{
+								"traceId":           f.TraceID,
+								"spanId":            generateSpanID(),
+								"name":              spanName,
+								"kind":              2, // SPAN_KIND_SERVER
+								"startTimeUnixNano": fmt.Sprintf("%d", startNano),
+								"endTimeUnixNano":   fmt.Sprintf("%d", endNano),
+								"attributes":        attrs,
+								"status": map[string]interface{}{
+									"code":    statusCode,
+									"message": errMsg,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	// Try local OTLP collector endpoints
+	endpoints := []string{
+		"http://127.0.0.1:4318/v1/traces",
+		"http://gbnt-monitor-jaeger:4318/v1/traces",
+	}
+
+	client := &http.Client{Timeout: 800 * time.Millisecond}
+	for _, ep := range endpoints {
+		resp, err := client.Post(ep, "application/json", bytes.NewReader(data))
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				break
+			}
+		}
+	}
 }
 
 func getFirstIP(ips []string) string {
