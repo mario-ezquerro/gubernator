@@ -15,6 +15,7 @@ import '../widgets/shell_dialog.dart';
 import '../widgets/stack_diagram_dialog.dart';
 import '../widgets/node_labels_dialog.dart';
 import '../widgets/add_node_dialog.dart';
+import '../widgets/port_conflict_dialog.dart';
 import '../utils/clipboard_service.dart';
 
 /// Main dashboard screen.
@@ -457,12 +458,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           initialYaml: yaml,
           nodes: _state.nodes,
           onDeploy: (name, compose, targetNode) async {
-            final errorMsg = await ApiService.deployStack(name, compose, targetNode: targetNode);
-            if (errorMsg == null) {
+            final res = await deployWithConflictResolution(
+              context: ctx,
+              stackName: name,
+              compose: compose,
+              targetNode: targetNode,
+            );
+            if (res.success) {
               _showSnackBar('Stack duplicated and deployed successfully!');
               _fetchData();
+              return null;
             }
-            return errorMsg;
+            return res.error;
           },
         ),
       );
@@ -595,12 +602,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (ctx) => NewStackDialog(
         nodes: _state.nodes,
         onDeploy: (name, yaml, targetNode) async {
-          final errorMsg = await ApiService.deployStack(name, yaml, targetNode: targetNode);
-          if (errorMsg == null) {
+          final res = await deployWithConflictResolution(
+            context: ctx,
+            stackName: name,
+            compose: yaml,
+            targetNode: targetNode,
+          );
+          if (res.success) {
             _showSnackBar('Stack deployed successfully!');
             _fetchData();
+            return null;
           }
-          return errorMsg;
+          return res.error;
         },
       ),
     );

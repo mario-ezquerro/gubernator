@@ -2500,5 +2500,57 @@ class POCExampleModel {
   }
 }
 
+/// Host port collision metadata returned during stack scheduling conflict
+class PortConflictModel {
+  final int hostPort;
+  final String protocol;
+  final String service;
+  final String conflictingStack;
+  final String conflictingService;
+  final String nodeId;
+  final String nodeIp;
+  final int suggestedPort;
 
+  PortConflictModel({
+    required this.hostPort,
+    required this.protocol,
+    required this.service,
+    required this.conflictingStack,
+    required this.conflictingService,
+    required this.nodeId,
+    required this.nodeIp,
+    required this.suggestedPort,
+  });
 
+  factory PortConflictModel.fromJson(Map<String, dynamic> json) {
+    return PortConflictModel(
+      hostPort: (json['host_port'] as num?)?.toInt() ?? 0,
+      protocol: json['protocol'] ?? 'tcp',
+      service: json['service'] ?? '',
+      conflictingStack: json['conflicting_stack'] ?? '',
+      conflictingService: json['conflicting_service'] ?? '',
+      nodeId: json['node_id'] ?? '',
+      nodeIp: json['node_ip'] ?? '',
+      suggestedPort: (json['suggested_port'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Result of deploying a stack, capturing success, error, or port conflict metadata
+class DeployStackResult {
+  final bool success;
+  final String? error;
+  final bool isConflict;
+  final List<PortConflictModel> conflicts;
+  final String? remappedCompose;
+  final String? stackId;
+
+  DeployStackResult({
+    required this.success,
+    this.error,
+    this.isConflict = false,
+    this.conflicts = const [],
+    this.remappedCompose,
+    this.stackId,
+  });
+}

@@ -746,6 +746,23 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Resolved `no such table: tasks / nodes` flakiness in `TestAtomicStackSchedulingAndBalancing` by decoupling published test ports (`8081:80` and `8082:80`), enforcing test mutex isolation, and verifying clean test teardown.
   - Verified 100% green passing test suite with `go test -v -race ./...` and zero `go vet` static analysis warnings.
 
+### 90. Web UI Interactive Port Collision Resolution Suite (`v2.76.1`)
+* **Interactive Port Conflict Diagnostic Dialog (`web-ui/lib/widgets/port_conflict_dialog.dart`):**
+  - Designed modern Material 3 diagnostic modal that intercepts HTTP 409 Conflict responses on stack deployments.
+  - Displays formatted conflict cards for each port collision with service name, conflicting host port and protocol badge, occupying stack name, conflicting service name, Centurion node ID & IP, and suggested next available free port.
+  - Actionable resolution options:
+    - ⚡ **Auto-Remap Ports**: Automatically rewrites conflicting host ports in Compose YAML to suggested free ports and continues deployment with zero downtime or manual YAML authoring.
+    - ⚠️ **Force Deploy**: Overrides collision detection and forces deployment on requested host ports.
+    - ❌ **Cancel**: Aborts deployment cleanly without mutating cluster state.
+* **Unified Frontend Integration across Stacks & Studio:**
+  - **Compose Studio (`compose_studio_page.dart`):** Deploying directly from the web IDE triggers the interactive conflict resolver; selecting Auto-Remap dynamically updates the YAML code editor with the new ports and redeploys smoothly.
+  - **Legions / Stacks Dashboard (`legions_page.dart`):** Integrated into New Stack modal, Server Stack Picker, and POC Blueprint one-click deployments.
+  - **Overview & Dashboard (`dashboard_screen.dart`):** Integrated into Duplicate Stack and top-level stack authoring dialogs.
+* **Frontend Data Models & Client API (`web-ui/lib/models/models.dart`, `web-ui/lib/services/api_service.dart`):**
+  - Added `PortConflictModel` and `DeployStackResult` data contracts.
+  - Added `ApiService.deployStackDetailed` supporting `autoRemapPorts` and `force` flags with structured conflict decoding.
+  - Updated backend endpoint to return remapped YAML content in responses for live UI synchronization.
+
 
 
 

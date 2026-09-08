@@ -6,6 +6,7 @@ import '../../widgets/new_stack_dialog.dart';
 import '../../widgets/stack_diagram_dialog.dart';
 import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
+import '../../widgets/port_conflict_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Legions page — full-width stacks table with all actions.
@@ -225,12 +226,18 @@ class _LegionsPageState extends State<LegionsPage> {
           initialYaml: yaml,
           nodes: widget.state.nodes,
           onDeploy: (name, compose, targetNode) async {
-            final errorMsg = await ApiService.deployStack(name, compose, targetNode: targetNode);
-            if (errorMsg == null) {
+            final res = await deployWithConflictResolution(
+              context: ctx,
+              stackName: name,
+              compose: compose,
+              targetNode: targetNode,
+            );
+            if (res.success) {
               _showSnackBar('Stack duplicated and deployed successfully!');
               widget.onRefresh();
+              return null;
             }
-            return errorMsg;
+            return res.error;
           },
         ),
       );
@@ -351,12 +358,18 @@ class _LegionsPageState extends State<LegionsPage> {
       builder: (ctx) => NewStackDialog(
         nodes: widget.state.nodes,
         onDeploy: (name, yaml, targetNode) async {
-          final errorMsg = await ApiService.deployStack(name, yaml, targetNode: targetNode);
-          if (errorMsg == null) {
+          final res = await deployWithConflictResolution(
+            context: ctx,
+            stackName: name,
+            compose: yaml,
+            targetNode: targetNode,
+          );
+          if (res.success) {
             _showSnackBar('Stack deployed successfully!');
             widget.onRefresh();
+            return null;
           }
-          return errorMsg;
+          return res.error;
         },
       ),
     );
@@ -374,12 +387,18 @@ class _LegionsPageState extends State<LegionsPage> {
               initialName: name,
               initialYaml: yaml,
               onDeploy: (n, y, target) async {
-                final err = await ApiService.deployStack(n, y, targetNode: target);
-                if (err == null) {
+                final res = await deployWithConflictResolution(
+                  context: ctx2,
+                  stackName: n,
+                  compose: y,
+                  targetNode: target,
+                );
+                if (res.success) {
                   _showSnackBar('Stack deployed successfully!');
                   widget.onRefresh();
+                  return null;
                 }
-                return err;
+                return res.error;
               },
             ),
           );
@@ -410,12 +429,18 @@ class _LegionsPageState extends State<LegionsPage> {
               initialName: name,
               initialYaml: yaml,
               onDeploy: (n, y, target) async {
-                final err = await ApiService.deployStack(n, y, targetNode: target);
-                if (err == null) {
+                final res = await deployWithConflictResolution(
+                  context: ctx2,
+                  stackName: n,
+                  compose: y,
+                  targetNode: target,
+                );
+                if (res.success) {
                   _showSnackBar('POC Blueprint "$n" deployed successfully!');
                   widget.onRefresh();
+                  return null;
                 }
-                return err;
+                return res.error;
               },
             ),
           );

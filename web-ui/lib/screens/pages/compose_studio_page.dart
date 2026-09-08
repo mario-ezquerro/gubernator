@@ -15,6 +15,7 @@ import '../../utils/compose_smart_merger.dart';
 import '../../widgets/compose_autocomplete.dart';
 import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
+import '../../widgets/port_conflict_dialog.dart';
 
 class _ComposeBlockSegment {
   final String id;
@@ -1234,8 +1235,45 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     setState(() => _deploying = true);
     try {
       if (_selectedStackId == 'new') {
-        final error = await ApiService.deployStack(name, _codeController.text, targetNode: _selectedNode);
-        if (error != null) throw Exception(error);
+        final result = await ApiService.deployStackDetailed(name, _codeController.text, targetNode: _selectedNode);
+        if (!result.success) {
+          if (result.isConflict && result.conflicts.isNotEmpty && mounted) {
+            setState(() => _deploying = false);
+            final action = await showDialog<PortConflictAction>(
+              context: context,
+              builder: (ctx) => PortConflictDialog(
+                stackName: name,
+                conflicts: result.conflicts,
+              ),
+            );
+            if (action == PortConflictAction.autoRemap) {
+              setState(() => _deploying = true);
+              final remapRes = await ApiService.deployStackDetailed(
+                name,
+                _codeController.text,
+                targetNode: _selectedNode,
+                autoRemapPorts: true,
+              );
+              if (!remapRes.success) throw Exception(remapRes.error);
+              if (remapRes.remappedCompose != null && remapRes.remappedCompose!.isNotEmpty) {
+                _codeController.text = remapRes.remappedCompose!;
+              }
+            } else if (action == PortConflictAction.force) {
+              setState(() => _deploying = true);
+              final forceRes = await ApiService.deployStackDetailed(
+                name,
+                _codeController.text,
+                targetNode: _selectedNode,
+                force: true,
+              );
+              if (!forceRes.success) throw Exception(forceRes.error);
+            } else {
+              return;
+            }
+          } else {
+            throw Exception(result.error);
+          }
+        }
       } else {
         await ApiService.updateStackCompose(_selectedStackId, _codeController.text);
         final ok = await ApiService.redeployStack(_selectedStackId);

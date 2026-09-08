@@ -98,26 +98,84 @@ class ApiService {
     return null;
   }
 
-  static Future<String?> deployStack(String name, String compose, {String? targetNode}) async {
-    final response = await http.post(
-      Uri.parse('/api/stack'),
-      headers: authHeaders,
-      body: jsonEncode({
-        'name': name,
-        'compose': compose,
-        'target_node': targetNode,
-      }),
-    );
-    if (response.statusCode == 200) {
-      return null;
-    } else {
-      try {
-        final body = jsonDecode(response.body);
-        return body['error'] ?? 'Unknown error';
-      } catch (_) {
-        return 'Server error: ${response.statusCode}';
+  /// Deploys a stack with full conflict detection and resolution options.
+  static Future<DeployStackResult> deployStackDetailed(
+    String name,
+    String compose, {
+    String? targetNode,
+    bool force = false,
+    bool autoRemapPorts = false,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/stack'),
+        headers: authHeaders,
+        body: jsonEncode({
+          'name': name,
+          'compose': compose,
+          'target_node': targetNode,
+          'force': force,
+          'auto_remap_ports': autoRemapPorts,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawConflicts = (body['remapped_conflicts'] as List<dynamic>?) ?? [];
+        final conflicts = rawConflicts
+            .map((c) => PortConflictModel.fromJson(c as Map<String, dynamic>))
+            .toList();
+        return DeployStackResult(
+          success: true,
+          stackId: body['stack_id'] as String?,
+          remappedCompose: body['compose'] as String?,
+          conflicts: conflicts,
+        );
+      } else if (response.statusCode == 409) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawConflicts = (body['conflicts'] as List<dynamic>?) ?? [];
+        final conflicts = rawConflicts
+            .map((c) => PortConflictModel.fromJson(c as Map<String, dynamic>))
+            .toList();
+        return DeployStackResult(
+          success: false,
+          error: body['message'] as String? ?? 'Host port conflict detected',
+          isConflict: true,
+          conflicts: conflicts,
+        );
+      } else {
+        try {
+          final body = jsonDecode(response.body);
+          return DeployStackResult(
+            success: false,
+            error: body['error'] ?? 'Server error: ${response.statusCode}',
+          );
+        } catch (_) {
+          return DeployStackResult(
+            success: false,
+            error: 'Server error: ${response.statusCode}',
+          );
+        }
       }
+    } catch (e) {
+      return DeployStackResult(success: false, error: e.toString());
     }
+  }
+
+  static Future<String?> deployStack(
+    String name,
+    String compose, {
+    String? targetNode,
+    bool force = false,
+    bool autoRemapPorts = false,
+  }) async {
+    final res = await deployStackDetailed(
+      name,
+      compose,
+      targetNode: targetNode,
+      force: force,
+      autoRemapPorts: autoRemapPorts,
+    );
+    return res.success ? null : res.error;
   }
 
   /// Saves stack compose definition into DB and ~/.gbnt/stacks/ without deploying/launching containers.

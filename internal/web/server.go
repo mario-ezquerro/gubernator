@@ -50,7 +50,7 @@ import (
 var flutterFS embed.FS
 
 // Version is the current version of Gubernator, populated by main or VERSION file.
-var Version = "v2.75.2"
+var Version = "v2.76.1"
 
 // GetVersion returns the compiled or dynamic version
 func GetVersion() string {
@@ -1967,6 +1967,7 @@ func deployStackHandler(c *gin.Context) {
 	resp := gin.H{"status": "deployed", "stack_id": stackID, "name": stackName}
 	if len(conflicts) > 0 {
 		resp["remapped_conflicts"] = conflicts
+		resp["compose"] = composeRaw
 	}
 	c.JSON(http.StatusOK, resp)
 }
