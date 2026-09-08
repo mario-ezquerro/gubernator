@@ -159,6 +159,8 @@ func (e *Engine) generateActivePulse() {
 			latency += 180.0
 		}
 
+		traceID := generateTraceID()
+
 		f := Flow{
 			SourceID:      src.Name,
 			SourceName:    src.Name,
@@ -176,6 +178,7 @@ func (e *Engine) generateActivePulse() {
 			BytesSent:     bytesSent,
 			BytesReceived: bytesRecv,
 			ThroughputBps: bps,
+			TraceID:       traceID,
 			Status:        status,
 			Timestamp:     time.Now(),
 		}
@@ -212,6 +215,7 @@ func (e *Engine) generateBaselineFlows() {
 			BytesSent:     1024,
 			BytesReceived: 8192,
 			ThroughputBps: 75000,
+			TraceID:       generateTraceID(),
 			Status:        FlowStatusHealthy,
 			Timestamp:     time.Now(),
 		})
@@ -292,12 +296,19 @@ func (e *Engine) SimulateTraffic(profile SimulationProfile) {
 					BytesSent:     uint64(2048 + rand.Intn(8192)),
 					BytesReceived: uint64(4096 + rand.Intn(32768)),
 					ThroughputBps: float64(150000 + rand.Intn(850000)),
+					TraceID:       generateTraceID(),
 					Status:        status,
 					Timestamp:     time.Now(),
 				})
 			}
 		}
 	}()
+}
+
+func generateTraceID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }
 
 func getFirstIP(ips []string) string {

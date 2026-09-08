@@ -2854,6 +2854,7 @@ class EbpfFlow {
   final double throughputBps;
   final int retransmits;
   final int drops;
+  final String traceId;
   final String status;
   final DateTime timestamp;
 
@@ -2877,6 +2878,7 @@ class EbpfFlow {
     this.throughputBps = 0.0,
     this.retransmits = 0,
     this.drops = 0,
+    this.traceId = '',
     required this.status,
     required this.timestamp,
   });
@@ -2907,6 +2909,7 @@ class EbpfFlow {
       throughputBps: (json['throughput_bps'] as num?)?.toDouble() ?? 0.0,
       retransmits: (json['retransmits'] as num?)?.toInt() ?? 0,
       drops: (json['drops'] as num?)?.toInt() ?? 0,
+      traceId: json['trace_id'] ?? '',
       status: json['status'] ?? 'healthy',
       timestamp: ts,
     );
@@ -2972,6 +2975,7 @@ class EbpfTopologyEdge {
   final double rttMs;
   final int activeFlows;
   final double errorRate;
+  final String traceId;
   final String status;
   final DateTime lastSeen;
 
@@ -2984,6 +2988,7 @@ class EbpfTopologyEdge {
     this.rttMs = 0.0,
     this.activeFlows = 0,
     this.errorRate = 0.0,
+    this.traceId = '',
     this.status = 'healthy',
     required this.lastSeen,
   });
@@ -3002,6 +3007,7 @@ class EbpfTopologyEdge {
       rttMs: (json['rtt_ms'] as num?)?.toDouble() ?? 0.0,
       activeFlows: (json['active_flows'] as num?)?.toInt() ?? 0,
       errorRate: (json['error_rate'] as num?)?.toDouble() ?? 0.0,
+      traceId: json['trace_id'] ?? '',
       status: json['status'] ?? 'healthy',
       lastSeen: ls,
     );

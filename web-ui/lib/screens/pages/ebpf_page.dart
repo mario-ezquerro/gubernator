@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../widgets/ebpf_animated_mesh_canvas.dart';
 
 /// Dedicated eBPF Live Hub Page for Kernel Network Observability,
 /// L4/L7 Flow Tracing, and Service Mesh Topology.
@@ -21,6 +23,9 @@ class _EbpfPageState extends State<EbpfPage> with SingleTickerProviderStateMixin
   List<EbpfFlow> _flows = [];
   EbpfTopology? _topology;
   bool _loading = true;
+
+  // Topology View Mode: 'canvas' (2D Vector Graph with animated particles) or 'matrix' (edges table)
+  String _topologyViewMode = 'canvas';
 
   // Filters
   String _selectedProtocol = 'ALL';
@@ -880,29 +885,87 @@ class _EbpfPageState extends State<EbpfPage> with SingleTickerProviderStateMixin
 
           const SizedBox(height: 24),
 
-          // Communication Edges Table
-          Text(
-            'Active Service Communication Edges',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Real-time traffic flow matrix monitored by kernel socket filters and eBPF probes.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-          ),
-          const SizedBox(height: 12),
+          // Topology View Mode Selector Header
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _topologyViewMode == 'canvas'
+                        ? 'Interactive Service Mesh Canvas (Directional Vectors & Particles)'
+                        : 'Active Service Communication Matrix',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _topologyViewMode == 'canvas'
+                        ? 'Drag blocks to reposition. Directional Bézier curves animate real-time data flow with deep Jaeger trace correlation.'
+                        : 'Real-time traffic flow matrix monitored by kernel socket filters and eBPF probes.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                ],
+              ),
+              const Spacer(),
 
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
+              // View Mode Segmented Switcher
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+                ),
+                padding: const EdgeInsets.all(3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTopologyModeButton(
+                      mode: 'canvas',
+                      label: '2D Vector Graph',
+                      icon: Icons.auto_awesome_motion,
+                      theme: theme,
+                    ),
+                    const SizedBox(width: 4),
+                    _buildTopologyModeButton(
+                      mode: 'matrix',
+                      label: 'Edges Table',
+                      icon: Icons.table_chart_outlined,
+                      theme: theme,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Render 2D Vector Canvas or Edges Table based on _topologyViewMode
+          if (_topologyViewMode == 'canvas') ...[
+            SizedBox(
+              height: 560,
+              child: EbpfAnimatedMeshCanvas(
+                topology: _topology!,
+                onSelectEdge: (edge) {
+                  // Optionally open flow details or jaeger
+                },
+                onSelectNode: (node) {
+                  // Node selected in canvas
+                },
+              ),
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: edges.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.2)),
+          ] else ...[
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: edges.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.2)),
               itemBuilder: (ctx, idx) {
                 final e = edges[idx];
                 final protoColor = _getProtocolColor(e.protocol);
@@ -1002,12 +1065,31 @@ class _EbpfPageState extends State<EbpfPage> with SingleTickerProviderStateMixin
                           ),
                         ),
                       ),
+
+                      const SizedBox(width: 10),
+
+                      // Jaeger Action Button
+                      Tooltip(
+                        message: 'Inspect Edge Distributed Trace in Jaeger (:16686)',
+                        child: IconButton(
+                          iconSize: 16,
+                          icon: const Icon(Icons.timeline, color: Colors.purpleAccent),
+                          onPressed: () {
+                            final host = html.window.location.hostname ?? '127.0.0.1';
+                            final url = e.traceId.isNotEmpty
+                                ? 'http://$host:16686/trace/${e.traceId}'
+                                : 'http://$host:16686/';
+                            html.window.open(url, '_blank');
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 );
               },
             ),
           ),
+        ],
 
           const SizedBox(height: 24),
 
@@ -1462,6 +1544,45 @@ class _EbpfPageState extends State<EbpfPage> with SingleTickerProviderStateMixin
     }
     return "$b B";
   }
+
+  Widget _buildTopologyModeButton({
+    required String mode,
+    required String label,
+    required IconData icon,
+    required ThemeData theme,
+  }) {
+    final active = _topologyViewMode == mode;
+    return InkWell(
+      onTap: () => setState(() => _topologyViewMode = mode),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF06B6D4) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: active ? Colors.black : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                color: active ? Colors.black : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ── Flow Details Dialog ─────────────────────────────────────────────────────
@@ -1496,6 +1617,7 @@ class _FlowDetailsDialog extends StatelessWidget {
               _buildRow('Source Endpoint', '${flow.sourceName} (${flow.sourceIp}:${flow.sourcePort})', theme),
               _buildRow('Destination Endpoint', '${flow.destName} (${flow.destIp}:${flow.destPort})', theme),
               if (flow.path.isNotEmpty) _buildRow('Path / Method', '${flow.method} ${flow.path}', theme),
+              if (flow.traceId.isNotEmpty) _buildRow('Jaeger Trace ID', flow.traceId, theme, copyable: true),
               _buildRow('Latency (RTT)', '${flow.latencyMs.toStringAsFixed(2)} ms', theme),
               _buildRow('Bytes Sent / Recv', '${flow.bytesSent} B / ${flow.bytesReceived} B', theme),
               _buildRow('Throughput Rate', '${(flow.throughputBps / 1024).toStringAsFixed(2)} KB/s', theme),
@@ -1505,6 +1627,21 @@ class _FlowDetailsDialog extends StatelessWidget {
         ),
       ),
       actions: [
+        if (flow.traceId.isNotEmpty)
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.purple.withValues(alpha: 0.2),
+              foregroundColor: Colors.purpleAccent,
+              side: const BorderSide(color: Colors.purpleAccent),
+            ),
+            onPressed: () {
+              final host = html.window.location.hostname ?? '127.0.0.1';
+              final url = 'http://$host:16686/trace/${flow.traceId}';
+              html.window.open(url, '_blank');
+            },
+            icon: const Icon(Icons.timeline, size: 14),
+            label: const Text('Open in Jaeger (:16686)', style: TextStyle(fontSize: 11)),
+          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),

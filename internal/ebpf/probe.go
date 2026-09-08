@@ -399,6 +399,7 @@ func (p *Probe) BuildTopology() EBPFTopology {
 				ThroughputBps: f.ThroughputBps,
 				RttMs:         f.LatencyMs,
 				ActiveFlows:   1,
+				TraceID:       f.TraceID,
 				Status:        f.Status,
 				LastSeen:      f.Timestamp,
 			}
@@ -407,6 +408,9 @@ func (p *Probe) BuildTopology() EBPFTopology {
 			edge.ThroughputBps = (edge.ThroughputBps + f.ThroughputBps) / 2
 			edge.RttMs = (edge.RttMs + f.LatencyMs) / 2
 			edge.ActiveFlows++
+			if f.TraceID != "" {
+				edge.TraceID = f.TraceID
+			}
 			if f.Timestamp.After(edge.LastSeen) {
 				edge.LastSeen = f.Timestamp
 				edge.Status = f.Status

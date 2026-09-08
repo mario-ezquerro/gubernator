@@ -785,6 +785,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Full CLI Parity (`gbnt ebpf ...`):**
   - Dedicated CLI commands for `gbnt ebpf status`, `gbnt ebpf flows`, `gbnt ebpf topology`, and `gbnt ebpf simulate`.
 
+### 93. eBPF Animated Vector Mesh Canvas & Jaeger Distributed Tracing Subsystem (`v2.79.0`)
+* **Interactive 2D Vector Mesh Canvas (`web-ui/lib/widgets/ebpf_animated_mesh_canvas.dart`):**
+  - High-performance 2D vector canvas rendering draggable service blocks with real-time health, protocol badges, throughput rates, and flow counters.
+  - Directional Bézier curves with arrows ($\rightarrow$) indicating exact traffic flow direction between containers, services, ingress, and data layers.
+  - Dynamic animated travelling data particles/comets moving along vectors at frequencies and velocities proportional to kernel eBPF throughput ($B/s$, $KB/s$, $MB/s$).
+  - Protocol-coded aesthetics: HTTP (Blue), gRPC (Purple), DNS (Teal/Green), Redis/Databases (Orange), and Faults/Errors (Pulsing Red).
+* **Dual Topology View Modes in eBPF Live Hub (`web-ui/lib/screens/pages/ebpf_page.dart`):**
+  - Seamless segmented switcher allowing users to toggle between **2D Vector Graph** (interactive animated canvas) and **Edges Table** (tabular matrix with RTT latency, throughput, and error rates).
+* **Deep Jaeger Distributed Tracing Integration:**
+  - Cryptographic 128-bit `trace_id` correlation on every eBPF flow and communication edge.
+  - Direct deep links to Jaeger UI (`http://<host>:16686/trace/<trace_id>`) from the Vector Canvas Inspector, the Edges Table, and the Flow Details modal for instant root-cause and span waterfall analysis.
+
+
 
 
 

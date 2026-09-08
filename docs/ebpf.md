@@ -140,7 +140,31 @@ gbnt ebpf simulate --pattern errors --rate 20 --duration 15 --errors 25
 | `GET` | `/v1/ebpf/stats` | Global kernel telemetry, probe attach points, and aggregate metrics. |
 | `GET` | `/v1/ebpf/flows` | Query captured network flows with `limit`, `protocol`, `status`, `q`. |
 | `GET` | `/v1/ebpf/topology` | Synthesized service mesh topology nodes and communication edges. |
-| `POST` | `/v1/ebpf/simulate` | Trigger on-demand traffic pattern simulation. |
 | `GET` | `/v1/ebpf/stream` | Server-Sent Events (SSE) real-time packet stream. |
 
 All endpoints are also exposed on the Web Dashboard port (`4001`) under `/api/ebpf/*` with RBAC session authentication.
+
+---
+
+## 🎨 Interactive 2D Vector Mesh & Jaeger Tracing
+
+The Web Dashboard features an interactive 2D Vector Canvas inside the **Service Mesh Topology** tab:
+
+1. **Draggable Service Blocks**:
+   - Every container, ingress proxy (`gbnt-caddy`), database, DNS, and telemetry service is rendered as an interactive block.
+   - Blocks can be dragged to reposition or automatically aligned into logical tiers.
+2. **Directional Vector Curves**:
+   - Curved Bézier lines illustrate the exact direction of traffic flow with directional vector arrows ($\rightarrow$).
+   - Color-coded by protocol:
+     - 🟢 **HTTP** (Blue / Cyan)
+     - 🟣 **gRPC / Traces** (Purple)
+     - 🔵 **DNS** (Green / Teal)
+     - 🟠 **Redis & Databases** (Amber / Orange)
+     - 🔴 **Faults & Timeouts** (Pulsing Red)
+3. **Travelling Data Particles**:
+   - Dynamic animated light particles/pulses travel continuously along the vector from source to target.
+   - Frequency and velocity scale proportionally with real-time throughput ($B/s$ / $KB/s$ / $MB/s$).
+4. **Deep Jaeger Distributed Tracing Integration**:
+   - Every L4/L7 flow and communication edge correlates with cryptographic 128-bit **Trace IDs**.
+   - One-click deep link opens the full span tree, microservice waterfall, and latency timeline directly in the integrated **Jaeger UI** (`:16686/trace/<trace_id>`).
+

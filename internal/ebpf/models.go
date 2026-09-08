@@ -34,6 +34,7 @@ type Flow struct {
 	ThroughputBps float64    `json:"throughput_bps"`
 	Retransmits   int        `json:"retransmits"`
 	Drops         int        `json:"drops"`
+	TraceID       string     `json:"trace_id,omitempty"`
 	Status        FlowStatus `json:"status"`
 	Timestamp     time.Time  `json:"timestamp"`
 }
@@ -65,6 +66,7 @@ type TopologyEdge struct {
 	RttMs         float64    `json:"rtt_ms"`
 	ActiveFlows   int        `json:"active_flows"`
 	ErrorRate     float64    `json:"error_rate"`
+	TraceID       string     `json:"trace_id,omitempty"`
 	Status        FlowStatus `json:"status"`
 	LastSeen      time.Time  `json:"last_seen"`
 }
