@@ -285,19 +285,33 @@ func getWorkerIPs() []string {
 	}
 
 	// 2. If db.DB is nil (e.g. running from CLI), try to open the database file locally
-	dbPath := "gubernator.db"
-	if _, err := os.Stat(dbPath); err == nil {
-		tmpDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-		if err == nil {
-			var nodes []db.Node
-			if err := tmpDB.Where("role = ? AND status = ?", "worker", "active").Find(&nodes).Error; err == nil {
-				for _, n := range nodes {
-					ips = append(ips, n.IP)
-				}
-			}
-			sqlDB, err := tmpDB.DB()
+	var searchPaths []string
+	if dataDir := os.Getenv("GBNT_DATA_DIR"); dataDir != "" {
+		searchPaths = append(searchPaths, filepath.Join(dataDir, "gubernator.db"))
+	}
+	searchPaths = append(searchPaths,
+		"gubernator.db",
+		"/data/gubernator.db",
+		"/home/ubuntu/data/gubernator.db",
+	)
+
+	for _, dbPath := range searchPaths {
+		if _, err := os.Stat(dbPath); err == nil {
+			tmpDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 			if err == nil {
-				sqlDB.Close()
+				var nodes []db.Node
+				if err := tmpDB.Where("role = ? AND status = ?", "worker", "active").Find(&nodes).Error; err == nil {
+					for _, n := range nodes {
+						ips = append(ips, n.IP)
+					}
+				}
+				sqlDB, err := tmpDB.DB()
+				if err == nil {
+					sqlDB.Close()
+				}
+				if len(ips) > 0 {
+					return ips
+				}
 			}
 		}
 	}
