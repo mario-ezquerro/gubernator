@@ -1538,7 +1538,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
                     // Provider type dropdown (for edit or manual)
                     DropdownButtonFormField<String>(
-                      value: providerType,
+                      key: ValueKey(providerType),
+                      initialValue: providerType,
                       decoration: const InputDecoration(labelText: "Provider Type *"),
                       items: const [
                         DropdownMenuItem(value: 'generic', child: Text("Generic OpenID Connect")),
@@ -1673,30 +1674,32 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       ],
                     ),
                     const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey(defaultRole),
+                      initialValue: defaultRole,
+                      decoration: const InputDecoration(labelText: "Default Role"),
+                      items: const [
+                        DropdownMenuItem(value: 'admin', child: Text("👑 Administrator")),
+                        DropdownMenuItem(value: 'operator', child: Text("⚡ Operator")),
+                        DropdownMenuItem(value: 'readonly', child: Text("👁️ Read-Only")),
+                      ],
+                      onChanged: (v) => setDialogState(() => defaultRole = v ?? 'readonly'),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: defaultRole,
-                            decoration: const InputDecoration(labelText: "Default Role"),
-                            items: const [
-                              DropdownMenuItem(value: 'admin', child: Text("👑 Administrator")),
-                              DropdownMenuItem(value: 'operator', child: Text("⚡ Operator")),
-                              DropdownMenuItem(value: 'readonly', child: Text("👁️ Read-Only")),
-                            ],
-                            onChanged: (v) => setDialogState(() => defaultRole = v ?? 'readonly'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
                           child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             title: const Text("Provider Enabled", style: TextStyle(fontSize: 13)),
                             value: enabled,
                             onChanged: (v) => setDialogState(() => enabled = v),
                           ),
                         ),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             title: const Text("Skip TLS Verify", style: TextStyle(fontSize: 13, color: Colors.orange)),
                             value: insecureSkipVerify,
                             onChanged: (v) => setDialogState(() => insecureSkipVerify = v),
@@ -1792,7 +1795,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             ),
             actions: [
               // Test connection
-              TextButton.icon(
+              OutlinedButton.icon(
                 icon: const Icon(Icons.wifi_find_outlined, size: 16),
                 label: const Text("Test Connection"),
                 onPressed: isTesting
@@ -1825,7 +1828,6 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         });
                       },
               ),
-              const Spacer(),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text("Cancel"),
