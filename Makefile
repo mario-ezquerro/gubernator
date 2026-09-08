@@ -22,6 +22,11 @@ lint:
 swagger:
 	swag init -g cmd/gbnt/main.go -o docs
 
+## flutter: build Flutter Web dashboard and copy assets to internal/web/flutter
+flutter:
+	cd web-ui && flutter build web --release --base-href "/"
+	cp -R web-ui/build/web/* internal/web/flutter/
+
 ## docker: build and tag the Docker image for the current platform
 docker:
 	docker build -t marioezquerro/gubernator:$(VERSION) -t marioezquerro/gubernator:latest .
