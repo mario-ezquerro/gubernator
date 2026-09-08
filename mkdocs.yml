@@ -65,6 +65,7 @@ nav:
     - Full CLI Reference: cli-full.md
     - Docker Compose Reference: compose.md
   - Observability:
+    - eBPF Live Hub & Kernel: ebpf.md
     - Health & Metrics: observability.md
     - Loki Logs Explorer: loki-logs.md
     - SLO & Error Budgets (Sloth): slo.md
