@@ -361,12 +361,14 @@ class UserSession {
 class AuthProvider {
   final String id;
   final String name;
-  final String type; // "local", "ldap"
+  final String type; // "local", "ldap", "oidc"
+  final String providerType; // for oidc: "keycloak", "google", "github", "azure", "okta", "generic"
 
   const AuthProvider({
     required this.id,
     required this.name,
     required this.type,
+    this.providerType = 'generic',
   });
 
   factory AuthProvider.fromJson(Map<String, dynamic> json) {
@@ -374,8 +376,13 @@ class AuthProvider {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       type: json['type'] ?? 'local',
+      providerType: json['provider_type'] ?? 'generic',
     );
   }
+
+  bool get isOIDC => type == 'oidc';
+  bool get isLDAP => type == 'ldap';
+  bool get isLocal => type == 'local';
 }
 
 class LDAPConfig {
@@ -496,6 +503,158 @@ class LDAPTestResult {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OIDC / OAuth2 SSO Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+class OIDCConfig {
+  final String id;
+  final String name;
+  final String providerType; // generic, keycloak, google, github, azure, okta
+  final bool enabled;
+  final String issuerUrl;
+  final String clientId;
+  final String clientSecret;
+  final String redirectUri;
+  final String scopes;
+  final String roleClaimPath;
+  final String adminClaim;
+  final String operatorClaim;
+  final String readonlyClaim;
+  final String defaultRole;
+  final bool insecureSkipVerify;
+
+  OIDCConfig({
+    this.id = '',
+    required this.name,
+    this.providerType = 'generic',
+    this.enabled = true,
+    required this.issuerUrl,
+    required this.clientId,
+    this.clientSecret = '',
+    this.redirectUri = '',
+    this.scopes = 'openid profile email',
+    this.roleClaimPath = 'groups',
+    this.adminClaim = '',
+    this.operatorClaim = '',
+    this.readonlyClaim = '',
+    this.defaultRole = 'readonly',
+    this.insecureSkipVerify = false,
+  });
+
+  factory OIDCConfig.fromJson(Map<String, dynamic> json) {
+    return OIDCConfig(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      providerType: json['provider_type'] ?? 'generic',
+      enabled: json['enabled'] ?? true,
+      issuerUrl: json['issuer_url'] ?? '',
+      clientId: json['client_id'] ?? '',
+      clientSecret: json['client_secret'] ?? '',
+      redirectUri: json['redirect_uri'] ?? '',
+      scopes: json['scopes'] ?? 'openid profile email',
+      roleClaimPath: json['role_claim_path'] ?? 'groups',
+      adminClaim: json['admin_claim'] ?? '',
+      operatorClaim: json['operator_claim'] ?? '',
+      readonlyClaim: json['readonly_claim'] ?? '',
+      defaultRole: json['default_role'] ?? 'readonly',
+      insecureSkipVerify: json['insecure_skip_verify'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'provider_type': providerType,
+        'enabled': enabled,
+        'issuer_url': issuerUrl,
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'redirect_uri': redirectUri,
+        'scopes': scopes,
+        'role_claim_path': roleClaimPath,
+        'admin_claim': adminClaim,
+        'operator_claim': operatorClaim,
+        'readonly_claim': readonlyClaim,
+        'default_role': defaultRole,
+        'insecure_skip_verify': insecureSkipVerify,
+      };
+}
+
+class OIDCTestResult {
+  final bool connected;
+  final bool issuerReachable;
+  final bool discoveryOk;
+  final bool jwksReachable;
+  final String authorizationEndpoint;
+  final String tokenEndpoint;
+  final String jwksUri;
+  final int keyCount;
+  final String message;
+  final int latencyMs;
+
+  OIDCTestResult({
+    required this.connected,
+    required this.issuerReachable,
+    required this.discoveryOk,
+    required this.jwksReachable,
+    this.authorizationEndpoint = '',
+    this.tokenEndpoint = '',
+    this.jwksUri = '',
+    this.keyCount = 0,
+    required this.message,
+    this.latencyMs = 0,
+  });
+
+  factory OIDCTestResult.fromJson(Map<String, dynamic> json) {
+    return OIDCTestResult(
+      connected: json['connected'] == true,
+      issuerReachable: json['issuer_reachable'] == true,
+      discoveryOk: json['discovery_ok'] == true,
+      jwksReachable: json['jwks_reachable'] == true,
+      authorizationEndpoint: json['authorization_endpoint'] ?? '',
+      tokenEndpoint: json['token_endpoint'] ?? '',
+      jwksUri: json['jwks_uri'] ?? '',
+      keyCount: (json['key_count'] as num?)?.toInt() ?? 0,
+      message: json['message'] ?? '',
+      latencyMs: (json['latency_ms'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class OIDCProviderPreset {
+  final String type;
+  final String name;
+  final String issuerUrl;
+  final String scopes;
+  final String roleClaimPath;
+  final String description;
+  final String docsUrl;
+
+  OIDCProviderPreset({
+    required this.type,
+    required this.name,
+    required this.issuerUrl,
+    required this.scopes,
+    required this.roleClaimPath,
+    required this.description,
+    required this.docsUrl,
+  });
+
+  factory OIDCProviderPreset.fromJson(Map<String, dynamic> json) {
+    return OIDCProviderPreset(
+      type: json['type'] ?? 'generic',
+      name: json['name'] ?? '',
+      issuerUrl: json['issuer_url'] ?? '',
+      scopes: json['scopes'] ?? 'openid profile email',
+      roleClaimPath: json['role_claim_path'] ?? 'groups',
+      description: json['description'] ?? '',
+      docsUrl: json['docs_url'] ?? '',
+    );
+  }
+}
+
 
 class SLOItem {
   final String serviceId;

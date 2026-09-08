@@ -35,10 +35,16 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   String? _auditError;
   String _selectedProviderFilter = "";
 
+  // OIDC / SSO State
+  List<OIDCConfig> _oidcConfigs = [];
+  List<OIDCProviderPreset> _oidcPresets = [];
+  bool _oidcLoading = true;
+  String? _oidcError;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadAllData();
   }
 
@@ -52,6 +58,32 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     _loadLDAPConfigs();
     _loadLocalUsers();
     _loadAuditLogs();
+    _loadOIDCConfigs();
+  }
+
+  Future<void> _loadOIDCConfigs() async {
+    setState(() {
+      _oidcLoading = true;
+      _oidcError = null;
+    });
+    try {
+      final configs = await ApiService.fetchOIDCConfigs();
+      final presets = await ApiService.fetchOIDCPresets();
+      if (mounted) {
+        setState(() {
+          _oidcConfigs = configs;
+          _oidcPresets = presets;
+          _oidcLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _oidcError = e.toString();
+          _oidcLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadLDAPConfigs() async {
@@ -889,6 +921,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 tabs: const [
                   Tab(icon: Icon(Icons.people_alt_outlined), text: "Local Users"),
                   Tab(icon: Icon(Icons.dns_outlined), text: "Active Directory / LDAP"),
+                  Tab(icon: Icon(Icons.vpn_key_outlined), text: "SSO / OIDC"),
                   Tab(icon: Icon(Icons.history_toggle_off), text: "Access & Audit Logs"),
                 ],
               ),
@@ -903,6 +936,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 children: [
                   _buildLocalUsersTab(isDark, primaryColor),
                   _buildLDAPTab(isDark, primaryColor),
+                  _buildOIDCTab(isDark, primaryColor),
                   _buildAuditLogsTab(isDark, primaryColor),
                 ],
               ),
@@ -1136,9 +1170,773 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   }
 
   // ---------------------------------------------------------------------------
-  // TAB 3: ACCESS & AUDIT LOGS
+  // TAB 3: SSO / OIDC PROVIDERS
+  // ---------------------------------------------------------------------------
+  Widget _buildOIDCTab(bool isDark, Color primaryColor) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "SSO / OIDC Identity Providers",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "OAuth2 / OpenID Connect providers for Single Sign-On authentication.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.add_link, size: 18),
+                label: const Text("Add SSO Provider"),
+                onPressed: () => _openOIDCDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // OIDC info banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Color(0xFF8B5CF6), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "OIDC/OAuth2 providers appear as SSO buttons on the login page. "
+                    "Supported: Keycloak, Google Workspace, Microsoft Azure AD, GitHub, Okta, "
+                    "and any generic OpenID Connect 1.0 server. "
+                    "Uses PKCE (Proof Key for Code Exchange) for secure authorization.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Provider cards / loading / error / empty
+          if (_oidcLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          else if (_oidcError != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Text("Error: $_oidcError", style: const TextStyle(color: Colors.red)),
+            )
+          else if (_oidcConfigs.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(40),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.vpn_key_outlined, size: 52, color: Color(0xFF8B5CF6)),
+                  const SizedBox(height: 14),
+                  const Text(
+                    "No SSO providers configured",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Add a Keycloak, Google, Azure AD, GitHub, or Okta provider\nto enable Single Sign-On on the login screen.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add_link, size: 18),
+                    label: const Text("Add Your First SSO Provider"),
+                    onPressed: () => _openOIDCDialog(),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...(_oidcConfigs.map((cfg) => _buildOIDCProviderCard(cfg, isDark, primaryColor))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOIDCProviderCard(OIDCConfig cfg, bool isDark, Color primaryColor) {
+    final meta = _oidcProviderMeta(cfg.providerType, cfg.name);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.18),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.12 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Provider icon badge
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: meta.color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: meta.color.withValues(alpha: 0.3)),
+            ),
+            child: Icon(meta.icon, color: meta.color, size: 24),
+          ),
+          const SizedBox(width: 14),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      cfg.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    _oidcBadge(cfg.providerType, meta.color),
+                    const SizedBox(width: 8),
+                    if (!cfg.enabled)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          "DISABLED",
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  cfg.issuerUrl,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                    fontFamily: 'monospace',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.key, size: 12, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Client: ${cfg.clientId.length > 20 ? '${cfg.clientId.substring(0, 20)}…' : cfg.clientId}",
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                    const SizedBox(width: 14),
+                    Icon(Icons.manage_accounts, size: 12, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Default role: ${cfg.defaultRole}",
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Actions
+          IconButton(
+            icon: const Icon(Icons.wifi_find_outlined, size: 20),
+            tooltip: "Test Connection",
+            onPressed: () => _testOIDCConfig(cfg),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 20),
+            tooltip: "Edit",
+            onPressed: () => _openOIDCDialog(cfg),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+            tooltip: "Delete",
+            onPressed: () => _deleteOIDCConfig(cfg),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _oidcBadge(String providerType, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        providerType.toUpperCase(),
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+      ),
+    );
+  }
+
+  /// Maps provider type to icon + color + label (shared with login screen concept)
+  ({IconData icon, Color color}) _oidcProviderMeta(String providerType, String name) {
+    switch (providerType) {
+      case 'keycloak': return (icon: Icons.lock_open, color: const Color(0xFF00B8D9));
+      case 'google':   return (icon: Icons.g_mobiledata, color: const Color(0xFF4285F4));
+      case 'github':   return (icon: Icons.code, color: const Color(0xFF6E5494));
+      case 'azure':    return (icon: Icons.cloud, color: const Color(0xFF0089D6));
+      case 'okta':     return (icon: Icons.shield_outlined, color: const Color(0xFF007DC1));
+      default:         return (icon: Icons.vpn_key_outlined, color: const Color(0xFF8B5CF6));
+    }
+  }
+
+  void _openOIDCDialog([OIDCConfig? existing]) {
+    final isEdit = existing != null;
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final issuerCtrl = TextEditingController(text: existing?.issuerUrl ?? '');
+    final clientIdCtrl = TextEditingController(text: existing?.clientId ?? '');
+    final clientSecretCtrl = TextEditingController(text: existing?.clientSecret ?? '');
+    final redirectUriCtrl = TextEditingController(text: existing?.redirectUri ?? '');
+    final scopesCtrl = TextEditingController(text: existing?.scopes ?? 'openid profile email');
+    final roleClaimCtrl = TextEditingController(text: existing?.roleClaimPath ?? 'groups');
+    final adminClaimCtrl = TextEditingController(text: existing?.adminClaim ?? '');
+    final operatorClaimCtrl = TextEditingController(text: existing?.operatorClaim ?? '');
+    final readonlyClaimCtrl = TextEditingController(text: existing?.readonlyClaim ?? '');
+
+    String providerType = existing?.providerType ?? 'generic';
+    String defaultRole = existing?.defaultRole ?? 'readonly';
+    bool enabled = existing?.enabled ?? true;
+    bool insecureSkipVerify = existing?.insecureSkipVerify ?? false;
+    bool isTesting = false;
+    OIDCTestResult? testResult;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          void applyPreset(OIDCProviderPreset preset) {
+            setDialogState(() {
+              providerType = preset.type;
+              issuerCtrl.text = preset.issuerUrl;
+              scopesCtrl.text = preset.scopes;
+              roleClaimCtrl.text = preset.roleClaimPath;
+              if (nameCtrl.text.isEmpty) nameCtrl.text = preset.name;
+            });
+          }
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  isEdit ? Icons.edit_outlined : Icons.add_link,
+                  color: const Color(0xFF8B5CF6),
+                ),
+                const SizedBox(width: 10),
+                Text(isEdit ? "Edit SSO / OIDC Provider" : "Add SSO / OIDC Provider"),
+              ],
+            ),
+            content: SizedBox(
+              width: 600,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Provider type preset picker
+                    if (!isEdit && _oidcPresets.isNotEmpty) ...[
+                      const Text(
+                        "Quick Start — Select a provider template:",
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _oidcPresets.map((p) {
+                          final meta = _oidcProviderMeta(p.type, p.name);
+                          final isSelected = providerType == p.type;
+                          return InkWell(
+                            onTap: () => applyPreset(p),
+                            borderRadius: BorderRadius.circular(10),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? meta.color.withValues(alpha: 0.15)
+                                    : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected ? meta.color : Colors.grey.withValues(alpha: 0.25),
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(meta.icon, color: meta.color, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    p.name,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? meta.color : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const Divider(height: 28),
+                    ],
+
+                    // Provider type dropdown (for edit or manual)
+                    DropdownButtonFormField<String>(
+                      value: providerType,
+                      decoration: const InputDecoration(labelText: "Provider Type *"),
+                      items: const [
+                        DropdownMenuItem(value: 'generic', child: Text("Generic OpenID Connect")),
+                        DropdownMenuItem(value: 'keycloak', child: Text("Keycloak")),
+                        DropdownMenuItem(value: 'google', child: Text("Google Workspace")),
+                        DropdownMenuItem(value: 'github', child: Text("GitHub")),
+                        DropdownMenuItem(value: 'azure', child: Text("Microsoft Azure AD")),
+                        DropdownMenuItem(value: 'okta', child: Text("Okta")),
+                      ],
+                      onChanged: (v) => setDialogState(() => providerType = v ?? 'generic'),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Display Name *",
+                        hintText: "e.g. Corporate Keycloak",
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: issuerCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Issuer URL *",
+                        hintText: "https://auth.company.com/realms/corporate",
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: clientIdCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Client ID *",
+                              hintText: "gubernator",
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: clientSecretCtrl,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              labelText: "Client Secret",
+                              hintText: "Leave blank to keep existing",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: redirectUriCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Redirect URI (optional)",
+                        hintText: "Auto-detected if empty — https://gbnt.company.com/api/auth/oidc/callback",
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: scopesCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Scopes",
+                              hintText: "openid profile email groups",
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: roleClaimCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Role Claim Path",
+                              hintText: "groups",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "RBAC Group/Claim Mapping",
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Map claim values from the token to Gubernator roles. Leave empty to use the default role.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: adminClaimCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Admin Claim Value",
+                              hintText: "gbnt-admins",
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: operatorClaimCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Operator Claim Value",
+                              hintText: "gbnt-operators",
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: readonlyClaimCtrl,
+                            decoration: const InputDecoration(
+                              labelText: "Read-Only Claim Value",
+                              hintText: "gbnt-viewers",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: defaultRole,
+                            decoration: const InputDecoration(labelText: "Default Role"),
+                            items: const [
+                              DropdownMenuItem(value: 'admin', child: Text("👑 Administrator")),
+                              DropdownMenuItem(value: 'operator', child: Text("⚡ Operator")),
+                              DropdownMenuItem(value: 'readonly', child: Text("👁️ Read-Only")),
+                            ],
+                            onChanged: (v) => setDialogState(() => defaultRole = v ?? 'readonly'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SwitchListTile(
+                            title: const Text("Provider Enabled", style: TextStyle(fontSize: 13)),
+                            value: enabled,
+                            onChanged: (v) => setDialogState(() => enabled = v),
+                          ),
+                        ),
+                        Expanded(
+                          child: SwitchListTile(
+                            title: const Text("Skip TLS Verify", style: TextStyle(fontSize: 13, color: Colors.orange)),
+                            value: insecureSkipVerify,
+                            onChanged: (v) => setDialogState(() => insecureSkipVerify = v),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Test result
+                    if (isTesting) ...[
+                      const SizedBox(height: 16),
+                      const Row(
+                        children: [
+                          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 10),
+                          Text("Testing OIDC discovery endpoint...", style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                        ],
+                      ),
+                    ] else if (testResult != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: testResult!.connected
+                              ? Colors.green.withValues(alpha: 0.08)
+                              : Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: testResult!.connected
+                                ? Colors.green.withValues(alpha: 0.3)
+                                : Colors.red.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  testResult!.connected ? Icons.check_circle : Icons.error_outline,
+                                  color: testResult!.connected ? Colors.green : Colors.red,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  testResult!.connected ? "Connection Successful" : "Connection Failed",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: testResult!.connected ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            _testRow("Issuer Reachable", testResult!.issuerReachable),
+                            _testRow("Discovery OK", testResult!.discoveryOk),
+                            _testRow("JWKS Reachable", testResult!.jwksReachable),
+                            if (testResult!.keyCount > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  "✓ ${testResult!.keyCount} signing key(s) found",
+                                  style: const TextStyle(fontSize: 12, color: Colors.green),
+                                ),
+                              ),
+                            if (testResult!.authorizationEndpoint.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  "Auth: ${testResult!.authorizationEndpoint}",
+                                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            if (testResult!.message.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  testResult!.message,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: testResult!.connected ? Colors.green.shade700 : Colors.red.shade700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              // Test connection
+              TextButton.icon(
+                icon: const Icon(Icons.wifi_find_outlined, size: 16),
+                label: const Text("Test Connection"),
+                onPressed: isTesting
+                    ? null
+                    : () async {
+                        final cfg = OIDCConfig(
+                          id: existing?.id ?? '',
+                          name: nameCtrl.text.trim(),
+                          providerType: providerType,
+                          issuerUrl: issuerCtrl.text.trim(),
+                          clientId: clientIdCtrl.text.trim(),
+                          clientSecret: clientSecretCtrl.text,
+                          redirectUri: redirectUriCtrl.text.trim(),
+                          scopes: scopesCtrl.text.trim(),
+                          roleClaimPath: roleClaimCtrl.text.trim(),
+                          adminClaim: adminClaimCtrl.text.trim(),
+                          operatorClaim: operatorClaimCtrl.text.trim(),
+                          readonlyClaim: readonlyClaimCtrl.text.trim(),
+                          defaultRole: defaultRole,
+                          insecureSkipVerify: insecureSkipVerify,
+                        );
+                        setDialogState(() {
+                          isTesting = true;
+                          testResult = null;
+                        });
+                        final res = await ApiService.testOIDCConfig(cfg);
+                        setDialogState(() {
+                          isTesting = false;
+                          testResult = res;
+                        });
+                      },
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel"),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final issuer = issuerCtrl.text.trim();
+                  final clientId = clientIdCtrl.text.trim();
+                  if (name.isEmpty || issuer.isEmpty || clientId.isEmpty) {
+                    _showSnackBar("Name, Issuer URL, and Client ID are required", isError: true);
+                    return;
+                  }
+                  final cfg = OIDCConfig(
+                    id: existing?.id ?? '',
+                    name: name,
+                    providerType: providerType,
+                    enabled: enabled,
+                    issuerUrl: issuer,
+                    clientId: clientId,
+                    clientSecret: clientSecretCtrl.text,
+                    redirectUri: redirectUriCtrl.text.trim(),
+                    scopes: scopesCtrl.text.trim(),
+                    roleClaimPath: roleClaimCtrl.text.trim(),
+                    adminClaim: adminClaimCtrl.text.trim(),
+                    operatorClaim: operatorClaimCtrl.text.trim(),
+                    readonlyClaim: readonlyClaimCtrl.text.trim(),
+                    defaultRole: defaultRole,
+                    insecureSkipVerify: insecureSkipVerify,
+                  );
+                  final res = await ApiService.saveOIDCConfig(cfg);
+                  if (res['error'] != null) {
+                    if (mounted) _showSnackBar("Failed: ${res['error']}", isError: true);
+                    return;
+                  }
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    _showSnackBar(isEdit
+                        ? "SSO provider '${cfg.name}' updated successfully"
+                        : "SSO provider '${cfg.name}' added — it will appear on the login screen");
+                    _loadOIDCConfigs();
+                  }
+                },
+                child: Text(isEdit ? "Save Changes" : "Add Provider"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _testRow(String label, bool ok) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        children: [
+          Icon(ok ? Icons.check : Icons.close, size: 14, color: ok ? Colors.green : Colors.red),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _testOIDCConfig(OIDCConfig cfg) async {
+    _showSnackBar("Testing connection to ${cfg.name}...");
+    final result = await ApiService.testOIDCConfig(cfg);
+    if (!mounted) return;
+    final msg = result.connected
+        ? "✓ ${cfg.name} — OIDC discovery OK (${result.keyCount} signing keys, ${result.latencyMs}ms)"
+        : "✗ ${cfg.name} — ${result.message}";
+    _showSnackBar(msg, isError: !result.connected);
+  }
+
+  Future<void> _deleteOIDCConfig(OIDCConfig cfg) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Remove SSO Provider"),
+        content: Text(
+          "Remove '${cfg.name}'?\n\nThe SSO button will disappear from the login screen immediately.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Remove"),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final ok = await ApiService.deleteOIDCConfig(cfg.id);
+      if (ok) {
+        if (mounted) {
+          _showSnackBar("SSO provider '${cfg.name}' removed");
+          _loadOIDCConfigs();
+        }
+      } else {
+        if (mounted) _showSnackBar("Failed to remove provider", isError: true);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // TAB 4: ACCESS & AUDIT LOGS
   // ---------------------------------------------------------------------------
   Widget _buildAuditLogsTab(bool isDark, Color primaryColor) {
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

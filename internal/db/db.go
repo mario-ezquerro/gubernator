@@ -46,7 +46,7 @@ func Init(dbPath string) error {
 
 	err = DB.AutoMigrate(
 		&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{},
-		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &LocalUser{}, &AuditLog{},
+		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &OIDCConfig{}, &LocalUser{}, &AuditLog{},
 		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{}, &StorageMount{}, &ManagedGlusterVolume{},
 		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{},
 	)

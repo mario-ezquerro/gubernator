@@ -1,7 +1,7 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import '../theme/theme.dart';
 
 class LoginScreen extends StatefulWidget {
   final ValueChanged<UserSession> onLoginSuccess;
@@ -17,11 +17,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _loading = false;
+  bool _oidcLoading = false;
   String? _errorMessage;
 
-  List<AuthProvider> _providers = [
+  // Providers: local + ldap (for form login)
+  List<AuthProvider> _formProviders = [
     const AuthProvider(id: 'local', name: 'Local Administrator', type: 'local'),
   ];
+  // OIDC providers (SSO buttons)
+  List<OIDCConfig> _oidcProviders = [];
+
   String _selectedProvider = 'local';
   bool _loadingProviders = true;
 
@@ -29,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadProviders();
+    _checkOIDCCallback();
   }
 
   @override
@@ -38,14 +44,55 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ── Check if we're returning from an OIDC callback ──────────────────────
+  void _checkOIDCCallback() {
+    final uri = Uri.base;
+    // Handle successful OIDC callback with token
+    final token = uri.queryParameters['oidc_token'];
+    if (token != null && token.isNotEmpty) {
+      ApiService.authToken = token;
+      ApiService.fetchMe().then((user) {
+        if (mounted) {
+          html.window.history.replaceState(null, '', '/#/');
+          if (user != null) {
+            widget.onLoginSuccess(user);
+          } else {
+            setState(() => _errorMessage = 'SSO authentication failed — could not load user session');
+          }
+        }
+      }).catchError((e) {
+        if (mounted) {
+          setState(() => _errorMessage = 'SSO session error: $e');
+        }
+      });
+    }
+    // Handle OIDC error redirect from the IdP
+    final oidcError = uri.queryParameters['oidc_error'];
+    if (oidcError != null && oidcError.isNotEmpty) {
+      html.window.history.replaceState(null, '', '/#/');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _errorMessage = 'SSO Error: $oidcError');
+      });
+    }
+  }
+
+  // ── Load all providers ───────────────────────────────────────────────────
   Future<void> _loadProviders() async {
     try {
-      final providers = await ApiService.fetchAuthProviders();
+      final allProviders = await ApiService.fetchAuthProviders();
+      final oidcConfigs = await ApiService.fetchOIDCConfigs();
+
       if (mounted) {
         setState(() {
-          _providers = providers;
-          if (_providers.isNotEmpty && !_providers.any((p) => p.id == _selectedProvider)) {
-            _selectedProvider = _providers.first.id;
+          _formProviders = allProviders.where((p) => !p.isOIDC).toList();
+          if (_formProviders.isEmpty) {
+            _formProviders = [
+              const AuthProvider(id: 'local', name: 'Local Administrator', type: 'local'),
+            ];
+          }
+          _oidcProviders = oidcConfigs.where((o) => o.enabled).toList();
+          if (!_formProviders.any((p) => p.id == _selectedProvider)) {
+            _selectedProvider = _formProviders.first.id;
           }
           _loadingProviders = false;
         });
@@ -55,6 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ── Standard form login ──────────────────────────────────────────────────
   Future<void> _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
@@ -83,10 +131,68 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ── OIDC / SSO login ─────────────────────────────────────────────────────
+  Future<void> _handleOIDCLogin(OIDCConfig provider) async {
+    setState(() {
+      _oidcLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await ApiService.getOIDCAuthorizeUrl(provider.id);
+
+    if (!mounted) return;
+
+    if (result['auth_url'] != null) {
+      // Open the OIDC authorization URL in the same tab
+      html.window.location.href = result['auth_url'] as String;
+    } else {
+      setState(() {
+        _oidcLoading = false;
+        _errorMessage = result['error'] ?? 'Failed to start SSO login';
+      });
+    }
+  }
+
+  // ── Provider icon / color helpers ────────────────────────────────────────
+  IconData _providerIcon(String type) {
+    switch (type) {
+      case 'ldap': return Icons.security;
+      case 'oidc': return Icons.vpn_key_outlined;
+      default: return Icons.admin_panel_settings;
+    }
+  }
+
+  Color _providerColor(String type) {
+    switch (type) {
+      case 'ldap': return const Color(0xFF38BDF8);
+      case 'oidc': return const Color(0xFF8B5CF6);
+      default: return const Color(0xFFF59E0B);
+    }
+  }
+
+  /// Icon + color for specific OIDC provider type
+  ({IconData icon, Color color, String label}) _oidcProviderMeta(String providerType, String name) {
+    switch (providerType) {
+      case 'keycloak':
+        return (icon: Icons.lock_open, color: const Color(0xFF00B8D9), label: name.isEmpty ? 'Keycloak' : name);
+      case 'google':
+        return (icon: Icons.g_mobiledata, color: const Color(0xFF4285F4), label: name.isEmpty ? 'Google' : name);
+      case 'github':
+        return (icon: Icons.code, color: const Color(0xFF6E5494), label: name.isEmpty ? 'GitHub' : name);
+      case 'azure':
+        return (icon: Icons.cloud, color: const Color(0xFF0089D6), label: name.isEmpty ? 'Microsoft Azure AD' : name);
+      case 'okta':
+        return (icon: Icons.shield_outlined, color: const Color(0xFF007DC1), label: name.isEmpty ? 'Okta' : name);
+      default:
+        return (icon: Icons.vpn_key_outlined, color: const Color(0xFF8B5CF6), label: name.isEmpty ? 'SSO' : name);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final hasOIDC = _oidcProviders.isNotEmpty;
 
     return Scaffold(
       body: Container(
@@ -105,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Container(
-              width: 440,
+              width: 460,
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
@@ -125,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo & Roman Icon
+                  // ── Logo ─────────────────────────────────────────────
                   Center(
                     child: Container(
                       width: 64,
@@ -144,10 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       child: const Center(
-                        child: Text(
-                          '🏛',
-                          style: TextStyle(fontSize: 32),
-                        ),
+                        child: Text('🏛', style: TextStyle(fontSize: 32)),
                       ),
                     ),
                   ),
@@ -172,18 +275,39 @@ class _LoginScreenState extends State<LoginScreen> {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 28),
 
-                  // Domain / Provider Selector
-                  Text(
-                    'Authentication Domain / Directory',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
+                  // ── OIDC SSO Buttons ─────────────────────────────────
+                  if (hasOIDC || _loadingProviders) ...[
+                    const SizedBox(height: 28),
+                    _buildSectionLabel(context, 'Single Sign-On', Icons.vpn_key_outlined, const Color(0xFF8B5CF6)),
+                    const SizedBox(height: 10),
+                    if (_loadingProviders)
+                      const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                    else
+                      ...(_oidcProviders.map((p) {
+                        final meta = _oidcProviderMeta(p.providerType, p.name);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _OIDCSSOButton(
+                            icon: meta.icon,
+                            color: meta.color,
+                            label: 'Continue with ${meta.label}',
+                            loading: _oidcLoading,
+                            onPressed: () => _handleOIDCLogin(p),
+                          ),
+                        );
+                      })),
+                    const SizedBox(height: 20),
+                    _buildDivider(context, isDark),
+                    const SizedBox(height: 20),
+                  ] else
+                    const SizedBox(height: 28),
+
+                  // ── Form-based login (Local / LDAP) ───────────────────
+                  _buildSectionLabel(context, 'Directory Authentication', Icons.corporate_fare, const Color(0xFF38BDF8)),
+                  const SizedBox(height: 10),
+
+                  // Provider selector
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                     decoration: BoxDecoration(
@@ -192,21 +316,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
                     ),
                     child: _loadingProviders
-                        ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))))
+                        ? const SizedBox(
+                            height: 48,
+                            child: Center(
+                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                          )
                         : DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _selectedProvider,
                               isExpanded: true,
-                              icon: const Icon(Icons.corporate_fare, size: 20),
-                              items: _providers.map((p) {
+                              icon: const Icon(Icons.unfold_more, size: 18),
+                              items: _formProviders.map((p) {
                                 return DropdownMenuItem<String>(
                                   value: p.id,
                                   child: Row(
                                     children: [
                                       Icon(
-                                        p.type == 'ldap' ? Icons.security : Icons.admin_panel_settings,
+                                        _providerIcon(p.type),
                                         size: 18,
-                                        color: p.type == 'ldap' ? const Color(0xFF38BDF8) : const Color(0xFFF59E0B),
+                                        color: _providerColor(p.type),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
@@ -226,9 +355,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                  // Username field
+                  // Username
                   Text(
                     'Username / sAMAccountName',
                     style: TextStyle(
@@ -257,9 +386,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onSubmitted: (_) => _handleLogin(),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
 
-                  // Password field
+                  // Password
                   Text(
                     'Password',
                     style: TextStyle(
@@ -296,7 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     onSubmitted: (_) => _handleLogin(),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
                   // Error banner
                   if (_errorMessage != null) ...[
@@ -320,10 +449,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                   ],
 
-                  // Login Button
+                  // Sign In button
                   FilledButton(
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -336,14 +465,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text(
-                            'Sign In',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
+                        : const Text('Sign In', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // Quick Local Admin Button
+                  // Quick Admin shortcut
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -359,6 +485,126 @@ class _LoginScreenState extends State<LoginScreen> {
                       });
                       _handleLogin();
                     },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(BuildContext context, String label, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDivider(BuildContext context, bool isDark) {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: Colors.grey.withValues(alpha: isDark ? 0.2 : 0.3))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'OR',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: Colors.grey.withValues(alpha: isDark ? 0.2 : 0.3))),
+      ],
+    );
+  }
+}
+
+// ── OIDC SSO Button widget ──────────────────────────────────────────────────
+class _OIDCSSOButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _OIDCSSOButton({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  @override
+  State<_OIDCSSOButton> createState() => _OIDCSSOButtonState();
+}
+
+class _OIDCSSOButtonState extends State<_OIDCSSOButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: _hovered
+              ? widget.color.withValues(alpha: 0.12)
+              : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _hovered ? widget.color.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.25),
+            width: _hovered ? 1.5 : 1,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: widget.loading ? null : widget.onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (widget.loading)
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: widget.color),
+                    )
+                  else
+                    Icon(widget.icon, size: 20, color: widget.color),
+                  const SizedBox(width: 10),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _hovered
+                          ? widget.color
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                    ),
                   ),
                 ],
               ),

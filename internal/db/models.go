@@ -210,7 +210,29 @@ type LDAPConfig struct {
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-// LocalUser represents a local user account stored in the Gubernator DB.
+// OIDCConfig represents an OpenID Connect / OAuth2 Single Sign-On identity provider.
+// Supports Keycloak, Google, GitHub, Microsoft Entra ID, Okta, and any standard OIDC IdP.
+type OIDCConfig struct {
+	ID                 string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name               string    `gorm:"type:varchar(255);not null" json:"name"`
+	ProviderType       string    `gorm:"type:varchar(50);default:'generic'" json:"provider_type"` // generic, keycloak, google, github, azure, okta
+	Enabled            bool      `gorm:"default:true" json:"enabled"`
+	IssuerURL          string    `gorm:"type:varchar(1000);not null" json:"issuer_url"`   // e.g. https://keycloak/realms/master
+	ClientID           string    `gorm:"type:varchar(500);not null" json:"client_id"`
+	ClientSecret       string    `gorm:"type:varchar(1000);not null" json:"client_secret"`
+	RedirectURI        string    `gorm:"type:varchar(1000)" json:"redirect_uri"`           // Auto-detected if empty
+	Scopes             string    `gorm:"type:varchar(500);default:'openid profile email'" json:"scopes"` // space-separated
+	// RBAC Group-to-Role claim mapping
+	RoleClaimPath      string    `gorm:"type:varchar(255);default:'groups'" json:"role_claim_path"` // JWT claim containing groups: "groups", "roles", "realm_access.roles"
+	AdminClaim         string    `gorm:"type:varchar(500)" json:"admin_claim"`    // group/role value → admin
+	OperatorClaim      string    `gorm:"type:varchar(500)" json:"operator_claim"` // group/role value → operator
+	ReadOnlyClaim      string    `gorm:"type:varchar(500)" json:"readonly_claim"` // group/role value → readonly
+	DefaultRole        string    `gorm:"type:varchar(50);default:'readonly'" json:"default_role"` // fallback role if no group matched
+	InsecureSkipVerify bool      `gorm:"default:false" json:"insecure_skip_verify"` // Skip TLS cert verification (dev only)
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
 type LocalUser struct {
 	ID           string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
 	Username     string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`

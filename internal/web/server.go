@@ -437,6 +437,11 @@ func StartDashboard() {
 	r.POST("/api/auth/login", authLoginHandler)
 	r.POST("/api/auth/logout", authLogoutHandler)
 
+	// OIDC / OAuth2 — Public SSO flow (no auth required: browser redirects)
+	r.GET("/api/auth/oidc/:id/authorize", oidcAuthorizeHandler)
+	r.GET("/api/auth/oidc/callback", oidcCallbackHandler)
+	r.GET("/api/auth/oidc/presets", oidcPresetsHandler)
+
 	// API for dashboard with RBAC
 	api := r.Group("/api", auth.RequireAuth())
 	{
@@ -445,6 +450,12 @@ func StartDashboard() {
 		api.POST("/auth/ldap", auth.RequireRole(auth.RoleAdmin), authSaveLDAPHandler)
 		api.DELETE("/auth/ldap/:id", auth.RequireRole(auth.RoleAdmin), authDeleteLDAPHandler)
 		api.POST("/auth/ldap/test", auth.RequireRole(auth.RoleAdmin), authTestLDAPHandler)
+
+		// OIDC / OAuth2 Provider Management (Admin only)
+		api.GET("/auth/oidc", auth.RequireRole(auth.RoleAdmin), oidcListHandler)
+		api.POST("/auth/oidc", auth.RequireRole(auth.RoleAdmin), oidcSaveHandler)
+		api.DELETE("/auth/oidc/:id", auth.RequireRole(auth.RoleAdmin), oidcDeleteHandler)
+		api.POST("/auth/oidc/:id/test", auth.RequireRole(auth.RoleAdmin), oidcTestHandler)
 
 		// Security & User Management (Admin only)
 		api.GET("/security/users", auth.RequireRole(auth.RoleAdmin), listSecurityUsersHandler)
@@ -5060,7 +5071,208 @@ func authProvidersHandler(c *gin.Context) {
 		}
 	}
 
+	// OIDC / OAuth2 SSO providers
+	var oidcConfigs []db.OIDCConfig
+	if err := db.DB.Where("enabled = ?", true).Find(&oidcConfigs).Error; err == nil {
+		for _, cfg := range oidcConfigs {
+			providers = append(providers, gin.H{
+				"id":            cfg.ID,
+				"name":          cfg.Name,
+				"type":          "oidc",
+				"provider_type": cfg.ProviderType,
+			})
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"providers": providers})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OIDC / OAuth2 Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+func oidcPresetsHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"presets": auth.GetOIDCProviderPresets()})
+}
+
+func oidcListHandler(c *gin.Context) {
+	var configs []db.OIDCConfig
+	if err := db.DB.Find(&configs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for i := range configs {
+		if configs[i].ClientSecret != "" {
+			configs[i].ClientSecret = "••••••••"
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"configs": configs})
+}
+
+func oidcSaveHandler(c *gin.Context) {
+	var req db.OIDCConfig
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	req.IssuerURL = strings.TrimRight(strings.TrimSpace(req.IssuerURL), "/")
+	req.ClientID = strings.TrimSpace(req.ClientID)
+
+	if req.Name == "" || req.IssuerURL == "" || req.ClientID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name, Issuer URL, and Client ID are required"})
+		return
+	}
+	if req.Scopes == "" {
+		req.Scopes = "openid profile email"
+	}
+	if req.RoleClaimPath == "" {
+		req.RoleClaimPath = "groups"
+	}
+	if req.DefaultRole == "" {
+		req.DefaultRole = "readonly"
+	}
+
+	isNew := req.ID == ""
+	if isNew {
+		req.ID = "oidc-" + uuid.New().String()[:12]
+	} else {
+		var existing db.OIDCConfig
+		if err := db.DB.First(&existing, "id = ?", req.ID).Error; err == nil {
+			if strings.Contains(req.ClientSecret, "••") {
+				req.ClientSecret = existing.ClientSecret
+			}
+		}
+	}
+
+	if err := db.DB.Save(&req).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save OIDC configuration: " + err.Error()})
+		return
+	}
+	req.ClientSecret = "••••••••"
+	action := "OIDC provider created"
+	if !isNew {
+		action = "OIDC provider updated"
+	}
+	c.JSON(http.StatusOK, gin.H{"message": action, "config": req})
+}
+
+func oidcDeleteHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Delete(&db.OIDCConfig{}, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "OIDC provider deleted"})
+}
+
+func oidcTestHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req db.OIDCConfig
+	if err := c.ShouldBindJSON(&req); err != nil || req.IssuerURL == "" {
+		if err := db.DB.First(&req, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "OIDC configuration not found"})
+			return
+		}
+	}
+	result := auth.TestOIDCConnection(req)
+	status := http.StatusOK
+	if !result.Connected {
+		status = http.StatusServiceUnavailable
+	}
+	c.JSON(status, result)
+}
+
+func oidcAuthorizeHandler(c *gin.Context) {
+	id := c.Param("id")
+	var cfg db.OIDCConfig
+	if err := db.DB.First(&cfg, "id = ? AND enabled = ?", id, true).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "OIDC provider not found or disabled"})
+		return
+	}
+
+	redirectURI := cfg.RedirectURI
+	if redirectURI == "" {
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		redirectURI = fmt.Sprintf("%s://%s/api/auth/oidc/callback", scheme, c.Request.Host)
+	}
+
+	disc, err := auth.FetchOIDCDiscovery(cfg)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cannot reach OIDC provider: " + err.Error()})
+		return
+	}
+
+	authURL, state, err := auth.GenerateOIDCAuthURL(cfg, disc, redirectURI)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authorization URL: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"auth_url":     authURL,
+		"state":        state,
+		"provider":     cfg.Name,
+		"redirect_uri": redirectURI,
+	})
+}
+
+func oidcCallbackHandler(c *gin.Context) {
+	code := c.Query("code")
+	state := c.Query("state")
+	errParam := c.Query("error")
+	errDesc := c.Query("error_description")
+
+	if errParam != "" {
+		msg := errParam
+		if errDesc != "" {
+			msg += ": " + errDesc
+		}
+		c.Redirect(http.StatusFound, "/#/login?oidc_error="+url.QueryEscape(msg))
+		return
+	}
+	if code == "" || state == "" {
+		c.Redirect(http.StatusFound, "/#/login?oidc_error="+url.QueryEscape("Missing OAuth2 code or state"))
+		return
+	}
+
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	redirectURI := fmt.Sprintf("%s://%s/api/auth/oidc/callback", scheme, c.Request.Host)
+
+	result, err := auth.HandleOIDCCallback(state, code, redirectURI)
+	if err != nil {
+		logAudit(c, "unknown", "OIDC", "LOGIN_FAILED", "FAILURE", err.Error())
+		c.Redirect(http.StatusFound, "/#/login?oidc_error="+url.QueryEscape(err.Error()))
+		return
+	}
+
+	session := auth.UserSession{
+		Username:    result.Username,
+		DisplayName: result.DisplayName,
+		Email:       result.Email,
+		Role:        result.Role,
+		Provider:    "oidc:" + result.ProviderID,
+		Permissions: auth.GetPermissions(result.Role),
+		ExpiresAt:   time.Now().Add(24 * time.Hour),
+	}
+	token, err := auth.GenerateToken(session)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/#/login?oidc_error="+url.QueryEscape("Failed to create session token"))
+		return
+	}
+
+	logAudit(c, result.Username, "OIDC:"+result.ProviderID, "LOGIN_SUCCESS", "SUCCESS",
+		fmt.Sprintf("OIDC SSO — role: %s, groups: %v", result.Role, result.Groups))
+
+	c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+	c.Redirect(http.StatusFound, "/#/?oidc_token="+url.QueryEscape(token))
 }
 
 func logAudit(c *gin.Context, username, provider, action, status, details string) {

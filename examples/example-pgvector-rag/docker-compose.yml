@@ -2,7 +2,14 @@ version: "3.8"
 
 # =============================================================================
 # Gubernator (gbnt) - GenAI RAG Search & Vector Database Stack
-# PostgreSQL 16 + pgvector extension + Qdrant Vector Engine + RAG UI
+# PostgreSQL 16 + pgvector extension + Qdrant Vector Engine + Ollama LLM + RAG UI
+#
+# Architecture:
+#   postgres-vector  → relational store + pgvector HNSW/IVFFlat similarity search
+#   qdrant           → high-performance Rust vector database (REST + gRPC)
+#   ollama-rag       → local LLM + embedding server (nomic-embed-text + llama3.2)
+#   ollama-init      → one-shot sidecar that pre-fetches the embedding & chat models
+#   rag-ui           → Open-WebUI interface wired to Qdrant + Ollama
 # =============================================================================
 
 services:
@@ -64,18 +71,95 @@ services:
           - stack.name == pgvector-rag
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 3. RAG Search Web Interface
+  # 3. Ollama Local LLM & Embedding Engine
+  #    Runs on the Manager node (5.8 GB RAM, 15 GB disk free, image cached).
+  #    Serves:
+  #      - nomic-embed-text  → text embeddings for RAG document indexing
+  #      - llama3.2          → conversational LLM for Open-WebUI chat
+  # ─────────────────────────────────────────────────────────────────────────────
+  ollama-rag:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11435:11434"
+    volumes:
+      - /var/contenedores/ollama-rag/models:/root/.ollama
+    labels:
+      - "ingress.host=ollama.rag.gbnt.local"
+      - "gbnt.caddy.port=11435"
+      - "gbnt.service.name=ollama-rag"
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == manager
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Ollama Model Init — one-shot container that pre-fetches required models.
+  #    Pulls:
+  #      - nomic-embed-text (274 MB) → embedding model for RAG document ingestion
+  #      - llama3.2         (2.0 GB) → chat LLM for conversational RAG queries
+  #    Runs after ollama-rag is healthy (sleeps 15s to let Ollama API boot).
+  # ─────────────────────────────────────────────────────────────────────────────
+  ollama-init:
+    image: curlimages/curl:latest
+    restart: "no"
+    command: >
+      sh -c "
+        echo '⏳ Waiting for Ollama RAG engine to start...' &&
+        sleep 15 &&
+        echo '📥 Pulling nomic-embed-text (embedding model)...' &&
+        curl -sf -X POST http://ollama.rag.gbnt.local:11435/api/pull
+          -H 'Content-Type: application/json'
+          -d '{\"name\": \"nomic-embed-text\"}' &&
+        echo '✅ nomic-embed-text pulled successfully!' &&
+        echo '📥 Pulling llama3.2 (chat LLM)...' &&
+        curl -sf -X POST http://ollama.rag.gbnt.local:11435/api/pull
+          -H 'Content-Type: application/json'
+          -d '{\"name\": \"llama3.2\"}' &&
+        echo '✅ llama3.2 pulled successfully! RAG stack is fully operational.'
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+      placement:
+        constraints:
+          - stack.name == pgvector-rag
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 5. RAG Search Web Interface — Open-WebUI
+  #    Wired to:
+  #      - ollama-rag   → local LLM inference + text embeddings
+  #      - qdrant       → vector store backend
+  #      - postgres-vector → relational metadata storage
   # ─────────────────────────────────────────────────────────────────────────────
   rag-ui:
     image: ghcr.io/open-webui/open-webui:main
     restart: unless-stopped
     environment:
       - WEBUI_AUTH=False
+      # ── Ollama (local LLM & embedding engine) ──
+      - OLLAMA_BASE_URL=http://ollama.rag.gbnt.local:11435
+      - OLLAMA_API_BASE_URL=http://ollama.rag.gbnt.local:11435
+      # ── Embedding ──
       - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      - RAG_OLLAMA_BASE_URL=http://ollama.rag.gbnt.local:11435
+      # ── Vector DB (Qdrant) ──
       - VECTOR_DB=qdrant
       - QDRANT_URI=http://qdrant.rag.gbnt.local:6333
       - QDRANT_HOST=qdrant.rag.gbnt.local
       - QDRANT_PORT=6333
+      # ── Database ──
+      - DATABASE_URL=postgresql://raguser:gubernator-secret@postgres-vector:5433/ragdb
     ports:
       - "8082:8080"
     volumes:

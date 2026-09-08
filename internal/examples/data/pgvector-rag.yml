@@ -52,16 +52,62 @@ services:
         constraints:
           - stack.name == pgvector-rag
 
+  ollama-rag:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11435:11434"
+    volumes:
+      - /var/contenedores/ollama-rag/models:/root/.ollama
+    labels:
+      - "ingress.host=ollama.rag.gbnt.local"
+      - "gbnt.caddy.port=11435"
+      - "gbnt.service.name=ollama-rag"
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == manager
+
+  ollama-init:
+    image: curlimages/curl:latest
+    restart: "no"
+    command: >
+      sh -c "
+        sleep 15 &&
+        curl -sf -X POST http://ollama.rag.gbnt.local:11435/api/pull -H 'Content-Type: application/json' -d '{\"name\": \"nomic-embed-text\"}' &&
+        curl -sf -X POST http://ollama.rag.gbnt.local:11435/api/pull -H 'Content-Type: application/json' -d '{\"name\": \"llama3.2\"}'
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+      placement:
+        constraints:
+          - stack.name == pgvector-rag
+
   rag-ui:
     image: ghcr.io/open-webui/open-webui:main
     restart: unless-stopped
     environment:
       - WEBUI_AUTH=False
+      - OLLAMA_BASE_URL=http://ollama.rag.gbnt.local:11435
+      - OLLAMA_API_BASE_URL=http://ollama.rag.gbnt.local:11435
       - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      - RAG_OLLAMA_BASE_URL=http://ollama.rag.gbnt.local:11435
       - VECTOR_DB=qdrant
       - QDRANT_URI=http://qdrant.rag.gbnt.local:6333
       - QDRANT_HOST=qdrant.rag.gbnt.local
       - QDRANT_PORT=6333
+      - DATABASE_URL=postgresql://raguser:gubernator-secret@postgres-vector:5433/ragdb
     ports:
       - "8082:8080"
     volumes:

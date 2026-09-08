@@ -1108,6 +1108,99 @@ class ApiService {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // OIDC / OAuth2 SSO APIs
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Fetches all configured OIDC / SSO providers (Admin only).
+  static Future<List<OIDCConfig>> fetchOIDCConfigs() async {
+    try {
+      final response = await http.get(Uri.parse('/api/auth/oidc'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['configs'] as List? ?? [])
+            .map((e) => OIDCConfig.fromJson(e))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetches built-in OIDC provider presets (Keycloak, Google, Azure, etc.).
+  static Future<List<OIDCProviderPreset>> fetchOIDCPresets() async {
+    try {
+      final response = await http.get(Uri.parse('/api/auth/oidc/presets'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['presets'] as List? ?? [])
+            .map((e) => OIDCProviderPreset.fromJson(e))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Creates or updates an OIDC provider configuration.
+  static Future<Map<String, dynamic>> saveOIDCConfig(OIDCConfig config) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/auth/oidc'),
+        headers: authHeaders,
+        body: jsonEncode(config.toJson()),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  /// Deletes an OIDC provider configuration.
+  static Future<bool> deleteOIDCConfig(String id) async {
+    try {
+      final response = await http.delete(Uri.parse('/api/auth/oidc/$id'), headers: authHeaders);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Tests connectivity to an OIDC provider's discovery endpoint and JWKS.
+  static Future<OIDCTestResult> testOIDCConfig(OIDCConfig config) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/auth/oidc/${config.id}/test'),
+        headers: authHeaders,
+        body: jsonEncode(config.toJson()),
+      );
+      final data = jsonDecode(response.body);
+      return OIDCTestResult.fromJson(data);
+    } catch (e) {
+      return OIDCTestResult(
+        connected: false,
+        issuerReachable: false,
+        discoveryOk: false,
+        jwksReachable: false,
+        message: e.toString(),
+      );
+    }
+  }
+
+  /// Requests an OAuth2 authorization URL to begin the SSO login flow.
+  /// Returns the auth_url to open in the browser and the state token.
+  static Future<Map<String, dynamic>> getOIDCAuthorizeUrl(String providerId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/auth/oidc/$providerId/authorize'),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'error': 'Failed to get authorization URL (${response.statusCode})'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
   /// Fetches all local user accounts.
   static Future<List<LocalUser>> fetchLocalUsers() async {
     final response = await http.get(Uri.parse("/api/security/users"), headers: authHeaders);
