@@ -1540,7 +1540,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100)",
+          "expr": "100 - (sum by (instance) (node_memory_MemAvailable_bytes) / sum by (instance) (node_memory_MemTotal_bytes) * 100)",
           "format": "table",
           "instant": true,
           "legendFormat": "Memory Used %",
@@ -1551,7 +1551,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "expr": "sum by (instance) (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)",
           "format": "table",
           "instant": true,
           "legendFormat": "Memory Used",
@@ -1562,7 +1562,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_MemTotal_bytes",
+          "expr": "sum by (instance) (node_memory_MemTotal_bytes)",
           "format": "table",
           "instant": true,
           "legendFormat": "Memory Total",
