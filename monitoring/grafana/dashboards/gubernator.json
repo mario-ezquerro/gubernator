@@ -1529,10 +1529,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "label_replace(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100), \"metric\", \"CPU Usage %\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "CPU Usage %",
           "refId": "CPU"
         },
         {
@@ -1540,10 +1539,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 - (sum by (instance) (node_memory_MemAvailable_bytes) / sum by (instance) (node_memory_MemTotal_bytes) * 100)",
+          "expr": "label_replace(100 - (sum by (instance) (node_memory_MemAvailable_bytes) / sum by (instance) (node_memory_MemTotal_bytes) * 100), \"metric\", \"Memory Used %\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Memory Used %",
           "refId": "MemPct"
         },
         {
@@ -1551,10 +1549,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)",
+          "expr": "label_replace(sum by (instance) (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes), \"metric\", \"Memory Used\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Memory Used",
           "refId": "MemUsed"
         },
         {
@@ -1562,10 +1559,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (node_memory_MemTotal_bytes)",
+          "expr": "label_replace(sum by (instance) (node_memory_MemTotal_bytes), \"metric\", \"Memory Total\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Memory Total",
           "refId": "MemTotal"
         },
         {
@@ -1573,10 +1569,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (rate(node_network_receive_bytes_total[5m]))",
+          "expr": "label_replace(sum by (instance) (rate(node_network_receive_bytes_total[5m])), \"metric\", \"Net Rx\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Net Rx",
           "refId": "NetRx"
         },
         {
@@ -1584,10 +1579,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (rate(node_network_transmit_bytes_total[5m]))",
+          "expr": "label_replace(sum by (instance) (rate(node_network_transmit_bytes_total[5m])), \"metric\", \"Net Tx\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Net Tx",
           "refId": "NetTx"
         },
         {
@@ -1595,10 +1589,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 - (sum by (instance) (node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"}) / sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"}) * 100)",
+          "expr": "label_replace(100 - (sum by (instance) (node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"}) / sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"}) * 100), \"metric\", \"Host Disk %\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Host Disk %",
           "refId": "DiskPct"
         },
         {
@@ -1606,10 +1599,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"} - node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"})",
+          "expr": "label_replace(sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"} - node_filesystem_avail_bytes{mountpoint=~\"/|/rootfs|/data\"}), \"metric\", \"Host Disk Used\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Host Disk Used",
           "refId": "DiskUsed"
         },
         {
@@ -1617,56 +1609,35 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"})",
+          "expr": "label_replace(sum by (instance) (node_filesystem_size_bytes{mountpoint=~\"/|/rootfs|/data\"}), \"metric\", \"Host Disk Total\", \"\", \"\")",
           "format": "table",
           "instant": true,
-          "legendFormat": "Host Disk Total",
           "refId": "DiskTotal"
         }
       ],
       "transformations": [
         {
-          "id": "seriesToColumns",
+          "id": "joinByLabels",
           "options": {
-            "byField": "instance"
+            "value": "metric"
           }
         },
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true,
-              "Time 3": true,
-              "Time 4": true,
-              "Time 5": true,
-              "Time 6": true,
-              "Time 7": true,
-              "Time 8": true
-            },
             "indexByName": {
               "instance": 0,
-              "Value #CPU": 1,
-              "Value #MemPct": 2,
-              "Value #MemUsed": 3,
-              "Value #MemTotal": 4,
-              "Value #NetRx": 5,
-              "Value #NetTx": 6,
-              "Value #DiskPct": 7,
-              "Value #DiskUsed": 8,
-              "Value #DiskTotal": 9
+              "CPU Usage %": 1,
+              "Memory Used %": 2,
+              "Memory Used": 3,
+              "Memory Total": 4,
+              "Net Rx": 5,
+              "Net Tx": 6,
+              "Host Disk %": 7,
+              "Host Disk Used": 8,
+              "Host Disk Total": 9
             },
             "renameByName": {
-              "Value #CPU": "CPU Usage %",
-              "Value #MemPct": "Memory Used %",
-              "Value #MemUsed": "Memory Used",
-              "Value #MemTotal": "Memory Total",
-              "Value #NetRx": "Net Rx",
-              "Value #NetTx": "Net Tx",
-              "Value #DiskPct": "Host Disk %",
-              "Value #DiskUsed": "Host Disk Used",
-              "Value #DiskTotal": "Host Disk Total",
               "instance": "Centurion Host"
             }
           }
