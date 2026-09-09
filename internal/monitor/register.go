@@ -414,7 +414,7 @@ func getContainerIP(name string) string {
 	}
 	ips := strings.Fields(strings.TrimSpace(string(out)))
 	for _, ip := range ips {
-		if ip != "" {
+		if ip != "" && ip != "invalid" && !strings.Contains(ip, "invalid") {
 			return ip
 		}
 	}

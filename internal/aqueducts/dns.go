@@ -3,6 +3,7 @@ package aqueducts
 import (
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -86,7 +87,10 @@ func GenerateHostsFile() {
 	addRecord := func(ip, domain string) {
 		ip = strings.TrimSpace(ip)
 		domain = strings.TrimSpace(domain)
-		if ip == "" || domain == "" {
+		if ip == "" || domain == "" || ip == "invalid" || strings.Contains(ip, "invalid") {
+			return
+		}
+		if net.ParseIP(ip) == nil {
 			return
 		}
 		key := fmt.Sprintf("%s\t%s", ip, domain)
@@ -119,6 +123,11 @@ func GenerateHostsFile() {
 			} else {
 				cleanNode = SanitizeDNSLabel(t.NodeID)
 			}
+		}
+
+		// Fallback for missing/invalid container IPs
+		if targetIP == "" || targetIP == "invalid" || strings.Contains(targetIP, "invalid") || net.ParseIP(targetIP) == nil {
+			targetIP = hostIP
 		}
 
 		cleanSvc := SanitizeDNSLabel(svc.Name)

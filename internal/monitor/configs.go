@@ -249,6 +249,13 @@ datasources:
     editable: false
     jsonData:
       maxLines: 1000
+
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    access: proxy
+    url: http://gbnt-monitor-jaeger:16686
+    editable: false
 `
 }
 

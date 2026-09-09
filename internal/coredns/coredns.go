@@ -87,14 +87,49 @@ func EnsureConfigDir() error {
 	return nil
 }
 
+// DetectUpstreamDNS returns valid upstream DNS forwarders.
+// Priority: GBNT_DNS_FORWARDERS env -> systemd-resolved uplink resolv.conf -> /etc/resolv.conf non-loopback -> 8.8.8.8 1.1.1.1
+func DetectUpstreamDNS() string {
+	if env := os.Getenv("GBNT_DNS_FORWARDERS"); env != "" {
+		return env
+	}
+
+	for _, confFile := range []string{"/run/systemd/resolve/resolv.conf", "/etc/resolv.conf"} {
+		data, err := os.ReadFile(confFile)
+		if err != nil {
+			continue
+		}
+		var servers []string
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "nameserver") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					ns := fields[1]
+					// Filter loopback addresses and link-local ipv6
+					if strings.HasPrefix(ns, "127.") || ns == "::1" || strings.HasPrefix(ns, "fe80:") {
+						continue
+					}
+					// Verify valid IP
+					if parsed := net.ParseIP(ns); parsed != nil {
+						servers = append(servers, ns)
+					}
+				}
+			}
+		}
+		if len(servers) > 0 {
+			return strings.Join(servers, " ")
+		}
+	}
+
+	return "8.8.8.8 1.1.1.1"
+}
+
 // DefaultCorefile returns the CoreDNS configuration with active cluster domain.
 // Uses the 'hosts' plugin to serve *.gbnt, *.gbnt.local, and configured cluster domain from gubernator.hosts,
 // falling back to templated host IP, and forwarding other queries to public DNS.
 func DefaultCorefile() string {
-	forwarders := os.Getenv("GBNT_DNS_FORWARDERS")
-	if forwarders == "" {
-		forwarders = "8.8.8.8 1.1.1.1"
-	}
+	forwarders := DetectUpstreamDNS()
 	hostIP := detectLocalIP()
 	clusterDomain := db.GetClusterDomain()
 
@@ -178,12 +213,12 @@ func EnsureRunningWorker(managerIP string) error {
 }
 
 . {
-    forward . 8.8.8.8 1.1.1.1
+    forward . %s
     cache 30
     log
     errors
 }
-`, zoneStr, managerIP)
+`, zoneStr, managerIP, DetectUpstreamDNS())
 
 	corefilePath := CorefilePath()
 	if err := os.WriteFile(corefilePath, []byte(corefileContent), 0644); err != nil {

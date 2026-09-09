@@ -203,23 +203,7 @@ var legionJoinCmd = &cobra.Command{
 			fmt.Println("   ⚠️  Could not fetch Manager SSH public key (Shell access may not work)")
 		}
 
-		// Ensure network and start Caddy Ingress locally on worker node
-		fmt.Println("🌐 Starting local Caddy Ingress on worker node...")
-		if err := coredns.EnsureNetwork(); err != nil {
-			fmt.Printf("⚠️ Failed to create gbnt-net network: %v\n", err)
-		} else {
-			if err := caddy.EnsureRunning(); err != nil {
-				fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
-			}
-			// Start cAdvisor metrics & Promtail log shipper on worker node
-			if err := monitor.EnsureWorkerMonitoring(managerIP); err != nil {
-				fmt.Printf("⚠️ Failed to start worker cAdvisor/Promtail monitoring: %v\n", err)
-			} else {
-				fmt.Println("📊 Worker cAdvisor & Promtail monitoring started successfully.")
-			}
-		}
-
-		// Start heartbeat loop
+		// Start heartbeat loop immediately so the worker stays active on the manager
 		fmt.Println("\n💓 Starting background loops (Heartbeat & Executor)...")
 
 		// Start lightweight health endpoint for Docker healthcheck
@@ -233,33 +217,57 @@ var legionJoinCmd = &cobra.Command{
 			_ = http.ListenAndServe(":4002", mux)
 		}()
 
+		sendHeartbeat := func(hbClient *http.Client) {
+			hbPayload, _ := json.Marshal(map[string]interface{}{
+				"id":           nodeID,
+				"caddy_status": caddy.Status(),
+				"caddyfile":    readLocalCaddyfile(),
+			})
+			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/heartbeat", addr), bytes.NewBuffer(hbPayload))
+			if err != nil {
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			if apiToken != "" {
+				req.Header.Set("Authorization", "Bearer "+apiToken)
+			} else if joinToken != "" {
+				req.Header.Set("Authorization", "Bearer "+joinToken)
+			}
+			resp, err := hbClient.Do(req)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  Heartbeat network error: %v\n", err)
+			} else {
+				if resp.StatusCode != http.StatusOK {
+					fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
+				}
+				resp.Body.Close()
+			}
+		}
+
 		go func() {
 			hbClient := &http.Client{Timeout: 5 * time.Second}
+			sendHeartbeat(hbClient) // Immediate initial heartbeat
 			for {
 				time.Sleep(10 * time.Second)
-				hbPayload, _ := json.Marshal(map[string]interface{}{
-					"id":           nodeID,
-					"caddy_status": caddy.Status(),
-					"caddyfile":    readLocalCaddyfile(),
-				})
-				req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/heartbeat", addr), bytes.NewBuffer(hbPayload))
-				if err != nil {
-					continue
+				sendHeartbeat(hbClient)
+			}
+		}()
+
+		// Start Caddy Ingress & Worker Monitoring asynchronously in background
+		// so heavy Docker pulls never delay or block heartbeats
+		go func() {
+			fmt.Println("🌐 Starting local Caddy Ingress on worker node...")
+			if err := coredns.EnsureNetwork(); err != nil {
+				fmt.Printf("⚠️ Failed to create gbnt-net network: %v\n", err)
+			} else {
+				if err := caddy.EnsureRunning(); err != nil {
+					fmt.Printf("⚠️ Failed to start worker Caddy Ingress: %v\n", err)
 				}
-				req.Header.Set("Content-Type", "application/json")
-				if apiToken != "" {
-					req.Header.Set("Authorization", "Bearer "+apiToken)
-				} else if joinToken != "" {
-					req.Header.Set("Authorization", "Bearer "+joinToken)
-				}
-				resp, err := hbClient.Do(req)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "⚠️  Heartbeat network error: %v\n", err)
+				// Start cAdvisor metrics & Promtail log shipper on worker node
+				if err := monitor.EnsureWorkerMonitoring(managerIP); err != nil {
+					fmt.Printf("⚠️ Failed to start worker cAdvisor/Promtail monitoring: %v\n", err)
 				} else {
-					if resp.StatusCode != http.StatusOK {
-						fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
-					}
-					resp.Body.Close()
+					fmt.Println("📊 Worker cAdvisor & Promtail monitoring started successfully.")
 				}
 			}
 		}()
@@ -350,6 +358,15 @@ var legionJoinCmd = &cobra.Command{
 						fmt.Printf("⚠️ Task %s container %s is not running. Attempting restart...\n", t.Task.ID, containerName)
 						startCmd := exec.Command("docker", "start", containerName)
 						if sErr := startCmd.Run(); sErr != nil {
+							// For base SRE monitor containers, recreate them via EnsureWorkerMonitoring
+							if strings.HasPrefix(t.Task.ID, "sre-task-") || strings.HasPrefix(containerName, "gbnt-monitor-") {
+								_ = monitor.EnsureWorkerMonitoring(managerIP)
+								inspectCheck := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+								if out, err := inspectCheck.Output(); err == nil && strings.TrimSpace(string(out)) == "true" {
+									reportStatus(t.Task.ID, "running", t.Task.ContainerIP, containerName, "")
+									continue
+								}
+							}
 							fmt.Printf("❌ Failed to restart container %s: %v. Reporting dead...\n", containerName, sErr)
 							reportStatus(t.Task.ID, "dead", "", containerName, fmt.Sprintf("container exited and restart failed: %v", sErr))
 						} else {
