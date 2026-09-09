@@ -667,6 +667,7 @@ class _LegionsPageState extends State<LegionsPage> {
                                   _sortAscending = asc;
                                 }),
                               ),
+                              const DataColumn(label: Text('AUTOSCALE')),
                               DataColumn(
                                 label: const Text('HOST NODE'),
                                 onSort: (col, asc) => setState(() {
@@ -772,8 +773,80 @@ class _LegionsPageState extends State<LegionsPage> {
                                      ),
                                    ),
                                  ),
-                                  DataCell(
-                                    Builder(builder: (context) {
+                                 DataCell(
+                                   Builder(builder: (context) {
+                                     final autoSvc = s.primaryAutoscaleService(widget.state.services);
+                                     if (autoSvc == null || !autoSvc.isAutoscalingEnabled) {
+                                       return Tooltip(
+                                         message: 'Autoscaling: Disabled\nTo enable, add label: gbnt.autoscaling.enable: "true"',
+                                         child: Container(
+                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                           decoration: BoxDecoration(
+                                             color: Colors.grey.withValues(alpha: 0.1),
+                                             borderRadius: BorderRadius.circular(4),
+                                             border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                                           ),
+                                           child: const Row(
+                                             mainAxisSize: MainAxisSize.min,
+                                             children: [
+                                               Icon(Icons.bolt, size: 12, color: Colors.grey),
+                                               SizedBox(width: 4),
+                                               Text(
+                                                 'Off',
+                                                 style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                                               ),
+                                             ],
+                                           ),
+                                         ),
+                                       );
+                                     }
+
+                                     final isGPU = autoSvc.autoscaleMetric == 'gpu';
+                                     final isCluster = autoSvc.autoscaleScope == 'cluster';
+                                     final color = isGPU ? const Color(0xFFA855F7) : const Color(0xFF06B6D4);
+                                     final icon = isGPU ? Icons.developer_board : Icons.speed;
+                                     final metricLabel = isGPU ? 'GPU' : 'CPU';
+                                     final scopeLabel = isCluster ? 'Cluster' : 'Host';
+
+                                     final tooltipMsg = 'Autoscaling Enabled (Service: ${autoSvc.name})\n'
+                                         '• Metric: $metricLabel (Target: ${autoSvc.autoscaleTarget.toStringAsFixed(0)}%)\n'
+                                         '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
+                                         '• Replicas: Min ${autoSvc.autoscaleMin} / Max ${autoSvc.autoscaleMax}'
+                                         '${isGPU ? "\n• Hardware Affinity: Centurions with NVIDIA GPU" : ""}';
+
+                                     return Tooltip(
+                                       message: tooltipMsg,
+                                       child: Container(
+                                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                         decoration: BoxDecoration(
+                                           color: color.withValues(alpha: 0.15),
+                                           borderRadius: BorderRadius.circular(6),
+                                           border: Border.all(color: color.withValues(alpha: 0.5)),
+                                         ),
+                                         child: Row(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: [
+                                             Icon(Icons.bolt, size: 13, color: color),
+                                             const SizedBox(width: 3),
+                                             Icon(icon, size: 13, color: color),
+                                             const SizedBox(width: 4),
+                                             Text(
+                                               '$metricLabel • $scopeLabel',
+                                               style: TextStyle(
+                                                 fontSize: 11,
+                                                 fontWeight: FontWeight.bold,
+                                                 color: color,
+                                                 fontFamily: 'Courier New',
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     );
+                                   }),
+                                 ),
+                                 DataCell(
+                                   Builder(builder: (context) {
                                       final hostNode = widget.state.nodes.where((n) => n.id == s.nodeId || (s.nodeId.isNotEmpty && n.ip == s.nodeId)).firstOrNull;
                                       final isMgr = hostNode != null ? hostNode.role.toLowerCase() == 'manager' : false;
                                       final hostLabel = hostNode != null 

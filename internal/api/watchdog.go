@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
+	"github.com/mario-ezquerro/gubernator/internal/autoscaler"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 )
@@ -36,6 +37,7 @@ func StartSelfHealingWatchdog(ctx context.Context) {
 			return
 		case <-ticker.C:
 			ReconcileClusterServices()
+			autoscaler.EvaluateAndAutoscale()
 		}
 	}
 }

@@ -797,51 +797,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Cryptographic 128-bit `trace_id` correlation on every eBPF flow and communication edge.
   - Direct deep links to Jaeger UI (`http://<host>:16686/trace/<trace_id>`) from the Vector Canvas Inspector, the Edges Table, and the Flow Details modal for instant root-cause and span waterfall analysis.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### 94. Declarative Autoscaling Subsystem & GPU/CPU Hardware Affinity (`v2.80.0`)
+* **Declarative Compose Autoscaling Engine (`internal/autoscaler/`):**
+  - Horizontal pod and container autoscaling configured entirely via Compose labels (`gbnt.autoscaling.*`).
+  - Automatic evaluation every 15 seconds within Gubernator's self-healing watchdog loop.
+  - Multi-metric collection supporting **GPU utilization** (via NVIDIA DCGM / SMI / Prometheus `container_gpu_utilization`) and **CPU utilization** (`container_cpu_usage_seconds_total`).
+  - Configurable scaling parameters: target threshold % (`gbnt.autoscaling.target`, default 80%), minimum replicas floor (`gbnt.autoscaling.min`), maximum replicas ceiling (`gbnt.autoscaling.max`), and cooldown intervals (`gbnt.autoscaling.cooldown`, default 60s).
+* **Hardware Affinity & Placement Strategy Enforcement:**
+  - **GPU Affinity:** When `gbnt.autoscaling.metric: gpu` or `gbnt.node.gpu == nvidia` is declared with `scope: cluster`, the scheduler strictly filters candidate nodes using `docker.NodeHasGPU()`, ensuring GPU containers only schedule onto Centurions with verified NVIDIA hardware.
+  - **Single-Host vs Multi-Host Containment:** Pinned hosts (`node.hostname == ...`, `node.id == ...`) and atomic stacks (`gbnt.placement.strategy: single-host`) automatically restrict autoscaling to the local host even if cluster scope is requested, preventing placement conflicts. Conversely, distributed stacks (`gbnt.placement.strategy: spread`) default to multi-node cluster scaling.
+* **Web Dashboard Indicators (Flutter):**
+  - **Legions (Stacks) DataTable:** Dedicated `AUTOSCALE` column rendering distinct status badges: ⚡ **GPU (Cluster)** in purple/amber with GPU chip icon, ⚡ **CPU (Host)** in cyan/blue, or subtle `Off` badge with comprehensive tooltip detailing target %, boundaries, and affinity constraints.
+  - **Containers (Tasks) PlutoGrid:** Dedicated `AUTOSCALING` column displaying per-container autoscaling badges and metric indicators.
+  - **Compose Studio & Copilot:** Dedicated `Autoscale` Copilot tab with 1-click production blueprints (GPU AI/Inference, High-Load Web, Single-Host CPU) and autocomplete snippets (`gbnt.autoscaling.*`).
+* **REST API Endpoints:**
+  - `GET /api/autoscaling/policies`: Cluster-wide autoscaling policies breakdown.
+  - `GET /api/autoscaling/events`: Audit history of scaling events and actions.
+  - `POST /api/services/:id/scale`: Manual replica scale override endpoint.

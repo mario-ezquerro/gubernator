@@ -30,6 +30,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/auth"
+	"github.com/mario-ezquerro/gubernator/internal/autoscaler"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -518,6 +519,10 @@ func StartDashboard() {
 		api.GET("/examples", examplesListWebHandler)
 		api.GET("/examples/:id", exampleGetWebHandler)
 
+		// Autoscaling Subsystem
+		api.GET("/autoscaling/policies", autoscalePoliciesHandler)
+		api.GET("/autoscaling/events", autoscaleEventsHandler)
+
 		// Operator & Admin write operations (Stacks & Tasks & Shell)
 		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
 		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
@@ -533,6 +538,7 @@ func StartDashboard() {
 		api.POST("/stack/:id/migrate", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), migrateStackHandler)
 		api.DELETE("/task/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteTaskHandler)
 		api.POST("/task/:id/action", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskActionHandler)
+		api.POST("/services/:id/scale", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), scaleServiceHandler)
 		api.GET("/task/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskShellHandler)
 		api.GET("/node/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), nodeShellHandler)
 		api.POST("/coredns/dig", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSDigHandler)
@@ -7494,4 +7500,54 @@ func ebpfStreamWebHandler(c *gin.Context) {
 			return true
 		}
 	})
+}
+
+// --- Autoscaling Subsystem Handlers ---
+
+func autoscalePoliciesHandler(c *gin.Context) {
+	var services []db.Service
+	db.DB.Find(&services)
+	type policyResp struct {
+		ServiceID   string                      `json:"service_id"`
+		ServiceName string                      `json:"service_name"`
+		StackID     string                      `json:"stack_id"`
+		Policy      *autoscaler.AutoscalePolicy `json:"policy"`
+	}
+	res := make([]policyResp, 0, len(services))
+	for _, s := range services {
+		p := autoscaler.ParseAutoscalePolicy(s.Constraints)
+		res = append(res, policyResp{
+			ServiceID:   s.ID,
+			ServiceName: s.Name,
+			StackID:     s.StackID,
+			Policy:      p,
+		})
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func autoscaleEventsHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, autoscaler.GetScalingHistory())
+}
+
+func scaleServiceHandler(c *gin.Context) {
+	serviceID := c.Param("id")
+	var req struct {
+		Replicas int `json:"replicas"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Replicas < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid replicas count"})
+		return
+	}
+	var svc db.Service
+	if err := db.DB.Where("id = ?", serviceID).First(&svc).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "service not found"})
+		return
+	}
+	svc.DesiredReplicas = req.Replicas
+	if err := db.DB.Model(&svc).Update("desired_replicas", req.Replicas).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "replicas updated", "service_id": svc.ID, "desired_replicas": req.Replicas})
 }

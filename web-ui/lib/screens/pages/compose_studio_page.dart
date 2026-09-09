@@ -96,6 +96,29 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
 ''';
 
   static const Map<String, String> _starterTemplates = {
+    'Autoscaling GPU AI Inference Stack': '''services:
+  inference:
+    image: vllm/vllm-openai:latest
+    ports:
+      - "8000:8000"
+    labels:
+      - "ingress.host=ai.gbnt.local"
+      - "gbnt.caddy.port=8000"
+      - "gbnt.caddy.lb=round_robin"
+      - "gbnt.placement.strategy=spread"
+      - "gbnt.autoscaling.enable=true"
+      - "gbnt.autoscaling.metric=gpu"
+      - "gbnt.autoscaling.scope=cluster"
+      - "gbnt.autoscaling.target=80"
+      - "gbnt.autoscaling.min=1"
+      - "gbnt.autoscaling.max=4"
+      - "gbnt.autoscaling.cooldown=60s"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "gbnt.node.gpu == nvidia"
+''',
     'Multi-Host Load Balanced Web': '''services:
   web:
     image: nginx:alpine
@@ -1487,6 +1510,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     children: [
                       _buildAdaptiveTabPill('Docker', 'docker', Icons.view_in_ar, const Color(0xFF38BDF8), blocksMap['docker']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Resources', 'resources', Icons.speed, const Color(0xFF10B981), blocksMap['resources']?.isPresent ?? false, theme, isDark),
+                      _buildAdaptiveTabPill('Autoscale', 'autoscale', Icons.bolt, const Color(0xFFA855F7), blocksMap['autoscale']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Caddy', 'caddy', Icons.public, const Color(0xFF8B5CF6), blocksMap['caddy']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('SLO', 'slo', Icons.show_chart, const Color(0xFFF59E0B), blocksMap['slo']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Security', 'security', Icons.security, const Color(0xFFEC4899), blocksMap['security']?.isPresent ?? false, theme, isDark),
@@ -1505,6 +1529,75 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_activeCopilotTab == 'autoscale') ...[
+                  const Text('Autoscaling Engine (GPU & CPU)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  const Text('Configure declarative horizontal autoscaling. Metrics are evaluated every 15s with automatic hardware affinity.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  _buildSnippetCard(
+                    title: '⚡ GPU AI/Inference Cluster Autoscale',
+                    subtitle: 'Target 80% GPU utilization across GPU Centurions (Min: 1, Max: 4)',
+                    icon: Icons.developer_board,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.autoscaling.enable', 'true'),
+                          MapEntry('gbnt.autoscaling.metric', 'gpu'),
+                          MapEntry('gbnt.autoscaling.scope', 'cluster'),
+                          MapEntry('gbnt.autoscaling.target', '80'),
+                          MapEntry('gbnt.autoscaling.min', '1'),
+                          MapEntry('gbnt.autoscaling.max', '4'),
+                          MapEntry('gbnt.autoscaling.cooldown', '60s'),
+                        ],
+                        categoryTitle: 'GPU Cluster Autoscaling',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '🚀 CPU High-Load Web Autoscale (Cluster)',
+                    subtitle: 'Target 75% CPU load distributed across active cluster nodes (Min: 2, Max: 8)',
+                    icon: Icons.speed,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.autoscaling.enable', 'true'),
+                          MapEntry('gbnt.autoscaling.metric', 'cpu'),
+                          MapEntry('gbnt.autoscaling.scope', 'cluster'),
+                          MapEntry('gbnt.autoscaling.target', '75'),
+                          MapEntry('gbnt.autoscaling.min', '2'),
+                          MapEntry('gbnt.autoscaling.max', '8'),
+                          MapEntry('gbnt.autoscaling.cooldown', '60s'),
+                        ],
+                        categoryTitle: 'CPU Cluster Autoscaling',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: '💻 Single-Host CPU Autoscale (Local Host)',
+                    subtitle: 'Target 85% CPU load strictly on the same host node (Min: 1, Max: 3)',
+                    icon: Icons.computer,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.autoscaling.enable', 'true'),
+                          MapEntry('gbnt.autoscaling.metric', 'cpu'),
+                          MapEntry('gbnt.autoscaling.scope', 'host'),
+                          MapEntry('gbnt.autoscaling.target', '85'),
+                          MapEntry('gbnt.autoscaling.min', '1'),
+                          MapEntry('gbnt.autoscaling.max', '3'),
+                          MapEntry('gbnt.autoscaling.cooldown', '60s'),
+                        ],
+                        categoryTitle: 'Single-Host Autoscaling',
+                      ));
+                    },
+                  ),
+                ],
                 if (_activeCopilotTab == 'resources') ...[
                   const Text('CPU & RAM Resources', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
@@ -2289,6 +2382,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     final blockLines = <String, List<int>>{
       'docker': [],
       'resources': [],
+      'autoscale': [],
       'caddy': [],
       'slo': [],
       'security': [],
@@ -2299,6 +2393,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     final summaries = <String, String>{
       'docker': '',
       'resources': '',
+      'autoscale': '',
       'caddy': '',
       'slo': '',
       'security': '',
@@ -2340,6 +2435,16 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         blockLines['resources']!.add(lineNum);
         if (trimmed.startsWith('cpus:') && summaries['resources']!.isEmpty) {
           summaries['resources'] = trimmed.replaceAll('"', '').trim();
+        }
+      }
+
+      // Autoscaling
+      if (trimmed.contains('gbnt.autoscaling')) {
+        blockLines['autoscale']!.add(lineNum);
+        if (trimmed.contains('metric=gpu') || trimmed.contains('metric: gpu') || trimmed.contains('gpu')) {
+          summaries['autoscale'] = 'GPU Autoscale';
+        } else if (summaries['autoscale']!.isEmpty) {
+          summaries['autoscale'] = 'Autoscale';
         }
       }
 
@@ -2409,6 +2514,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     final configs = [
       ('docker', 'Docker Core', Icons.view_in_ar, const Color(0xFF38BDF8)),
       ('resources', 'Resources', Icons.speed, const Color(0xFF10B981)),
+      ('autoscale', 'Autoscale', Icons.bolt, const Color(0xFFA855F7)),
       ('caddy', 'Caddy Ingress', Icons.public, const Color(0xFF8B5CF6)),
       ('slo', 'Sloth SLO', Icons.show_chart, const Color(0xFFF59E0B)),
       ('security', 'Security', Icons.security, const Color(0xFFEC4899)),

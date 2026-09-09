@@ -94,6 +94,17 @@ class StackModel {
       createdAt: json['created_at'] ?? '',
     );
   }
+
+  bool hasAutoscaling(List<Service> services) {
+    return services.any((s) => s.stackId == id && s.isAutoscalingEnabled);
+  }
+
+  Service? primaryAutoscaleService(List<Service> services) {
+    final list = services.where((s) => s.stackId == id && s.isAutoscalingEnabled).toList();
+    if (list.isEmpty) return null;
+    // Prefer GPU service if any, else first
+    return list.firstWhere((s) => s.autoscaleMetric == 'gpu', orElse: () => list.first);
+  }
 }
 
 class Service {
@@ -102,6 +113,7 @@ class Service {
   final String name;
   final String image;
   final int desiredReplicas;
+  final List<String> constraints;
   final List<String> ports;
   final String cpuLimit;
   final String memoryLimit;
@@ -114,6 +126,7 @@ class Service {
     required this.name,
     required this.image,
     this.desiredReplicas = 1,
+    this.constraints = const [],
     this.ports = const [],
     this.cpuLimit = '',
     this.memoryLimit = '',
@@ -128,12 +141,103 @@ class Service {
       name: json['name'] ?? '',
       image: json['image'] ?? '',
       desiredReplicas: json['desired_replicas'] ?? 1,
+      constraints: (json['constraints'] as List?)?.map((e) => e.toString()).toList() ?? [],
       ports: (json['ports'] as List?)?.map((e) => e.toString()).toList() ?? [],
       cpuLimit: json['cpu_limit'] ?? '',
       memoryLimit: json['memory_limit'] ?? '',
       cpuReservation: json['cpu_reservation'] ?? '',
       memoryReservation: json['memory_reservation'] ?? '',
     );
+  }
+
+  bool get isAutoscalingEnabled {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower == 'gbnt.autoscaling.enable=true' ||
+          lower == 'gbnt.autoscaling.enable: true' ||
+          lower == 'gbnt.autoscaling.enable=1' ||
+          lower == 'gbnt.autoscaling.enable=yes') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String get autoscaleScope {
+    // Check single-host affinity overrides first
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.contains('gbnt.placement.strategy=single-host') ||
+          lower.contains('node.hostname ==') ||
+          lower.contains('gbnt.node.hostname ==')) {
+        return 'host';
+      }
+    }
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.scope=')) {
+        final val = lower.split('=').last.trim();
+        if (val == 'cluster' || val == 'all' || val == 'multi-host') {
+          return 'cluster';
+        }
+        return 'host';
+      }
+      if (lower.contains('gbnt.placement.strategy=spread') ||
+          lower.contains('gbnt.placement.strategy=multi-host')) {
+        return 'cluster';
+      }
+    }
+    return 'host';
+  }
+
+  String get autoscaleMetric {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.metric=')) {
+        final val = lower.split('=').last.trim();
+        if (val.contains('gpu') || val.contains('cuda') || val.contains('nvidia')) {
+          return 'gpu';
+        }
+        return 'cpu';
+      }
+      if (lower.contains('gpu') || lower.contains('nvidia') || lower.contains('cuda')) {
+        return 'gpu';
+      }
+    }
+    return 'cpu';
+  }
+
+  double get autoscaleTarget {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.target=')) {
+        final val = double.tryParse(lower.split('=').last.trim());
+        if (val != null && val > 0) return val;
+      }
+    }
+    return 80.0;
+  }
+
+  int get autoscaleMin {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.min=')) {
+        final val = int.tryParse(lower.split('=').last.trim());
+        if (val != null && val >= 1) return val;
+      }
+    }
+    return 1;
+  }
+
+  int get autoscaleMax {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.max=')) {
+        final val = int.tryParse(lower.split('=').last.trim());
+        if (val != null && val >= 1) return val;
+      }
+    }
+    return 5;
   }
 }
 

@@ -411,6 +411,7 @@ class _TasksPageState extends State<TasksPage> {
         'checkbox': PlutoCell(value: ''),
         'task_id': PlutoCell(value: t.id),
         'service': PlutoCell(value: svc?.name ?? 'unknown'),
+        'autoscale': PlutoCell(value: svc?.isAutoscalingEnabled == true ? 'enabled' : 'off'),
         'stack': PlutoCell(value: stackName),
         'container': PlutoCell(value: t.containerName.isEmpty ? '-' : t.containerName),
         'node': PlutoCell(value: nodeVal),
@@ -499,6 +500,80 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ]);
         }),
+      PlutoColumn(title: 'AUTOSCALE', field: 'autoscale', type: PlutoColumnType.text(), width: 140,
+        renderer: (ctx) {
+          final t = ctx.row.cells['task_raw']!.value as Task;
+          final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+          if (svc == null || !svc.isAutoscalingEnabled) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.bolt, size: 12, color: Colors.grey),
+                    SizedBox(width: 4),
+                    Text('Off', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final isGPU = svc.autoscaleMetric == 'gpu';
+          final isCluster = svc.autoscaleScope == 'cluster';
+          final color = isGPU ? const Color(0xFFA855F7) : const Color(0xFF06B6D4);
+          final icon = isGPU ? Icons.developer_board : Icons.speed;
+          final metricLabel = isGPU ? 'GPU' : 'CPU';
+          final scopeLabel = isCluster ? 'Cluster' : 'Host';
+
+          final tooltipMsg = 'Autoscaling Managed Container\n'
+              '• Service: ${svc.name}\n'
+              '• Metric: $metricLabel (Target: ${svc.autoscaleTarget.toStringAsFixed(0)}%)\n'
+              '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
+              '• Min: ${svc.autoscaleMin} / Max: ${svc.autoscaleMax}'
+              '${isGPU ? "\n• Hardware Affinity: Node with NVIDIA GPU" : ""}';
+
+          return Align(
+            alignment: Alignment.centerLeft,
+            child: Tooltip(
+              message: tooltipMsg,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.bolt, size: 12, color: color),
+                    const SizedBox(width: 3),
+                    Icon(icon, size: 12, color: color),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$metricLabel • $scopeLabel',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                        fontFamily: 'Courier New',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
       PlutoColumn(title: 'STACK', field: 'stack', type: PlutoColumnType.text(), width: 230,
         renderer: (ctx) {
           final t = ctx.row.cells['task_raw']!.value as Task;

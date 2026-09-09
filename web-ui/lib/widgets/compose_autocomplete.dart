@@ -141,6 +141,43 @@ class ComposeAutocomplete {
       snippet: '      placement:\n        constraints:\n          - "gbnt.node.gpu == nvidia"\n',
     ),
 
+    // Autoscaling Engine (GPU & CPU, Host & Cluster)
+    ComposeSnippet(
+      label: 'gbnt.autoscaling.gpu',
+      category: 'Autoscaling',
+      description: 'Enable GPU utilization autoscaling across GPU-enabled Centurions',
+      icon: Icons.developer_board,
+      snippet: '        - "gbnt.autoscaling.enable=true"\n        - "gbnt.autoscaling.metric=gpu"\n        - "gbnt.autoscaling.scope=cluster"\n        - "gbnt.autoscaling.target=80"\n        - "gbnt.autoscaling.min=1"\n        - "gbnt.autoscaling.max=5"\n        - "gbnt.autoscaling.cooldown=60s"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.autoscaling.cpu',
+      category: 'Autoscaling',
+      description: 'Enable CPU utilization autoscaling on local host or cluster',
+      icon: Icons.speed,
+      snippet: '        - "gbnt.autoscaling.enable=true"\n        - "gbnt.autoscaling.metric=cpu"\n        - "gbnt.autoscaling.scope=host"\n        - "gbnt.autoscaling.target=75"\n        - "gbnt.autoscaling.min=1"\n        - "gbnt.autoscaling.max=4"\n        - "gbnt.autoscaling.cooldown=60s"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.autoscaling.scope',
+      category: 'Autoscaling',
+      description: 'Autoscaling scope: host (single node) or cluster (distributed across nodes)',
+      icon: Icons.hub,
+      snippet: '        - "gbnt.autoscaling.scope=cluster"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.autoscaling.target',
+      category: 'Autoscaling',
+      description: 'Target utilization percentage (e.g. 80%)',
+      icon: Icons.track_changes,
+      snippet: '        - "gbnt.autoscaling.target=80"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.autoscaling.bounds',
+      category: 'Autoscaling',
+      description: 'Min and Max replica boundaries for autoscaling',
+      icon: Icons.unfold_more,
+      snippet: '        - "gbnt.autoscaling.min=1"\n        - "gbnt.autoscaling.max=6"\n',
+    ),
+
     // Storage & Granaries
     ComposeSnippet(
       label: '/var/contenedores/',
