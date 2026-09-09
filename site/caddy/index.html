@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -455,6 +455,8 @@
   
     
     
+      
+        
       
         
       
@@ -820,6 +822,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="1. Public Domains (demo.fiware.app, myapp.com)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloud-providers-11-nat-google-cloud-aws-azure-hetzner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ☁️ Cloud Providers &amp; 1:1 NAT (Google Cloud, AWS, Azure, Hetzner)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -954,6 +973,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling & GPU Affinity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/" class="md-nav__link">
         
   
@@ -1062,6 +1109,8 @@
       
         
       
+        
+      
     
     
     
@@ -1082,7 +1131,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1236,6 +1285,10 @@
 * <strong>Auto-Redirection</strong>: Port 80 (HTTP) automatically redirects to port 443 (HTTPS).
 * <strong>Automated Renewal</strong>: Caddy automatically renews certificates 30 days before expiration without interrupting traffic.
 * <strong>Optional ACME Email</strong>: Supply <code>- ingress.email == admin@fiware.app</code> (or label <code>gbnt.ingress.email</code>) to receive Let's Encrypt renewal notices.</p>
+<h4 id="cloud-providers-11-nat-google-cloud-aws-azure-hetzner">☁️ Cloud Providers &amp; 1:1 NAT (Google Cloud, AWS, Azure, Hetzner)</h4>
+<p>In cloud environments, hosts typically have a <strong>private internal IP</strong> (e.g. <code>10.128.0.2</code>) on their local network interface (<code>eth0</code>), while the cloud provider maps an <strong>external public IP</strong> (e.g. <code>34.120.x.x</code>) via 1:1 NAT or Cloud Gateway:
+* <strong>How Caddy Handles it</strong>: ACME verification (<strong>HTTP-01 Challenge</strong>) does not inspect the host's internal IP. Instead, Let's Encrypt queries public DNS for your domain, contacts the external public IP on port <code>80</code>, and the cloud provider's NAT transparently forwards the challenge request to Caddy.
+* <strong>Requirements</strong>: Ensure ports <code>80</code> and <code>443</code> are allowed in your cloud firewall (GCP VPC Firewall rules, AWS Security Groups, etc.), and that your domain's public DNS <code>A</code> record points to your cloud instance's external public IP. No manual certificate configuration or local IP binding is required.</p>
 <h3 id="2-local-domains-gbntlocal-internal-localhost">2. Local Domains (<code>*.gbnt.local</code>, <code>*.internal</code>, <code>localhost</code>)</h3>
 <p>When an internal or private domain is detected:
 * <strong>Internal Root CA</strong>: Caddy automatically applies <code>tls internal</code>, signing certificates with its internal Root CA without attempting to contact public ACME servers.

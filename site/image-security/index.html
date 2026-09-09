@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -455,6 +455,8 @@
   
     
     
+      
+        
       
         
       
@@ -778,10 +780,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-image-signatures-keys-cosign" class="md-nav__link">
+  <a href="#3-image-signatures-keys-cosign-signed-images-registry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. 🔏 Image Signatures &amp; Keys (Cosign)
+        3. 🔏 Image Signatures &amp; Keys (Cosign) &amp; Signed Images Registry
       
     </span>
   </a>
@@ -813,6 +815,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="🚀 Docker Compose Security Labels Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-security-labels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Security Labels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-host-image-signature-distribution-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 Multi-Host Image &amp; Signature Distribution Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-lifecycle-layer-inspector-the-imperial-forge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔨 Image Lifecycle, Layer Inspector &amp; The Imperial Forge
+      
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -828,10 +869,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#scan-images" class="md-nav__link">
+  <a href="#docker-host-images-distribution-build-forge" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scan Images
+        Docker Host Images, Distribution &amp; Build Forge
       
     </span>
   </a>
@@ -839,10 +880,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#export-sbom" class="md-nav__link">
+  <a href="#scan-images-vulnerabilities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Export SBOM
+        Scan Images &amp; Vulnerabilities
       
     </span>
   </a>
@@ -850,10 +891,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#sign-verify-images" class="md-nav__link">
+  <a href="#export-sbom-software-bill-of-materials" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sign &amp; Verify Images
+        Export SBOM (Software Bill of Materials)
       
     </span>
   </a>
@@ -861,10 +902,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#manage-gatekeeper-policies" class="md-nav__link">
+  <a href="#cryptographic-signing-verification-revocation-cosign" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manage Gatekeeper Policies
+        Cryptographic Signing, Verification &amp; Revocation (Cosign)
       
     </span>
   </a>
@@ -967,6 +1008,34 @@
     
   
     CoreDNS Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling & GPU Affinity
   
 
     
@@ -1095,6 +1164,8 @@
       
         
       
+        
+      
     
     
     
@@ -1115,7 +1186,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1290,11 +1361,12 @@
 <li><strong>License Compliance</strong>: Highlights software licenses (MIT, Apache-2.0, BSD, GPL) for legal audit compliance.</li>
 <li><strong>1-Click Export</strong>: Export the full SBOM in <strong>CycloneDX JSON</strong> or <strong>SPDX JSON</strong> format.</li>
 </ul>
-<h3 id="3-image-signatures-keys-cosign">3. 🔏 Image Signatures &amp; Keys (Cosign)</h3>
+<h3 id="3-image-signatures-keys-cosign-signed-images-registry">3. 🔏 Image Signatures &amp; Keys (Cosign) &amp; Signed Images Registry</h3>
 <ul>
-<li><strong>Keypair Management</strong>: Generate ECDSA P-256 Cosign-compatible keypairs directly in-cluster or import external public keys.</li>
-<li><strong>Verification Status</strong>: Displays whether images are 🟢 <em>Verified</em> or 🟡 <em>Unsigned</em>.</li>
-<li><strong>1-Click Signing</strong>: Sign container images with private keys stored or entered securely.</li>
+<li><strong>In-Cluster Keypair Management</strong>: Generate ECDSA P-256 Cosign-compatible keypairs directly in-cluster with secure SQLite persistence.</li>
+<li><strong>Signed Images Registry</strong>: Catalog of all signed container images in the cluster, indicating the signer identity, algorithm (<code>ECDSA P-256</code>), digest (<code>sha256:...</code>), and physical host availability.</li>
+<li><strong>1-Click Signing &amp; Quick Sign</strong>: Sign container images with default or selected keypairs without manual PEM copy-pasting.</li>
+<li><strong>🌐 Multi-Host Image &amp; Signature Distribution</strong>: Stream and synchronize locally built or signed container images across all Centurion worker nodes via internal cluster bridge, ensuring immediate availability on any host without requiring an external registry.</li>
 </ul>
 <h3 id="4-gatekeeper-policies-admission-controller">4. 📜 Gatekeeper Policies (Admission Controller)</h3>
 <ul>
@@ -1310,53 +1382,122 @@
 </ul>
 <hr />
 <h2 id="docker-compose-security-labels-reference">🚀 Docker Compose Security Labels Reference</h2>
-<p>Stacks can declare custom security rules in <code>docker-compose.yml</code>:</p>
+<p>Stacks can declare Zero-Trust container security rules directly in <code>docker-compose.yml</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">services</span><span class="p">:</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">payment-api</span><span class="p">:</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">company/payment-api:2.1.0</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="c1"># Require valid Cosign signature before allowing deployment</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.require-signature=true</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">        </span><span class="c1"># Reject deployment if image contains CRITICAL vulnerabilities</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.max-cve-severity=critical</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="c1"># Reject deployment even if no upstream fix is available yet</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gbnt.security.allow-unfixed=false</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="c1"># Require valid Cosign signature before allowing deployment</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="nt">gbnt.security.require-signature</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span><span class="c1"># Reject deployment if image contains CRITICAL vulnerabilities (CVSS &gt;= 9.0)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nt">gbnt.security.max-cve-severity</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;critical&quot;</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="c1"># Reject deployment even if no upstream fix is available yet</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span><span class="nt">gbnt.security.allow-unfixed-cve</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;false&quot;</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">      </span><span class="c1"># (Optional) Enforce signature by a specific key identity</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">      </span><span class="nt">gbnt.security.signer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Cluster</span><span class="nv"> </span><span class="s">Administrator&quot;</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 </span></code></pre></div>
+<h3 id="supported-security-labels">Supported Security Labels</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Label</th>
+<th style="text-align: left;">Supported Values</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.require-signature</code></td>
+<td style="text-align: left;"><code>"true"</code>, <code>"false"</code></td>
+<td style="text-align: left;">Enforces cryptographic Cosign verification before the container can start.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.max-cve-severity</code></td>
+<td style="text-align: left;"><code>"critical"</code>, <code>"high"</code>, <code>"medium"</code>, <code>"none"</code></td>
+<td style="text-align: left;">Threshold above which deployments are rejected by Gatekeeper.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.allow-unfixed-cve</code></td>
+<td style="text-align: left;"><code>"true"</code>, <code>"false"</code></td>
+<td style="text-align: left;">Rejects deployment on CVE detection even if unpatched upstream.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>gbnt.security.signer</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Restricts admission strictly to images signed by this signer identity.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="multi-host-image-signature-distribution-engine">🌐 Multi-Host Image &amp; Signature Distribution Engine</h2>
+<p>Gubernator allows distributing locally compiled or signed container images across the entire cluster without needing an external Docker registry (such as Docker Hub, Harbor, or ECR):</p>
+<ol>
+<li><strong>Internal Cluster Bridge</strong>: The Manager saves the image (<code>docker save</code>) and streams it over high-speed SSH pipes directly to target Centurion worker nodes (<code>docker load</code>).</li>
+<li><strong>Cluster-Wide Synchronized Admission</strong>: When a stack with <code>gbnt.security.require-signature=true</code> is scheduled, Gatekeeper validates the signature against the cluster's trusted key database and any Centurion worker can immediately execute the container.</li>
+<li><strong>1-Click UI &amp; CLI Execution</strong>: Trigger distribution directly from the web dashboard with <code>Distribute</code> buttons or via <code>gbnt image distribute &lt;image&gt; [--node all|worker-id]</code>.</li>
+</ol>
+<hr />
+<h2 id="image-lifecycle-layer-inspector-the-imperial-forge">🔨 Image Lifecycle, Layer Inspector &amp; The Imperial Forge</h2>
+<p>Gubernator provides full host image management directly from the dashboard and CLI:</p>
+<ol>
+<li><strong>🧹 Host Disk Pruner (<code>docker image prune -a -f</code>)</strong>: Removes unused and dangling images across all Centurion nodes, reporting exact reclaimed space.</li>
+<li><strong>📜 Layer History &amp; Dockerfile Reconstruction</strong>: Inspects chronological layer commands (<code>docker history</code>), byte sizes, and reverse-engineers a valid <code>Dockerfile</code> with 1-click clipboard copy.</li>
+<li><strong>🔨 The Imperial Forge</strong>: In-browser Dockerfile builder with multi-stage blueprints, target Centurion selection, build arguments, and live streaming compilation terminal.</li>
+</ol>
 <hr />
 <h2 id="cli-command-reference">💻 CLI Command Reference</h2>
-<h3 id="scan-images">Scan Images</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># List all scanned images and severity metrics</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>gbnt<span class="w"> </span>scan
+<h3 id="docker-host-images-distribution-build-forge">Docker Host Images, Distribution &amp; Build Forge</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># List physical Docker images across cluster nodes</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>gbnt<span class="w"> </span>image<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>&lt;node&gt;<span class="o">]</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Scan a specific image</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gbnt<span class="w"> </span>scan<span class="w"> </span>postgres:16-alpine
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Distribute and load an image across all or specific Centurion worker nodes</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>gbnt<span class="w"> </span>image<span class="w"> </span>distribute<span class="w"> </span>&lt;image&gt;<span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>all<span class="p">|</span>worker-id<span class="o">]</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Inspect layer history and reverse-engineer Dockerfile</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>gbnt<span class="w"> </span>image<span class="w"> </span><span class="nb">history</span><span class="w"> </span>&lt;image&gt;<span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>&lt;node&gt;<span class="o">]</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Remove an image from cluster hosts (docker rmi)</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>gbnt<span class="w"> </span>image<span class="w"> </span>rm<span class="w"> </span>&lt;image&gt;<span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>&lt;node&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Prune unused images and reclaim cluster disk space</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>gbnt<span class="w"> </span>image<span class="w"> </span>prune<span class="w"> </span><span class="o">[</span>--all<span class="o">]</span><span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>&lt;node&gt;<span class="o">]</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># Compile a new image from Dockerfile in The Forge</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>gbnt<span class="w"> </span>image<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>my-app:v1.0<span class="w"> </span>-f<span class="w"> </span>Dockerfile<span class="w"> </span><span class="o">[</span>--node<span class="w"> </span>&lt;node&gt;<span class="o">]</span>
 </span></code></pre></div>
-<h3 id="export-sbom">Export SBOM</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Export in CycloneDX JSON</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>cyclonedx-json
+<h3 id="scan-images-vulnerabilities">Scan Images &amp; Vulnerabilities</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># List all scanned images and severity metrics</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>scan
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Export in SPDX JSON</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>spdx-json
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Scan a specific image on-demand</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>scan<span class="w"> </span>postgres:16-alpine
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Prune stale scans for images no longer used in active stacks</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>gbnt<span class="w"> </span>scan<span class="w"> </span>prune
 </span></code></pre></div>
-<h3 id="sign-verify-images">Sign &amp; Verify Images</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Generate a new Cosign signing keypair</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>gbnt<span class="w"> </span>security<span class="w"> </span>key<span class="w"> </span>generate<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;production-key&quot;</span>
+<h3 id="export-sbom-software-bill-of-materials">Export SBOM (Software Bill of Materials)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Export in CycloneDX JSON</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>cyclonedx-json
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Sign an image</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>gbnt<span class="w"> </span>image<span class="w"> </span>sign<span class="w"> </span>company/app:1.0<span class="w"> </span>--key<span class="w"> </span>/path/to/cosign.key
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Verify image signature against trusted keys</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>gbnt<span class="w"> </span>image<span class="w"> </span>verify<span class="w"> </span>company/app:1.0
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Export in SPDX JSON</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>gbnt<span class="w"> </span>sbom<span class="w"> </span>postgres:16-alpine<span class="w"> </span>--format<span class="w"> </span>spdx-json
 </span></code></pre></div>
-<h3 id="manage-gatekeeper-policies">Manage Gatekeeper Policies</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># View current policy</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gbnt<span class="w"> </span>security<span class="w"> </span>policy
+<h3 id="cryptographic-signing-verification-revocation-cosign">Cryptographic Signing, Verification &amp; Revocation (Cosign)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Generate in-cluster ECDSA keypair (private key stored securely in SQLite)</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gbnt<span class="w"> </span>security<span class="w"> </span>key<span class="w"> </span>generate<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;Imperial Cluster Authority&quot;</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># List trusted public keys</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>gbnt<span class="w"> </span>security<span class="w"> </span>key<span class="w"> </span>ls
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Sign an image using in-cluster key or manual private key</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>gbnt<span class="w"> </span>image<span class="w"> </span>sign<span class="w"> </span>company/app:1.0
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># Verify image signature against trusted keys</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>gbnt<span class="w"> </span>image<span class="w"> </span>verify<span class="w"> </span>company/app:1.0
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># Revoke / remove cryptographic signature from an image</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>gbnt<span class="w"> </span>image<span class="w"> </span>unsign<span class="w"> </span>company/app:1.0
 </span></code></pre></div>
 <hr />
 <h2 id="rest-api-reference">📡 REST API Reference</h2>
@@ -1370,6 +1511,42 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align: left;"><code>/v1/images/host-list</code></td>
+<td style="text-align: left;"><code>GET</code></td>
+<td style="text-align: left;"><code>all</code></td>
+<td style="text-align: left;">List physical Docker images on Manager and Centurion nodes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/images/history</code></td>
+<td style="text-align: left;"><code>GET</code></td>
+<td style="text-align: left;"><code>all</code></td>
+<td style="text-align: left;">Inspect layer timeline and reconstructed Dockerfile</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/images/host-delete</code></td>
+<td style="text-align: left;"><code>DELETE</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Delete physical image from target or all nodes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/images/prune</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Prune unused images across hosts and return reclaimed space</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/images/build</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Compile Dockerfile in The Forge with streaming logs</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/images/distribute</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Distribute and load image across Centurion worker nodes</td>
+</tr>
 <tr>
 <td style="text-align: left;"><code>/v1/security/scans</code></td>
 <td style="text-align: left;"><code>GET</code></td>
@@ -1389,6 +1566,12 @@
 <td style="text-align: left;">Trigger immediate vulnerability scan</td>
 </tr>
 <tr>
+<td style="text-align: left;"><code>/v1/security/scans/prune-orphans</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Purge scans for images not used in active stacks</td>
+</tr>
+<tr>
 <td style="text-align: left;"><code>/v1/security/sbom?image=...</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
@@ -1398,31 +1581,25 @@
 <td style="text-align: left;"><code>/v1/security/keys</code></td>
 <td style="text-align: left;"><code>GET</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">List trusted public signing keys</td>
+<td style="text-align: left;">List trusted signing keys with in-cluster status</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>/v1/security/keys/generate</code></td>
 <td style="text-align: left;"><code>POST</code></td>
 <td style="text-align: left;"><code>admin</code></td>
-<td style="text-align: left;">Generate new Cosign ECDSA keypair</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/security/keys</code></td>
-<td style="text-align: left;"><code>POST</code></td>
-<td style="text-align: left;"><code>admin</code></td>
-<td style="text-align: left;">Import trusted public key</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>/v1/security/keys/:id</code></td>
-<td style="text-align: left;"><code>DELETE</code></td>
-<td style="text-align: left;"><code>admin</code></td>
-<td style="text-align: left;">Delete trusted key</td>
+<td style="text-align: left;">Generate new Cosign ECDSA keypair with persistent private key</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>/v1/security/sign</code></td>
 <td style="text-align: left;"><code>POST</code></td>
 <td style="text-align: left;"><code>operator</code></td>
-<td style="text-align: left;">Cryptographically sign image digest</td>
+<td style="text-align: left;">Cryptographically sign image with in-cluster or manual key</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>/v1/security/unsign</code></td>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>operator</code></td>
+<td style="text-align: left;">Revoke/remove cryptographic signature from image</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>/v1/security/policy</code></td>
@@ -1440,7 +1617,7 @@
 <td style="text-align: left;"><code>/v1/security/evaluate</code></td>
 <td style="text-align: left;"><code>POST</code></td>
 <td style="text-align: left;"><code>all</code></td>
-<td style="text-align: left;">Evaluate image admission against policies</td>
+<td style="text-align: left;">Evaluate image admission against Gatekeeper rules</td>
 </tr>
 </tbody>
 </table>

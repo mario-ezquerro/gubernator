@@ -290,7 +290,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -472,6 +472,8 @@
       
         
       
+        
+      
     
     
     
@@ -598,6 +600,8 @@
       
         
       
+        
+      
     
     
     
@@ -618,7 +622,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1198,11 +1202,15 @@
 <hr />
 <h2 id="step-by-step-instructions">📋 Step-by-Step Instructions</h2>
 <h3 id="step-1-configure-dns">Step 1: Configure DNS</h3>
-<p>Create an <code>A</code> record in your DNS provider:
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>demo.fiware.app   300   IN   A   &lt;YOUR_PUBLIC_SERVER_IP&gt;
+<p>Create an <code>A</code> record in your DNS provider pointing to your cloud instance's <strong>external public IP</strong>:
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>demo.fiware.app   300   IN   A   &lt;YOUR_EXTERNAL_PUBLIC_IP&gt;
 </span></code></pre></div></p>
+<blockquote>
+<p>[!NOTE]
+<strong>Cloud 1:1 NAT (Google Cloud / AWS / Azure)</strong>: If your VM only displays a private internal IP (e.g. <code>10.128.0.2</code> or <code>172.31.x.x</code>), point your DNS to the <strong>External Public IP</strong> provided by GCP/AWS. Caddy does not need to know the public IP; the cloud provider forwards incoming traffic from the public IP to the private IP automatically.</p>
+</blockquote>
 <h3 id="step-2-open-ingress-ports">Step 2: Open Ingress Ports</h3>
-<p>Ensure your cloud firewall (AWS Security Group, Hetzner Firewall, GCP Firewall, etc.) allows inbound traffic on:
+<p>Ensure your cloud firewall (AWS Security Group, Hetzner Firewall, GCP VPC Firewall, etc.) allows inbound traffic on:
 * <strong>Port 80 TCP</strong> (HTTP &amp; ACME HTTP-01 challenge)
 * <strong>Port 443 TCP</strong> (HTTPS &amp; ACME TLS-ALPN-01 challenge)</p>
 <h3 id="step-3-deploy-with-gubernator">Step 3: Deploy with Gubernator</h3>

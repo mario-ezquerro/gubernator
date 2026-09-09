@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../coredns/">
+        <link rel="prev" href="../autoscaling/">
       
       
         <link rel="next" href="../cli/">
@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -455,6 +455,8 @@
   
     
     
+      
+        
       
         
       
@@ -782,6 +784,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling & GPU Affinity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -933,6 +963,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-security-sbom-auto-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image Security, SBOM &amp; Auto-Remediation
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1067,6 +1108,8 @@
       
         
       
+        
+      
     
     
     
@@ -1087,7 +1130,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1220,62 +1263,18 @@
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <h3 id="cluster-nodes">Cluster &amp; Nodes</h3>
-<table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>GET</code></td>
-<td><code>/v1/node/ls</code></td>
-<td>List all registered nodes</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/v1/node/{id}</code></td>
-<td>Inspect a specific node</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/join</code></td>
-<td>Register a new worker node</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/heartbeat</code></td>
-<td>Worker heartbeat ping</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/{id}/role</code></td>
-<td>Promote or demote a node</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/{id}/availability</code></td>
-<td>Set node state (active/pause/drain)</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/{id}/sync-token</code></td>
-<td>Synchronize API tokens to worker host via SSH</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/v1/node/{id}/leave</code></td>
-<td>Remove a node from the cluster</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/v1/cluster/token</code></td>
-<td>Get the join token</td>
-</tr>
-</tbody>
-</table>
+<p>| <code>GET</code> | <code>/api/node/join-info</code> | Get Manager IP, join tokens, public key, and formatted join commands |
+| <code>GET</code> | <code>/join.sh</code> (or <code>/api/node/join.sh</code>) | Standalone bash installer script for automated worker join |
+| <code>POST</code> | <code>/api/node/add</code> | Remote SSH provisioning with multi-auth (password, private key, manager key) and live step logs |
+| <code>GET</code> | <code>/v1/node/ls</code> | List all registered nodes |
+| <code>GET</code> | <code>/v1/node/{id}</code> | Inspect a specific node |
+| <code>POST</code> | <code>/v1/node/join</code> | Register a new worker node |
+| <code>POST</code> | <code>/v1/node/heartbeat</code> | Worker heartbeat ping |
+| <code>POST</code> | <code>/v1/node/{id}/role</code> | Promote or demote a node |
+| <code>POST</code> | <code>/v1/node/{id}/availability</code> | Set node state (active/pause/drain) |
+| <code>POST</code> | <code>/v1/node/{id}/sync-token</code> | Synchronize API tokens to worker host via SSH |
+| <code>POST</code> | <code>/v1/node/{id}/leave</code> | Remove a node from the cluster |
+| <code>GET</code> | <code>/v1/cluster/token</code> | Get the join token |</p>
 <h3 id="stacks">Stacks</h3>
 <table>
 <thead>
@@ -1441,6 +1440,78 @@
 <td><code>GET</code></td>
 <td><code>/v1/caddy/metrics</code></td>
 <td>Get Prometheus metrics (request count, RPS, latency percentiles)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="image-security-sbom-auto-remediation">Image Security, SBOM &amp; Auto-Remediation</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/security/scans</code></td>
+<td>List all container vulnerability scan reports across cluster</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/security/scans/{id}</code></td>
+<td>Inspect vulnerability CVE list and CVSS scoring for an image</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/security/scans/trigger</code></td>
+<td>Trigger immediate CVE scan for a container image</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/security/scans/sync-all</code></td>
+<td>Re-scan and synchronize all container images deployed in the cluster</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/security/sbom</code></td>
+<td>Export Software Bill of Materials (CycloneDX JSON / SPDX JSON)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/security/keys</code></td>
+<td>List trusted Cosign ECDSA public signing keys</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/security/keys/generate</code></td>
+<td>Generate in-cluster ECDSA P-256 signing keypair</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/security/sign</code></td>
+<td>Cryptographically sign image digest</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/security/policy</code></td>
+<td>Get active admission gatekeeper security policy</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/security/policy</code></td>
+<td>Update admission gatekeeper security policy</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/security/remediate/preview</code></td>
+<td>Preview upgrade candidate versions, risk assessment, and affected stacks</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/security/remediate</code></td>
+<td>Apply atomic image upgrade in a stack with safe automated rollback protection</td>
 </tr>
 <tr>
 <td><code>POST</code></td>

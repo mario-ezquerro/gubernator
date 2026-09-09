@@ -116,6 +116,145 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/ebpf/flows": {
+            "get": {
+                "description": "Returns recent captured L4/L7 network flows with filtering by protocol, status, query, and limit",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get recent eBPF captured network flows",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of flows to return (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Protocol filter (e.g. HTTP, gRPC, DNS, TCP, REDIS, POSTGRES)",
+                        "name": "protocol",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter (healthy, warning, error, or ERRORS)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query matching source, dest, method, or path",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ebpf.Flow"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/simulate": {
+            "post": {
+                "description": "Injects traffic flows (burst, normal, errors) for testing and UI live visualization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Trigger on-demand eBPF traffic simulation",
+                "parameters": [
+                    {
+                        "description": "Simulation Profile configuration",
+                        "name": "profile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.SimulationProfile"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/stats": {
+            "get": {
+                "description": "Returns kernel eBPF capabilities, active probes, flow rate, throughput, and packet statistics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get eBPF kernel network telemetry and probe stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.EBPFStats"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/stream": {
+            "get": {
+                "description": "Real-time stream of captured network packets and flows",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Stream live eBPF network flows via Server-Sent Events (SSE)",
+                "responses": {}
+            }
+        },
+        "/v1/ebpf/topology": {
+            "get": {
+                "description": "Returns interconnected topology graph with service nodes and active communication edges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get live eBPF service mesh topology graph",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.EBPFTopology"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/monitor/scope/disable": {
             "post": {
                 "description": "Stop and remove the Weave Scope container",
@@ -763,6 +902,127 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/slo/correlation": {
+            "get": {
+                "description": "Cross-reference burn rate spikes with stack deployment timestamps",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get SLO Deployment Correlations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOCorrelationEvent"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/edit": {
+            "post": {
+                "description": "Updates service constraints in DB and triggers Prometheus / Grafana rule sync",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Create or Edit SLO for a Service",
+                "parameters": [
+                    {
+                        "description": "SLO Edit Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/history": {
+            "get": {
+                "description": "Fetch Prometheus range time-series points for an SLO",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get SLO Historical Trend Data Points",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Range duration (1h, 6h, 24h, 7d, 30d)",
+                        "name": "range",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOHistoryPoint"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/journeys": {
+            "get": {
+                "description": "Aggregate service SLOs by user journey name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get Composite User Journeys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.UserJourney"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/slo/ls": {
             "get": {
                 "description": "Fetch all active SLOs across services and query Prometheus for error budget metrics",
@@ -786,6 +1046,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/slo/red": {
+            "get": {
+                "description": "Query Prometheus for RPS, Error RPS, and P99 Duration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get Service RED Metrics (Rate, Errors, Duration)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOREDMetrics"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/slo/sync": {
             "post": {
                 "description": "Force generation and synchronization of Prometheus SLO rules",
@@ -796,6 +1085,75 @@ const docTemplate = `{
                     "slo"
                 ],
                 "summary": "Sync SLO Rules to Prometheus",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/validate": {
+            "post": {
+                "description": "Dry-run validation \u0026 PromQL metric backtesting for Compose YAML",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Validate and Backtest SLOs in Compose YAML",
+                "parameters": [
+                    {
+                        "description": "SLO Validation Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOValidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOValidationItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/{service_id}": {
+            "delete": {
+                "description": "Removes SLO constraints from a service and syncs Prometheus / Grafana rules",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Delete/Disable SLO for a Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -851,6 +1209,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     }
                 }
             }
@@ -878,6 +1243,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/stack/save": {
+            "post": {
+                "description": "Save or update stack compose definition in database and server files without deploying containers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Save Stack Definition (Draft / Without Deploying)",
+                "parameters": [
+                    {
+                        "description": "Stack Save Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.StackDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/v1/stack/{id}": {
             "delete": {
                 "description": "Delete a stack, stop its containers, and remove all related records",
@@ -891,7 +1291,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Stack ID",
+                        "description": "Stack ID or Name",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -905,6 +1305,36 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/reconcile": {
+            "post": {
+                "description": "Reconcile a stack against desired replicas, repairing degraded services and purging dead/stale containers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Reconcile Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID or Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -936,6 +1366,70 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/db.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/start": {
+            "post": {
+                "description": "Start all containers in a stopped stack",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Start Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID or Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/stop": {
+            "post": {
+                "description": "Stop all running containers in a stack without deleting it",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Stop Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -992,6 +1486,27 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tasks/prune": {
+            "post": {
+                "description": "Prune all dead, duplicate, and orphan containers across the cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Prune Tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1115,6 +1630,82 @@ const docTemplate = `{
                 }
             }
         },
+        "api.SLOCorrelationEvent": {
+            "type": "object",
+            "properties": {
+                "burn_rate": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "stack_name": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"deployment\", \"scaling\", \"restart\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOEditRequest": {
+            "type": "object",
+            "required": [
+                "service_id"
+            ],
+            "properties": {
+                "enable": {
+                    "type": "boolean"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "indicator": {
+                    "type": "string"
+                },
+                "journey": {
+                    "type": "string"
+                },
+                "latency_threshold": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "window": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOHistoryPoint": {
+            "type": "object",
+            "properties": {
+                "budget_remaining": {
+                    "type": "number"
+                },
+                "burn_rate": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "api.SLOItem": {
             "type": "object",
             "properties": {
@@ -1127,6 +1718,15 @@ const docTemplate = `{
                 "error_query": {
                     "type": "string"
                 },
+                "indicator": {
+                    "type": "string"
+                },
+                "journey": {
+                    "type": "string"
+                },
+                "latency_threshold": {
+                    "type": "string"
+                },
                 "service_id": {
                     "type": "string"
                 },
@@ -1137,14 +1737,78 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"healthy\", \"warning\", \"exhausted\"",
+                    "description": "\"healthy\", \"warning\", \"exhausted\", \"no_data\"",
                     "type": "string"
                 },
                 "target": {
                     "type": "number"
                 },
+                "template": {
+                    "type": "string"
+                },
                 "total_query": {
                     "type": "string"
+                },
+                "window": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOREDMetrics": {
+            "type": "object",
+            "properties": {
+                "error_rps": {
+                    "type": "number"
+                },
+                "p99_latency_ms": {
+                    "type": "number"
+                },
+                "rps": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.SLOValidateRequest": {
+            "type": "object",
+            "required": [
+                "compose_raw"
+            ],
+            "properties": {
+                "compose_raw": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOValidationItem": {
+            "type": "object",
+            "properties": {
+                "backtest_details": {
+                    "type": "string"
+                },
+                "backtest_status": {
+                    "description": "\"passed\", \"warning\", \"no_data\"",
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
                 },
                 "window": {
                     "type": "string"
@@ -1168,8 +1832,16 @@ const docTemplate = `{
                 "compose_raw"
             ],
             "properties": {
+                "auto_remap_ports": {
+                    "description": "Automatically remap conflicting host ports to suggested free ports",
+                    "type": "boolean"
+                },
                 "compose_raw": {
                     "type": "string"
+                },
+                "force": {
+                    "description": "Bypass port conflict verification",
+                    "type": "boolean"
                 },
                 "name": {
                     "description": "Optional if provided in compose file",
@@ -1198,6 +1870,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "container_ip": {
+                    "type": "string"
+                },
+                "container_name": {
                     "type": "string"
                 },
                 "error": {
@@ -1254,9 +1929,41 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UserJourney": {
+            "type": "object",
+            "properties": {
+                "avg_error_budget": {
+                    "type": "number"
+                },
+                "bottleneck_budget": {
+                    "type": "number"
+                },
+                "bottleneck_service": {
+                    "type": "string"
+                },
+                "composite_target": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SLOItem"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "db.Node": {
             "type": "object",
             "properties": {
+                "auth_mismatch": {
+                    "type": "boolean"
+                },
                 "caddy_status": {
                     "type": "string"
                 },
@@ -1268,6 +1975,18 @@ const docTemplate = `{
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "disk_free_bytes": {
+                    "type": "integer"
+                },
+                "disk_percent": {
+                    "type": "number"
+                },
+                "disk_total_bytes": {
+                    "type": "integer"
+                },
+                "disk_used_bytes": {
+                    "type": "integer"
                 },
                 "id": {
                     "type": "string"
@@ -1319,6 +2038,12 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "cpu_limit": {
+                    "type": "string"
+                },
+                "cpu_reservation": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1336,6 +2061,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "image": {
+                    "type": "string"
+                },
+                "memory_limit": {
+                    "type": "string"
+                },
+                "memory_reservation": {
                     "type": "string"
                 },
                 "name": {
@@ -1375,6 +2106,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "node_id": {
+                    "description": "Host/Centurion where this stack is deployed",
+                    "type": "string"
+                },
                 "raw_compose_file": {
                     "type": "string"
                 },
@@ -1392,6 +2127,15 @@ const docTemplate = `{
                 "container_name": {
                     "type": "string"
                 },
+                "cpu_limit": {
+                    "type": "string"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "cpu_reservation": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1399,6 +2143,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "mem_used_bytes": {
+                    "type": "integer"
+                },
+                "memory_limit": {
+                    "type": "string"
+                },
+                "memory_reservation": {
                     "type": "string"
                 },
                 "node_id": {
@@ -1416,6 +2169,310 @@ const docTemplate = `{
                 }
             }
         },
+        "ebpf.EBPFStats": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "active_probes": {
+                    "type": "integer"
+                },
+                "bytes_per_sec": {
+                    "type": "number"
+                },
+                "dropped_packets": {
+                    "type": "integer"
+                },
+                "ebpf_supported": {
+                    "type": "boolean"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.InterfaceStats"
+                    }
+                },
+                "kernel_version": {
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "\"kernel\" or \"emulation\"",
+                    "type": "string"
+                },
+                "packets_per_sec": {
+                    "type": "number"
+                },
+                "probes_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "protocol_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "status_counts": {
+                    "description": "\"2xx\", \"4xx\", \"5xx\", \"tcp_ok\", \"tcp_err\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_flows": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.EBPFTopology": {
+            "type": "object",
+            "properties": {
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.TopologyEdge"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.TopologyNode"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ebpf.Flow": {
+            "type": "object",
+            "properties": {
+                "bytes_received": {
+                    "type": "integer"
+                },
+                "bytes_sent": {
+                    "type": "integer"
+                },
+                "dest_id": {
+                    "type": "string"
+                },
+                "dest_ip": {
+                    "type": "string"
+                },
+                "dest_name": {
+                    "type": "string"
+                },
+                "dest_port": {
+                    "type": "integer"
+                },
+                "drops": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latency_ms": {
+                    "type": "number"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "description": "\"HTTP\", \"gRPC\", \"DNS\", \"TCP\", \"UDP\", \"REDIS\", \"POSTGRES\"",
+                    "type": "string"
+                },
+                "retransmits": {
+                    "type": "integer"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "source_ip": {
+                    "type": "string"
+                },
+                "source_name": {
+                    "type": "string"
+                },
+                "source_port": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/ebpf.FlowStatus"
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "throughput_bps": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "ebpf.FlowStatus": {
+            "type": "string",
+            "enum": [
+                "healthy",
+                "warning",
+                "error"
+            ],
+            "x-enum-comments": {
+                "FlowStatusError": "5xx HTTP, TCP drops, resets",
+                "FlowStatusHealthy": "2xx HTTP, TCP established, no drops",
+                "FlowStatusWarning": "4xx HTTP, high RTT (\u003e200ms)"
+            },
+            "x-enum-descriptions": [
+                "2xx HTTP, TCP established, no drops",
+                "4xx HTTP, high RTT (\u003e200ms)",
+                "5xx HTTP, TCP drops, resets"
+            ],
+            "x-enum-varnames": [
+                "FlowStatusHealthy",
+                "FlowStatusWarning",
+                "FlowStatusError"
+            ]
+        },
+        "ebpf.InterfaceStats": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "rx_bytes": {
+                    "type": "integer"
+                },
+                "rx_drops": {
+                    "type": "integer"
+                },
+                "rx_errors": {
+                    "type": "integer"
+                },
+                "rx_packets": {
+                    "type": "integer"
+                },
+                "tx_bytes": {
+                    "type": "integer"
+                },
+                "tx_drops": {
+                    "type": "integer"
+                },
+                "tx_errors": {
+                    "type": "integer"
+                },
+                "tx_packets": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.SimulationProfile": {
+            "type": "object",
+            "properties": {
+                "duration_s": {
+                    "description": "duration in seconds",
+                    "type": "integer"
+                },
+                "error_pct": {
+                    "description": "percentage of error flows (0-100)",
+                    "type": "number"
+                },
+                "pattern": {
+                    "description": "\"normal\", \"burst\", \"errors\", \"mixed\"",
+                    "type": "string"
+                },
+                "rate": {
+                    "description": "events per second",
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.TopologyEdge": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "error_rate": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_seen": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "rtt_ms": {
+                    "type": "number"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/ebpf.FlowStatus"
+                },
+                "target_id": {
+                    "type": "string"
+                },
+                "throughput_bps": {
+                    "type": "number"
+                }
+            }
+        },
+        "ebpf.TopologyNode": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "error_rate": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inbound_bps": {
+                    "type": "number"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mem_percent": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_host": {
+                    "type": "string"
+                },
+                "outbound_bps": {
+                    "type": "number"
+                },
+                "stack": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"running\", \"unhealthy\", \"stopped\"",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"container\", \"ingress\", \"database\", \"dns\", \"external\", \"host\"",
+                    "type": "string"
+                }
+            }
+        },
         "monitor.ScopeStatusResponse": {
             "type": "object",
             "properties": {
@@ -1424,6 +2481,12 @@ const docTemplate = `{
                 },
                 "enabled": {
                     "type": "boolean"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
                 },
                 "port": {
                     "type": "string"
@@ -1441,12 +2504,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Version:          "1.0",
+	Host:             "localhost:4002",
+	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Gubernator API",
+	Description:      "This is the API Server for Gubernator orchestration.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../observability/">
+        <link rel="prev" href="../compose/">
       
       
-        <link rel="next" href="../slo/">
+        <link rel="next" href="../observability/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Loki Logs Explorer - Gubernator Orchestrator</title>
+        <title>eBPF Live Hub & Kernel - Gubernator Orchestrator</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#loki-logs-explorer" class="md-skip">
+        <a href="#ebpf-live-hub-kernel-network-observability" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Loki Logs Explorer
+              eBPF Live Hub & Kernel
             
           </span>
         </div>
@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../ebpf/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -660,10 +660,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../ebpf/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    eBPF Live Hub & Kernel
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -679,6 +706,131 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#dual-engine-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Dual-Engine Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Key Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-commands-gbnt-ebpf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖥️ CLI Commands (gbnt ebpf)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🖥️ CLI Commands (gbnt ebpf)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-show-kernel-status-and-probe-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Show Kernel Status and Probe Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-stream-and-filter-live-network-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Stream and Filter Live Network Flows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-inspect-service-mesh-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Inspect Service Mesh Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-trigger-traffic-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Trigger Traffic Simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📡 REST API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interactive-2d-vector-mesh-jaeger-tracing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎨 Interactive 2D Vector Mesh &amp; Jaeger Tracing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -716,37 +868,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Loki Logs Explorer
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../loki-logs/" class="md-nav__link">
         
   
   
@@ -762,120 +887,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-data-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🎯 Architecture &amp; Data Flow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#features-filtering-capabilities" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🔍 Features &amp; Filtering Capabilities
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rest-api-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        📡 REST API Endpoints
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="📡 REST API Endpoints">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-check-loki-aggregator-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Check Loki Aggregator Status
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-fetch-available-filter-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Fetch Available Filter Labels
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-query-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Query Logs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-export-logs-to-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Export Logs to File
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#graceful-docker-cli-fallback" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        🛡️ Graceful Docker CLI Fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1067,36 +1078,65 @@
   
 
 
-<h1 id="loki-logs-explorer">Loki Logs Explorer</h1>
-<p>Gubernator features a native, dedicated <strong>Loki Logs Explorer</strong> in the Web UI dashboard for real-time cluster-wide container and node log inspection, powerful multi-dimensional filtering, and live stream tailing.</p>
+<h1 id="ebpf-live-hub-kernel-network-observability">eBPF Live Hub &amp; Kernel Network Observability</h1>
+<p>Gubernator features a native <strong>eBPF Live Hub &amp; Kernel Observability Subsystem</strong> designed to provide non-invasive, high-performance L4/L7 packet tracing, real-time socket inspection, and live service mesh topology visualization without requiring CGO or external clang/LLVM dependencies.</p>
 <hr />
-<h2 id="architecture-data-flow">🎯 Architecture &amp; Data Flow</h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>flowchart LR
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    subgraph Nodes[&quot;Cluster Centurions&quot;]
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        W1[&quot;gbnt-worker1 (Containers)&quot;] --&gt;|Logs| PT1[&quot;Promtail&quot;]
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        W2[&quot;gbnt-worker2 (Containers)&quot;] --&gt;|Logs| PT2[&quot;Promtail&quot;]
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        M[&quot;gbnt-manager (Containers)&quot;] --&gt;|Logs| PTM[&quot;Promtail&quot;]
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    end
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    subgraph Manager[&quot;Manager SRE Stack&quot;]
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        PT1 --&gt;|Push| LK[&quot;Loki :3100&quot;]
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        PT2 --&gt;|Push| LK
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        PTM --&gt;|Push| LK
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        LK --&gt;|LogQL API| API[&quot;Gubernator REST API (:4001 / :4000)&quot;]
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    end
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    subgraph UI[&quot;Gubernator Web Dashboard&quot;]
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        API --&gt;|JSON Stream| EXP[&quot;Loki Logs Explorer Panel&quot;]
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    end
+<h2 id="dual-engine-architecture">🎯 Dual-Engine Architecture</h2>
+<p>Gubernator employs an intelligent dual-engine model:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>flowchart TD
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    subgraph Host[&quot;Host Operating System&quot;]
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        LinuxKernel[&quot;Linux Kernel (5.x / 6.x)&quot;]
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        TraceFS[&quot;/sys/kernel/tracing &amp; /sys/fs/bpf&quot;]
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        SocketTables[&quot;/proc/net/tcp, tcp6, udp, udp6&quot;]
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        DevStats[&quot;/proc/net/dev (Network Interfaces)&quot;]
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    end
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    subgraph GubernatorEngine[&quot;Gubernator eBPF Engine&quot;]
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        Detector{&quot;Kernel eBPF &amp; Tracefs available?&quot;}
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        NativeProbe[&quot;Native Linux eBPF Probe (8 Attach Points)&quot;]
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        EmulationProbe[&quot;Resilient Kernel Emulation &amp; Socket Bridge&quot;]
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        SocketCorrelator[&quot;Container IP &amp; Port Correlator&quot;]
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        RingBuffer[&quot;Thread-Safe Flow Ring Buffer (Pub/Sub)&quot;]
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    end
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    subgraph Interfaces[&quot;Consumer Interfaces&quot;]
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        API[&quot;REST API (:4000) &amp; Web API (:4001)&quot;]
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        SSE[&quot;Server-Sent Events Stream (/v1/ebpf/stream)&quot;]
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        CLI[&quot;gbnt ebpf [status | flows | topology | simulate]&quot;]
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        UI[&quot;Flutter Web: eBPF Live Hub Dashboard&quot;]
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    end
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    LinuxKernel --&gt; TraceFS
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    LinuxKernel --&gt; SocketTables
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    LinuxKernel --&gt; DevStats
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    TraceFS --&gt; Detector
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    SocketTables --&gt; SocketCorrelator
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    DevStats --&gt; NativeProbe
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    Detector -- &quot;Yes (Linux Root / CAP_BPF)&quot; --&gt; NativeProbe
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    Detector -- &quot;No (macOS / Win / Unprivileged)&quot; --&gt; EmulationProbe
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    NativeProbe --&gt; SocketCorrelator
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    EmulationProbe --&gt; SocketCorrelator
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    SocketCorrelator --&gt; RingBuffer
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    RingBuffer --&gt; API
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>    RingBuffer --&gt; SSE
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>    API --&gt; CLI
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>    SSE --&gt; UI
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    API --&gt; UI
 </span></code></pre></div>
 <ol>
-<li><strong>Promtail</strong>: Scrapes Docker container logs (<code>/var/lib/docker/containers/*</code>) and system logs across every node in the cluster, tagging entries with <code>container</code>, <code>container_name</code>, <code>image</code>, <code>stream</code>, and <code>host</code>.</li>
-<li><strong>Loki (<code>:3100</code>)</strong>: Ingests, indexes, and stores log streams in compressed chunks.</li>
-<li><strong>Gubernator REST Engine</strong>: Exposes <code>/api/logs/query</code>, <code>/api/logs/labels</code>, <code>/api/logs/status</code>, and <code>/api/logs/export</code> with authentication and RBAC.</li>
-<li><strong>Loki Logs Explorer</strong>: Interactive Flutter Web console with search, filtering, and live tailing.</li>
+<li><strong>Native Linux eBPF Mode</strong>:
+   Attaches to kernel tracepoints, kprobes, and socket filters (<code>kprobe/tcp_v4_connect</code>, <code>kprobe/tcp_v4_rcv</code>, <code>tracepoint/sock_sendmsg</code>, <code>tc_ingress/gbnt_filter</code>, etc.) on modern Linux kernels.</li>
+<li><strong>Resilient Emulation Mode</strong>:
+   Automatically engages on macOS (Darwin), Windows, or containerized dev environments without root/CAP_BPF privileges. Guarantees 100% functional parity for local development, tests, and CI/CD pipelines.</li>
+<li><strong>Socket &amp; Interface Correlation</strong>:
+   Translates raw hexadecimal sockets from <code>/proc/net/tcp</code>, <code>/proc/net/tcp6</code>, <code>/proc/net/udp</code>, <code>/proc/net/udp6</code> and device counters from <code>/proc/net/dev</code> to active Docker containers and Gubernator task metadata.</li>
 </ol>
 <hr />
-<h2 id="features-filtering-capabilities">🔍 Features &amp; Filtering Capabilities</h2>
+<h2 id="key-capabilities">🔍 Key Capabilities</h2>
 <table>
 <thead>
 <tr>
@@ -1106,104 +1146,135 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Text / Regex Search</strong></td>
-<td>Search through log messages using keywords, status codes (e.g. <code>500</code>, <code>401</code>), or regular expressions with real-time text highlighting.</td>
+<td><strong>L4/L7 Protocol Decoding</strong></td>
+<td>Discovers and decodes <code>HTTP</code>, <code>gRPC</code>, <code>DNS</code>, <code>TCP</code>, <code>UDP</code>, <code>REDIS</code>, and <code>POSTGRES</code> traffic between containers.</td>
 </tr>
 <tr>
-<td><strong>Node Filter</strong></td>
-<td>Filter logs by specific Centurion node (e.g. <code>gbnt-manager</code>, <code>gbnt-worker1</code>, <code>gbnt-worker2</code>).</td>
+<td><strong>Round-Trip Time (RTT) &amp; Latency</strong></td>
+<td>Calculates real-time latency per flow and average edge round-trip time in milliseconds.</td>
 </tr>
 <tr>
-<td><strong>Container / Service Filter</strong></td>
-<td>Narrow down logs to a specific container (<code>gbnt-caddy</code>, <code>gbnt-coredns</code>, <code>gbnt-manager</code>, etc.). Clicking on any container pill in the console automatically applies this filter.</td>
+<td><strong>Throughput &amp; Bandwidth Rates</strong></td>
+<td>Real-time bytes/sec and packets/sec transfer rates per flow, per service node, and across cluster interfaces.</td>
 </tr>
 <tr>
-<td><strong>Log Level Filter</strong></td>
-<td>Fast filter chips for <code>All</code>, <code>ERROR</code> (red), <code>WARN</code> (amber), <code>INFO</code> (blue).</td>
+<td><strong>Real-Time Live Streaming (SSE)</strong></td>
+<td>High-efficiency Server-Sent Events stream (<code>GET /v1/ebpf/stream</code>) pushing packet events with zero client polling overhead.</td>
 </tr>
 <tr>
-<td><strong>Stream Filter</strong></td>
-<td>Toggle between <code>stdout</code> and <code>stderr</code> streams.</td>
+<td><strong>Service Mesh Topology Graph</strong></td>
+<td>Synthesizes an interactive graph showing active communication links, directional arrows, and health rings.</td>
 </tr>
 <tr>
-<td><strong>Time Range Selector</strong></td>
-<td>Choose from presets: <code>Last 5m</code>, <code>Last 15m</code>, <code>Last 1h</code>, <code>Last 6h</code>, <code>Last 24h</code>, and <code>Last 7d</code>.</td>
-</tr>
-<tr>
-<td><strong>Line Limits</strong></td>
-<td>Select <code>50</code>, <code>100</code>, <code>200</code>, <code>500</code>, or <code>1000</code> log lines per query.</td>
-</tr>
-<tr>
-<td><strong>Live Tail Mode</strong></td>
-<td>Toggle <code>🟢 Live Tail: ON</code> to continuously stream new logs every 3 seconds.</td>
-</tr>
-<tr>
-<td><strong>Structured Metadata Inspection</strong></td>
-<td>Click any log row to expand structured labels, exact nanosecond timestamps, and stream properties.</td>
-</tr>
-<tr>
-<td><strong>Export Logs</strong></td>
-<td>Download the currently filtered logs as a standard <code>.log</code> file (<code>GET /api/logs/export</code>).</td>
+<td><strong>Traffic Simulator &amp; Fault Injection</strong></td>
+<td>Injects synthetic traffic patterns (<code>normal</code>, <code>burst</code>, <code>errors</code>, <code>mixed</code>) to test alerting and error budget multi-window burn rates.</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="rest-api-endpoints">📡 REST API Endpoints</h2>
-<h3 id="1-check-loki-aggregator-status">1. Check Loki Aggregator Status</h3>
-<p><div class="language-http highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="err">GET /api/logs/status</span>
+<h2 id="cli-commands-gbnt-ebpf">🖥️ CLI Commands (<code>gbnt ebpf</code>)</h2>
+<h3 id="1-show-kernel-status-and-probe-telemetry">1. Show Kernel Status and Probe Telemetry</h3>
+<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>status
 </span></code></pre></div>
-<strong>Response:</strong>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;active&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;loki&quot;</span><span class="p">,</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:3100&quot;</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
+<strong>Output Example:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>🛰️  GUBERNATOR eBPF KERNEL OBSERVABILITY
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>================================================================
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  • Kernel Release:    Linux 6.8.0-45-generic
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  • Operational Mode:  KERNEL ACTIVE 🟢
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  • Active Probes:     8
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    Probes:            kprobe/tcp_v4_connect, kprobe/tcp_v4_rcv, ...
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  • Captured Flows:    1420 total (48 active in last 30s)
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  • Packet Rate:       64.2 pkts/sec
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  • Throughput:        128.4 KB/s
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  • Dropped Packets:   0
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>----------------------------------------------------------------
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>📊 Protocol Distribution (Active Flows):
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  - HTTP        : 26
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  - DNS         : 12
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  - REDIS       : 10
 </span></code></pre></div></p>
-<h3 id="2-fetch-available-filter-labels">2. Fetch Available Filter Labels</h3>
-<p><div class="language-http highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="err">GET /api/logs/labels</span>
+<h3 id="2-stream-and-filter-live-network-flows">2. Stream and Filter Live Network Flows</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># View last 25 captured flows</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>flows
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Filter by protocol and limit</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>flows<span class="w"> </span>--protocol<span class="w"> </span>HTTP<span class="w"> </span>--limit<span class="w"> </span><span class="m">50</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Filter only warning or error flows</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>flows<span class="w"> </span>--errors
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Search by container, IP, or endpoint</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>flows<span class="w"> </span>--search<span class="w"> </span>caddy
 </span></code></pre></div>
-<strong>Response:</strong>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">&quot;containers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;gbnt-caddy&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;gbnt-coredns&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;gbnt-manager&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;billing-api&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;hello-app&quot;</span><span class="p">],</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">&quot;nodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;node-1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gbnt-manager&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ip&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;192.168.252.27&quot;</span><span class="p">}],</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">&quot;stacks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CORE-GBNT&quot;</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hello-lb&quot;</span><span class="p">}],</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">&quot;streams&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stderr&quot;</span><span class="p">],</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">&quot;levels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;ERROR&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;WARN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;DEBUG&quot;</span><span class="p">]</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">}</span>
-</span></code></pre></div></p>
-<h3 id="3-query-logs">3. Query Logs</h3>
-<p><div class="language-http highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="err">GET /api/logs/query?container=gbnt-manager&amp;level=ERROR&amp;range=1h&amp;limit=50</span>
+<h3 id="3-inspect-service-mesh-topology">3. Inspect Service Mesh Topology</h3>
+<p><div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>topology
 </span></code></pre></div>
-<strong>Response:</strong>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;loki&quot;</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;logs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="p">{</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-17 21:48:26.222&quot;</span><span class="p">,</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="nt">&quot;timestamp_ns&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1787003306222452705&quot;</span><span class="p">,</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">      </span><span class="nt">&quot;container&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gbnt-manager&quot;</span><span class="p">,</span>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">      </span><span class="nt">&quot;node&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;manager&quot;</span><span class="p">,</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">      </span><span class="nt">&quot;stream&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">      </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;[GIN] 2026/08/17 - 21:48:26 | 200 | GET /v1/node/tasks&quot;</span><span class="p">,</span>
-</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">      </span><span class="nt">&quot;labels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">        </span><span class="nt">&quot;job&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;docker&quot;</span><span class="p">,</span>
-</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">        </span><span class="nt">&quot;service_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;docker&quot;</span><span class="p">,</span>
-</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">        </span><span class="nt">&quot;stream&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdout&quot;</span>
-</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">      </span><span class="p">}</span>
-</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-6-20"><a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="w">  </span><span class="p">]</span>
-</span><span id="__span-6-21"><a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="p">}</span>
-</span></code></pre></div></p>
-<h3 id="4-export-logs-to-file">4. Export Logs to File</h3>
-<p><div class="language-http highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="err">GET /api/logs/export?container=gbnt-caddy&amp;range=24h</span>
+Prints the discovered mesh nodes, transfer volumes, error rates, and active communication edges.</p>
+<h3 id="4-trigger-traffic-simulation">4. Trigger Traffic Simulation</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Inject 15 events/sec for 10 seconds</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>simulate<span class="w"> </span>--pattern<span class="w"> </span>burst<span class="w"> </span>--rate<span class="w"> </span><span class="m">15</span><span class="w"> </span>--duration<span class="w"> </span><span class="m">10</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Inject fault traffic with 25% errors</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>gbnt<span class="w"> </span>ebpf<span class="w"> </span>simulate<span class="w"> </span>--pattern<span class="w"> </span>errors<span class="w"> </span>--rate<span class="w"> </span><span class="m">20</span><span class="w"> </span>--duration<span class="w"> </span><span class="m">15</span><span class="w"> </span>--errors<span class="w"> </span><span class="m">25</span>
 </span></code></pre></div>
-Downloads attachment <code>gubernator-logs-YYYYMMDD-HHMMSS.log</code>.</p>
 <hr />
-<h2 id="graceful-docker-cli-fallback">🛡️ Graceful Docker CLI Fallback</h2>
-<p>If Loki is temporarily starting or the SRE monitoring stack is disabled, Gubernator automatically falls back to scraping local Docker container logs (<code>docker logs --tail ...</code>) ensuring log visibility is never interrupted.</p>
+<h2 id="rest-api-reference">📡 REST API Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/ebpf/stats</code></td>
+<td>Global kernel telemetry, probe attach points, and aggregate metrics.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/ebpf/flows</code></td>
+<td>Query captured network flows with <code>limit</code>, <code>protocol</code>, <code>status</code>, <code>q</code>.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/ebpf/topology</code></td>
+<td>Synthesized service mesh topology nodes and communication edges.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/ebpf/stream</code></td>
+<td>Server-Sent Events (SSE) real-time packet stream.</td>
+</tr>
+</tbody>
+</table>
+<p>All endpoints are also exposed on the Web Dashboard port (<code>4001</code>) under <code>/api/ebpf/*</code> with RBAC session authentication.</p>
+<hr />
+<h2 id="interactive-2d-vector-mesh-jaeger-tracing">🎨 Interactive 2D Vector Mesh &amp; Jaeger Tracing</h2>
+<p>The Web Dashboard features an interactive 2D Vector Canvas inside the <strong>Service Mesh Topology</strong> tab:</p>
+<ol>
+<li><strong>Draggable Service Blocks</strong>:</li>
+<li>Every container, ingress proxy (<code>gbnt-caddy</code>), database, DNS, and telemetry service is rendered as an interactive block.</li>
+<li>Blocks can be dragged to reposition or automatically aligned into logical tiers.</li>
+<li><strong>Directional Vector Curves</strong>:</li>
+<li>Curved Bézier lines illustrate the exact direction of traffic flow with directional vector arrows ($\rightarrow$).</li>
+<li>Color-coded by protocol:<ul>
+<li>🟢 <strong>HTTP</strong> (Blue / Cyan)</li>
+<li>🟣 <strong>gRPC / Traces</strong> (Purple)</li>
+<li>🔵 <strong>DNS</strong> (Green / Teal)</li>
+<li>🟠 <strong>Redis &amp; Databases</strong> (Amber / Orange)</li>
+<li>🔴 <strong>Faults &amp; Timeouts</strong> (Pulsing Red)</li>
+</ul>
+</li>
+<li><strong>Travelling Data Particles</strong>:</li>
+<li>Dynamic animated light particles/pulses travel continuously along the vector from source to target.</li>
+<li>Frequency and velocity scale proportionally with real-time throughput ($B/s$ / $KB/s$ / $MB/s$).</li>
+<li><strong>Deep Jaeger Distributed Tracing Integration</strong>:</li>
+<li>Every L4/L7 flow and communication edge correlates with cryptographic 128-bit <strong>Trace IDs</strong>.</li>
+<li>One-click deep link opens the full span tree, microservice waterfall, and latency timeline directly in the integrated <strong>Jaeger UI</strong> (<code>:16686/trace/&lt;trace_id&gt;</code>).</li>
+</ol>
 
 
 

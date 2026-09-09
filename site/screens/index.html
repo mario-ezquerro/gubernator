@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -455,6 +455,8 @@
   
     
     
+      
+        
       
         
       
@@ -949,6 +951,50 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-universal-centurion-onboarding-suite-live-terminal-console-v2600" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛️ 8. Universal Centurion Onboarding Suite &amp; Live Terminal Console (v2.60.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-image-security-auto-remediation-safe-rollback-v2610" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ 9. Image Security Auto-Remediation &amp; Safe Rollback (v2.61.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-docker-host-image-lifecycle-layer-inspector-the-imperial-forge-v2620" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔨 10. Docker Host Image Lifecycle, Layer Inspector &amp; The Imperial Forge (v2.62.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-streamlined-in-cluster-image-signing-keypair-selector-v2621" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔏 11. Streamlined In-Cluster Image Signing &amp; Keypair Selector (v2.62.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1001,6 +1047,34 @@
     
   
     CoreDNS Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling & GPU Affinity
   
 
     
@@ -1129,6 +1203,8 @@
       
         
       
+        
+      
     
     
     
@@ -1149,7 +1225,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1332,6 +1408,34 @@ Real-time container network flow and process mapping powered by Weave Scope.</p>
 <h3 id="security-active-directory-management-suite">Security &amp; Active Directory Management Suite</h3>
 <p><img alt="Security &amp; AD Management" src="../images/v2.20.0/security_ad.png" /></p>
 <p>Full management interface for Directory Servers, dynamic RBAC group mappings, live "Test Connection" diagnostic tool, and cluster API security tokens.</p>
+<hr />
+<h2 id="8-universal-centurion-onboarding-suite-live-terminal-console-v2600">🏛️ 8. Universal Centurion Onboarding Suite &amp; Live Terminal Console (<code>v2.60.0</code>)</h2>
+<p>Full 3-tab onboarding dialog accessible from <strong>Centurions [Host] ➔ Add Centurion</strong>:
+- <strong>⚡ Quick Join (Copy &amp; Paste)</strong>: 1-click command cards for One-Liner Auto-Installer (<code>curl ... | sudo bash</code>), Docker Container (<code>legion join</code>), and CLI binary.
+- <strong>🚀 Remote SSH Provisioning</strong>: Multi-auth form supporting Password, SSH Private Key (.pem), and Manager Public Key auto-discovery.
+- <strong>📺 Live Monospace Terminal Console</strong>: Real-time progress console streaming SSH connection, hardware discovery, Docker CE verification, agent deployment, and system stacks synchronization.
+- <strong>☁️ Cloud-Init &amp; Automation (IaC)</strong>: Ready-to-copy <code>#cloud-config</code> YAML blueprint for automated VM provisioning.</p>
+<hr />
+<h2 id="9-image-security-auto-remediation-safe-rollback-v2610">🛡️ 9. Image Security Auto-Remediation &amp; Safe Rollback (<code>v2.61.0</code>)</h2>
+<p>Interactive remediation modal accessible via <strong><code>⚡ Fix Image</code></strong> on any vulnerable image card or CVE scan details dialog in <strong>Security &amp; SBOM</strong>:
+- <strong>Risk &amp; Impact Assessment</strong>: Automatic calculation of operational risk levels (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>) with warnings for database schema migrations and persistent volume checks.
+- <strong>Version Candidate Selector</strong>: Smart recommendation of safe security patches (same major version, Alpine minimal variant) vs modern stable releases.
+- <strong>🛡️ Safe Automated Rollback</strong>: Automatically reverts <code>docker-compose.yml</code> to the previous cryptographic backup if updated containers crash or fail healthchecks within 20 seconds.
+- <strong>📺 Live Execution Console</strong>: Real-time monospace terminal displaying backup creation, image patching, rolling redeployment, health probing, and re-scanning progress.
+- <strong>📝 Compose Studio Integration</strong>: Instant deep-link to edit the Compose file manually in Compose Studio.</p>
+<hr />
+<h2 id="10-docker-host-image-lifecycle-layer-inspector-the-imperial-forge-v2620">🔨 10. Docker Host Image Lifecycle, Layer Inspector &amp; The Imperial Forge (<code>v2.62.0</code>)</h2>
+<p>Full container image engineering and host maintenance suite inside <strong>Image Security &amp; SBOM</strong>:
+- <strong>🧹 Cluster Host Image Pruner</strong>: 1-click <code>docker image prune -a -f</code> across the Manager and all Centurion worker nodes, calculating reclaimed disk space (MB/GB).
+- <strong>📜 Layer History &amp; Reverse-Engineered Dockerfile (<code>ImageHistoryDialog</code>)</strong>: Interactive chronological timeline showing individual layer commands, incremental sizes (+MB), and reverse-engineered <code>Dockerfile</code> with 1-click clipboard export and "Edit &amp; Rebuild in Forge" bridge.
+- <strong>🔨 The Imperial Forge — Image Build Studio (<code>ImageBuildDialog</code>)</strong>: In-browser Dockerfile builder with built-in production blueprints (Alpine Hardened, Go Multi-stage, Node.js, Python FastAPI), multi-node Centurion build targeting, build args, and real-time streaming compilation terminal.</p>
+<hr />
+<h2 id="11-streamlined-in-cluster-image-signing-keypair-selector-v2621">🔏 11. Streamlined In-Cluster Image Signing &amp; Keypair Selector (<code>v2.62.1</code>)</h2>
+<p>Interactive cryptographic signing suite accessible from <strong>Image Security &amp; SBOM ➔ <code>Sign Image</code></strong> and 1-click <strong><code>🔏 Sign</code></strong> buttons:
+- <strong>🔑 In-Cluster Keypair Persistence</strong>: Stores ECDSA P-256 private keys securely inside the cluster database, eliminating manual key copy-pasting.
+- <strong>🖼️ Searchable Image Selector</strong>: Autocompletes across all cluster stacks and host containers.
+- <strong>🛡️ Docker Digest Discovery</strong>: Automatically extracts SHA-256 RepoDigests via Docker engine inspect to sign the exact container bytecode.
+- <strong>⚡ Gatekeeper Admission</strong>: Instant transition to <code>VERIFIED</code> status satisfying Zero-Trust admission policies.</p>
 
 
 

@@ -337,5 +337,44 @@ gbnt examples deploy hello-loadbalancer
 gbnt examples deploy all
 ```
 
+---
 
+## 10. Declarative Horizontal Autoscaling & GPU/CPU Affinity
 
+Gubernator natively evaluates declarative autoscaling directives configured directly inside your `docker-compose.yml` service labels (`gbnt.autoscaling.*`):
+
+```yaml
+services:
+  inference:
+    image: vllm/vllm-openai:latest
+    labels:
+      - "gbnt.autoscaling.enable=true"
+      - "gbnt.autoscaling.metric=gpu"
+      - "gbnt.autoscaling.scope=cluster"
+      - "gbnt.autoscaling.target=80"
+      - "gbnt.autoscaling.min=1"
+      - "gbnt.autoscaling.max=4"
+      - "gbnt.autoscaling.cooldown=60s"
+      - "gbnt.placement.strategy=spread"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "gbnt.node.gpu == nvidia"
+```
+
+### Supported Autoscaling Labels
+
+| Label | Default | Description |
+| :--- | :--- | :--- |
+| `gbnt.autoscaling.enable` | `false` | Enable or disable horizontal autoscaling. |
+| `gbnt.autoscaling.metric` | `cpu` | Metric monitored: `gpu` (NVIDIA DCGM/Prometheus) or `cpu`. |
+| `gbnt.autoscaling.scope` | `host` | `host` (scale on local node) or `cluster` (distribute across nodes). |
+| `gbnt.autoscaling.target` | `80` | Target utilization percentage threshold. |
+| `gbnt.autoscaling.min` | `1` | Minimum replica floor. |
+| `gbnt.autoscaling.max` | `5` | Maximum replica ceiling. |
+| `gbnt.autoscaling.cooldown` | `60s` | Minimum cooldown between scaling events. |
+
+### Single-Host vs. Multi-Host Placement Interaction
+* **Single-Host Containment:** If `gbnt.placement.strategy: single-host` or a pinned node constraint (`node.hostname == ...`) is specified, the autoscaler automatically confines scaling to that single host, overriding any cluster-wide requests to maintain atomic stack placement.
+* **GPU Hardware Affinity:** When `metric: gpu` is configured in `cluster` mode, the scheduler strictly targets nodes with verified NVIDIA GPU hardware, excluding CPU-only Centurions from horizontal scale-out.

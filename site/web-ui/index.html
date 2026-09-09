@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -455,6 +455,8 @@
   
     
     
+      
+        
       
         
       
@@ -865,6 +867,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#centurions-universal-onboarding-suite-addnodedialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛️ Centurions &amp; Universal Onboarding Suite (AddNodeDialog)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏛️ Centurions &amp; Universal Onboarding Suite (AddNodeDialog)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-quick-join-copy-paste-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. ⚡ Quick Join (Copy &amp; Paste Commands)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-remote-ssh-provisioning-live-terminal-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 🚀 Remote SSH Provisioning + Live Terminal Console
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cloud-init-automation-iac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. ☁️ Cloud-Init &amp; Automation (IaC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-security-auto-remediation-safe-rollback-imageremediationdialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Image Security Auto-Remediation &amp; Safe Rollback (ImageRemediationDialog)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#api-endpoints-used-by-the-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1137,6 +1200,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../autoscaling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoscaling & GPU Affinity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/" class="md-nav__link">
         
   
@@ -1245,6 +1336,8 @@
       
         
       
+        
+      
     
     
     
@@ -1265,7 +1358,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1507,7 +1600,17 @@
 <p>By default, the upper dashboard area allocates <strong>1/3 width to Legions (Stacks)</strong> and <strong>2/3 width to Centurions (Nodes)</strong>, offering optimal visibility for node clusters. A drag handle between the panels allows custom width adjustments.</p>
 <h3 id="legions-stacks">Legions (Stacks)</h3>
 <p>Header includes the <strong><code>+ Add Stack</code></strong> button for immediate Compose deployment.</p>
-<p>Lists all deployed stacks with actions per row:</p>
+<p>Lists all deployed stacks with actions and metrics per row:</p>
+<ul>
+<li><strong>ID &amp; Stack Name</strong>: Monospace UUID with 1-click clipboard copy and drill-down link to stack containers.</li>
+<li><strong>AUTOSCALE Badge</strong>: Real-time autoscaling status indicator:</li>
+<li>⚡ <strong>GPU • Cluster</strong> (Purple/Amber with GPU chip icon): Autoscaling across GPU-capable nodes.</li>
+<li>⚡ <strong>CPU • Host</strong> (Cyan/Blue with speedometer icon): Autoscaling on the local host.</li>
+<li>⚡ <strong>Off</strong> (Subtle Gray): Manual static replicas.</li>
+<li><strong>Tooltip</strong>: Hover to inspect target threshold %, Min/Max bounds, and hardware affinity.</li>
+<li><strong>HOST NODE</strong>: Target host badge with 1-click stack migration dialog.</li>
+<li><strong>CONTAINERS</strong>: Running vs Desired container counts with live health indicators.</li>
+</ul>
 <table>
 <thead>
 <tr>
@@ -1573,11 +1676,19 @@
 </tr>
 <tr>
 <td>Task ID</td>
-<td>First 8 chars of UUID</td>
+<td>First 8 chars of UUID with copy button</td>
 </tr>
 <tr>
 <td>Service</td>
 <td>Service name + Docker image</td>
+</tr>
+<tr>
+<td>Autoscale</td>
+<td><strong>Autoscaling Policy Chip</strong>: Displays <code>GPU • Cluster</code>, <code>CPU • Host</code>, or <code>Off</code> with full tooltip</td>
+</tr>
+<tr>
+<td>Stack</td>
+<td>Parent stack name with click-to-filter capability</td>
 </tr>
 <tr>
 <td>Container</td>
@@ -1585,7 +1696,7 @@
 </tr>
 <tr>
 <td>Node</td>
-<td>Node that is running this task</td>
+<td>Centurion node that is running this task</td>
 </tr>
 <tr>
 <td>Status</td>
@@ -1600,8 +1711,8 @@
 <td><strong>Clickable chips</strong> for each port mapping (e.g. <code>8080:80</code>). Clicking opens <code>http://&lt;nodeIP&gt;:&lt;hostPort&gt;</code> in a new browser tab. Supports multiple ports per container.</td>
 </tr>
 <tr>
-<td>Stop</td>
-<td>Executes <code>docker stop + docker rm</code> and removes from DB</td>
+<td>Actions</td>
+<td>Context menu for interactive container terminal shell, logs, restart, and stop</td>
 </tr>
 </tbody>
 </table>
@@ -1698,6 +1809,37 @@
 <li><strong>Deployment Correlation</strong> — Timeline graph cross-referencing stack updates and container restarts with service burn rate spikes.</li>
 <li><strong>SLI Templates &amp; PromQL Generator</strong> — Interactive catalog of built-in SLI query templates (<code>caddy-http</code>, <code>http-status</code>, <code>latency-p99</code>, <code>grpc</code>).</li>
 <li><strong>Backtest &amp; Validator</strong> — Form for pasting Compose YAML to run instant dry-run PromQL backtests against historical Prometheus metrics.</li>
+</ol>
+<hr />
+<h2 id="centurions-universal-onboarding-suite-addnodedialog">🏛️ Centurions &amp; Universal Onboarding Suite (<code>AddNodeDialog</code>)</h2>
+<p>Accessible from <strong>Centurions [Host] ➔ Add Centurion</strong>, the onboarding suite offers 3 workflows:</p>
+<h3 id="1-quick-join-copy-paste-commands">1. ⚡ Quick Join (Copy &amp; Paste Commands)</h3>
+<ul>
+<li>Instant 1-click command cards for:</li>
+<li><strong>One-Liner Automated Installer</strong> (<code>curl -fsSL .../join.sh | sudo bash -s ...</code>).</li>
+<li><strong>Docker Container</strong> (<code>sudo docker run ... legion join</code>).</li>
+<li><strong>Gubernator CLI Binary</strong> (<code>sudo gbnt legion join</code>).</li>
+<li>Shows real-time cluster pulse bar with current manager IP and registered node count.</li>
+</ul>
+<h3 id="2-remote-ssh-provisioning-live-terminal-console">2. 🚀 Remote SSH Provisioning + Live Terminal Console</h3>
+<ul>
+<li>Manager connects via SSH into the remote machine.</li>
+<li>Supports <strong>Password</strong>, <strong>SSH Private Key (.pem)</strong>, or <strong>Manager Public Key Auto-Discovery</strong>.</li>
+<li>Displays an authentic Linux-style monospace terminal console streaming live execution progress (<code>SSH Handshake</code>, <code>Hardware Discovery</code>, <code>Docker Engine Check</code>, <code>Agent Deployment</code>, <code>System Stacks</code>, <code>Aqueducts &amp; Telemetry</code>).</li>
+</ul>
+<h3 id="3-cloud-init-automation-iac">3. ☁️ Cloud-Init &amp; Automation (IaC)</h3>
+<ul>
+<li>Formatted <code>#cloud-config</code> YAML blueprint ready to paste into Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, or Terraform.</li>
+</ul>
+<hr />
+<h2 id="image-security-auto-remediation-safe-rollback-imageremediationdialog">🛡️ Image Security Auto-Remediation &amp; Safe Rollback (<code>ImageRemediationDialog</code>)</h2>
+<p>Accessible via the <strong><code>⚡ Fix Image</code></strong> action button on any scanned container image with CVEs or inside the <strong>View CVEs</strong> details modal:</p>
+<ol>
+<li><strong>Intelligent Version Recommendations:</strong> Suggests low-risk security patches (same major version, Alpine minimal base) and modern stable releases.</li>
+<li><strong>Operational Risk Assessment:</strong> Displays calculated risk level (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>) with context on breaking changes, database migrations, and persistent volume requirements.</li>
+<li><strong>Safe Automated Rollback:</strong> Takes an instant cryptographic backup of the <code>docker-compose.yml</code> prior to redeploying; automatically reverts to the previous working Compose file if the new container crashes or fails health checks within 20 seconds.</li>
+<li><strong>Live Execution Terminal:</strong> Monospace console streaming real-time logs (<code>Backup Compose</code>, <code>Image Patch</code>, <code>Database Update</code>, <code>Service Redeploy</code>, <code>Health Probe</code>, <code>Auto-Rollback</code>, <code>Security Re-Scan</code>).</li>
+<li><strong>Compose Studio Deep Link:</strong> <code>Open in Compose Studio</code> button opens the stack directly in the Compose IDE for manual adjustments.</li>
 </ol>
 <hr />
 <h2 id="api-endpoints-used-by-the-dashboard">API Endpoints Used by the Dashboard</h2>

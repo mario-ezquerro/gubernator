@@ -1,3 +1,4 @@
+basePath: /
 definitions:
   api.AddNodeRequest:
     properties:
@@ -76,6 +77,56 @@ definitions:
     required:
     - role
     type: object
+  api.SLOCorrelationEvent:
+    properties:
+      burn_rate:
+        type: number
+      description:
+        type: string
+      service_name:
+        type: string
+      stack_name:
+        type: string
+      timestamp:
+        type: string
+      type:
+        description: '"deployment", "scaling", "restart"'
+        type: string
+    type: object
+  api.SLOEditRequest:
+    properties:
+      enable:
+        type: boolean
+      error_query:
+        type: string
+      indicator:
+        type: string
+      journey:
+        type: string
+      latency_threshold:
+        type: string
+      service_id:
+        type: string
+      target:
+        type: number
+      template:
+        type: string
+      total_query:
+        type: string
+      window:
+        type: string
+    required:
+    - service_id
+    type: object
+  api.SLOHistoryPoint:
+    properties:
+      budget_remaining:
+        type: number
+      burn_rate:
+        type: number
+      timestamp:
+        type: string
+    type: object
   api.SLOItem:
     properties:
       burn_rate:
@@ -84,6 +135,12 @@ definitions:
         type: number
       error_query:
         type: string
+      indicator:
+        type: string
+      journey:
+        type: string
+      latency_threshold:
+        type: string
       service_id:
         type: string
       service_name:
@@ -91,12 +148,54 @@ definitions:
       stack_id:
         type: string
       status:
-        description: '"healthy", "warning", "exhausted"'
+        description: '"healthy", "warning", "exhausted", "no_data"'
         type: string
       target:
         type: number
+      template:
+        type: string
       total_query:
         type: string
+      window:
+        type: string
+    type: object
+  api.SLOREDMetrics:
+    properties:
+      error_rps:
+        type: number
+      p99_latency_ms:
+        type: number
+      rps:
+        type: number
+    type: object
+  api.SLOValidateRequest:
+    properties:
+      compose_raw:
+        type: string
+    required:
+    - compose_raw
+    type: object
+  api.SLOValidationItem:
+    properties:
+      backtest_details:
+        type: string
+      backtest_status:
+        description: '"passed", "warning", "no_data"'
+        type: string
+      error:
+        type: string
+      error_query:
+        type: string
+      service_name:
+        type: string
+      target:
+        type: number
+      template:
+        type: string
+      total_query:
+        type: string
+      valid:
+        type: boolean
       window:
         type: string
     type: object
@@ -109,8 +208,15 @@ definitions:
     type: object
   api.StackDeployRequest:
     properties:
+      auto_remap_ports:
+        description: Automatically remap conflicting host ports to suggested free
+          ports
+        type: boolean
       compose_raw:
         type: string
+      force:
+        description: Bypass port conflict verification
+        type: boolean
       name:
         description: Optional if provided in compose file
         type: string
@@ -129,6 +235,8 @@ definitions:
   api.TaskStatusRequest:
     properties:
       container_ip:
+        type: string
+      container_name:
         type: string
       error:
         type: string
@@ -167,8 +275,29 @@ definitions:
       config:
         type: string
     type: object
+  api.UserJourney:
+    properties:
+      avg_error_budget:
+        type: number
+      bottleneck_budget:
+        type: number
+      bottleneck_service:
+        type: string
+      composite_target:
+        type: number
+      name:
+        type: string
+      services:
+        items:
+          $ref: '#/definitions/api.SLOItem'
+        type: array
+      status:
+        type: string
+    type: object
   db.Node:
     properties:
+      auth_mismatch:
+        type: boolean
       caddy_status:
         type: string
       caddyfile:
@@ -177,6 +306,14 @@ definitions:
         type: number
       created_at:
         type: string
+      disk_free_bytes:
+        type: integer
+      disk_percent:
+        type: number
+      disk_total_bytes:
+        type: integer
+      disk_used_bytes:
+        type: integer
       id:
         type: string
       ip:
@@ -211,6 +348,10 @@ definitions:
         items:
           type: string
         type: array
+      cpu_limit:
+        type: string
+      cpu_reservation:
+        type: string
       created_at:
         type: string
       desired_replicas:
@@ -223,6 +364,10 @@ definitions:
       id:
         type: string
       image:
+        type: string
+      memory_limit:
+        type: string
+      memory_reservation:
         type: string
       name:
         type: string
@@ -249,6 +394,9 @@ definitions:
         type: string
       name:
         type: string
+      node_id:
+        description: Host/Centurion where this stack is deployed
+        type: string
       raw_compose_file:
         type: string
       updated_at:
@@ -260,11 +408,23 @@ definitions:
         type: string
       container_name:
         type: string
+      cpu_limit:
+        type: string
+      cpu_percent:
+        type: number
+      cpu_reservation:
+        type: string
       created_at:
         type: string
       error:
         type: string
       id:
+        type: string
+      mem_used_bytes:
+        type: integer
+      memory_limit:
+        type: string
+      memory_reservation:
         type: string
       node_id:
         type: string
@@ -276,12 +436,222 @@ definitions:
       updated_at:
         type: string
     type: object
+  ebpf.EBPFStats:
+    properties:
+      active_flows:
+        type: integer
+      active_probes:
+        type: integer
+      bytes_per_sec:
+        type: number
+      dropped_packets:
+        type: integer
+      ebpf_supported:
+        type: boolean
+      interfaces:
+        items:
+          $ref: '#/definitions/ebpf.InterfaceStats'
+        type: array
+      kernel_version:
+        type: string
+      mode:
+        description: '"kernel" or "emulation"'
+        type: string
+      packets_per_sec:
+        type: number
+      probes_list:
+        items:
+          type: string
+        type: array
+      protocol_counts:
+        additionalProperties:
+          type: integer
+        type: object
+      status_counts:
+        additionalProperties:
+          type: integer
+        description: '"2xx", "4xx", "5xx", "tcp_ok", "tcp_err"'
+        type: object
+      total_flows:
+        type: integer
+    type: object
+  ebpf.EBPFTopology:
+    properties:
+      edges:
+        items:
+          $ref: '#/definitions/ebpf.TopologyEdge'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/ebpf.TopologyNode'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  ebpf.Flow:
+    properties:
+      bytes_received:
+        type: integer
+      bytes_sent:
+        type: integer
+      dest_id:
+        type: string
+      dest_ip:
+        type: string
+      dest_name:
+        type: string
+      dest_port:
+        type: integer
+      drops:
+        type: integer
+      id:
+        type: string
+      latency_ms:
+        type: number
+      method:
+        type: string
+      path:
+        type: string
+      protocol:
+        description: '"HTTP", "gRPC", "DNS", "TCP", "UDP", "REDIS", "POSTGRES"'
+        type: string
+      retransmits:
+        type: integer
+      source_id:
+        type: string
+      source_ip:
+        type: string
+      source_name:
+        type: string
+      source_port:
+        type: integer
+      status:
+        $ref: '#/definitions/ebpf.FlowStatus'
+      status_code:
+        type: integer
+      throughput_bps:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  ebpf.FlowStatus:
+    enum:
+    - healthy
+    - warning
+    - error
+    type: string
+    x-enum-comments:
+      FlowStatusError: 5xx HTTP, TCP drops, resets
+      FlowStatusHealthy: 2xx HTTP, TCP established, no drops
+      FlowStatusWarning: 4xx HTTP, high RTT (>200ms)
+    x-enum-descriptions:
+    - 2xx HTTP, TCP established, no drops
+    - 4xx HTTP, high RTT (>200ms)
+    - 5xx HTTP, TCP drops, resets
+    x-enum-varnames:
+    - FlowStatusHealthy
+    - FlowStatusWarning
+    - FlowStatusError
+  ebpf.InterfaceStats:
+    properties:
+      name:
+        type: string
+      rx_bytes:
+        type: integer
+      rx_drops:
+        type: integer
+      rx_errors:
+        type: integer
+      rx_packets:
+        type: integer
+      tx_bytes:
+        type: integer
+      tx_drops:
+        type: integer
+      tx_errors:
+        type: integer
+      tx_packets:
+        type: integer
+    type: object
+  ebpf.SimulationProfile:
+    properties:
+      duration_s:
+        description: duration in seconds
+        type: integer
+      error_pct:
+        description: percentage of error flows (0-100)
+        type: number
+      pattern:
+        description: '"normal", "burst", "errors", "mixed"'
+        type: string
+      rate:
+        description: events per second
+        type: integer
+    type: object
+  ebpf.TopologyEdge:
+    properties:
+      active_flows:
+        type: integer
+      error_rate:
+        type: number
+      id:
+        type: string
+      last_seen:
+        type: string
+      protocol:
+        type: string
+      rtt_ms:
+        type: number
+      source_id:
+        type: string
+      status:
+        $ref: '#/definitions/ebpf.FlowStatus'
+      target_id:
+        type: string
+      throughput_bps:
+        type: number
+    type: object
+  ebpf.TopologyNode:
+    properties:
+      active_flows:
+        type: integer
+      cpu_percent:
+        type: number
+      error_rate:
+        type: number
+      id:
+        type: string
+      inbound_bps:
+        type: number
+      ip:
+        type: string
+      mem_percent:
+        type: number
+      name:
+        type: string
+      node_host:
+        type: string
+      outbound_bps:
+        type: number
+      stack:
+        type: string
+      status:
+        description: '"running", "unhealthy", "stopped"'
+        type: string
+      type:
+        description: '"container", "ingress", "database", "dns", "external", "host"'
+        type: string
+    type: object
   monitor.ScopeStatusResponse:
     properties:
       container:
         type: string
       enabled:
         type: boolean
+      image:
+        type: string
+      image_id:
+        type: string
       port:
         type: string
       status:
@@ -289,8 +659,12 @@ definitions:
       url:
         type: string
     type: object
+host: localhost:4002
 info:
   contact: {}
+  description: This is the API Server for Gubernator orchestration.
+  title: Gubernator API
+  version: "1.0"
 paths:
   /v1/cluster/info:
     get:
@@ -359,6 +733,101 @@ paths:
       summary: Update CoreDNS Configuration
       tags:
       - CoreDNS
+  /v1/ebpf/flows:
+    get:
+      description: Returns recent captured L4/L7 network flows with filtering by protocol,
+        status, query, and limit
+      parameters:
+      - description: Maximum number of flows to return (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Protocol filter (e.g. HTTP, gRPC, DNS, TCP, REDIS, POSTGRES)
+        in: query
+        name: protocol
+        type: string
+      - description: Status filter (healthy, warning, error, or ERRORS)
+        in: query
+        name: status
+        type: string
+      - description: Search query matching source, dest, method, or path
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ebpf.Flow'
+            type: array
+      summary: Get recent eBPF captured network flows
+      tags:
+      - ebpf
+  /v1/ebpf/simulate:
+    post:
+      consumes:
+      - application/json
+      description: Injects traffic flows (burst, normal, errors) for testing and UI
+        live visualization
+      parameters:
+      - description: Simulation Profile configuration
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/ebpf.SimulationProfile'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Trigger on-demand eBPF traffic simulation
+      tags:
+      - ebpf
+  /v1/ebpf/stats:
+    get:
+      description: Returns kernel eBPF capabilities, active probes, flow rate, throughput,
+        and packet statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ebpf.EBPFStats'
+      summary: Get eBPF kernel network telemetry and probe stats
+      tags:
+      - ebpf
+  /v1/ebpf/stream:
+    get:
+      description: Real-time stream of captured network packets and flows
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Stream live eBPF network flows via Server-Sent Events (SSE)
+      tags:
+      - ebpf
+  /v1/ebpf/topology:
+    get:
+      description: Returns interconnected topology graph with service nodes and active
+        communication edges
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ebpf.EBPFTopology'
+      summary: Get live eBPF service mesh topology graph
+      tags:
+      - ebpf
   /v1/monitor/scope/disable:
     post:
       description: Stop and remove the Weave Scope container
@@ -787,6 +1256,108 @@ paths:
       summary: List Services
       tags:
       - services
+  /v1/slo/{service_id}:
+    delete:
+      description: Removes SLO constraints from a service and syncs Prometheus / Grafana
+        rules
+      parameters:
+      - description: Service ID
+        in: path
+        name: service_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete/Disable SLO for a Service
+      tags:
+      - slo
+  /v1/slo/correlation:
+    get:
+      description: Cross-reference burn rate spikes with stack deployment timestamps
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.SLOCorrelationEvent'
+            type: array
+      summary: Get SLO Deployment Correlations
+      tags:
+      - slo
+  /v1/slo/edit:
+    post:
+      consumes:
+      - application/json
+      description: Updates service constraints in DB and triggers Prometheus / Grafana
+        rule sync
+      parameters:
+      - description: SLO Edit Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SLOEditRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create or Edit SLO for a Service
+      tags:
+      - slo
+  /v1/slo/history:
+    get:
+      description: Fetch Prometheus range time-series points for an SLO
+      parameters:
+      - description: Service ID
+        in: query
+        name: service_id
+        required: true
+        type: string
+      - description: Range duration (1h, 6h, 24h, 7d, 30d)
+        in: query
+        name: range
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.SLOHistoryPoint'
+            type: array
+      summary: Get SLO Historical Trend Data Points
+      tags:
+      - slo
+  /v1/slo/journeys:
+    get:
+      description: Aggregate service SLOs by user journey name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.UserJourney'
+            type: array
+      summary: Get Composite User Journeys
+      tags:
+      - slo
   /v1/slo/ls:
     get:
       description: Fetch all active SLOs across services and query Prometheus for
@@ -801,6 +1372,25 @@ paths:
               $ref: '#/definitions/api.SLOItem'
             type: array
       summary: List Service Level Objectives (SLOs)
+      tags:
+      - slo
+  /v1/slo/red:
+    get:
+      description: Query Prometheus for RPS, Error RPS, and P99 Duration
+      parameters:
+      - description: Service ID
+        in: query
+        name: service_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SLOREDMetrics'
+      summary: Get Service RED Metrics (Rate, Errors, Duration)
       tags:
       - slo
   /v1/slo/sync:
@@ -818,11 +1408,35 @@ paths:
       summary: Sync SLO Rules to Prometheus
       tags:
       - slo
+  /v1/slo/validate:
+    post:
+      consumes:
+      - application/json
+      description: Dry-run validation & PromQL metric backtesting for Compose YAML
+      parameters:
+      - description: SLO Validation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SLOValidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.SLOValidationItem'
+            type: array
+      summary: Validate and Backtest SLOs in Compose YAML
+      tags:
+      - slo
   /v1/stack/{id}:
     delete:
       description: Delete a stack, stop its containers, and remove all related records
       parameters:
-      - description: Stack ID
+      - description: Stack ID or Name
         in: path
         name: id
         required: true
@@ -837,6 +1451,27 @@ paths:
               type: string
             type: object
       summary: Remove Stack
+      tags:
+      - stacks
+  /v1/stack/{id}/reconcile:
+    post:
+      description: Reconcile a stack against desired replicas, repairing degraded
+        services and purging dead/stale containers
+      parameters:
+      - description: Stack ID or Name
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reconcile Stack
       tags:
       - stacks
   /v1/stack/{id}/services:
@@ -858,6 +1493,48 @@ paths:
               $ref: '#/definitions/db.Service'
             type: array
       summary: List Stack Services
+      tags:
+      - stacks
+  /v1/stack/{id}/start:
+    post:
+      description: Start all containers in a stopped stack
+      parameters:
+      - description: Stack ID or Name
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Start Stack
+      tags:
+      - stacks
+  /v1/stack/{id}/stop:
+    post:
+      description: Stop all running containers in a stack without deleting it
+      parameters:
+      - description: Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Stop Stack
       tags:
       - stacks
   /v1/stack/deploy:
@@ -887,6 +1564,11 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
       summary: Deploy a Stack
       tags:
       - stack
@@ -903,6 +1585,30 @@ paths:
               $ref: '#/definitions/db.Stack'
             type: array
       summary: List Stacks
+      tags:
+      - stacks
+  /v1/stack/save:
+    post:
+      consumes:
+      - application/json
+      description: Save or update stack compose definition in database and server
+        files without deploying containers
+      parameters:
+      - description: Stack Save Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.StackDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Save Stack Definition (Draft / Without Deploying)
       tags:
       - stacks
   /v1/task/{id}:
@@ -939,6 +1645,20 @@ paths:
               $ref: '#/definitions/db.Task'
             type: array
       summary: List all tasks
+      tags:
+      - tasks
+  /v1/tasks/prune:
+    post:
+      description: Prune all dead, duplicate, and orphan containers across the cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Prune Tasks
       tags:
       - tasks
 swagger: "2.0"

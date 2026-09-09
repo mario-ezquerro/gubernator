@@ -96,10 +96,19 @@ By default, the upper dashboard area allocates **1/3 width to Legions (Stacks)**
 
 Header includes the **`+ Add Stack`** button for immediate Compose deployment.
 
-Lists all deployed stacks with actions per row:
+Lists all deployed stacks with actions and metrics per row:
+
+* **ID & Stack Name**: Monospace UUID with 1-click clipboard copy and drill-down link to stack containers.
+* **AUTOSCALE Badge**: Real-time autoscaling status indicator:
+  * ⚡ **GPU • Cluster** (Purple/Amber with GPU chip icon): Autoscaling across GPU-capable nodes.
+  * ⚡ **CPU • Host** (Cyan/Blue with speedometer icon): Autoscaling on the local host.
+  * ⚡ **Off** (Subtle Gray): Manual static replicas.
+  * **Tooltip**: Hover to inspect target threshold %, Min/Max bounds, and hardware affinity.
+* **HOST NODE**: Target host badge with 1-click stack migration dialog.
+* **CONTAINERS**: Running vs Desired container counts with live health indicators.
 
 | Button | Icon | Action |
-|--------|------|--------|
+|--------|--------|--------|
 | **Edit YAML** | 📝 | Opens the compose editor dialog |
 | **Redeploy** | 🚀 | Stops current containers and re-deploys immediately |
 | **Delete** | 🗑️ | Stops containers and removes stack from DB |
@@ -140,14 +149,16 @@ Lists all container instances with:
 | Column | Description |
 |--------|-------------|
 | Checkbox | Row selection for batch operations |
-| Task ID | First 8 chars of UUID |
+| Task ID | First 8 chars of UUID with copy button |
 | Service | Service name + Docker image |
+| Autoscale | **Autoscaling Policy Chip**: Displays `GPU • Cluster`, `CPU • Host`, or `Off` with full tooltip |
+| Stack | Parent stack name with click-to-filter capability |
 | Container | Docker container name (`gbnt-<uuid>`) |
-| Node | Node that is running this task |
+| Node | Centurion node that is running this task |
 | Status | `running` / `pending` / `starting` / `dead` |
 | IP | Container's internal Docker network IP |
 | Ports | **Clickable chips** for each port mapping (e.g. `8080:80`). Clicking opens `http://<nodeIP>:<hostPort>` in a new browser tab. Supports multiple ports per container. |
-| Stop | Executes `docker stop + docker rm` and removes from DB |
+| Actions | Context menu for interactive container terminal shell, logs, restart, and stop |
 
 ---
 

@@ -294,7 +294,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../observability/" class="md-tabs__link">
+        <a href="../ebpf/" class="md-tabs__link">
           
   
   
@@ -705,13 +705,91 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-join-worker-nodes-to-the-cluster" class="md-nav__link">
+  <a href="#5-universal-centurion-worker-onboarding-suite" class="md-nav__link">
     <span class="md-ellipsis">
       
-        💓 5. Join Worker Nodes to the Cluster
+        💓 5. Universal Centurion Worker Onboarding Suite
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="💓 5. Universal Centurion Worker Onboarding Suite">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#method-a-quick-join-copy-paste-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Method A: Quick Join (Copy &amp; Paste Commands)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚡ Method A: Quick Join (Copy &amp; Paste Commands)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-one-liner-automated-installer-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: One-Liner Automated Installer (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-docker-container-native-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Docker Container (Native Engine)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-standalone-gubernator-binary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Standalone Gubernator Binary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-b-remote-ssh-provisioning-live-terminal-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Method B: Remote SSH Provisioning + Live Terminal Console
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-c-cloud-init-infrastructure-as-code-iac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ☁️ Method C: Cloud-Init &amp; Infrastructure as Code (IaC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -877,6 +955,8 @@
       
         
       
+        
+      
     
     
     
@@ -1003,6 +1083,8 @@
       
         
       
+        
+      
     
     
     
@@ -1023,7 +1105,7 @@
   
   
   
-    <a href="../observability/" class="md-nav__link">
+    <a href="../ebpf/" class="md-nav__link">
       
   
   
@@ -1242,45 +1324,101 @@ For the group changes to take effect without logging out, you can run commands p
 </span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        --manager &lt;MANAGER-IP&gt;:4000
 </span></code></pre></div></p>
 <hr />
-<h2 id="5-join-worker-nodes-to-the-cluster">💓 5. Join Worker Nodes to the Cluster</h2>
-<p>On each <strong>Worker node</strong>, run the join command in the background to start the heartbeat and container execution loops:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Run on Worker 1 and Worker 2</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>nohup<span class="w"> </span>/home/ubuntu/gbnt<span class="w"> </span>legion<span class="w"> </span>join<span class="w"> </span><span class="se">\</span>
+<h2 id="5-universal-centurion-worker-onboarding-suite">💓 5. Universal Centurion Worker Onboarding Suite</h2>
+<p>Gubernator provides <strong>3 flexible methods</strong> to join Worker nodes (<em>Centurions</em>) into the cluster, accessible directly from the Web Dashboard (<strong>Centurions [Host] ➔ Add Centurion</strong>) or via CLI and automated scripts:</p>
+<h3 id="method-a-quick-join-copy-paste-commands">⚡ Method A: Quick Join (Copy &amp; Paste Commands)</h3>
+<p><em>Best for fast setup, cloud VMs, or hosts behind NAT/firewalls (no SSH configuration needed).</em></p>
+<p>Open a terminal on your target worker machine and paste any of the following commands:</p>
+<h4 id="option-1-one-liner-automated-installer-recommended">Option 1: One-Liner Automated Installer (Recommended)</h4>
+<p>Automatically installs Docker CE if missing, configures systemd persistence, and starts the Centurion worker agent:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-fsSL<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4001/api/node/join.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span>--manager<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4000<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>--token<span class="w"> </span>&lt;JOIN_TOKEN&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--api-token<span class="w"> </span>my-gubernator-api-token<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span>--manager<span class="w"> </span>&lt;MANAGER-IP&gt;:4000<span class="w"> </span>&gt;<span class="w"> </span>/home/ubuntu/worker.log<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">&amp;</span>
-</span></code></pre></div>
-<p>Verify that the workers successfully join by checking the log:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cat<span class="w"> </span>/home/ubuntu/worker.log
-</span></code></pre></div>
-Output:
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>✅ Successfully joined the Legion!
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>   Node ID  : node-gbnt-worker1
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>   Local IP : 192.168.252.6
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>   Manager  : http://192.168.252.5:4000
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>💓 Starting background loops (Heartbeat &amp; Executor)...
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--api-token<span class="w"> </span>&lt;API_TOKEN&gt;
 </span></code></pre></div></p>
+<h4 id="option-2-docker-container-native-engine">Option 2: Docker Container (Native Engine)</h4>
+<p>Runs the Centurion worker agent inside an isolated container with host network permissions:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>gbnt-worker<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span>--network<span class="w"> </span>host<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>--restart<span class="w"> </span>unless-stopped<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span>-v<span class="w"> </span>/var/run/docker.sock:/var/run/docker.sock<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span>-v<span class="w"> </span>/data:/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span>marioezquerro/gubernator:latest<span class="w"> </span>legion<span class="w"> </span>join<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span>--token<span class="w"> </span>&lt;JOIN_TOKEN&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span>--manager<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4000<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span>--api-token<span class="w"> </span>&lt;API_TOKEN&gt;
+</span></code></pre></div></p>
+<h4 id="option-3-standalone-gubernator-binary">Option 3: Standalone Gubernator Binary</h4>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>gbnt<span class="w"> </span>legion<span class="w"> </span>join<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span>--token<span class="w"> </span>&lt;JOIN_TOKEN&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>--manager<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4000<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span>--api-token<span class="w"> </span>&lt;API_TOKEN&gt;
+</span></code></pre></div>
+<hr />
+<h3 id="method-b-remote-ssh-provisioning-live-terminal-console">🚀 Method B: Remote SSH Provisioning + Live Terminal Console</h3>
+<p><em>Best when you want the Manager to connect over SSH and bootstrap the remote host with zero manual work on the worker machine.</em></p>
+<ol>
+<li>Open the Web Dashboard at <code>http://&lt;MANAGER-IP&gt;:4001</code> and navigate to <strong>Centurions [Host]</strong>.</li>
+<li>Click <strong>Add Centurion</strong>.</li>
+<li>Select the <strong>🚀 Remote SSH Provision</strong> tab.</li>
+<li>Fill in:</li>
+<li><strong>Host IP / FQDN</strong>: <code>192.168.252.34</code></li>
+<li><strong>SSH Port</strong>: <code>22</code></li>
+<li><strong>SSH Username</strong>: <code>ubuntu</code> / <code>root</code></li>
+<li><strong>Authentication Method</strong>:<ul>
+<li>🔑 <strong>Password</strong>: Enter password (used for SSH login &amp; sudo elevation).</li>
+<li>🛡️ <strong>Private Key (.pem)</strong>: Paste your OpenSSH RSA/ED25519 private key.</li>
+<li>👑 <strong>Manager SSH Key</strong>: Uses the Manager's internal SSH key (<code>/data/ssh/id_ed25519.pub</code>).</li>
+</ul>
+</li>
+<li><strong>Auto-deploy System Stacks</strong>: Automatically deploys Caddy Ingress (<code>CORE-GBNT</code>) and Prometheus Monitoring agents (<code>[SRE] Monitor</code>).</li>
+<li>Click <strong>Start Remote SSH Provisioning</strong>.</li>
+<li>The modal transforms into a <strong>Live Monospace Terminal Console</strong> showing step-by-step progress:
+   <div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>[SSH Connection]       Connecting to 192.168.252.34:22 as user &#39;ubuntu&#39;...
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>[SSH Handshake]        SSH session established securely.
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>[Hardware Discovery]   Detected hostname &#39;gbnt-worker3&#39;, 2 CPU cores, 1955 MB RAM.
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>[Cluster Registry]     Registered Centurion &#39;node-gbnt-worker3&#39; into database.
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>[Docker Engine]        Docker CE runtime is installed and operational.
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>[Agent Deployment]     Gubernator Centurion worker container deployed and running.
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>[System Stacks]        Bootstrapping CORE-GBNT (Caddy) and SRE Monitor services...
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>[Aqueducts &amp; Telemetry] Updating CoreDNS routing and Prometheus metric scraping targets...
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>[Complete]             Centurion &#39;node-gbnt-worker3&#39; successfully provisioned and online!
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>🎉 SUCCESS: Centurion worker host is online and active in cluster!
+</span></code></pre></div></li>
+</ol>
+<hr />
+<h3 id="method-c-cloud-init-infrastructure-as-code-iac">☁️ Method C: Cloud-Init &amp; Infrastructure as Code (IaC)</h3>
+<p><em>Best for automated provisioning with Proxmox VE, OpenStack, AWS EC2 UserData, GCP, Hetzner Cloud, or Terraform.</em></p>
+<p>Copy the following <code>#cloud-config</code> template into your VM UserData configuration:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">#cloud-config</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">package_upgrade</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nt">packages</span><span class="p">:</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">curl</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker.io</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nt">runcmd</span><span class="p">:</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">systemctl enable --now docker</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token &lt;JOIN_TOKEN&gt; --manager http://&lt;MANAGER-IP&gt;:4000 --api-token &lt;API_TOKEN&gt;</span>
+</span></code></pre></div>
 <hr />
 <h2 id="6-verify-and-connect">📊 6. Verify and Connect</h2>
 <h3 id="verify-nodes-from-local-cli">Verify Nodes from Local CLI</h3>
 <p>Configure your local CLI on the host machine to point to the remote Manager:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Configure context</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>gbnt<span class="w"> </span>config<span class="w"> </span>add-context<span class="w"> </span>remote-multipass<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span>--server<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4000<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span>--token<span class="w"> </span>my-gubernator-api-token
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># Set active context</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>gbnt<span class="w"> </span>config<span class="w"> </span>use-context<span class="w"> </span>remote-multipass
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># List nodes</span>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>gbnt<span class="w"> </span>node<span class="w"> </span>ls
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Configure context</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>gbnt<span class="w"> </span>config<span class="w"> </span>add-context<span class="w"> </span>remote-multipass<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span>--server<span class="w"> </span>http://&lt;MANAGER-IP&gt;:4000<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span>--token<span class="w"> </span>my-gubernator-api-token
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># Set active context</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>gbnt<span class="w"> </span>config<span class="w"> </span>use-context<span class="w"> </span>remote-multipass
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># List nodes</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>gbnt<span class="w"> </span>node<span class="w"> </span>ls
 </span></code></pre></div>
 <p>Output:
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ID                   IP              ROLE      STATUS   
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>node-local-manager   192.168.252.5   manager   active   
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>node-gbnt-worker1    192.168.252.6   worker    active   
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>node-gbnt-worker2    192.168.252.7   worker    active   
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ID                   IP              ROLE      STATUS   
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>node-local-manager   192.168.252.5   manager   active   
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>node-gbnt-worker1    192.168.252.6   worker    active   
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>node-gbnt-worker2    192.168.252.7   worker    active   
 </span></code></pre></div></p>
 <h3 id="accessing-web-interfaces">Accessing Web Interfaces</h3>
 <ul>
@@ -1302,8 +1440,8 @@ Output:
 <hr />
 <h2 id="8-enterprise-base-domain-configuration-gbnt_cluster_domain">🌐 8. Enterprise Base Domain Configuration (<code>GBNT_CLUSTER_DOMAIN</code>)</h2>
 <p>In enterprise environments, organizations typically require internal containers and services to resolve under their corporate DNS namespace (e.g. <code>acme.corp</code>, <code>internal.banco.es</code>, <code>dev.company.local</code>, or <code>cluster.internal</code>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Initialize Manager with custom enterprise base domain</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nv">GBNT_CLUSTER_DOMAIN</span><span class="o">=</span>acme.corp<span class="w"> </span>gbnt<span class="w"> </span>serve
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Initialize Manager with custom enterprise base domain</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nv">GBNT_CLUSTER_DOMAIN</span><span class="o">=</span>acme.corp<span class="w"> </span>gbnt<span class="w"> </span>serve
 </span></code></pre></div>
 <p>When configured:
 * All container hostnames automatically resolve as <code>&lt;node&gt;.&lt;service&gt;.acme.corp</code> (e.g. <code>node-gbnt-worker1.caddy.acme.corp</code>, <code>manager.loki.acme.corp</code>).

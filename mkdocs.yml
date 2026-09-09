@@ -59,6 +59,7 @@ nav:
     - Screenshots (v2.13.0): screens.md
     - Caddy Ingress Suite: caddy.md
     - CoreDNS Suite: coredns.md
+    - Autoscaling & GPU Affinity: autoscaling.md
     - REST API & SDK: api.md
   - Reference:
     - CLI Overview: cli.md
