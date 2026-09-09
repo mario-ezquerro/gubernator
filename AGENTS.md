@@ -806,11 +806,15 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Hardware Affinity & Placement Strategy Enforcement:**
   - **GPU Affinity:** When `gbnt.autoscaling.metric: gpu` or `gbnt.node.gpu == nvidia` is declared with `scope: cluster`, the scheduler strictly filters candidate nodes using `docker.NodeHasGPU()`, ensuring GPU containers only schedule onto Centurions with verified NVIDIA hardware.
   - **Single-Host vs Multi-Host Containment:** Pinned hosts (`node.hostname == ...`, `node.id == ...`) and atomic stacks (`gbnt.placement.strategy: single-host`) automatically restrict autoscaling to the local host even if cluster scope is requested, preventing placement conflicts. Conversely, distributed stacks (`gbnt.placement.strategy: spread`) default to multi-node cluster scaling.
-* **Web Dashboard Indicators (Flutter):**
-  - **Legions (Stacks) DataTable:** Dedicated `AUTOSCALE` column rendering distinct status badges: ⚡ **GPU (Cluster)** in purple/amber with GPU chip icon, ⚡ **CPU (Host)** in cyan/blue, or subtle `Off` badge with comprehensive tooltip detailing target %, boundaries, and affinity constraints.
-  - **Containers (Tasks) PlutoGrid:** Dedicated `AUTOSCALING` column displaying per-container autoscaling badges and metric indicators.
+* **Web Dashboard Indicators & Interactive Control Dialog (Flutter):**
+  - **Clickable AUTOSCALE Badges:** Both Legions (Stacks) and Containers (Tasks) render interactive `AUTOSCALE` chips (showing ⚡ **GPU • Cluster**, ⚡ **CPU • Host**, or clickable `Off` chip) with pointer cursors and tooltips. Clicking opens the **Autoscale Control Dialog**.
+  - **Dedicated Autoscale Control Dialog:** Full-featured modal to toggle autoscaling ON/OFF, switch metrics (GPU with NVIDIA DCGM acceleration vs CPU), select scaling scope (Single Host vs All Centurions with GPU hardware affinity notes), adjust target % slider, specify min/max replica boundaries, and set cooldown periods.
+  - **Row Context Actions:** Direct "Autoscale Settings" action button in Legions table and Tasks context menu.
+  - **Containers (Tasks) PlutoGrid:** Dedicated `AUTOSCALE` column and context menu action to configure service autoscale directly from individual container instances.
   - **Compose Studio & Copilot:** Dedicated `Autoscale` Copilot tab with 1-click production blueprints (GPU AI/Inference, High-Load Web, Single-Host CPU) and autocomplete snippets (`gbnt.autoscaling.*`).
 * **REST API Endpoints:**
   - `GET /api/autoscaling/policies`: Cluster-wide autoscaling policies breakdown.
   - `GET /api/autoscaling/events`: Audit history of scaling events and actions.
+  - `POST /api/services/:id/autoscale`: Interactive horizontal autoscaling configuration update endpoint for specific services.
+  - `POST /api/stack/:id/autoscale`: Interactive horizontal autoscaling configuration update endpoint for entire stacks.
   - `POST /api/services/:id/scale`: Manual replica scale override endpoint.

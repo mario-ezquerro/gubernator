@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/shell_dialog.dart';
+import '../../widgets/autoscale_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Tasks page — PlutoGrid with bulk actions, search, and full container management.
@@ -263,12 +264,26 @@ class _TasksPageState extends State<TasksPage> {
     widget.onRefresh();
   }
 
+  void _showTaskAutoscaleDialog(Task t) {
+    final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+    final stack = widget.state.stacks.where((st) => st.id == svc?.stackId).firstOrNull;
+    showDialog(
+      context: context,
+      builder: (ctx) => AutoscaleControlDialog(
+        stack: stack,
+        service: svc,
+        onSaved: widget.onRefresh,
+      ),
+    );
+  }
+
   Widget _buildTaskActions(Task t) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, size: 20),
       tooltip: 'Actions',
       onSelected: (value) {
         switch (value) {
+          case 'autoscale': _showTaskAutoscaleDialog(t); break;
           case 'shell': _viewTaskShell(t.id, t.containerName); break;
           case 'logs': _viewTaskLogs(t.id); break;
           case 'inspect': _viewTaskInspect(t.id); break;
@@ -280,6 +295,15 @@ class _TasksPageState extends State<TasksPage> {
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'autoscale',
+          child: ListTile(
+            leading: Icon(Icons.bolt, size: 20, color: Color(0xFFA855F7)),
+            title: Text('Autoscale Settings'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
         if (t.status == 'running')
           const PopupMenuItem<String>(value: 'shell', child: ListTile(leading: Icon(Icons.terminal, size: 20), title: Text('Shell'), contentPadding: EdgeInsets.zero)),
         const PopupMenuItem<String>(value: 'logs', child: ListTile(leading: Icon(Icons.notes, size: 20), title: Text('Logs'), contentPadding: EdgeInsets.zero)),
@@ -507,20 +531,27 @@ class _TasksPageState extends State<TasksPage> {
           if (svc == null || !svc.isAutoscalingEnabled) {
             return Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
+              child: Tooltip(
+                message: 'Autoscaling: Disabled\nClick to configure and enable autoscaling for this container/service',
+                child: InkWell(
+                  onTap: () => _showTaskAutoscaleDialog(t),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bolt, size: 12, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text('Off', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
-                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt, size: 12, color: Colors.grey),
+                        SizedBox(width: 4),
+                        Text('Off', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             );
@@ -538,36 +569,41 @@ class _TasksPageState extends State<TasksPage> {
               '• Metric: $metricLabel (Target: ${svc.autoscaleTarget.toStringAsFixed(0)}%)\n'
               '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
               '• Min: ${svc.autoscaleMin} / Max: ${svc.autoscaleMax}'
-              '${isGPU ? "\n• Hardware Affinity: Node with NVIDIA GPU" : ""}';
+              '${isGPU ? "\n• Hardware Affinity: Node with NVIDIA GPU" : ""}\n'
+              'Click to manage & adjust autoscaling settings';
 
           return Align(
             alignment: Alignment.centerLeft,
             child: Tooltip(
               message: tooltipMsg,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bolt, size: 12, color: color),
-                    const SizedBox(width: 3),
-                    Icon(icon, size: 12, color: color),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$metricLabel • $scopeLabel',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                        fontFamily: 'Courier New',
+              child: InkWell(
+                onTap: () => _showTaskAutoscaleDialog(t),
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: color.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt, size: 12, color: color),
+                      const SizedBox(width: 3),
+                      Icon(icon, size: 12, color: color),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$metricLabel • $scopeLabel',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'Courier New',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

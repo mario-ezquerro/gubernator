@@ -539,6 +539,8 @@ func StartDashboard() {
 		api.DELETE("/task/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteTaskHandler)
 		api.POST("/task/:id/action", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskActionHandler)
 		api.POST("/services/:id/scale", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), scaleServiceHandler)
+		api.POST("/services/:id/autoscale", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateServiceAutoscaleHandler)
+		api.POST("/stack/:id/autoscale", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackAutoscaleHandler)
 		api.GET("/task/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskShellHandler)
 		api.GET("/node/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), nodeShellHandler)
 		api.POST("/coredns/dig", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSDigHandler)
@@ -7550,4 +7552,140 @@ func scaleServiceHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "replicas updated", "service_id": svc.ID, "desired_replicas": req.Replicas})
+}
+
+type autoscaleConfigRequest struct {
+	Enabled  bool    `json:"enabled"`
+	Metric   string  `json:"metric"`   // "gpu" or "cpu"
+	Scope    string  `json:"scope"`    // "host" or "cluster"
+	Target   float64 `json:"target"`   // 10..100
+	Min      int     `json:"min"`      // >= 1
+	Max      int     `json:"max"`      // >= Min
+	Cooldown string  `json:"cooldown"` // e.g. "60s"
+}
+
+func applyAutoscaleToConstraints(existing []string, req autoscaleConfigRequest) []string {
+	var filtered []string
+	for _, c := range existing {
+		lower := strings.ToLower(strings.TrimSpace(c))
+		if strings.HasPrefix(lower, "gbnt.autoscaling.") {
+			continue
+		}
+		filtered = append(filtered, c)
+	}
+
+	if req.Enabled {
+		metric := strings.ToLower(strings.TrimSpace(req.Metric))
+		if metric != "gpu" && metric != "cpu" {
+			metric = "cpu"
+		}
+		scope := strings.ToLower(strings.TrimSpace(req.Scope))
+		if scope != "cluster" && scope != "host" {
+			scope = "host"
+		}
+		target := req.Target
+		if target <= 0 || target > 100 {
+			target = 80
+		}
+		minR := req.Min
+		if minR < 1 {
+			minR = 1
+		}
+		maxR := req.Max
+		if maxR < minR {
+			maxR = minR
+		}
+		cooldown := strings.TrimSpace(req.Cooldown)
+		if cooldown == "" {
+			cooldown = "60s"
+		}
+
+		filtered = append(filtered,
+			"gbnt.autoscaling.enable=true",
+			fmt.Sprintf("gbnt.autoscaling.metric=%s", metric),
+			fmt.Sprintf("gbnt.autoscaling.scope=%s", scope),
+			fmt.Sprintf("gbnt.autoscaling.target=%.0f", target),
+			fmt.Sprintf("gbnt.autoscaling.min=%d", minR),
+			fmt.Sprintf("gbnt.autoscaling.max=%d", maxR),
+			fmt.Sprintf("gbnt.autoscaling.cooldown=%s", cooldown),
+		)
+	} else {
+		filtered = append(filtered, "gbnt.autoscaling.enable=false")
+	}
+	return filtered
+}
+
+func updateServiceAutoscaleHandler(c *gin.Context) {
+	serviceID := c.Param("id")
+	var req autoscaleConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid autoscale config payload"})
+		return
+	}
+
+	var svc db.Service
+	if err := db.DB.Where("id = ?", serviceID).First(&svc).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "service not found"})
+		return
+	}
+
+	svc.Constraints = applyAutoscaleToConstraints(svc.Constraints, req)
+	raw, err := json.Marshal(svc.Constraints)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode constraints"})
+		return
+	}
+	svc.ConstraintsRaw = raw
+
+	if err := db.DB.Model(&svc).Updates(map[string]interface{}{
+		"constraints_raw": raw,
+		"updated_at":      time.Now(),
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "service autoscale configuration updated",
+		"service_id":  svc.ID,
+		"constraints": svc.Constraints,
+		"policy":      autoscaler.ParseAutoscalePolicy(svc.Constraints),
+	})
+}
+
+func updateStackAutoscaleHandler(c *gin.Context) {
+	stackID := c.Param("id")
+	var req autoscaleConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid autoscale config payload"})
+		return
+	}
+
+	var stack db.Stack
+	if err := db.DB.Where("id = ? OR name = ?", stackID, stackID).First(&stack).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "stack not found"})
+		return
+	}
+
+	var services []db.Service
+	if err := db.DB.Where("stack_id = ?", stack.ID).Find(&services).Error; err != nil || len(services) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no services found for stack"})
+		return
+	}
+
+	for i := range services {
+		services[i].Constraints = applyAutoscaleToConstraints(services[i].Constraints, req)
+		raw, _ := json.Marshal(services[i].Constraints)
+		services[i].ConstraintsRaw = raw
+		db.DB.Model(&services[i]).Updates(map[string]interface{}{
+			"constraints_raw": raw,
+			"updated_at":      time.Now(),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "stack autoscale configuration updated",
+		"stack_id":       stack.ID,
+		"services_count": len(services),
+	})
 }

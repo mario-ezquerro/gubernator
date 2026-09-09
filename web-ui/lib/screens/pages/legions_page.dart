@@ -7,6 +7,7 @@ import '../../widgets/stack_diagram_dialog.dart';
 import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
 import '../../widgets/port_conflict_dialog.dart';
+import '../../widgets/autoscale_dialog.dart';
 import '../../utils/clipboard_service.dart';
 
 /// Legions page — full-width stacks table with all actions.
@@ -348,6 +349,18 @@ class _LegionsPageState extends State<LegionsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAutoscaleDialog(StackModel s) {
+    final stackServices = widget.state.services.where((svc) => svc.stackId == s.id).toList();
+    showDialog(
+      context: context,
+      builder: (ctx) => AutoscaleControlDialog(
+        stack: s,
+        stackServices: stackServices,
+        onSaved: widget.onRefresh,
       ),
     );
   }
@@ -778,24 +791,28 @@ class _LegionsPageState extends State<LegionsPage> {
                                      final autoSvc = s.primaryAutoscaleService(widget.state.services);
                                      if (autoSvc == null || !autoSvc.isAutoscalingEnabled) {
                                        return Tooltip(
-                                         message: 'Autoscaling: Disabled\nTo enable, add label: gbnt.autoscaling.enable: "true"',
-                                         child: Container(
-                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                           decoration: BoxDecoration(
-                                             color: Colors.grey.withValues(alpha: 0.1),
-                                             borderRadius: BorderRadius.circular(4),
-                                             border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-                                           ),
-                                           child: const Row(
-                                             mainAxisSize: MainAxisSize.min,
-                                             children: [
-                                               Icon(Icons.bolt, size: 12, color: Colors.grey),
-                                               SizedBox(width: 4),
-                                               Text(
-                                                 'Off',
-                                                 style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
-                                               ),
-                                             ],
+                                         message: 'Autoscaling: Disabled\nClick to configure & enable horizontal autoscaling (GPU/CPU)',
+                                         child: InkWell(
+                                           onTap: () => _showAutoscaleDialog(s),
+                                           borderRadius: BorderRadius.circular(4),
+                                           child: Container(
+                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                             decoration: BoxDecoration(
+                                               color: Colors.grey.withValues(alpha: 0.1),
+                                               borderRadius: BorderRadius.circular(4),
+                                               border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                                             ),
+                                             child: const Row(
+                                               mainAxisSize: MainAxisSize.min,
+                                               children: [
+                                                 Icon(Icons.bolt, size: 12, color: Colors.grey),
+                                                 SizedBox(width: 4),
+                                                 Text(
+                                                   'Off',
+                                                   style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                                                 ),
+                                               ],
+                                             ),
                                            ),
                                          ),
                                        );
@@ -812,34 +829,39 @@ class _LegionsPageState extends State<LegionsPage> {
                                          '• Metric: $metricLabel (Target: ${autoSvc.autoscaleTarget.toStringAsFixed(0)}%)\n'
                                          '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
                                          '• Replicas: Min ${autoSvc.autoscaleMin} / Max ${autoSvc.autoscaleMax}'
-                                         '${isGPU ? "\n• Hardware Affinity: Centurions with NVIDIA GPU" : ""}';
+                                         '${isGPU ? "\n• Hardware Affinity: Centurions with NVIDIA GPU" : ""}\n'
+                                         'Click to manage & adjust autoscaling settings';
 
                                      return Tooltip(
                                        message: tooltipMsg,
-                                       child: Container(
-                                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                         decoration: BoxDecoration(
-                                           color: color.withValues(alpha: 0.15),
-                                           borderRadius: BorderRadius.circular(6),
-                                           border: Border.all(color: color.withValues(alpha: 0.5)),
-                                         ),
-                                         child: Row(
-                                           mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             Icon(Icons.bolt, size: 13, color: color),
-                                             const SizedBox(width: 3),
-                                             Icon(icon, size: 13, color: color),
-                                             const SizedBox(width: 4),
-                                             Text(
-                                               '$metricLabel • $scopeLabel',
-                                               style: TextStyle(
-                                                 fontSize: 11,
-                                                 fontWeight: FontWeight.bold,
-                                                 color: color,
-                                                 fontFamily: 'Courier New',
+                                       child: InkWell(
+                                         onTap: () => _showAutoscaleDialog(s),
+                                         borderRadius: BorderRadius.circular(6),
+                                         child: Container(
+                                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                           decoration: BoxDecoration(
+                                             color: color.withValues(alpha: 0.15),
+                                             borderRadius: BorderRadius.circular(6),
+                                             border: Border.all(color: color.withValues(alpha: 0.5)),
+                                           ),
+                                           child: Row(
+                                             mainAxisSize: MainAxisSize.min,
+                                             children: [
+                                               Icon(Icons.bolt, size: 13, color: color),
+                                               const SizedBox(width: 3),
+                                               Icon(icon, size: 13, color: color),
+                                               const SizedBox(width: 4),
+                                               Text(
+                                                 '$metricLabel • $scopeLabel',
+                                                 style: TextStyle(
+                                                   fontSize: 11,
+                                                   fontWeight: FontWeight.bold,
+                                                   color: color,
+                                                   fontFamily: 'Courier New',
+                                                 ),
                                                ),
-                                             ),
-                                           ],
+                                             ],
+                                           ),
                                          ),
                                        ),
                                      );
@@ -996,6 +1018,8 @@ class _LegionsPageState extends State<LegionsPage> {
                                         const Color(0xFFD29922), () => _redeployStack(s.id)),
                                     _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
                                         const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),
+                                    _actionBtn(Icons.bolt, 'Autoscale Settings (GPU / CPU)',
+                                        const Color(0xFFA855F7), () => _showAutoscaleDialog(s)),
                                     if (!isBase)
                                       _actionBtn(Icons.swap_horiz, 'Change Target Host',
                                           const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
@@ -1125,6 +1149,21 @@ class _StackDiagnosticsDialogState extends State<_StackDiagnosticsDialog> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bolt, size: 20, color: Color(0xFFA855F7)),
+            tooltip: 'Horizontal Autoscaling Settings (GPU / CPU)',
+            onPressed: () {
+              Navigator.of(context).pop();
+              showDialog(
+                context: context,
+                builder: (ctx) => AutoscaleControlDialog(
+                  stack: widget.stack,
+                  stackServices: widget.state.services.where((s) => s.stackId == widget.stack.id).toList(),
+                  onSaved: widget.onRefreshState,
+                ),
+              );
+            },
           ),
           IconButton(
             icon: _isRefreshing
@@ -1293,10 +1332,53 @@ class _StackDiagnosticsDialogState extends State<_StackDiagnosticsDialog> {
                                       ),
                                     ),
                                   ),
+                                if (service != null) ...[
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.of(context).pop();
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AutoscaleControlDialog(
+                                          stack: widget.stack,
+                                          service: service,
+                                          stackServices: widget.state.services.where((s) => s.stackId == widget.stack.id).toList(),
+                                          onSaved: widget.onRefreshState,
+                                        ),
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: const Color(0xFFA855F7)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.bolt, size: 12, color: Color(0xFFA855F7)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            service.isAutoscalingEnabled
+                                                ? 'Autoscale (${service.autoscaleMetric.toUpperCase()} • ${service.autoscaleScope})'
+                                                : 'Autoscale Settings',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFA855F7),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
-                          if (task.error != null && task.error!.isNotEmpty) ...[
+                          if (task.error.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.all(8),

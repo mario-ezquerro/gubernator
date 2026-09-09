@@ -239,6 +239,16 @@ class Service {
     }
     return 5;
   }
+
+  String get autoscaleCooldown {
+    for (final c in constraints) {
+      final lower = c.toLowerCase().trim();
+      if (lower.startsWith('gbnt.autoscaling.cooldown=')) {
+        return lower.split('=').last.trim();
+      }
+    }
+    return '60s';
+  }
 }
 
 class Task {

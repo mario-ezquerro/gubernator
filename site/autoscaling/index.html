@@ -920,6 +920,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#interactive-autoscale-control-dialog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Autoscale Control Dialog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#legions-stacks-datatable" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1426,31 +1437,34 @@
 </ul>
 <hr />
 <h2 id="web-dashboard-experience-flutter">🖥 Web Dashboard Experience (Flutter)</h2>
+<h3 id="interactive-autoscale-control-dialog">Interactive Autoscale Control Dialog</h3>
+<p>Clicking on the <strong><code>AUTOSCALE</code></strong> chip in either the Legions table or Containers table (or selecting <strong>Autoscale Settings</strong> from the row actions menu) immediately opens the <strong>Horizontal Autoscaling Controls</strong> dialog:</p>
+<ul>
+<li><strong>Master Status Switch:</strong> Toggle autoscaling ON or OFF in 1 click.</li>
+<li><strong>1. Scaling Metric:</strong> Select between <strong>GPU (NVIDIA / CUDA)</strong> (highlighted in purple with AI/ML acceleration badge and hardware affinity auto-binding) or <strong>CPU Utilization</strong> (cyan badge for general compute).</li>
+<li><strong>2. Scaling Scope &amp; Affinity:</strong> Choose <strong>Single Host (Local)</strong> (keeps all instances on the same host) or <strong>All Centurions (Cluster)</strong> (spreads instances across nodes with GPU verification).</li>
+<li><strong>3. Target Utilization Threshold:</strong> Interactive slider from 10% to 100% (default 80%).</li>
+<li><strong>4. Replica Boundaries &amp; Cooldown:</strong> Adjust Min Replicas (minimum 1), Max Replicas (up to 50), and Cooldown period (<code>30s</code>, <code>60s</code>, <code>2m</code>, <code>5m</code>).</li>
+<li><strong>Instant Application:</strong> Clicking <strong>Save &amp; Apply Autoscale</strong> updates SQLite persistence and cluster watchdog immediately without requiring container redeployment.</li>
+</ul>
 <h3 id="legions-stacks-datatable">Legions (Stacks) DataTable</h3>
 <p>The Legions dashboard view renders a dedicated <strong><code>AUTOSCALE</code></strong> column:</p>
 <ul>
-<li>⚡ <strong>GPU • Cluster</strong> (Purple/Amber Badge with GPU chip icon <code>Icons.developer_board</code>): Indicates GPU utilization autoscaling across GPU-enabled Centurions.</li>
-<li>⚡ <strong>CPU • Host</strong> (Cyan/Blue Badge with speedometer icon <code>Icons.speed</code>): Indicates CPU utilization autoscaling on the local host.</li>
-<li>⚡ <strong>Off</strong> (Subtle Gray Badge): Indicates manual static replica management.</li>
-<li><strong>Rich Tooltip:</strong> Hovering over any badge displays:</li>
-<li>Target threshold percentage (e.g. <code>80%</code>)</li>
-<li>Scope: <code>Single Host (Local)</code> or <code>All Nodes (Cluster)</code></li>
-<li>Replica boundaries: <code>Min: 1 / Max: 5</code></li>
-<li>Hardware requirements (e.g. <code>Hardware Affinity: Centurions with NVIDIA GPU</code>)</li>
+<li>⚡ <strong>GPU • Cluster</strong> (Purple/Amber Badge with GPU chip icon <code>Icons.developer_board</code>): Indicates GPU utilization autoscaling across GPU-enabled Centurions. Clickable to edit.</li>
+<li>⚡ <strong>CPU • Host</strong> (Cyan/Blue Badge with speedometer icon <code>Icons.speed</code>): Indicates CPU utilization autoscaling on the local host. Clickable to edit.</li>
+<li>⚡ <strong>Off</strong> (Subtle Gray Badge): Indicates manual static replica management. Clickable to configure and enable autoscaling.</li>
+<li><strong>Rich Tooltip:</strong> Hovering over any badge displays target %, scope, boundaries, and affinity constraints.</li>
 </ul>
 <h3 id="containers-tasks-plutogrid">Containers (Tasks) PlutoGrid</h3>
 <p>The Containers table includes an <strong><code>AUTOSCALE</code></strong> column next to each container instance:
-* Containers managed by the autoscaling engine display their active policy chip (<code>GPU • Cluster</code> or <code>CPU • Host</code>).
-* Containers without autoscaling display an unobtrusive <code>Off</code> chip.</p>
+* Both active chips and <code>Off</code> chips are interactive (<code>InkWell</code>), allowing operators to configure autoscaling directly for the underlying workload.
+* The container context menu (3 vertical dots) includes an <strong>Autoscale Settings</strong> action with lightning bolt icon.</p>
 <h3 id="compose-studio-gubernator-copilot">Compose Studio &amp; Gubernator Copilot</h3>
 <ul>
-<li><strong>Autoscale Copilot Tab:</strong> A dedicated wizard tab in the Compose Studio sidebar (<code>_activeCopilotTab == 'autoscale'</code>) providing:</li>
-<li>1-click production blueprints:<ul>
+<li><strong>Autoscale Copilot Tab:</strong> A dedicated wizard tab in the Compose Studio sidebar (<code>_activeCopilotTab == 'autoscale'</code>) providing 1-click production blueprints:</li>
 <li>⚡ <strong>GPU AI/Inference Cluster Autoscale</strong> (80% GPU, Cluster, Min 1, Max 4, NVIDIA affinity).</li>
 <li>🚀 <strong>CPU High-Load Web Autoscale</strong> (75% CPU, Cluster, Min 2, Max 8).</li>
 <li>💻 <strong>Single-Host CPU Autoscale</strong> (85% CPU, Local Host, Min 1, Max 3).</li>
-</ul>
-</li>
 <li><strong>Smart Autocomplete:</strong> Inserting <code>gbnt.autoscaling.*</code> chips automatically injects correctly indented YAML snippets into the active compose buffer.</li>
 </ul>
 <hr />
@@ -1476,6 +1490,18 @@
 <td style="text-align: left;"><code>/api/autoscaling/events</code></td>
 <td style="text-align: left;">Read-only</td>
 <td style="text-align: left;">Returns audit history of recent horizontal scale-up and scale-down events.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/services/:id/autoscale</code></td>
+<td style="text-align: left;">Admin / Operator</td>
+<td style="text-align: left;">Updates horizontal autoscaling configuration for a specific service.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>POST</code></td>
+<td style="text-align: left;"><code>/api/stack/:id/autoscale</code></td>
+<td style="text-align: left;">Admin / Operator</td>
+<td style="text-align: left;">Updates horizontal autoscaling configuration for all services of a stack.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>POST</code></td>

@@ -90,29 +90,34 @@ Gubernator's scheduler enforces strict affinity rules during horizontal scaling:
 
 ## 🖥 Web Dashboard Experience (Flutter)
 
+### Interactive Autoscale Control Dialog
+Clicking on the **`AUTOSCALE`** chip in either the Legions table or Containers table (or selecting **Autoscale Settings** from the row actions menu) immediately opens the **Horizontal Autoscaling Controls** dialog:
+
+* **Master Status Switch:** Toggle autoscaling ON or OFF in 1 click.
+* **1. Scaling Metric:** Select between **GPU (NVIDIA / CUDA)** (highlighted in purple with AI/ML acceleration badge and hardware affinity auto-binding) or **CPU Utilization** (cyan badge for general compute).
+* **2. Scaling Scope & Affinity:** Choose **Single Host (Local)** (keeps all instances on the same host) or **All Centurions (Cluster)** (spreads instances across nodes with GPU verification).
+* **3. Target Utilization Threshold:** Interactive slider from 10% to 100% (default 80%).
+* **4. Replica Boundaries & Cooldown:** Adjust Min Replicas (minimum 1), Max Replicas (up to 50), and Cooldown period (`30s`, `60s`, `2m`, `5m`).
+* **Instant Application:** Clicking **Save & Apply Autoscale** updates SQLite persistence and cluster watchdog immediately without requiring container redeployment.
+
 ### Legions (Stacks) DataTable
 The Legions dashboard view renders a dedicated **`AUTOSCALE`** column:
 
-* ⚡ **GPU • Cluster** (Purple/Amber Badge with GPU chip icon `Icons.developer_board`): Indicates GPU utilization autoscaling across GPU-enabled Centurions.
-* ⚡ **CPU • Host** (Cyan/Blue Badge with speedometer icon `Icons.speed`): Indicates CPU utilization autoscaling on the local host.
-* ⚡ **Off** (Subtle Gray Badge): Indicates manual static replica management.
-* **Rich Tooltip:** Hovering over any badge displays:
-  * Target threshold percentage (e.g. `80%`)
-  * Scope: `Single Host (Local)` or `All Nodes (Cluster)`
-  * Replica boundaries: `Min: 1 / Max: 5`
-  * Hardware requirements (e.g. `Hardware Affinity: Centurions with NVIDIA GPU`)
+* ⚡ **GPU • Cluster** (Purple/Amber Badge with GPU chip icon `Icons.developer_board`): Indicates GPU utilization autoscaling across GPU-enabled Centurions. Clickable to edit.
+* ⚡ **CPU • Host** (Cyan/Blue Badge with speedometer icon `Icons.speed`): Indicates CPU utilization autoscaling on the local host. Clickable to edit.
+* ⚡ **Off** (Subtle Gray Badge): Indicates manual static replica management. Clickable to configure and enable autoscaling.
+* **Rich Tooltip:** Hovering over any badge displays target %, scope, boundaries, and affinity constraints.
 
 ### Containers (Tasks) PlutoGrid
 The Containers table includes an **`AUTOSCALE`** column next to each container instance:
-* Containers managed by the autoscaling engine display their active policy chip (`GPU • Cluster` or `CPU • Host`).
-* Containers without autoscaling display an unobtrusive `Off` chip.
+* Both active chips and `Off` chips are interactive (`InkWell`), allowing operators to configure autoscaling directly for the underlying workload.
+* The container context menu (3 vertical dots) includes an **Autoscale Settings** action with lightning bolt icon.
 
 ### Compose Studio & Gubernator Copilot
-* **Autoscale Copilot Tab:** A dedicated wizard tab in the Compose Studio sidebar (`_activeCopilotTab == 'autoscale'`) providing:
-  * 1-click production blueprints:
-    * ⚡ **GPU AI/Inference Cluster Autoscale** (80% GPU, Cluster, Min 1, Max 4, NVIDIA affinity).
-    * 🚀 **CPU High-Load Web Autoscale** (75% CPU, Cluster, Min 2, Max 8).
-    * 💻 **Single-Host CPU Autoscale** (85% CPU, Local Host, Min 1, Max 3).
+* **Autoscale Copilot Tab:** A dedicated wizard tab in the Compose Studio sidebar (`_activeCopilotTab == 'autoscale'`) providing 1-click production blueprints:
+  * ⚡ **GPU AI/Inference Cluster Autoscale** (80% GPU, Cluster, Min 1, Max 4, NVIDIA affinity).
+  * 🚀 **CPU High-Load Web Autoscale** (75% CPU, Cluster, Min 2, Max 8).
+  * 💻 **Single-Host CPU Autoscale** (85% CPU, Local Host, Min 1, Max 3).
 * **Smart Autocomplete:** Inserting `gbnt.autoscaling.*` chips automatically injects correctly indented YAML snippets into the active compose buffer.
 
 ---
@@ -123,6 +128,8 @@ The Containers table includes an **`AUTOSCALE`** column next to each container i
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/autoscaling/policies` | Read-only | Returns all active cluster services with their parsed autoscaling policies and affinity constraints. |
 | `GET` | `/api/autoscaling/events` | Read-only | Returns audit history of recent horizontal scale-up and scale-down events. |
+| `POST` | `/api/services/:id/autoscale` | Admin / Operator | Updates horizontal autoscaling configuration for a specific service. |
+| `POST` | `/api/stack/:id/autoscale` | Admin / Operator | Updates horizontal autoscaling configuration for all services of a stack. |
 | `POST` | `/api/services/:id/scale` | Admin / Operator | Manual replica scale override (`{"replicas": 3}`). |
 
 ### Example Policy Response (`GET /api/autoscaling/policies`)

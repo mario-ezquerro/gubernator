@@ -87,6 +87,34 @@ class ApiService {
     return null;
   }
 
+  /// Updates horizontal autoscaling configuration for a specific service.
+  static Future<bool> updateServiceAutoscale(String serviceId, Map<String, dynamic> config) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/services/$serviceId/autoscale'),
+        headers: authHeaders,
+        body: jsonEncode(config),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Updates horizontal autoscaling configuration for all services in a stack.
+  static Future<bool> updateStackAutoscale(String stackId, Map<String, dynamic> config) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/stack/$stackId/autoscale'),
+        headers: authHeaders,
+        body: jsonEncode(config),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Prunes all dead, duplicate, and orphan containers across the cluster.
   static Future<Map<String, dynamic>?> pruneTasks() async {
     try {
