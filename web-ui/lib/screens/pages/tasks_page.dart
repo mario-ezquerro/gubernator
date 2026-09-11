@@ -95,6 +95,60 @@ class _TasksPageState extends State<TasksPage> {
         });
       }
     }
+    _updateTaskGrid();
+  }
+
+  void _updateTaskGrid() {
+    if (_gridStateManager == null) return;
+    final theme = Theme.of(context);
+    final List<PlutoRow> newRows = _getPlutoRows(theme);
+
+    final currentRows = _gridStateManager!.refRows.originalList;
+    final Map<String, PlutoRow> currentRowsMap = {
+      for (var row in currentRows) row.cells['task_id']!.value.toString(): row
+    };
+
+    final List<PlutoRow> rowsToAdd = [];
+    final Set<String> newRowIds = {};
+    bool hasChanges = false;
+
+    for (var newRow in newRows) {
+      final id = newRow.cells['task_id']!.value.toString();
+      newRowIds.add(id);
+
+      final existingRow = currentRowsMap[id];
+      if (existingRow != null) {
+        for (var key in newRow.cells.keys) {
+          if (existingRow.cells[key]!.value != newRow.cells[key]!.value) {
+            existingRow.cells[key]!.value = newRow.cells[key]!.value;
+            hasChanges = true;
+          }
+        }
+      } else {
+        rowsToAdd.add(newRow);
+        hasChanges = true;
+      }
+    }
+
+    final List<PlutoRow> rowsToRemove = [];
+    for (var row in currentRows) {
+      final id = row.cells['task_id']!.value.toString();
+      if (!newRowIds.contains(id)) {
+        rowsToRemove.add(row);
+        hasChanges = true;
+      }
+    }
+
+    if (rowsToRemove.isNotEmpty) {
+      _gridStateManager!.removeRows(rowsToRemove);
+    }
+    if (rowsToAdd.isNotEmpty) {
+      _gridStateManager!.appendRows(rowsToAdd);
+    }
+
+    if (hasChanges) {
+      _gridStateManager!.notifyListeners();
+    }
   }
 
   @override
@@ -146,8 +200,30 @@ class _TasksPageState extends State<TasksPage> {
       ),
     );
     if (confirmed != true) return;
-    final ok = await ApiService.deleteTask(id);
+    final ok = await ApiService.taskAction(id, 'stop');
     _showSnackBar(ok ? 'Container stopped.' : 'Failed to stop container.', isError: !ok);
+    widget.onRefresh();
+  }
+
+  Future<void> _deleteTask(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Container'),
+        content: const Text('Are you sure you want to forcibly remove this container and task?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ok = await ApiService.deleteTask(id);
+    _showSnackBar(ok ? 'Container removed.' : 'Failed to remove container.', isError: !ok);
     widget.onRefresh();
   }
 
@@ -292,6 +368,7 @@ class _TasksPageState extends State<TasksPage> {
           case 'restart': _taskAction(t.id, 'restart'); break;
           case 'start': _taskAction(t.id, 'start'); break;
           case 'stop': _stopTask(t.id); break;
+          case 'delete': _deleteTask(t.id); break;
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -317,7 +394,8 @@ class _TasksPageState extends State<TasksPage> {
           const PopupMenuItem<String>(value: 'start', child: ListTile(leading: Icon(Icons.play_arrow, size: 20), title: Text('Start'), contentPadding: EdgeInsets.zero)),
         const PopupMenuItem<String>(value: 'restart', child: ListTile(leading: Icon(Icons.refresh, size: 20), title: Text('Restart'), contentPadding: EdgeInsets.zero)),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(value: 'stop', child: ListTile(leading: Icon(Icons.stop_circle, size: 20, color: Colors.red), title: Text('Stop', style: TextStyle(color: Colors.red)), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'stop', child: ListTile(leading: Icon(Icons.stop_circle, size: 20, color: Colors.orange), title: Text('Stop', style: TextStyle(color: Colors.orange)), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'delete', child: ListTile(leading: Icon(Icons.delete, size: 20, color: Colors.red), title: Text('Remove', style: TextStyle(color: Colors.red)), contentPadding: EdgeInsets.zero)),
       ],
     );
   }

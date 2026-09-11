@@ -114,6 +114,47 @@ class _LegionsPageState extends State<LegionsPage> {
     }
   }
 
+  Future<void> _restartStack(String id, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.refresh, color: Color(0xFF3B82F6)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Restart Stack: $name')),
+          ],
+        ),
+        content: Text(
+          'Restart all containers for stack "$name"?\n\n'
+          'All running workloads will be restarted and container health will be re-verified.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            child: const Text('Restart Stack'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _processingStackIds.add(id));
+    _showSnackBar('Restarting stack "$name"...');
+    final ok = await ApiService.restartStack(id);
+    if (mounted) {
+      setState(() => _processingStackIds.remove(id));
+    }
+    if (ok) {
+      _showSnackBar('Stack "$name" restarted successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to restart stack "$name".', isError: true);
+    }
+  }
+
   Future<void> _reconcileStack(String id, String name) async {
     setState(() => _processingStackIds.add(id));
     _showSnackBar('Reconciling stack "$name" and purging stale containers...');
@@ -1014,7 +1055,9 @@ class _LegionsPageState extends State<LegionsPage> {
                                         ? const SizedBox(width: 36)
                                         : _actionBtn(Icons.copy, 'Duplicate',
                                             const Color(0xFF10B981), () => _duplicateStack(s)),
-                                    _actionBtn(Icons.rocket_launch, 'Redeploy',
+                                    _actionBtn(Icons.refresh, 'Restart Stack (Restart all containers)',
+                                        const Color(0xFF3B82F6), () => _restartStack(s.id, s.name)),
+                                    _actionBtn(Icons.rocket_launch, 'Redeploy Stack (Recreate containers)',
                                         const Color(0xFFD29922), () => _redeployStack(s.id)),
                                     _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
                                         const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),

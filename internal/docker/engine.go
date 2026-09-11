@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -223,8 +224,17 @@ func splitCommand(cmd string) []string {
 	return args
 }
 
-// ExecuteNodeDockerAction executes a docker command (e.g. "stop", "start", "rm -f") on the specified node.
+// ContainerStateInfo holds inspected runtime status, IP, and timestamps of a Docker container.
+type ContainerStateInfo struct {
+	Status    string
+	StartedAt time.Time
+	CreatedAt time.Time
+	IPAddress string
+}
+
+// ExecuteNodeDockerAction executes a docker command (e.g. "stop", "start", "restart", "rm -f") on the specified node.
 // If nodeID is a remote worker node, it executes over SSH. If local, it runs directly.
+// Uses CombinedOutput to capture detailed Docker daemon error messages.
 func ExecuteNodeDockerAction(nodeID, containerName, action string) error {
 	if containerName == "" {
 		return nil
@@ -252,21 +262,33 @@ func ExecuteNodeDockerAction(nodeID, containerName, action string) error {
 		}
 		remoteCmd := fmt.Sprintf("sudo docker %s %s", action, containerName)
 		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
-		return exec.Command("ssh", sshArgs...).Run()
+		out, err := exec.Command("ssh", sshArgs...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("remote docker %s failed on %s: %s (%w)", action, node.IP, strings.TrimSpace(string(out)), err)
+		}
+		return nil
 	}
 
 	// Local docker command execution
 	fields := strings.Fields(action)
 	args := append(fields, containerName)
-	return exec.Command("docker", args...).Run()
+	out, err := exec.Command("docker", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker %s failed for %s: %s (%w)", action, containerName, strings.TrimSpace(string(out)), err)
+	}
+	return nil
 }
 
-// InspectContainerStatus queries Docker for the State.Status of a container ("running", "exited", "dead", etc.).
-func InspectContainerStatus(nodeID, containerName string) (string, error) {
+// InspectContainerDetails queries Docker for status, startedAt, createdAt, and IP of a container.
+// It executes either locally on the manager or remotely over SSH on a worker Centurion.
+func InspectContainerDetails(nodeID, containerName string) (*ContainerStateInfo, error) {
 	if containerName == "" {
-		return "", fmt.Errorf("empty container name")
+		return nil, fmt.Errorf("empty container name")
 	}
 
+	formatTmpl := "{{.State.Status}}|{{.State.StartedAt}}|{{.Created}}|{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"
+
+	var rawOutput string
 	var node db.Node
 	if err := db.DB.Where("id = ? OR ip = ?", nodeID, nodeID).First(&node).Error; err == nil &&
 		node.Role != "manager" && node.ID != "node-local-manager" && node.IP != "" && node.IP != "127.0.0.1" {
@@ -275,6 +297,10 @@ func InspectContainerStatus(nodeID, containerName string) (string, error) {
 			"/root/.ssh/id_ed25519", "/root/.ssh/id_rsa",
 			"/data/id_ed25519", "/data/id_rsa",
 			"/data/ssh/id_ed25519", "/data/ssh/id_rsa",
+			"/home/ubuntu/.ssh/id_ed25519", "/home/ubuntu/.ssh/id_rsa",
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			keyCandidates = append(keyCandidates, filepath.Join(home, ".ssh", "id_ed25519"), filepath.Join(home, ".ssh", "id_rsa"))
 		}
 		for _, k := range keyCandidates {
 			if _, err := os.Stat(k); err == nil {
@@ -282,20 +308,59 @@ func InspectContainerStatus(nodeID, containerName string) (string, error) {
 				break
 			}
 		}
-		remoteCmd := fmt.Sprintf("sudo docker inspect -f '{{.State.Status}}' %s", containerName)
+		remoteCmd := fmt.Sprintf("sudo docker inspect --format '%s' %s", formatTmpl, containerName)
 		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", node.IP), remoteCmd)
-		out, err := exec.Command("ssh", sshArgs...).Output()
+		out, err := exec.Command("ssh", sshArgs...).CombinedOutput()
 		if err != nil {
-			return "", err
+			return nil, fmt.Errorf("remote inspect failed on %s: %s (%w)", node.IP, strings.TrimSpace(string(out)), err)
 		}
-		return strings.TrimSpace(string(out)), nil
+		rawOutput = strings.TrimSpace(string(out))
+	} else {
+		out, err := exec.Command("docker", "inspect", "--format", formatTmpl, containerName).CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("docker inspect failed for %s: %s (%w)", containerName, strings.TrimSpace(string(out)), err)
+		}
+		rawOutput = strings.TrimSpace(string(out))
 	}
 
-	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", containerName).Output()
+	parts := strings.Split(rawOutput, "|")
+	info := &ContainerStateInfo{
+		Status: "unknown",
+	}
+
+	if len(parts) >= 1 && strings.TrimSpace(parts[0]) != "" {
+		info.Status = strings.TrimSpace(parts[0])
+	}
+	if len(parts) >= 2 && strings.TrimSpace(parts[1]) != "" {
+		tStr := strings.TrimSpace(parts[1])
+		if t, err := time.Parse(time.RFC3339Nano, tStr); err == nil {
+			info.StartedAt = t
+		} else if t, err := time.Parse(time.RFC3339, tStr); err == nil {
+			info.StartedAt = t
+		}
+	}
+	if len(parts) >= 3 && strings.TrimSpace(parts[2]) != "" {
+		tStr := strings.TrimSpace(parts[2])
+		if t, err := time.Parse(time.RFC3339Nano, tStr); err == nil {
+			info.CreatedAt = t
+		} else if t, err := time.Parse(time.RFC3339, tStr); err == nil {
+			info.CreatedAt = t
+		}
+	}
+	if len(parts) >= 4 {
+		info.IPAddress = strings.TrimSpace(parts[3])
+	}
+
+	return info, nil
+}
+
+// InspectContainerStatus queries Docker for the State.Status of a container ("running", "exited", "dead", etc.).
+func InspectContainerStatus(nodeID, containerName string) (string, error) {
+	info, err := InspectContainerDetails(nodeID, containerName)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return info.Status, nil
 }
 
 // RemoveContainerOnNode disconnects from gbnt-net (if local) and forcibly removes the container.

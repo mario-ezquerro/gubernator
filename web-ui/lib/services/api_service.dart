@@ -76,6 +76,12 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  /// Restarts all containers in a stack.
+  static Future<bool> restartStack(String id) async {
+    final response = await http.post(Uri.parse('/api/stack/$id/restart'), headers: authHeaders);
+    return response.statusCode == 200;
+  }
+
   /// Reconciles a single stack, purging dead/stale containers and aligning tasks with desired replicas.
   static Future<Map<String, dynamic>?> reconcileStack(String id) async {
     try {

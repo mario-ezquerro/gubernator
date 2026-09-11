@@ -538,6 +538,7 @@ func StartDashboard() {
 		// Operator & Admin write operations (Stacks & Tasks & Shell)
 		api.PUT("/stack/:id/compose", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), updateStackComposeHandler)
 		api.POST("/stack/:id/redeploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), redeployStackHandler)
+		api.POST("/stack/:id/restart", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), restartStackHandler)
 		api.POST("/stack/:id/stop", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stopStackHandler)
 		api.POST("/stack/:id/start", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), startStackHandler)
 		api.POST("/stack/:id/reconcile", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), reconcileStackWebHandler)
@@ -1399,11 +1400,49 @@ func taskActionHandler(c *gin.Context) {
 		return
 	}
 
-	if req.Action == "stop" {
-		db.DB.Model(&task).Update("status", "stopped")
-	} else if req.Action == "start" || req.Action == "restart" {
-		db.DB.Model(&task).Update("status", "running")
+	// Inspect container to synchronize real Docker status, IP, and timestamps
+	details, inspectErr := docker.InspectContainerDetails(task.NodeID, task.ContainerName)
+	if inspectErr != nil {
+		slog.Warn("task action: inspect failed after docker action", "action", req.Action, "container", task.ContainerName, "err", inspectErr)
 	}
+
+	now := time.Now()
+	updates := map[string]interface{}{
+		"updated_at": now,
+	}
+
+	switch req.Action {
+	case "restart", "start":
+		updates["status"] = "running"
+		if details != nil && details.Status != "" && details.Status != "unknown" {
+			updates["status"] = details.Status
+		}
+		if details != nil && !details.StartedAt.IsZero() {
+			updates["created_at"] = details.StartedAt
+		} else {
+			updates["created_at"] = now
+		}
+		if details != nil && details.IPAddress != "" {
+			updates["container_ip"] = details.IPAddress
+		}
+		updates["error"] = ""
+
+	case "stop":
+		updates["status"] = "stopped"
+		updates["container_ip"] = ""
+
+	case "pause":
+		updates["status"] = "paused"
+
+	case "unpause":
+		updates["status"] = "running"
+	}
+
+	db.DB.Model(&task).Updates(updates)
+
+	// Refresh routing and DNS asynchronously
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
 
 	sess := auth.ExtractUserSession(c)
 	actor := "system"
@@ -1412,7 +1451,13 @@ func taskActionHandler(c *gin.Context) {
 	}
 	logAudit(c, actor, "LOCAL", "CONTAINER_ACTION", "SUCCESS", fmt.Sprintf("Action '%s' executed on container '%s' (task: %s, node: %s)", req.Action, task.ContainerName, task.ID, task.NodeID))
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "ok",
+		"action":     req.Action,
+		"task_id":    task.ID,
+		"container":  task.ContainerName,
+		"new_status": updates["status"],
+	})
 }
 
 // getNodeSSHArgs builds the ssh command-line arguments to execute a command on a remote Centurion node.
@@ -2348,30 +2393,12 @@ func redeployStackHandler(c *gin.Context) {
 		}
 
 		if existing, ok := existingByName[srvName]; ok {
-			// Service already exists — check what changed
-			if serviceDefinitionChanged(existing, srvDef) {
-				// Definition changed (image, ports, env, etc.) → full teardown + recreate
-				slog.Info("redeploy: definition changed, full recreate", "service", srvName)
-				stopAllTasksForService(existing.ID)
-				updateServiceRecord(&existing, srvDef, newReplicas)
-				webScheduleService(&existing, "")
-				summary = append(summary, fmt.Sprintf("%s: recreated (%d replicas)", srvName, newReplicas))
-			} else if existing.DesiredReplicas != newReplicas {
-				// Only replica count changed → incremental scale
-				delta := newReplicas - existing.DesiredReplicas
-				slog.Info("redeploy: scaling service", "service", srvName, "from", existing.DesiredReplicas, "to", newReplicas, "delta", delta)
-				if delta > 0 {
-					scaleServiceUp(&existing, delta)
-				} else {
-					scaleServiceDown(&existing, -delta)
-				}
-				// Update DesiredReplicas in DB
-				db.DB.Model(&db.Service{}).Where("id = ?", existing.ID).Update("desired_replicas", newReplicas)
-				summary = append(summary, fmt.Sprintf("%s: scaled %d → %d", srvName, existing.DesiredReplicas, newReplicas))
-			} else {
-				// Nothing changed for this service
-				summary = append(summary, fmt.Sprintf("%s: unchanged", srvName))
-			}
+			// Redeploy explicitly tears down old containers and recreates fresh ones
+			slog.Info("redeploy: recreating service tasks", "service", srvName, "replicas", newReplicas)
+			stopAllTasksForService(existing.ID)
+			updateServiceRecord(&existing, srvDef, newReplicas)
+			webScheduleService(&existing, "")
+			summary = append(summary, fmt.Sprintf("%s: redeployed (%d replicas)", srvName, newReplicas))
 			delete(existingByName, srvName)
 		} else {
 			// Brand new service — create and schedule
@@ -2411,6 +2438,16 @@ func redeployStackHandler(c *gin.Context) {
 	}
 
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_REDEPLOY", "SUCCESS", fmt.Sprintf("Redeployed stack '%s' (%s)", stack.Name, strings.Join(summary, ", ")))
 
 	c.JSON(http.StatusOK, gin.H{"status": "redeployed", "stack_id": id, "changes": summary})
 }
@@ -2671,7 +2708,20 @@ func startStackHandler(c *gin.Context) {
 			}
 			err := docker.ExecuteNodeDockerAction(task.NodeID, cName, "start")
 			if err == nil {
-				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Update("status", "running")
+				now := time.Now()
+				updates := map[string]interface{}{
+					"status":     "running",
+					"updated_at": now,
+				}
+				if details, err := docker.InspectContainerDetails(task.NodeID, cName); err == nil && details != nil {
+					if !details.StartedAt.IsZero() {
+						updates["created_at"] = details.StartedAt
+					}
+					if details.IPAddress != "" {
+						updates["container_ip"] = details.IPAddress
+					}
+				}
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(updates)
 				startedCount++
 			}
 		}
@@ -2695,10 +2745,111 @@ func startStackHandler(c *gin.Context) {
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
 
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_START", "SUCCESS", fmt.Sprintf("Started stack '%s' (%d containers)", stack.Name, startedCount))
+
 	c.JSON(http.StatusOK, gin.H{
-		"status":            "started",
-		"stack_id":          id,
+		"status":             "started",
+		"stack_id":           id,
 		"started_containers": startedCount,
+	})
+}
+
+func restartStackHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	var stack db.Stack
+	if err := db.DB.First(&stack, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Stack not found"})
+		return
+	}
+
+	// 1. Special handling for SRE Monitor stack
+	if id == monitor.SREStackID || strings.Contains(strings.ToLower(stack.Name), "monitor") {
+		redeploySREStack(c)
+		return
+	}
+
+	// 2. Special handling for Core stack
+	if id == coredns.CoreStackID || strings.Contains(strings.ToLower(stack.Name), "core-gbnt") {
+		redeployCoreStack(c)
+		return
+	}
+
+	// 2b. Special handling for Scope / Network Topology stack
+	if id == "super-net-topology-mgr" || strings.HasPrefix(strings.ToLower(id), "super-") ||
+		strings.Contains(strings.ToLower(stack.Name), "topology") || strings.Contains(strings.ToLower(stack.Name), "scope") {
+		_ = monitor.EnableScope()
+		c.JSON(http.StatusOK, gin.H{"status": "running", "stack_id": id, "message": "Network Topology restarted"})
+		return
+	}
+
+	// 3. User deployed application stacks
+	var services []db.Service
+	db.DB.Where("stack_id = ?", id).Find(&services)
+
+	restartedCount := 0
+	for _, svc := range services {
+		var tasks []db.Task
+		db.DB.Where("service_id = ? AND container_name != ''", svc.ID).Find(&tasks)
+		for _, task := range tasks {
+			cName := task.ContainerName
+			if cName == "" {
+				cName = "gbnt-" + task.ID
+			}
+			err := docker.ExecuteNodeDockerAction(task.NodeID, cName, "restart")
+			if err == nil {
+				now := time.Now()
+				updates := map[string]interface{}{
+					"status":     "running",
+					"updated_at": now,
+				}
+				if details, err := docker.InspectContainerDetails(task.NodeID, cName); err == nil && details != nil {
+					if !details.StartedAt.IsZero() {
+						updates["created_at"] = details.StartedAt
+					}
+					if details.IPAddress != "" {
+						updates["container_ip"] = details.IPAddress
+					}
+				}
+				db.DB.Model(&db.Task{}).Where("id = ?", task.ID).Updates(updates)
+				restartedCount++
+			}
+		}
+	}
+
+	// If no existing containers could be restarted, fallback to a full redeploy!
+	totalDesired := 0
+	for _, svc := range services {
+		d := svc.DesiredReplicas
+		if d <= 0 {
+			d = 1
+		}
+		totalDesired += d
+	}
+	if restartedCount < totalDesired {
+		redeployStackHandler(c)
+		return
+	}
+
+	go aqueducts.GenerateHostsFile()
+	go aqueducts.GenerateCaddyfile()
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_RESTART", "SUCCESS", fmt.Sprintf("Restarted stack '%s' (%d containers)", stack.Name, restartedCount))
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":               "restarted",
+		"stack_id":             id,
+		"restarted_containers": restartedCount,
 	})
 }
 
