@@ -183,7 +183,7 @@ func FormatSIEMMessage(entry *db.AuditLog, format string) []byte {
 	case "CEF":
 		// Common Event Format: CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
 		cleanDetails := strings.ReplaceAll(entry.Details, "|", "\\|")
-		return []byte(fmt.Sprintf("CEF:0|Gubernator|Orchestrator|v2.81.1|%s|%s|5|src=%s suser=%s msg=%s proto=%s status=%s id=%s hash=%s\n",
+		return []byte(fmt.Sprintf("CEF:0|Gubernator|Orchestrator|v2.81.2|%s|%s|5|src=%s suser=%s msg=%s proto=%s status=%s id=%s hash=%s\n",
 			entry.Action, entry.Action, entry.IPAddress, entry.Username, cleanDetails, entry.Provider, entry.Status, entry.ID, entry.Hash))
 
 	case "JSON":

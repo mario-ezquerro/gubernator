@@ -864,4 +864,11 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Collapsible Manual Fallback:** Optional toggle to display the raw Base32 secret key with one-click clipboard copy for users without a camera.
   - **Step-by-Step Security Flow:** Scan QR code -> Copy emergency single-use backup codes -> Verify 6-digit TOTP code to activate.
 
+### 97. Grafana Dashboard Multi-Host Detailed Centurions Table Fix (`v2.81.2`)
+* **Resolution of Panel 52 Error & Empty Data (`internal/monitor/gubernator_dashboard.json` & `monitoring/grafana/dashboards/gubernator.json`):**
+  - **Replaced Broken `joinByLabels` Transformer:** Removed `joinByLabels` (which fails on Prometheus table-formatted frames lacking field labels metadata) and reverted to the native, battle-tested `seriesToColumns` outer join on the `instance` field.
+  - **Clean Standard PromQL Expressions:** Replaced fragile `label_replace` wrappers with direct instant table PromQL queries across CPU, Memory Used %, Memory Used, Memory Total, Network Rx/Tx, and Host Disk (used, total, %).
+  - **Column Alignment & Display Mode:** Configured clean `organize` transformation mapping `Value #<refId>` to descriptive metrics (`CPU Usage %`, `Memory Used %`, `Net Rx`, `Host Disk %`, etc.), hiding redundant `Time` timestamp columns, and applying `gradient-gauge` display mode on `Host Disk %`.
+
+
 
