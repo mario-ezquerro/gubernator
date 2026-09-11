@@ -2,9 +2,17 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../../widgets/sre_profiles_dialog.dart';
 
-/// OpenSearch Dashboards page — embeds the OpenSearch Dashboards interface with toolbar controls and direct links.
-class OpenSearchDashboardsPage extends StatelessWidget {
+/// OpenSearch Dashboards page — embeds OpenSearch Dashboards with segmented tabs for
+/// Cluster Logs Overview, SIEM Security Audit, and Discover Explorer.
+class OpenSearchDashboardsPage extends StatefulWidget {
   const OpenSearchDashboardsPage({super.key});
+
+  @override
+  State<OpenSearchDashboardsPage> createState() => _OpenSearchDashboardsPageState();
+}
+
+class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
+  int _selectedTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +91,39 @@ class OpenSearchDashboardsPage extends StatelessWidget {
                 ],
               ),
               const Spacer(),
+
+              // Segmented view selector
+              SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment<int>(
+                    value: 0,
+                    icon: Icon(Icons.bar_chart, size: 16),
+                    label: Text('Logs Overview', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  ButtonSegment<int>(
+                    value: 1,
+                    icon: Icon(Icons.security, size: 16),
+                    label: Text('SIEM Audit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  ButtonSegment<int>(
+                    value: 2,
+                    icon: Icon(Icons.travel_explore, size: 16),
+                    label: Text('Discover', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+                selected: {_selectedTab},
+                onSelectionChanged: (newSelection) {
+                  setState(() {
+                    _selectedTab = newSelection.first;
+                  });
+                },
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 12),
+
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.deepOrangeAccent,
@@ -103,14 +144,6 @@ class OpenSearchDashboardsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  html.window.open('http://$host:5601/app/discover', '_blank');
-                },
-                icon: const Icon(Icons.search, size: 16),
-                label: const Text('Discover Logs'),
-              ),
-              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: () {
                   html.window.open('http://$host:5601', '_blank');
@@ -123,13 +156,20 @@ class OpenSearchDashboardsPage extends StatelessWidget {
         ),
 
         // IFrame View
-        const Expanded(
+        Expanded(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Card(
               elevation: 0,
               clipBehavior: Clip.antiAlias,
-              child: HtmlElementView(viewType: 'opensearch-iframe'),
+              child: IndexedStack(
+                index: _selectedTab,
+                children: const [
+                  HtmlElementView(viewType: 'opensearch-iframe'),
+                  HtmlElementView(viewType: 'opensearch-siem-iframe'),
+                  HtmlElementView(viewType: 'opensearch-discover-iframe'),
+                ],
+              ),
             ),
           ),
         ),

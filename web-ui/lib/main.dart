@@ -48,13 +48,37 @@ void main() {
         ..setAttribute('allow', 'fullscreen');
     },
   );
-  // Register the iframe view factory for OpenSearch Dashboards
+  // Register the iframe view factories for OpenSearch Dashboards
   ui_web.platformViewRegistry.registerViewFactory(
     'opensearch-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
       return html.IFrameElement()
-        ..src = 'http://$host:5601/'
+        ..src = 'http://$host:5601/app/dashboards#/view/gubernator-cluster-logs'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen');
+    },
+  );
+  ui_web.platformViewRegistry.registerViewFactory(
+    'opensearch-siem-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname ?? 'localhost';
+      return html.IFrameElement()
+        ..src = 'http://$host:5601/app/dashboards#/view/gubernator-siem-audit'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen');
+    },
+  );
+  ui_web.platformViewRegistry.registerViewFactory(
+    'opensearch-discover-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname ?? 'localhost';
+      return html.IFrameElement()
+        ..src = 'http://$host:5601/app/discover'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'

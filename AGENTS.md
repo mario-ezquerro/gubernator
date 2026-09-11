@@ -907,6 +907,31 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Expanded `AllContainers()` and `AllVolumes()` across all SRE architectures (`victoriametrics`, `clickhouse`, `opensearch`, `opensearch-dashboards`, `fluentbit`, `vector`) ensuring zero leftover containers on profile switches.
   - Server auto-deploy watchdog (`GBNT_MONITOR=true`) respects the persistent active SRE profile (`GetActiveProfile()`) or `GBNT_SRE_PROFILE` override, guaranteeing persistent reboot stability.
 
+### 100. Out-of-the-Box OpenSearch Container Dashboards, SIEM Security Audit & Structured Log Parsing (`v2.83.1`)
+* **Automated OpenSearch Dashboards Provisioning Subsystem (`internal/monitor/opensearch_provision.go`):**
+  - Completely eliminates empty dashboard states upon deploying the `enterprise-elk` SIEM profile by automatically waiting for OpenSearch Dashboards on `:5601` (`/api/status`) and provisioning production-grade visual objects via Saved Objects REST API.
+  - Automatically provisions `index-pattern/gubernator-logs` with explicit `attributes.fields` JSON schema mapping (`@timestamp`, `stream`, `log`, `container_log_path`, `time`), resolving field cache and metadata lookups out of the box, and sets `defaultIndex: gubernator-logs`.
+  - Generates 2 pre-configured Saved Searches:
+    - `gubernator-all-logs` ("Live Container Logs Stream"): Tailoring stream, log content, and container log path.
+    - `gubernator-error-logs` ("Filtered Error & Warning Logs"): Targeted Lucene filter `stream: stderr OR log: *error* OR log: *fail* OR log: *exception*`.
+  - Automatically deploys 6 specialized container visualizations:
+    - **Total Cluster Logs** (Metric KPI).
+    - **Stdout Events** (Metric KPI).
+    - **Stderr & Errors** (Metric KPI with alert styling).
+    - **Log Streams Breakdown** (Donut chart).
+    - **Log Activity Trends Over Time** (Date Histogram area/bar chart).
+    - **Top Active Containers by Log Volume** (Horizontal bar ranking).
+  - Automatically deploys 2 comprehensive Dashboards configured with `timeRestore: true` and a 24-hour default time window:
+    - **`[Gubernator] Container Cluster Logs Overview` (`gubernator-cluster-logs`)**: Complete cluster-wide telemetry, stream distribution, activity velocity, and live log stream.
+    - **`[Gubernator] SIEM Security & Error Audit` (`gubernator-siem-audit`)**: Security and anomaly audit dashboard filtering errors, panics, and unexpected container terminations.
+* **Structured Container Log Parsing via Fluent Bit v5:**
+  - Auto-generates `parsers.conf` with native Docker JSON parser (`format json`, `time_key time`, `time_format %Y-%m-%dT%H:%M:%S.%L`).
+  - Configures `fluent-bit.conf` with `Parsers_File parsers.conf`, `Parser docker`, `Path_Key container_log_path`, and `Buffer_Size 10M` to eliminate HTTP buffer overflow warnings during large burst ingestions.
+  - Ensures raw Docker JSON string payloads are parsed into structured, searchable Elasticsearch/OpenSearch attributes (`stream`, `log`, `time`).
+* **Web UI Segmented Controller Toolbar:**
+  - `web-ui/lib/screens/pages/opensearch_dashboards_page.dart` features a responsive top segmented view selector enabling 1-click switching between **Logs Overview** (`#/view/gubernator-cluster-logs`), **SIEM Audit** (`#/view/gubernator-siem-audit`), and **Discover** (`/app/discover`), while retaining full access to external launch (`:5601`) and SRE Profiles configuration.
+
+
 
 
 

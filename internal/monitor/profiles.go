@@ -457,19 +457,33 @@ csp.warnLegacyBrowsers: false
 		return fmt.Errorf("opensearch dashboards failed: %w", err)
 	}
 
-	// Prepare Fluent Bit config for OpenSearch log shipping
+	// Prepare Fluent Bit config and parsers for OpenSearch log shipping
 	fbConfigDir := filepath.Join(MonitorDir(), "fluentbit")
 	_ = os.MkdirAll(fbConfigDir, 0755)
+
+	parsersConfigFile := filepath.Join(fbConfigDir, "parsers.conf")
+	parsersConfig := `[PARSER]
+    Name        docker
+    Format      json
+    Time_Key    time
+    Time_Format %Y-%m-%dT%H:%M:%S.%L
+    Time_Keep   On
+`
+	_ = os.WriteFile(parsersConfigFile, []byte(parsersConfig), 0644)
+
 	fbConfigFile := filepath.Join(fbConfigDir, "fluent-bit.conf")
 	fbConfig := `[SERVICE]
     Flush        1
     Daemon       Off
     Log_Level    info
+    Parsers_File parsers.conf
 
 [INPUT]
     Name             tail
     Path             /var/lib/docker/containers/*/*.log
+    Parser           docker
     Tag              docker.*
+    Path_Key         container_log_path
     Refresh_Interval 5
     Skip_Long_Lines  On
 
@@ -480,6 +494,7 @@ csp.warnLegacyBrowsers: false
     Port                9200
     Index               gubernator-logs
     Type                _doc
+    Buffer_Size         10M
     tls                 Off
     tls.verify          Off
     Suppress_Type_Name  On
@@ -489,12 +504,15 @@ csp.warnLegacyBrowsers: false
 	// Fluent Bit
 	_ = runContainer("gbnt-monitor-fluentbit", []string{
 		"--net", NetworkName,
-		"-v", fbConfigFile + ":/fluent-bit/etc/fluent-bit.conf:ro",
+		"-v", fbConfigDir + ":/fluent-bit/etc:ro",
 		"-v", "/var/log:/var/log:ro",
 		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
 		"fluent/fluent-bit:latest",
 	})
+
+	// Asynchronously auto-provision OpenSearch Dashboards (index patterns, visualizations, dashboards)
+	go ProvisionOpenSearchObjects()
 
 	return nil
 }
