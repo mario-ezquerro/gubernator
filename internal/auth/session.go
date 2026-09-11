@@ -87,6 +87,9 @@ func ValidateToken(tokenStr string) (*UserSession, error) {
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		if claims.Issuer != "gubernator" {
+			return nil, errors.New("invalid session token issuer")
+		}
 		role := NormalizeRole(claims.Role)
 		return &UserSession{
 			Username:    claims.Username,
@@ -100,6 +103,59 @@ func ValidateToken(tokenStr string) (*UserSession, error) {
 	}
 
 	return nil, errors.New("invalid session token")
+}
+
+// GenerateMFAPendingToken generates a short-lived token (5 minutes) used strictly to complete MFA verification.
+func GenerateMFAPendingToken(user UserSession) (string, error) {
+	exp := time.Now().Add(5 * time.Minute)
+	claims := Claims{
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		Email:       user.Email,
+		Role:        string(user.Role),
+		Provider:    user.Provider,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(exp),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "gubernator-mfa-pending",
+			Subject:   user.Username,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(getJWTSecret())
+}
+
+// ValidateMFAPendingToken validates an MFA challenge token and returns the user identity.
+func ValidateMFAPendingToken(tokenStr string) (*UserSession, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return getJWTSecret(), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		if claims.Issuer != "gubernator-mfa-pending" {
+			return nil, errors.New("invalid MFA token purpose")
+		}
+		role := NormalizeRole(claims.Role)
+		return &UserSession{
+			Username:    claims.Username,
+			DisplayName: claims.DisplayName,
+			Email:       claims.Email,
+			Role:        role,
+			Provider:    claims.Provider,
+			Permissions: GetPermissions(role),
+			ExpiresAt:   claims.ExpiresAt.Time,
+		}, nil
+	}
+
+	return nil, errors.New("invalid MFA token")
 }
 
 // GenerateLocalAdminSession creates a session for the local emergency admin.
@@ -121,3 +177,4 @@ func GenerateRandomKey(length int) string {
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
+

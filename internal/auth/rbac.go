@@ -7,6 +7,7 @@ const (
 	RoleAdmin    Role = "admin"
 	RoleOperator Role = "operator"
 	RoleReadOnly Role = "readonly"
+	RoleAuditor  Role = "auditor"
 )
 
 // Permissions for fine-grained authorization.
@@ -21,6 +22,8 @@ type Permissions struct {
 	CanManageCoreDNS     bool `json:"can_manage_coredns"`
 	CanManageSecurity    bool `json:"can_manage_security"`
 	CanViewObservability bool `json:"can_view_observability"`
+	CanViewAuditLogs     bool `json:"can_view_audit_logs"`
+	CanExportAuditLogs   bool `json:"can_export_audit_logs"`
 }
 
 // GetPermissions returns the permission set associated with a role.
@@ -38,6 +41,8 @@ func GetPermissions(r Role) Permissions {
 			CanManageCoreDNS:     true,
 			CanManageSecurity:    true,
 			CanViewObservability: true,
+			CanViewAuditLogs:     true,
+			CanExportAuditLogs:   true,
 		}
 	case RoleOperator:
 		return Permissions{
@@ -51,6 +56,23 @@ func GetPermissions(r Role) Permissions {
 			CanManageCoreDNS:     false,
 			CanManageSecurity:    false,
 			CanViewObservability: true,
+			CanViewAuditLogs:     false,
+			CanExportAuditLogs:   false,
+		}
+	case RoleAuditor:
+		return Permissions{
+			CanDeployStacks:      false,
+			CanDeleteStacks:      false,
+			CanRestartTasks:      false,
+			CanDeleteTasks:       false,
+			CanExecuteShell:      false,
+			CanManageNodes:       false,
+			CanManageCaddy:       false,
+			CanManageCoreDNS:     false,
+			CanManageSecurity:    false,
+			CanViewObservability: true,
+			CanViewAuditLogs:     true,
+			CanExportAuditLogs:   true,
 		}
 	default:
 		return Permissions{
@@ -64,6 +86,8 @@ func GetPermissions(r Role) Permissions {
 			CanManageCoreDNS:     false,
 			CanManageSecurity:    false,
 			CanViewObservability: true,
+			CanViewAuditLogs:     false,
+			CanExportAuditLogs:   false,
 		}
 	}
 }
@@ -71,7 +95,7 @@ func GetPermissions(r Role) Permissions {
 // IsValidRole checks if the role string is recognized.
 func IsValidRole(r string) bool {
 	switch Role(r) {
-	case RoleAdmin, RoleOperator, RoleReadOnly:
+	case RoleAdmin, RoleOperator, RoleReadOnly, RoleAuditor:
 		return true
 	default:
 		return false
@@ -85,6 +109,8 @@ func NormalizeRole(r string) Role {
 		return RoleAdmin
 	case RoleOperator:
 		return RoleOperator
+	case RoleAuditor:
+		return RoleAuditor
 	case RoleReadOnly:
 		return RoleReadOnly
 	default:

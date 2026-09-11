@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
@@ -41,6 +42,16 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   bool _oidcLoading = true;
   String? _oidcError;
 
+  // SIEM & ENS Global Security State (ENS op.mon.1, op.acc.2)
+  SIEMConfig? _siemConfig;
+  bool _siemLoading = true;
+  bool _siemSaving = false;
+  bool _siemTesting = false;
+
+  // Forensic Audit Verification (SHA-256 Hash Chain)
+  AuditVerificationResult? _auditVerification;
+  bool _verifyingAudit = false;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +70,30 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     _loadLocalUsers();
     _loadAuditLogs();
     _loadOIDCConfigs();
+    _loadSIEMConfig();
+    _verifyAuditChain();
+  }
+
+  Future<void> _loadSIEMConfig() async {
+    setState(() => _siemLoading = true);
+    final cfg = await ApiService.fetchSIEMConfig();
+    if (mounted) {
+      setState(() {
+        _siemConfig = cfg;
+        _siemLoading = false;
+      });
+    }
+  }
+
+  Future<void> _verifyAuditChain() async {
+    setState(() => _verifyingAudit = true);
+    final res = await ApiService.verifyAuditChain();
+    if (mounted) {
+      setState(() {
+        _auditVerification = res;
+        _verifyingAudit = false;
+      });
+    }
   }
 
   Future<void> _loadOIDCConfigs() async {
@@ -245,6 +280,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                               DropdownMenuItem(value: "admin", child: Text("👑 Administrator")),
                               DropdownMenuItem(value: "operator", child: Text("⚡ Operator")),
                               DropdownMenuItem(value: "readonly", child: Text("👁️ Read-Only")),
+                              DropdownMenuItem(value: "auditor", child: Text("🛡️ Security Auditor (ENS org.2)")),
                             ],
                             onChanged: (v) {
                               if (v != null) setDialogState(() => role = v);
@@ -307,6 +343,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       email: emailCtrl.text.trim(),
                       role: role,
                       enabled: enabled,
+                      mfaEnabled: user.mfaEnabled,
                       createdAt: user.createdAt,
                       updatedAt: user.updatedAt,
                     );
@@ -436,6 +473,228 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         }
       }
     }
+  }
+
+  void _openSetupMFADialog(LocalUser user) async {
+    try {
+      final res = await ApiService.setupMFA(userId: user.id);
+      final secret = res['secret'] as String? ?? '';
+      final backupCodes = (res['backup_codes'] as List? ?? []).map((e) => e.toString()).toList();
+      final codeCtrl = TextEditingController();
+      bool enabling = false;
+      String? error;
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.phonelink_lock, color: Color(0xFF0EA5E9)),
+                  const SizedBox(width: 10),
+                  Text("Configurar MFA (ENS op.acc.2) — ${user.username}"),
+                ],
+              ),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Paso 1: Vincula tu aplicación autenticadora",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Introduce esta clave secreta Base32 en tu app (Google Authenticator, Microsoft Authenticator, etc.):",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                secret,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 18),
+                              tooltip: "Copiar clave",
+                              onPressed: () {
+                                html.window.navigator.clipboard?.writeText(secret);
+                                _showSnackBar("Clave secreta copiada al portapapeles");
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        "Paso 2: Guarda tus códigos de respaldo (Un solo uso)",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Si pierdes tu dispositivo, podrás iniciar sesión con cualquiera de estos códigos:",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: backupCodes.map((c) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(c, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold)),
+                              )).toList(),
+                            ),
+                            const SizedBox(height: 6),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                icon: const Icon(Icons.copy, size: 14),
+                                label: const Text("Copiar todos los códigos", style: TextStyle(fontSize: 11)),
+                                onPressed: () {
+                                  html.window.navigator.clipboard?.writeText(backupCodes.join("\n"));
+                                  _showSnackBar("Códigos de respaldo copiados");
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        "Paso 3: Verifica el código de 6 dígitos para activar:",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: codeCtrl,
+                        autofocus: true,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 20, letterSpacing: 4, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        decoration: const InputDecoration(
+                          hintText: "000000",
+                          labelText: "Código TOTP (6 dígitos)",
+                          prefixIcon: Icon(Icons.pin),
+                        ),
+                      ),
+                      if (error != null) ...[
+                        const SizedBox(height: 10),
+                        Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Cancelar"),
+                ),
+                FilledButton(
+                  onPressed: enabling ? null : () async {
+                    final code = codeCtrl.text.trim();
+                    if (code.isEmpty) {
+                      setDialogState(() => error = "Introduce el código generado por tu app");
+                      return;
+                    }
+                    setDialogState(() {
+                      enabling = true;
+                      error = null;
+                    });
+                    final result = await ApiService.enableMFA(
+                      userId: user.id,
+                      secret: secret,
+                      code: code,
+                    );
+                    if (result['error'] != null) {
+                      setDialogState(() {
+                        enabling = false;
+                        error = result['error'].toString();
+                      });
+                      return;
+                    }
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      _showSnackBar("MFA activado con éxito para '${user.username}' (ENS op.acc.2)");
+                      _loadLocalUsers();
+                    }
+                  },
+                  child: enabling ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text("Verificar y Activar MFA"),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      _showSnackBar("Error al iniciar configuración MFA: $e", isError: true);
+    }
+  }
+
+  void _disableMFA(LocalUser user) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber, color: Colors.orange),
+            SizedBox(width: 8),
+            Text("Desactivar MFA"),
+          ],
+        ),
+        content: Text("¿Seguro que deseas desactivar el Doble Factor de Autenticación para el usuario '${user.username}'?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final res = await ApiService.disableMFA(userId: user.id);
+              if (res['error'] != null) {
+                _showSnackBar("Error desactivando MFA: ${res['error']}", isError: true);
+              } else {
+                _showSnackBar("MFA desactivado para '${user.username}'");
+                _loadLocalUsers();
+              }
+            },
+            child: const Text("Desactivar"),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -669,6 +928,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         DropdownMenuItem(value: "admin", child: Text("👑 Administrator")),
                         DropdownMenuItem(value: "operator", child: Text("⚡ Operator")),
                         DropdownMenuItem(value: "readonly", child: Text("👁️ Read-Only")),
+                        DropdownMenuItem(value: "auditor", child: Text("🛡️ Security Auditor (ENS org.2)")),
                         DropdownMenuItem(value: "none", child: Text("🚫 Deny Access (No Role)")),
                       ],
                       onChanged: (v) {
@@ -919,10 +1179,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 labelColor: primaryColor,
                 unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 tabs: const [
-                  Tab(icon: Icon(Icons.people_alt_outlined), text: "Local Users"),
+                  Tab(icon: Icon(Icons.people_alt_outlined), text: "Local Users & MFA"),
                   Tab(icon: Icon(Icons.dns_outlined), text: "Active Directory / LDAP"),
                   Tab(icon: Icon(Icons.vpn_key_outlined), text: "SSO / OIDC"),
-                  Tab(icon: Icon(Icons.history_toggle_off), text: "Access & Audit Logs"),
+                  Tab(icon: Icon(Icons.security_update_good), text: "Forensic Audit & SIEM (ENS)"),
                 ],
               ),
             ),
@@ -930,7 +1190,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
             // Tab Views Container
             SizedBox(
-              height: 720,
+              height: 900,
               child: TabBarView(
                 controller: _tabController,
                 children: [
@@ -1016,6 +1276,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   DataColumn(label: Text("Email")),
                   DataColumn(label: Text("Role")),
                   DataColumn(label: Text("Status")),
+                  DataColumn(label: Text("MFA (ENS)")),
                   DataColumn(label: Text("Last Login")),
                   DataColumn(label: Text("Actions")),
                 ],
@@ -1045,6 +1306,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
+                      DataCell(
+                        Chip(
+                          avatar: Icon(usr.mfaEnabled ? Icons.shield : Icons.shield_outlined, size: 14, color: usr.mfaEnabled ? Colors.tealAccent.shade700 : Colors.grey),
+                          label: Text(usr.mfaEnabled ? "MFA Active" : "Off", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: usr.mfaEnabled ? Colors.teal.shade800 : Colors.grey.shade600)),
+                          backgroundColor: (usr.mfaEnabled ? Colors.teal : Colors.grey).withValues(alpha: 0.12),
+                          padding: EdgeInsets.zero,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
                       DataCell(Text(usr.lastLogin != null ? usr.lastLogin!.split("T")[0] : "Never")),
                       DataCell(Row(
                         children: [
@@ -1052,6 +1322,21 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                             icon: const Icon(Icons.edit, size: 18),
                             tooltip: "Edit User",
                             onPressed: () => _openUserDialog(usr),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              usr.mfaEnabled ? Icons.phonelink_erase : Icons.phonelink_lock,
+                              size: 18,
+                              color: usr.mfaEnabled ? Colors.purple : Colors.teal,
+                            ),
+                            tooltip: usr.mfaEnabled ? "Disable MFA (ENS)" : "Setup MFA / TOTP (ENS)",
+                            onPressed: () {
+                              if (usr.mfaEnabled) {
+                                _disableMFA(usr);
+                              } else {
+                                _openSetupMFADialog(usr);
+                              }
+                            },
                           ),
                           IconButton(
                             icon: const Icon(Icons.key, size: 18, color: Colors.orange),
@@ -1682,6 +1967,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         DropdownMenuItem(value: 'admin', child: Text("👑 Administrator")),
                         DropdownMenuItem(value: 'operator', child: Text("⚡ Operator")),
                         DropdownMenuItem(value: 'readonly', child: Text("👁️ Read-Only")),
+                        DropdownMenuItem(value: 'auditor', child: Text("🛡️ Security Auditor (ENS org.2)")),
                       ],
                       onChanged: (v) => setDialogState(() => defaultRole = v ?? 'readonly'),
                     ),
@@ -1938,26 +2224,64 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   // TAB 4: ACCESS & AUDIT LOGS
   // ---------------------------------------------------------------------------
   Widget _buildAuditLogsTab(bool isDark, Color primaryColor) {
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Access & Security Audit Trail",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    "Pista de Auditoría Forense & SIEM (ENS op.mon.1)",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Registro inmutable con encadenamiento SHA-256 (PrevHash -> Hash) y reenvío Syslog RFC5424/CEF.",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Verify integrity button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.tealAccent.shade400,
+                      side: BorderSide(color: Colors.teal.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    icon: _verifyingAudit
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.tealAccent))
+                        : const Icon(Icons.verified_user, size: 16),
+                    label: Text(_verifyingAudit ? "Verificando..." : "Verificar Integridad SHA-256", style: const TextStyle(fontSize: 12)),
+                    onPressed: _verifyingAudit ? null : _verifyAuditChain,
+                  ),
+                  // Export Menu
+                  PopupMenuButton<String>(
+                    tooltip: "Exportar Pista Forense",
+                    icon: const Icon(Icons.download, size: 18),
+                    onSelected: (fmt) => ApiService.downloadAuditLogsExport(fmt),
+                    itemBuilder: (ctx) => const [
+                      PopupMenuItem(value: "csv", child: Text("📥 Exportar como CSV")),
+                      PopupMenuItem(value: "json", child: Text("📥 Exportar como JSON")),
+                      PopupMenuItem(value: "log", child: Text("📥 Exportar como Syslog (RFC 5424)")),
+                    ],
+                  ),
+                  // Filter dropdown
                   DropdownButton<String>(
                     value: _selectedProviderFilter,
                     items: const [
-                      DropdownMenuItem(value: "", child: Text("All Providers")),
-                      DropdownMenuItem(value: "LOCAL", child: Text("LOCAL Provider")),
+                      DropdownMenuItem(value: "", child: Text("Todos los Proveedores")),
+                      DropdownMenuItem(value: "LOCAL", child: Text("LOCAL")),
                       DropdownMenuItem(value: "ACTIVE_DIRECTORY", child: Text("ACTIVE DIRECTORY")),
+                      DropdownMenuItem(value: "OIDC", child: Text("OIDC / SSO")),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -1966,17 +2290,33 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       }
                     },
                   ),
-                  const SizedBox(width: 10),
                   IconButton(
                     icon: const Icon(Icons.refresh),
-                    onPressed: _loadAuditLogs,
+                    tooltip: "Recargar registros",
+                    onPressed: () {
+                      _loadAuditLogs();
+                      _verifyAuditChain();
+                      _loadSIEMConfig();
+                    },
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
+          // 1. FORENSIC INTEGRITY STATUS BANNER (ENS op.mon.1)
+          if (_auditVerification != null)
+            _buildForensicBanner(isDark),
+
+          const SizedBox(height: 14),
+
+          // 2. SIEM & GLOBAL SECURITY CONFIGURATION CARD (ENS op.mon.1 & op.acc.2)
+          _buildSIEMCard(isDark, primaryColor),
+
+          const SizedBox(height: 18),
+
+          // 3. AUDIT LOGS TABLE
           if (_auditLoading)
             const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
           else if (_auditError != null)
@@ -1987,7 +2327,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
-              child: Text("Error loading audit logs: " + _auditError!, style: const TextStyle(color: Colors.red)),
+              child: Text("Error cargando auditoría: " + _auditError!, style: const TextStyle(color: Colors.red)),
             )
           else if (_auditLogs.isEmpty)
             Container(
@@ -2002,57 +2342,396 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 children: [
                   Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
-                  const Text("No audit records found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text("No hay registros de auditoría aún", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
-                  const Text("Security events and login attempts will be logged automatically here.", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const Text("Las operaciones del clúster e inicios de sesión generarán evidencias automáticas aquí.", style: TextStyle(color: Colors.grey, fontSize: 13)),
                 ],
               ),
             )
           else
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
-              ),
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text("Timestamp")),
-                  DataColumn(label: Text("User")),
-                  DataColumn(label: Text("Provider")),
-                  DataColumn(label: Text("Action")),
-                  DataColumn(label: Text("Status")),
-                  DataColumn(label: Text("IP Address")),
-                  DataColumn(label: Text("Details")),
-                ],
-                rows: _auditLogs.map((log) {
-                  final isSuccess = log.status.toUpperCase() == "SUCCESS";
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(log.timestamp.replaceAll("T", " ").split(".")[0], style: const TextStyle(fontSize: 12))),
-                      DataCell(Text(log.username, style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Chip(
-                        label: Text(log.provider, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                        backgroundColor: (log.provider == "LOCAL" ? Colors.blue : Colors.purple).withValues(alpha: 0.15),
-                        padding: EdgeInsets.zero,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      )),
-                      DataCell(Text(log.action, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
-                      DataCell(Chip(
-                        avatar: Icon(isSuccess ? Icons.check_circle : Icons.cancel, size: 12, color: isSuccess ? Colors.green : Colors.red),
-                        label: Text(log.status, style: TextStyle(fontSize: 10, color: isSuccess ? Colors.green.shade900 : Colors.red.shade900)),
-                        backgroundColor: (isSuccess ? Colors.green : Colors.red).withValues(alpha: 0.15),
-                        padding: EdgeInsets.zero,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      )),
-                      DataCell(Text(log.ipAddress.isEmpty ? "-" : log.ipAddress, style: const TextStyle(fontSize: 12))),
-                      DataCell(Text(log.details, style: const TextStyle(fontSize: 12))),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
+            _buildAuditTable(isDark),
         ],
+      ),
+    );
+  }
+
+  Widget _buildForensicBanner(bool isDark) {
+    final v = _auditVerification!;
+    final isValid = v.valid;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isValid
+            ? (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.3) : const Color(0xFFD1FAE5))
+            : Colors.red.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isValid ? Colors.teal.withValues(alpha: 0.6) : Colors.red.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isValid ? Icons.verified_user : Icons.gpp_bad,
+            color: isValid ? Colors.tealAccent.shade400 : Colors.red,
+            size: 28,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isValid
+                          ? "Pista de Auditoría Forense Criptográficamente Válida (ENS op.mon.1)"
+                          : "¡ALERTA DE SEGURIDAD! Corrupción o Manipulación en Auditoría",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isValid ? (isDark ? Colors.tealAccent.shade100 : Colors.teal.shade900) : Colors.red,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isValid ? Colors.teal : Colors.red).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isValid ? "SHA-256 CHAIN OK" : "CHAIN BROKEN",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isValid ? Colors.tealAccent : Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isValid
+                      ? "Cadena de ${v.verifiedRecords} eventos enlazados consecutivamente (Hash -> PrevHash). Ningún registro ha sido alterado ni eliminado. Último Hash: ${v.lastHash.isEmpty ? 'GÉNESIS' : (v.lastHash.length > 20 ? v.lastHash.substring(0, 20) + '...' : v.lastHash)}"
+                      : "Error de verificación forense: ${v.error}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSIEMCard(bool isDark, Color primaryColor) {
+    if (_siemLoading && _siemConfig == null) {
+      return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+    }
+
+    final cfg = _siemConfig ?? SIEMConfig();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.router, color: primaryColor, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Reenvío de Eventos a SIEM & Controles de Acceso ENS",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text("ENS RD 311/2022", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // MFA Enforcement Switch
+          SwitchListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: const Text("Exigir Doble Factor (MFA) a todos los Administradores (ENS op.acc.2)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Los administradores que no hayan configurado TOTP deberán activarlo en su próximo inicio de sesión.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            value: cfg.mfaEnforced,
+            onChanged: (val) {
+              setState(() {
+                _siemConfig = SIEMConfig(
+                  mfaEnforced: val,
+                  siemEnabled: cfg.siemEnabled,
+                  siemHost: cfg.siemHost,
+                  siemPort: cfg.siemPort,
+                  siemProtocol: cfg.siemProtocol,
+                  siemFormat: cfg.siemFormat,
+                );
+              });
+            },
+          ),
+          const Divider(height: 16),
+          // SIEM Forwarding Switch
+          SwitchListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: const Text("Reenvío de Eventos a SIEM / Syslog Centralizado (ENS op.mon.1)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Transmite inmediatamente cada acceso y operación del clúster a un servidor SIEM externo (Splunk, Wazuh, QRadar, Rsyslog).", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            value: cfg.siemEnabled,
+            onChanged: (val) {
+              setState(() {
+                _siemConfig = SIEMConfig(
+                  mfaEnforced: cfg.mfaEnforced,
+                  siemEnabled: val,
+                  siemHost: cfg.siemHost,
+                  siemPort: cfg.siemPort,
+                  siemProtocol: cfg.siemProtocol,
+                  siemFormat: cfg.siemFormat,
+                );
+              });
+            },
+          ),
+          if (cfg.siemEnabled) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextFormField(
+                    initialValue: cfg.siemHost,
+                    decoration: const InputDecoration(
+                      labelText: "Host / IP del SIEM *",
+                      hintText: "e.g. 192.168.1.50 o siem.corp.local",
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      _siemConfig = SIEMConfig(
+                        mfaEnforced: cfg.mfaEnforced,
+                        siemEnabled: cfg.siemEnabled,
+                        siemHost: v.trim(),
+                        siemPort: cfg.siemPort,
+                        siemProtocol: cfg.siemProtocol,
+                        siemFormat: cfg.siemFormat,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: TextFormField(
+                    initialValue: cfg.siemPort.toString(),
+                    decoration: const InputDecoration(labelText: "Puerto", hintText: "514", isDense: true),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      final p = int.tryParse(v.trim()) ?? 514;
+                      _siemConfig = SIEMConfig(
+                        mfaEnforced: cfg.mfaEnforced,
+                        siemEnabled: cfg.siemEnabled,
+                        siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
+                        siemPort: p,
+                        siemProtocol: cfg.siemProtocol,
+                        siemFormat: cfg.siemFormat,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: DropdownButtonFormField<String>(
+                    value: cfg.siemProtocol,
+                    decoration: const InputDecoration(labelText: "Protocolo", isDense: true),
+                    items: const [
+                      DropdownMenuItem(value: "UDP", child: Text("UDP")),
+                      DropdownMenuItem(value: "TCP", child: Text("TCP")),
+                      DropdownMenuItem(value: "TLS", child: Text("TLS")),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _siemConfig = SIEMConfig(
+                            mfaEnforced: cfg.mfaEnforced,
+                            siemEnabled: cfg.siemEnabled,
+                            siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
+                            siemPort: _siemConfig?.siemPort ?? cfg.siemPort,
+                            siemProtocol: v,
+                            siemFormat: cfg.siemFormat,
+                          );
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<String>(
+                    value: cfg.siemFormat,
+                    decoration: const InputDecoration(labelText: "Formato", isDense: true),
+                    items: const [
+                      DropdownMenuItem(value: "RFC5424", child: Text("RFC5424 (Syslog)")),
+                      DropdownMenuItem(value: "CEF", child: Text("CEF (ArcSight)")),
+                      DropdownMenuItem(value: "JSON", child: Text("JSON")),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _siemConfig = SIEMConfig(
+                            mfaEnforced: cfg.mfaEnforced,
+                            siemEnabled: cfg.siemEnabled,
+                            siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
+                            siemPort: _siemConfig?.siemPort ?? cfg.siemPort,
+                            siemProtocol: cfg.siemProtocol,
+                            siemFormat: v,
+                          );
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (cfg.siemEnabled)
+                OutlinedButton.icon(
+                  icon: _siemTesting
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.send, size: 14),
+                  label: const Text("Probar Envío (Probe)", style: TextStyle(fontSize: 12)),
+                  onPressed: _siemTesting ? null : () async {
+                    setState(() => _siemTesting = true);
+                    final res = await ApiService.testSIEMConnection(_siemConfig ?? cfg);
+                    if (mounted) {
+                      setState(() => _siemTesting = false);
+                      if (res['success'] == true) {
+                        _showSnackBar("Sonda SIEM enviada con éxito: ${res['message']}");
+                      } else {
+                        _showSnackBar("Error al enviar sonda SIEM: ${res['error']}", isError: true);
+                      }
+                    }
+                  },
+                ),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                icon: _siemSaving
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save, size: 14),
+                label: const Text("Guardar Configuración de Seguridad"),
+                onPressed: _siemSaving ? null : () async {
+                  setState(() => _siemSaving = true);
+                  final res = await ApiService.saveSIEMConfig(_siemConfig ?? cfg);
+                  if (mounted) {
+                    setState(() => _siemSaving = false);
+                    if (res['success'] == true) {
+                      _showSnackBar("Configuración de seguridad y SIEM guardada correctamente");
+                      _loadSIEMConfig();
+                    } else {
+                      _showSnackBar("Error al guardar configuración: ${res['error']}", isError: true);
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuditTable(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text("Timestamp")),
+          DataColumn(label: Text("User")),
+          DataColumn(label: Text("Provider")),
+          DataColumn(label: Text("Action")),
+          DataColumn(label: Text("Status")),
+          DataColumn(label: Text("IP Address")),
+          DataColumn(label: Text("SHA-256 Hash")),
+          DataColumn(label: Text("Details")),
+        ],
+        rows: _auditLogs.map((log) {
+          final isSuccess = log.status.toUpperCase() == "SUCCESS";
+          final hashSnippet = log.hash.isNotEmpty ? (log.hash.length > 8 ? log.hash.substring(0, 8) : log.hash) : "-";
+          return DataRow(
+            cells: [
+              DataCell(Text(log.timestamp.replaceAll("T", " ").split(".")[0], style: const TextStyle(fontSize: 12))),
+              DataCell(Text(log.username, style: const TextStyle(fontWeight: FontWeight.bold))),
+              DataCell(Chip(
+                label: Text(log.provider, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                backgroundColor: (log.provider == "LOCAL" ? Colors.blue : Colors.purple).withValues(alpha: 0.15),
+                padding: EdgeInsets.zero,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              )),
+              DataCell(Text(log.action, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
+              DataCell(Chip(
+                avatar: Icon(isSuccess ? Icons.check_circle : Icons.cancel, size: 12, color: isSuccess ? Colors.green : Colors.red),
+                label: Text(log.status, style: TextStyle(fontSize: 10, color: isSuccess ? Colors.green.shade900 : Colors.red.shade900)),
+                backgroundColor: (isSuccess ? Colors.green : Colors.red).withValues(alpha: 0.15),
+                padding: EdgeInsets.zero,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              )),
+              DataCell(Text(log.ipAddress.isEmpty ? "-" : log.ipAddress, style: const TextStyle(fontSize: 12))),
+              DataCell(
+                Tooltip(
+                  message: "SHA-256 Hash: ${log.hash}\nPrevHash: ${log.prevHash}",
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.lock_outline, size: 10, color: Colors.tealAccent),
+                        const SizedBox(width: 4),
+                        Text(
+                          hashSnippet,
+                          style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              DataCell(Text(log.details, style: const TextStyle(fontSize: 12))),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -2075,6 +2754,14 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           avatar: Text("⚡", style: TextStyle(fontSize: 10)),
           label: Text("Operator", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
           backgroundColor: Color(0x332196F3),
+          padding: EdgeInsets.zero,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
+      case "auditor":
+        return const Chip(
+          avatar: Text("🛡️", style: TextStyle(fontSize: 10)),
+          label: Text("Auditor (ENS org.2)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.tealAccent)),
+          backgroundColor: Color(0x3314B8A6),
           padding: EdgeInsets.zero,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         );

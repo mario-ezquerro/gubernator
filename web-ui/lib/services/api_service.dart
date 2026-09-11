@@ -1051,11 +1051,101 @@ class ApiService {
     );
 
     final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      if (data['mfa_required'] == true) {
+        return {
+          'success': true,
+          'mfa_required': true,
+          'mfa_token': data['mfa_token'],
+          'username': data['username'],
+        };
+      }
+      if (data['token'] != null) {
+        authToken = data['token'];
+        return {'success': true, 'user': UserSession.fromJson(data['user'])};
+      }
+    }
+    return {'success': false, 'error': data['error'] ?? 'Login failed (${response.statusCode})'};
+  }
+
+  /// Completes MFA login verification using TOTP 6-digit code or recovery code.
+  static Future<Map<String, dynamic>> verifyMFA({
+    required String mfaToken,
+    required String code,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/mfa/verify'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'mfa_token': mfaToken,
+        'code': code.trim(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
     if (response.statusCode == 200 && data['token'] != null) {
       authToken = data['token'];
       return {'success': true, 'user': UserSession.fromJson(data['user'])};
     }
-    return {'success': false, 'error': data['error'] ?? 'Login failed (${response.statusCode})'};
+    return {'success': false, 'error': data['error'] ?? 'MFA verification failed (${response.statusCode})'};
+  }
+
+  /// Initiates MFA setup for current user or admin target user.
+  static Future<Map<String, dynamic>> setupMFA({String? userId}) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/mfa/setup'),
+      headers: authHeaders,
+      body: jsonEncode({
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    }
+    throw Exception(data['error'] ?? 'Failed to setup MFA');
+  }
+
+  /// Confirms and enables MFA with the first generated TOTP code.
+  static Future<Map<String, dynamic>> enableMFA({
+    String? userId,
+    required String secret,
+    required String code,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/mfa/enable'),
+      headers: authHeaders,
+      body: jsonEncode({
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
+        'secret': secret,
+        'code': code.trim(),
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    }
+    return {'error': data['error'] ?? 'Failed to activate MFA'};
+  }
+
+  /// Disables MFA for user.
+  static Future<Map<String, dynamic>> disableMFA({
+    String? userId,
+    String? code,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/mfa/disable'),
+      headers: authHeaders,
+      body: jsonEncode({
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
+        if (code != null && code.isNotEmpty) 'code': code.trim(),
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    }
+    return {'error': data['error'] ?? 'Failed to disable MFA'};
   }
 
   /// Fetches the currently authenticated user profile and permissions.
@@ -1308,6 +1398,82 @@ class ApiService {
           .toList();
     }
     return [];
+  }
+
+  /// Fetches cluster SIEM and ENS security configuration.
+  static Future<SIEMConfig?> fetchSIEMConfig() async {
+    try {
+      final response = await http.get(Uri.parse('/api/security/siem'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return SIEMConfig.fromJson(data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Saves cluster SIEM and ENS security configuration.
+  static Future<Map<String, dynamic>> saveSIEMConfig(SIEMConfig config) async {
+    final response = await http.post(
+      Uri.parse('/api/security/siem'),
+      headers: authHeaders,
+      body: jsonEncode(config.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Sends a live SIEM test syslog/CEF probe.
+  static Future<Map<String, dynamic>> testSIEMConnection(SIEMConfig config) async {
+    final response = await http.post(
+      Uri.parse('/api/security/siem/test'),
+      headers: authHeaders,
+      body: jsonEncode(config.toJson()),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// Verifies cryptographic SHA-256 integrity of the audit trail (ENS op.mon.1).
+  static Future<AuditVerificationResult> verifyAuditChain() async {
+    try {
+      final response = await http.get(Uri.parse('/api/security/audit-logs/verify'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        return AuditVerificationResult.fromJson(jsonDecode(response.body));
+      }
+      return AuditVerificationResult(
+        valid: false,
+        totalRecords: 0,
+        verifiedRecords: 0,
+        lastHash: '',
+        error: 'Failed to verify chain: ${response.statusCode}',
+      );
+    } catch (e) {
+      return AuditVerificationResult(
+        valid: false,
+        totalRecords: 0,
+        verifiedRecords: 0,
+        lastHash: '',
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Downloads export file of the forensic audit trail (CSV, JSON, LOG).
+  static Future<void> downloadAuditLogsExport(String format) async {
+    try {
+      final res = await http.get(
+        Uri.parse('/api/security/audit-logs/export?format=$format'),
+        headers: authHeaders,
+      );
+      if (res.statusCode == 200) {
+        final bytes = res.bodyBytes;
+        final blob = html.Blob([bytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.AnchorElement(href: url)
+          ..setAttribute('download', 'audit-trail-${DateTime.now().millisecondsSinceEpoch}.$format')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      }
+    } catch (_) {}
   }
 
   /// Checks status and readiness of Loki aggregator.

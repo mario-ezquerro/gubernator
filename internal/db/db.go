@@ -48,7 +48,7 @@ func Init(dbPath string) error {
 		&Node{}, &ClusterConfig{}, &Stack{}, &Service{}, &Task{},
 		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &OIDCConfig{}, &LocalUser{}, &AuditLog{},
 		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{}, &StorageMount{}, &ManagedGlusterVolume{},
-		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{},
+		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{}, &SecurityConfig{},
 	)
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
@@ -56,6 +56,7 @@ func Init(dbPath string) error {
 
 	seedInitialData()
 	seedInitialSecurityPolicy()
+	seedInitialSecurityConfig()
 	return ensureClusterConfig()
 }
 
@@ -430,4 +431,27 @@ func seedInitialSecurityPolicy() {
 		}
 	}
 }
+
+func seedInitialSecurityConfig() {
+	var count int64
+	DB.Model(&SecurityConfig{}).Count(&count)
+	if count == 0 {
+		defaultConfig := SecurityConfig{
+			ID:           "default",
+			MFAEnforced:  false,
+			SIEMEnabled:  false,
+			SIEMHost:     "",
+			SIEMPort:     514,
+			SIEMProtocol: "UDP",
+			SIEMFormat:   "RFC5424",
+			UpdatedAt:    time.Now(),
+		}
+		if err := DB.Create(&defaultConfig).Error; err != nil {
+			slog.Error("failed to seed initial security config", "err", err)
+		} else {
+			slog.Info("initial cluster security config seeded")
+		}
+	}
+}
+
 

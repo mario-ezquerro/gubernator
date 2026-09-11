@@ -16,7 +16,7 @@ import (
 
 var (
 	cfgFile string
-	Version = "v2.80.1"
+	Version = "v2.81.0"
 )
 var rootCmd = &cobra.Command{
 	Use:   "gbnt",

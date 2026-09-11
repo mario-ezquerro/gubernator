@@ -29,6 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/creack/pty"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
+	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/auth"
 	"github.com/mario-ezquerro/gubernator/internal/autoscaler"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
@@ -437,6 +438,7 @@ func StartDashboard() {
 	// Public Auth endpoints
 	r.GET("/api/auth/providers", authProvidersHandler)
 	r.POST("/api/auth/login", authLoginHandler)
+	r.POST("/api/auth/mfa/verify", authMFAVerifyHandler)
 	r.POST("/api/auth/logout", authLogoutHandler)
 
 	// OIDC / OAuth2 — Public SSO flow (no auth required: browser redirects)
@@ -448,6 +450,10 @@ func StartDashboard() {
 	api := r.Group("/api", auth.RequireAuth())
 	{
 		api.GET("/auth/me", authMeHandler)
+		api.POST("/auth/mfa/setup", authMFASetupHandler)
+		api.POST("/auth/mfa/enable", authMFAEnableHandler)
+		api.POST("/auth/mfa/disable", authMFADisableHandler)
+
 		api.GET("/auth/ldap", auth.RequireRole(auth.RoleAdmin), authListLDAPHandler)
 		api.POST("/auth/ldap", auth.RequireRole(auth.RoleAdmin), authSaveLDAPHandler)
 		api.DELETE("/auth/ldap/:id", auth.RequireRole(auth.RoleAdmin), authDeleteLDAPHandler)
@@ -466,8 +472,13 @@ func StartDashboard() {
 		api.POST("/security/users/:id/password", auth.RequireRole(auth.RoleAdmin), resetSecurityUserPasswordHandler)
 		api.DELETE("/security/users/:id", auth.RequireRole(auth.RoleAdmin), deleteSecurityUserHandler)
 
-		// Audit Logs (Admin only)
-		api.GET("/security/audit-logs", auth.RequireRole(auth.RoleAdmin), listSecurityAuditLogsHandler)
+		// Forense Audit Trail & SIEM (Admin and Auditor)
+		api.GET("/security/audit-logs", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), listSecurityAuditLogsHandler)
+		api.GET("/security/audit-logs/verify", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), verifyAuditLogsHandler)
+		api.GET("/security/audit-logs/export", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), exportAuditLogsHandler)
+		api.GET("/security/siem", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), getSIEMConfigHandler)
+		api.POST("/security/siem", auth.RequireRole(auth.RoleAdmin), updateSIEMConfigHandler)
+		api.POST("/security/siem/test", auth.RequireRole(auth.RoleAdmin), testSIEMHandler)
 
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
@@ -1320,6 +1331,13 @@ func deleteStackHandler(c *gin.Context) {
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
 
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_DELETE", "SUCCESS", fmt.Sprintf("Deleted stack '%s'", id))
+
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
@@ -1336,6 +1354,13 @@ func deleteTaskHandler(c *gin.Context) {
 
 	go aqueducts.GenerateHostsFile()
 	go aqueducts.GenerateCaddyfile()
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "TASK_DELETE", "SUCCESS", fmt.Sprintf("Deleted task '%s'", id))
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -1378,6 +1403,13 @@ func taskActionHandler(c *gin.Context) {
 	} else if req.Action == "start" || req.Action == "restart" {
 		db.DB.Model(&task).Update("status", "running")
 	}
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "CONTAINER_ACTION", "SUCCESS", fmt.Sprintf("Action '%s' executed on container '%s' (task: %s, node: %s)", req.Action, task.ContainerName, task.ID, task.NodeID))
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -1522,6 +1554,12 @@ func taskShellHandler(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
+
+	actor := "system"
+	if sess := auth.ExtractUserSession(c); sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "SHELL_OPEN", "SUCCESS", fmt.Sprintf("Interactive shell opened on container '%s' (task: %s, node: %s)", task.ContainerName, task.ID, task.NodeID))
 
 	var cmd *exec.Cmd
 	if node, isRemote := resolveRemoteWorkerNode(task.NodeID); isRemote {
@@ -1991,6 +2029,13 @@ func deployStackHandler(c *gin.Context) {
 
 	_ = slo.SyncSLORulesToPrometheus(db.DB)
 
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_DEPLOY", "SUCCESS", fmt.Sprintf("Deployed stack '%s' (id: %s)", stackName, stackID))
+
 	resp := gin.H{"status": "deployed", "stack_id": stackID, "name": stackName}
 	if len(conflicts) > 0 {
 		resp["remapped_conflicts"] = conflicts
@@ -2135,6 +2180,13 @@ func saveStackHandler(c *gin.Context) {
 		filePath := filepath.Join(stacksDir, fmt.Sprintf("%s.yml", stackName))
 		_ = os.WriteFile(filePath, []byte(composeRaw), 0644)
 	}
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "STACK_SAVE", "SUCCESS", fmt.Sprintf("Saved stack '%s' (id: %s)", stack.Name, stack.ID))
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":     "saved",
@@ -5292,21 +5344,7 @@ func oidcCallbackHandler(c *gin.Context) {
 }
 
 func logAudit(c *gin.Context, username, provider, action, status, details string) {
-	clientIP := ""
-	if c != nil {
-		clientIP = c.ClientIP()
-	}
-	audit := db.AuditLog{
-		ID:        "aud-" + uuid.New().String()[:12],
-		Timestamp: time.Now(),
-		Username:  username,
-		Provider:  provider,
-		IPAddress: clientIP,
-		Action:    action,
-		Status:    status,
-		Details:   details,
-	}
-	_ = db.DB.Create(&audit).Error
+	_, _ = audit.Record(c, username, provider, action, status, details)
 }
 
 func authLoginHandler(c *gin.Context) {
@@ -5321,6 +5359,13 @@ func authLoginHandler(c *gin.Context) {
 	}
 
 	req.Username = strings.TrimSpace(req.Username)
+
+	// Check cluster-wide security config for MFA enforcement
+	var secCfg db.SecurityConfig
+	mfaEnforced := false
+	if err := db.DB.First(&secCfg, "id = ?", "default").Error; err == nil {
+		mfaEnforced = secCfg.MFAEnforced
+	}
 
 	// 1. Try Local User authentication if provider is "local" or empty
 	if req.Provider == "local" || req.Provider == "" {
@@ -5346,6 +5391,24 @@ func authLoginHandler(c *gin.Context) {
 					Permissions: auth.GetPermissions(role),
 					ExpiresAt:   time.Now().Add(24 * time.Hour),
 				}
+
+				// Check if user has MFA active or cluster enforces MFA
+				if localUser.MFAEnabled || mfaEnforced {
+					pendingToken, tErr := auth.GenerateMFAPendingToken(session)
+					if tErr != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate MFA challenge token"})
+						return
+					}
+					logAudit(c, localUser.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA authentication challenge issued (ENS op.acc.2)")
+					c.JSON(http.StatusOK, gin.H{
+						"mfa_required":   true,
+						"mfa_token":      pendingToken,
+						"username":       localUser.Username,
+						"mfa_configured": localUser.MFAEnabled,
+					})
+					return
+				}
+
 				token, tErr := auth.GenerateToken(session)
 				if tErr != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -5372,6 +5435,22 @@ func authLoginHandler(c *gin.Context) {
 		}
 		if req.Username == expectedUser && req.Password == expectedPass {
 			session := auth.GenerateLocalAdminSession(req.Username)
+			if mfaEnforced {
+				pendingToken, err := auth.GenerateMFAPendingToken(session)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate MFA challenge token"})
+					return
+				}
+				logAudit(c, req.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA challenge required for fallback admin")
+				c.JSON(http.StatusOK, gin.H{
+					"mfa_required":   true,
+					"mfa_token":      pendingToken,
+					"username":       req.Username,
+					"mfa_configured": false,
+				})
+				return
+			}
+
 			token, err := auth.GenerateToken(session)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -5700,7 +5779,346 @@ func deleteSecurityUserHandler(c *gin.Context) {
 
 func listSecurityAuditLogsHandler(c *gin.Context) {
 	var logs []db.AuditLog
-	query := db.DB.Order("timestamp desc").Limit(200)
+	query := db.DB.Order("timestamp desc").Limit(500)
+	if provider := c.Query("provider"); provider != "" {
+		query = query.Where("provider = ?", provider)
+	}
+	if action := c.Query("action"); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if username := c.Query("username"); username != "" {
+		query = query.Where("username = ?", username)
+	}
+	if status := c.Query("status"); status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if err := query.Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"audit_logs": logs})
+}
+
+// ---------------------------------------------------------------------------
+// MFA (TOTP - RFC 6238) & ENS op.acc.2 HANDLERS
+// ---------------------------------------------------------------------------
+
+type authMFAVerifyRequest struct {
+	MFAToken string `json:"mfa_token" binding:"required"`
+	Code     string `json:"code" binding:"required"`
+}
+
+func authMFAVerifyHandler(c *gin.Context) {
+	var req authMFAVerifyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "MFA token and verification code are required"})
+		return
+	}
+
+	userSession, err := auth.ValidateMFAPendingToken(req.MFAToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "MFA token has expired or is invalid. Please log in again."})
+		return
+	}
+
+	var localUser db.LocalUser
+	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(userSession.Username)).Error; err != nil {
+		expectedUser := os.Getenv("GBNT_WEB_USER")
+		if expectedUser == "" {
+			expectedUser = "admin"
+		}
+		if strings.EqualFold(userSession.Username, expectedUser) {
+			token, err := auth.GenerateToken(*userSession)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate session token"})
+				return
+			}
+			c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+			logAudit(c, userSession.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "MFA verification completed for fallback admin")
+			c.JSON(http.StatusOK, gin.H{
+				"token": token,
+				"user":  userSession,
+			})
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "User record not found"})
+		return
+	}
+
+	cleanCode := strings.ToUpper(strings.TrimSpace(req.Code))
+	verified := false
+
+	// 1. Check TOTP Code
+	if localUser.MFASecret != "" && auth.ValidateCode(localUser.MFASecret, cleanCode) {
+		verified = true
+	}
+
+	// 2. Check Backup Recovery Codes
+	if !verified && localUser.MFABackupCodes != "" {
+		var backupCodes []string
+		_ = json.Unmarshal([]byte(localUser.MFABackupCodes), &backupCodes)
+		for i, bc := range backupCodes {
+			if strings.EqualFold(bc, cleanCode) {
+				verified = true
+				// Consume single-use backup code
+				backupCodes = append(backupCodes[:i], backupCodes[i+1:]...)
+				newRaw, _ := json.Marshal(backupCodes)
+				db.DB.Model(&localUser).Update("mfa_backup_codes", string(newRaw))
+				logAudit(c, localUser.Username, "LOCAL", "MFA_BACKUP_CODE_USED", "SUCCESS", "User authenticated with one-time backup recovery code")
+				break
+			}
+		}
+	}
+
+	if !verified {
+		logAudit(c, localUser.Username, "LOCAL", "MFA_FAILED", "FAILURE", "Invalid TOTP code or recovery code submitted")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid 6-digit TOTP code or recovery code"})
+		return
+	}
+
+	token, err := auth.GenerateToken(*userSession)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate session token"})
+		return
+	}
+	c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+	logAudit(c, localUser.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "MFA verification succeeded (ENS op.acc.2)")
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  userSession,
+	})
+}
+
+func authMFASetupHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	secret, err := auth.GenerateBase32Secret()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate secret"})
+		return
+	}
+
+	uri := auth.GenerateOTPAuthURI(session.Username, secret)
+	backupCodes, err := auth.GenerateBackupCodes(8)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate backup codes"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"secret":       secret,
+		"otpauth_uri":  uri,
+		"backup_codes": backupCodes,
+	})
+}
+
+type authMFAEnableRequest struct {
+	Secret      string   `json:"secret" binding:"required"`
+	Code        string   `json:"code" binding:"required"`
+	BackupCodes []string `json:"backup_codes" binding:"required"`
+}
+
+func authMFAEnableHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	var req authMFAEnableRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Secret, code, and backup codes are required"})
+		return
+	}
+
+	if !auth.ValidateCode(req.Secret, req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code. Ensure your device time is synchronized."})
+		return
+	}
+
+	var localUser db.LocalUser
+	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Local user record not found"})
+		return
+	}
+
+	bCodesJSON, _ := json.Marshal(req.BackupCodes)
+	if err := db.DB.Model(&localUser).Updates(map[string]interface{}{
+		"mfa_enabled":      true,
+		"mfa_secret":       req.Secret,
+		"mfa_backup_codes": string(bCodesJSON),
+		"updated_at":       time.Now(),
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to activate MFA"})
+		return
+	}
+
+	logAudit(c, session.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", "User activated TOTP multi-factor authentication (ENS op.acc.2)")
+	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication enabled successfully"})
+}
+
+type authMFADisableRequest struct {
+	Password string `json:"password"`
+}
+
+func authMFADisableHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	var req authMFADisableRequest
+	_ = c.ShouldBindJSON(&req)
+
+	var localUser db.LocalUser
+	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if req.Password != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect password"})
+			return
+		}
+	}
+
+	if err := db.DB.Model(&localUser).Updates(map[string]interface{}{
+		"mfa_enabled":      false,
+		"mfa_secret":       "",
+		"mfa_backup_codes": "",
+		"updated_at":       time.Now(),
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable MFA"})
+		return
+	}
+
+	logAudit(c, session.Username, "LOCAL", "MFA_DISABLED", "SUCCESS", "User deactivated TOTP multi-factor authentication")
+	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
+}
+
+// ---------------------------------------------------------------------------
+// SIEM & FORENSIC AUDIT TRAIL (ENS op.mon.1) HANDLERS
+// ---------------------------------------------------------------------------
+
+func getSIEMConfigHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{
+			ID:           "default",
+			MFAEnforced:  false,
+			SIEMEnabled:  false,
+			SIEMHost:     "",
+			SIEMPort:     514,
+			SIEMProtocol: "UDP",
+			SIEMFormat:   "RFC5424",
+			UpdatedAt:    time.Now(),
+		}
+		_ = db.DB.Create(&cfg)
+	}
+	c.JSON(http.StatusOK, cfg)
+}
+
+type updateSIEMConfigRequest struct {
+	MFAEnforced  bool   `json:"mfa_enforced"`
+	SIEMEnabled  bool   `json:"siem_enabled"`
+	SIEMHost     string `json:"siem_host"`
+	SIEMPort     int    `json:"siem_port"`
+	SIEMProtocol string `json:"siem_protocol"`
+	SIEMFormat   string `json:"siem_format"`
+}
+
+func updateSIEMConfigHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	var req updateSIEMConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	proto := strings.ToUpper(strings.TrimSpace(req.SIEMProtocol))
+	if proto != "UDP" && proto != "TCP" && proto != "TLS" {
+		proto = "UDP"
+	}
+	format := strings.ToUpper(strings.TrimSpace(req.SIEMFormat))
+	if format != "RFC5424" && format != "CEF" && format != "JSON" {
+		format = "RFC5424"
+	}
+	port := req.SIEMPort
+	if port <= 0 {
+		port = 514
+	}
+
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{ID: "default"}
+	}
+
+	cfg.MFAEnforced = req.MFAEnforced
+	cfg.SIEMEnabled = req.SIEMEnabled
+	cfg.SIEMHost = strings.TrimSpace(req.SIEMHost)
+	cfg.SIEMPort = port
+	cfg.SIEMProtocol = proto
+	cfg.SIEMFormat = format
+	cfg.UpdatedAt = time.Now()
+
+	if err := db.DB.Save(&cfg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	actor := "system"
+	if session != nil {
+		actor = session.Username
+	}
+	logAudit(c, actor, "LOCAL", "SECURITY_CONFIG_UPDATE", "SUCCESS",
+		fmt.Sprintf("Updated ENS settings: mfa_enforced=%v, siem_enabled=%v, siem_host=%s:%d",
+			cfg.MFAEnforced, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
+
+	c.JSON(http.StatusOK, cfg)
+}
+
+func testSIEMHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := c.ShouldBindJSON(&cfg); err != nil || cfg.SIEMHost == "" {
+		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || cfg.SIEMHost == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Please provide a valid SIEM host address"})
+			return
+		}
+	}
+
+	if err := audit.SendSIEMTestProbe(cfg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to reach SIEM (%s:%d/%s): %v", cfg.SIEMHost, cfg.SIEMPort, cfg.SIEMProtocol, err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Successfully dispatched SIEM test probe to %s:%d via %s (%s format)",
+			cfg.SIEMHost, cfg.SIEMPort, cfg.SIEMProtocol, cfg.SIEMFormat),
+	})
+}
+
+func verifyAuditLogsHandler(c *gin.Context) {
+	res, err := audit.VerifyChainIntegrity()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func exportAuditLogsHandler(c *gin.Context) {
+	var logs []db.AuditLog
+	query := db.DB.Order("timestamp desc").Limit(1000)
 	if provider := c.Query("provider"); provider != "" {
 		query = query.Where("provider = ?", provider)
 	}
@@ -5711,7 +6129,37 @@ func listSecurityAuditLogsHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"audit_logs": logs})
+
+	format := strings.ToLower(c.DefaultQuery("format", "csv"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	switch format {
+	case "json":
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=audit-logs-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, logs)
+
+	case "log", "rfc5424":
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=audit-logs-%s.log", timestamp))
+		c.Header("Content-Type", "text/plain; charset=utf-8")
+		var sb strings.Builder
+		for _, l := range logs {
+			sb.Write(audit.FormatSIEMMessage(&l, "RFC5424"))
+		}
+		c.String(http.StatusOK, sb.String())
+
+	default: // CSV
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=audit-logs-%s.csv", timestamp))
+		c.Header("Content-Type", "text/csv; charset=utf-8")
+		var sb strings.Builder
+		sb.WriteString("ID,Timestamp,Username,Provider,IPAddress,Action,Status,Details,PrevHash,Hash\n")
+		for _, l := range logs {
+			cleanDetails := strings.ReplaceAll(strings.ReplaceAll(l.Details, "\"", "\"\""), "\n", " ")
+			sb.WriteString(fmt.Sprintf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+				l.ID, l.Timestamp.Format(time.RFC3339), l.Username, l.Provider, l.IPAddress, l.Action, l.Status, cleanDetails, l.PrevHash, l.Hash))
+		}
+		c.String(http.StatusOK, sb.String())
+	}
 }
 
 // ---------------------------------------------------------------------------

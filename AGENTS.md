@@ -818,3 +818,34 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - `POST /api/services/:id/autoscale`: Interactive horizontal autoscaling configuration update endpoint for specific services.
   - `POST /api/stack/:id/autoscale`: Interactive horizontal autoscaling configuration update endpoint for entire stacks.
   - `POST /api/services/:id/scale`: Manual replica scale override endpoint.
+
+### 95. Spanish ENS (Esquema Nacional de Seguridad RD 311/2022) Compliance: MFA (TOTP), Forensic Audit Trail & Security Auditor Role (`v2.81.0`)
+* **Multi-Factor Authentication Subsystem (TOTP RFC 6238 — ENS `op.acc.2`):**
+  - **Zero-Dependency RFC 6238 TOTP Engine (`internal/auth/totp.go`):** Native Go cryptographic implementation using HMAC-SHA1 with 30-second time steps and drift tolerance ($\pm 1$ step / 30s).
+  - **Base32 & Authenticator App Compatibility:** Generates standard Base32 secrets and `otpauth://totp/gubernator:<username>?secret=...&issuer=gubernator` URIs compatible with Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden, and Authy.
+  - **One-Time Backup Recovery Codes:** Generates 8 cryptographically secure 8-character recovery codes (`xxxx-xxxx`) hashed with bcrypt and persisted in SQLite for emergency account recovery if the 2FA device is unavailable.
+  - **Issuer-Isolated Pre-Auth Challenge Tokens:** Two-step login flow issuing short-lived (`5 min`) JWT tokens (`iss: "gubernator-mfa-pending"`) that strictly authorize only the verification endpoint (`/api/auth/mfa/verify`), preventing unverified access to cluster APIs.
+  - **Global Administrative Enforcement (`mfa_enforced`):** Configurable security policy requiring all administrator accounts to activate TOTP before granting cluster mutation rights.
+  - **Interactive Web UI Login Flow (`web-ui/lib/screens/login_screen.dart`):** Dedicated MFA challenge card with 6-digit auto-focus monospace input, backup code support, and cancel/return actions.
+  - **User Lifecycle & Self-Service Management (`web-ui/lib/screens/pages/security_page.dart`):** In-app MFA setup wizard with Base32 copy, one-time backup codes table, live code activation test, and administrative revocation.
+
+* **Tamper-Evident Forensic Audit Trail & SIEM Syslog/CEF Forwarder (ENS `op.mon.1`):**
+  - **SHA-256 Cryptographic Hash Chaining (`internal/audit/audit.go`):** Every audit log event is cryptographically linked to the previous entry via SHA-256 (`Hash = SHA-256(PrevHash + Timestamp + Username + Provider + Action + Status + Details)`), establishing an immutable Merkle-like chain where any record tampering, deletion, or injection invalidates all subsequent hashes.
+  - **Cryptographic Chain Verification Engine (`audit.VerifyChainIntegrity`):** Automated integrity auditing verifying continuous sequential hash validity across all database records, exposed via `GET /api/security/audit-logs/verify`.
+  - **Asynchronous SIEM Syslog / CEF Forwarder:** Non-blocking background worker with a 2,000-event buffer dispatching events in real time to enterprise SIEM platforms (Splunk, Wazuh, IBM QRadar, Elastic SIEM, Rsyslog) over UDP, TCP, or TLS.
+  - **Multi-Format SIEM Transports:** Native formatting for **RFC 5424 Syslog**, **CEF (Common Event Format)**, and **JSON** with live test probe diagnostics (`POST /api/security/siem/test`).
+  - **Forensic Audit Export (`GET /api/security/audit-logs/export`):** Direct file export in CSV, JSON, and Syslog format with browser download support.
+  - **Cluster-Wide Audit Instrumentation:** Comprehensive event capture across stack deployment/deletion, task lifecycle actions, interactive container shells, authentication, password changes, and security configurations.
+
+* **Security Auditor Role & Separation of Duties (ENS `org.2`):**
+  - **Dedicated `auditor` Role (`RoleAuditor = "auditor"`):** Enforces strict regulatory separation between system administration and security oversight.
+  - **Read-Only Audit & Observability Access:** Auditors have unrestricted inspection rights across forensic audit logs, chain integrity verification, SIEM configuration, adoption telemetry, and cluster monitoring.
+  - **Strict RBAC Mutation Guardrails:** Auditors are strictly prevented from deploying or modifying stacks, restarting or deleting tasks, opening container shells, altering network mounts, or changing credentials.
+  - **Directory Mapping Parity:** Supported across local user creation, Active Directory / LDAP group mapping, and OIDC claims mapping.
+
+* **Flutter Web Security Center Dashboard Enhancements (`web-ui/lib/screens/pages/security_page.dart`):**
+  - **Forensic Audit & SIEM (ENS) Tab:** Dedicated high-visibility tab with live cryptographic chain status banner (green for verified immutable chain, pulsing red alert for tampered records).
+  - **Interactive SIEM & ENS Configuration Card:** Real-time form controls for SIEM Host, Port, Protocol (UDP/TCP/TLS), Format (RFC5424/CEF/JSON), Global Admin MFA toggle, live probe test, and save actions.
+  - **Local Users Table MFA Column:** Visual chips displaying MFA status (`MFA Active` vs `Off`) with single-click setup and revocation modal dialogs.
+  - **Audit Trail Data Table with SHA-256 Badges:** Monospace hash snippet chips with full SHA-256 / PrevHash inspection tooltips and quick-export dropdown menu (CSV, JSON, Syslog).
+

@@ -407,6 +407,8 @@ class UserPermissions {
   final bool canManageCoreDNS;
   final bool canManageSecurity;
   final bool canViewObservability;
+  final bool canViewAuditLogs;
+  final bool canExportAuditLogs;
 
   const UserPermissions({
     this.canDeployStacks = true,
@@ -419,6 +421,8 @@ class UserPermissions {
     this.canManageCoreDNS = true,
     this.canManageSecurity = true,
     this.canViewObservability = true,
+    this.canViewAuditLogs = true,
+    this.canExportAuditLogs = true,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -433,6 +437,8 @@ class UserPermissions {
       canManageCoreDNS: json['can_manage_coredns'] ?? true,
       canManageSecurity: json['can_manage_security'] ?? true,
       canViewObservability: json['can_view_observability'] ?? true,
+      canViewAuditLogs: json['can_view_audit_logs'] ?? true,
+      canExportAuditLogs: json['can_export_audit_logs'] ?? true,
     );
   }
 }
@@ -441,7 +447,7 @@ class UserSession {
   final String username;
   final String displayName;
   final String email;
-  final String role; // "admin", "operator", "readonly"
+  final String role; // "admin", "operator", "readonly", "auditor"
   final String provider;
   final UserPermissions permissions;
 
@@ -457,6 +463,7 @@ class UserSession {
   bool get isAdmin => role == 'admin';
   bool get isOperator => role == 'operator';
   bool get isReadOnly => role == 'readonly';
+  bool get isAuditor => role == 'auditor';
 
   factory UserSession.fromJson(Map<String, dynamic> json) {
     return UserSession(
@@ -1086,6 +1093,7 @@ class LocalUser {
   final String email;
   final String role;
   final bool enabled;
+  final bool mfaEnabled;
   final String? lastLogin;
   final String createdAt;
   final String updatedAt;
@@ -1097,6 +1105,7 @@ class LocalUser {
     required this.email,
     required this.role,
     required this.enabled,
+    this.mfaEnabled = false,
     this.lastLogin,
     required this.createdAt,
     required this.updatedAt,
@@ -1110,6 +1119,7 @@ class LocalUser {
       email: json["email"] ?? "",
       role: json["role"] ?? "readonly",
       enabled: json["enabled"] ?? true,
+      mfaEnabled: json["mfa_enabled"] == true,
       lastLogin: json["last_login"],
       createdAt: json["created_at"] ?? "",
       updatedAt: json["updated_at"] ?? "",
@@ -1124,6 +1134,7 @@ class LocalUser {
       "email": email,
       "role": role,
       "enabled": enabled,
+      "mfa_enabled": mfaEnabled,
     };
   }
 }
@@ -1137,6 +1148,8 @@ class AuditLog {
   final String action;
   final String status;
   final String details;
+  final String prevHash;
+  final String hash;
 
   AuditLog({
     required this.id,
@@ -1147,6 +1160,8 @@ class AuditLog {
     required this.action,
     required this.status,
     required this.details,
+    this.prevHash = "",
+    this.hash = "",
   });
 
   factory AuditLog.fromJson(Map<String, dynamic> json) {
@@ -1159,6 +1174,77 @@ class AuditLog {
       action: json["action"] ?? "",
       status: json["status"] ?? "SUCCESS",
       details: json["details"] ?? "",
+      prevHash: json["prev_hash"] ?? "",
+      hash: json["hash"] ?? "",
+    );
+  }
+}
+
+class SIEMConfig {
+  final bool mfaEnforced;
+  final bool siemEnabled;
+  final String siemHost;
+  final int siemPort;
+  final String siemProtocol;
+  final String siemFormat;
+  final String updatedAt;
+
+  SIEMConfig({
+    this.mfaEnforced = false,
+    this.siemEnabled = false,
+    this.siemHost = '',
+    this.siemPort = 514,
+    this.siemProtocol = 'UDP',
+    this.siemFormat = 'RFC5424',
+    this.updatedAt = '',
+  });
+
+  factory SIEMConfig.fromJson(Map<String, dynamic> json) {
+    return SIEMConfig(
+      mfaEnforced: json['mfa_enforced'] == true,
+      siemEnabled: json['siem_enabled'] == true,
+      siemHost: json['siem_host'] ?? '',
+      siemPort: (json['siem_port'] as num?)?.toInt() ?? 514,
+      siemProtocol: json['siem_protocol'] ?? 'UDP',
+      siemFormat: json['siem_format'] ?? 'RFC5424',
+      updatedAt: json['updated_at'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'mfa_enforced': mfaEnforced,
+      'siem_enabled': siemEnabled,
+      'siem_host': siemHost,
+      'siem_port': siemPort,
+      'siem_protocol': siemProtocol,
+      'siem_format': siemFormat,
+    };
+  }
+}
+
+class AuditVerificationResult {
+  final bool valid;
+  final int totalRecords;
+  final int verifiedRecords;
+  final String lastHash;
+  final String error;
+
+  AuditVerificationResult({
+    required this.valid,
+    required this.totalRecords,
+    required this.verifiedRecords,
+    required this.lastHash,
+    this.error = '',
+  });
+
+  factory AuditVerificationResult.fromJson(Map<String, dynamic> json) {
+    return AuditVerificationResult(
+      valid: json['valid'] == true,
+      totalRecords: (json['total_records'] as num?)?.toInt() ?? 0,
+      verifiedRecords: (json['verified_records'] as num?)?.toInt() ?? 0,
+      lastHash: json['last_hash'] ?? '',
+      error: json['error'] ?? '',
     );
   }
 }

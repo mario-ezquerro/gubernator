@@ -234,28 +234,45 @@ type OIDCConfig struct {
 }
 
 type LocalUser struct {
-	ID           string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Username     string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
-	PasswordHash string     `gorm:"type:varchar(255);not null" json:"-"`
-	DisplayName  string     `gorm:"type:varchar(255)" json:"display_name"`
-	Email        string     `gorm:"type:varchar(255)" json:"email"`
-	Role         string     `gorm:"type:varchar(50);default:'readonly'" json:"role"` // admin, operator, readonly
-	Enabled      bool       `gorm:"default:true" json:"enabled"`
-	LastLogin    *time.Time `json:"last_login,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID             string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Username       string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
+	PasswordHash   string     `gorm:"type:varchar(255);not null" json:"-"`
+	DisplayName    string     `gorm:"type:varchar(255)" json:"display_name"`
+	Email          string     `gorm:"type:varchar(255)" json:"email"`
+	Role           string     `gorm:"type:varchar(50);default:'readonly'" json:"role"` // admin, operator, readonly, auditor
+	Enabled        bool       `gorm:"default:true" json:"enabled"`
+	MFAEnabled     bool       `gorm:"default:false" json:"mfa_enabled"`
+	MFASecret      string     `gorm:"type:varchar(255)" json:"-"`
+	MFABackupCodes string     `gorm:"type:text" json:"-"`
+	LastLogin      *time.Time `json:"last_login,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
-// AuditLog represents a security event or user access log entry.
+// AuditLog represents a security event or user access log entry with cryptographic tamper-evidence.
 type AuditLog struct {
 	ID        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
 	Timestamp time.Time `gorm:"index;not null" json:"timestamp"`
 	Username  string    `gorm:"type:varchar(100);index;not null" json:"username"`
-	Provider  string    `gorm:"type:varchar(50);default:'LOCAL'" json:"provider"` // LOCAL, ACTIVE_DIRECTORY
+	Provider  string    `gorm:"type:varchar(50);default:'LOCAL'" json:"provider"` // LOCAL, ACTIVE_DIRECTORY, OIDC
 	IPAddress string    `gorm:"type:varchar(50)" json:"ip_address"`
-	Action    string    `gorm:"type:varchar(100);index;not null" json:"action"` // LOGIN_SUCCESS, LOGIN_FAILED, PASSWORD_CHANGE, USER_CREATE, USER_UPDATE, USER_DELETE
+	Action    string    `gorm:"type:varchar(100);index;not null" json:"action"` // LOGIN_SUCCESS, LOGIN_FAILED, STACK_DEPLOY, etc.
 	Status    string    `gorm:"type:varchar(50);default:'SUCCESS'" json:"status"` // SUCCESS, FAILURE
 	Details   string    `gorm:"type:text" json:"details"`
+	PrevHash  string    `gorm:"type:varchar(64)" json:"prev_hash"`
+	Hash      string    `gorm:"type:varchar(64);index" json:"hash"`
+}
+
+// SecurityConfig stores cluster-wide security policies, MFA enforcement, and SIEM forwarding settings.
+type SecurityConfig struct {
+	ID           string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	MFAEnforced  bool      `gorm:"default:false" json:"mfa_enforced"`
+	SIEMEnabled  bool      `gorm:"default:false" json:"siem_enabled"`
+	SIEMHost     string    `gorm:"type:varchar(255)" json:"siem_host"`
+	SIEMPort     int       `gorm:"default:514" json:"siem_port"`
+	SIEMProtocol string    `gorm:"type:varchar(10);default:'UDP'" json:"siem_protocol"` // UDP, TCP, TLS
+	SIEMFormat   string    `gorm:"type:varchar(20);default:'RFC5424'" json:"siem_format"` // RFC5424, CEF, JSON
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // StorageVolume represents a discovered persistent volume or bind mount.

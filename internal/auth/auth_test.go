@@ -102,3 +102,41 @@ func TestResolveRole(t *testing.T) {
 		t.Errorf("expected default readonly role, got %s", role)
 	}
 }
+
+func TestRoleAuditor(t *testing.T) {
+	auditorPerms := GetPermissions(RoleAuditor)
+	if !auditorPerms.CanViewAuditLogs || !auditorPerms.CanExportAuditLogs || !auditorPerms.CanViewObservability {
+		t.Errorf("auditor must have audit and observability view access: %+v", auditorPerms)
+	}
+	if auditorPerms.CanDeployStacks || auditorPerms.CanExecuteShell || auditorPerms.CanManageSecurity || auditorPerms.CanDeleteTasks {
+		t.Errorf("auditor must not have mutation or shell access: %+v", auditorPerms)
+	}
+}
+
+func TestMFAPendingToken(t *testing.T) {
+	session := UserSession{
+		Username:    "audit-user",
+		DisplayName: "Auditor Test",
+		Role:        RoleAuditor,
+		Provider:    "local",
+	}
+
+	token, err := GenerateMFAPendingToken(session)
+	if err != nil {
+		t.Fatalf("failed to generate MFA pending token: %v", err)
+	}
+
+	parsed, err := ValidateMFAPendingToken(token)
+	if err != nil {
+		t.Fatalf("failed to validate MFA pending token: %v", err)
+	}
+	if parsed.Username != "audit-user" || parsed.Role != RoleAuditor {
+		t.Errorf("unexpected parsed MFA user: %+v", parsed)
+	}
+
+	// Normal ValidateToken must fail on MFA pending token (purpose isolation)
+	if _, err := ValidateToken(token); err == nil {
+		t.Error("ValidateToken should reject MFA pending token")
+	}
+}
+
