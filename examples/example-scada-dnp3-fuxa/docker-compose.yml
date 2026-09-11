@@ -1,0 +1,136 @@
+version: "3.8"
+
+# =============================================================================
+# Gubernator (gbnt) - Industrial IoT & SCADA Simulation Suite
+# Protocol: DNP3 (IEEE 1815-2012) + Eclipse Mosquitto MQTT + FUXA Web SCADA
+# Architecture:
+#   - 2x DNP3 Outstations (Substation Alpha 25 kV & Solar Farm Beta 3 MW)
+#   - 1x DNP3 Master Station & MQTT Protocol Gateway (master_bridge)
+#   - 1x Eclipse Mosquitto MQTT Message Broker
+#   - 1x FUXA Process Visualization Web HMI (Port 1881 / fuxa.gbnt.local)
+# =============================================================================
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Eclipse Mosquitto MQTT Telemetry Broker
+  # ─────────────────────────────────────────────────────────────────────────────
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: gbnt-scada-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    labels:
+      - "gbnt.service.name=mqtt-broker"
+      - "gbnt.service.description=Eclipse Mosquitto MQTT Broker for SCADA Telemetry"
+    networks:
+      - gbnt-scada-net
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. DNP3 Outstation 1: Substation Alpha 25 kV Distribution (DNP3 Address: 10)
+  # ─────────────────────────────────────────────────────────────────────────────
+  dnp3-substation-alpha:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    image: gubernator-dnp3-simulator:latest
+    container_name: gbnt-dnp3-substation-alpha
+    restart: unless-stopped
+    command: python3 outstation_substation.py
+    environment:
+      - DNP3_PORT=20000
+      - DNP3_ADDRESS=10
+      - MASTER_ADDRESS=1
+      - STATION_NAME=Substation Alpha (25 kV)
+    ports:
+      - "20000:20000"
+    labels:
+      - "gbnt.service.name=dnp3-substation-alpha"
+      - "gbnt.service.description=DNP3 RTU - Substation Alpha 25 kV (Address 10)"
+    networks:
+      - gbnt-scada-net
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. DNP3 Outstation 2: Solar PV Farm Beta 3 MW Central Inverter (DNP3 Address: 20)
+  # ─────────────────────────────────────────────────────────────────────────────
+  dnp3-solar-farm:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    image: gubernator-dnp3-simulator:latest
+    container_name: gbnt-dnp3-solar-farm
+    restart: unless-stopped
+    command: python3 outstation_solar.py
+    environment:
+      - DNP3_PORT=20000
+      - DNP3_ADDRESS=20
+      - MASTER_ADDRESS=1
+      - STATION_NAME=Solar PV Farm Beta (3 MW)
+    ports:
+      - "20001:20000"
+    labels:
+      - "gbnt.service.name=dnp3-solar-farm"
+      - "gbnt.service.description=DNP3 RTU - Solar PV Farm Beta 3 MW (Address 20)"
+    networks:
+      - gbnt-scada-net
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. DNP3 Master Station & MQTT Protocol Bridge
+  # ─────────────────────────────────────────────────────────────────────────────
+  dnp3-master-bridge:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    image: gubernator-dnp3-simulator:latest
+    container_name: gbnt-dnp3-master-bridge
+    restart: unless-stopped
+    command: python3 master_bridge.py
+    environment:
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+      - SUBSTATION_HOST=dnp3-substation-alpha
+      - SUBSTATION_PORT=20000
+      - SUBSTATION_DNP3_ADDR=10
+      - SOLAR_HOST=dnp3-solar-farm
+      - SOLAR_PORT=20000
+      - SOLAR_DNP3_ADDR=20
+      - MASTER_DNP3_ADDR=1
+      - POLL_INTERVAL=1.0
+    depends_on:
+      - mqtt
+      - dnp3-substation-alpha
+      - dnp3-solar-farm
+    labels:
+      - "gbnt.service.name=dnp3-master-bridge"
+      - "gbnt.service.description=IEEE 1815 DNP3 Master Station & MQTT Gateway"
+    networks:
+      - gbnt-scada-net
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 5. FUXA Web SCADA / HMI Process Visualization (frangoteam/FUXA)
+  # ─────────────────────────────────────────────────────────────────────────────
+  fuxa:
+    image: frangoteam/fuxa:latest
+    container_name: gbnt-scada-fuxa
+    restart: unless-stopped
+    ports:
+      - "1881:1881"
+    volumes:
+      - ./fuxa-appdata:/usr/src/app/FUXA/server/_appdata
+    depends_on:
+      - mqtt
+      - dnp3-master-bridge
+    labels:
+      - "ingress.host=fuxa.gbnt.local"
+      - "gbnt.caddy.port=1881"
+      - "gbnt.service.name=fuxa-scada"
+      - "gbnt.service.description=FUXA Web SCADA/HMI Dashboard (frangoteam/FUXA)"
+    networks:
+      - gbnt-scada-net
+
+networks:
+  gbnt-scada-net:
+    name: gbnt-scada-net
+    driver: bridge

@@ -870,5 +870,27 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Clean Standard PromQL Expressions:** Replaced fragile `label_replace` wrappers with direct instant table PromQL queries across CPU, Memory Used %, Memory Used, Memory Total, Network Rx/Tx, and Host Disk (used, total, %).
   - **Column Alignment & Display Mode:** Configured clean `organize` transformation mapping `Value #<refId>` to descriptive metrics (`CPU Usage %`, `Memory Used %`, `Net Rx`, `Host Disk %`, etc.), hiding redundant `Time` timestamp columns, and applying `gradient-gauge` display mode on `Host Disk %`.
 
+### 98. Industrial IoT & SCADA Simulation Subsystem (IEEE 1815 DNP3 + FUXA Web HMI) (`v2.82.0`)
+* **Pure IEEE 1815-2012 (DNP3) Protocol Engine (`examples/example-scada-dnp3-fuxa/simulator/dnp3_frame.py`):**
+  - Zero-external-dependency Python implementation of DNP3 Data Link, Transport, and Application layers.
+  - Native CRC-16 calculation with polynomial `0xA653` (inverted output), validating 10-octet link header and 16-octet data link payload chunks.
+  - Full support for Function Codes `0x01` (Read / Class 0/1/2/3 Integrity Poll), `0x81` (Response with IIN internal indications), and `0x05` (Direct Operate).
+  - Implements DNP3 Object Groups: Group 1 Var 2 (Binary Input with flags), Group 12 Var 1 (Control Relay Output Block - CROB with Trip/Close/Pulse codes), and Group 30 Var 1/2 (Analog Input 32-bit/16-bit).
+  - Thread-safe `DNP3MasterClient` using `threading.RLock()` for high-concurrency socket communications without deadlock.
+* **Dual Industrial Field RTUs & Simulation Logic:**
+  - **Substation Alpha RTU (DNP3 Address 10, Port 20000):** Simulates a 25 kV electric distribution substation. Tracks Feeder Breaker 52-1 state, Disconnector Switch 89-1, Overcurrent Relay 50/51, SF6 Gas Pressure, Busbar Voltage (25 kV), Feeder Current (120 A), Active Power (5 MW), Reactive Power (0.8 MVAr), and Transformer Temperature (58 °C). Executes CROB Direct Operate Trip (de-energizes line to 0 kV/0 A) and Close (re-energizes to 25 kV).
+  - **Solar PV Farm Beta RTU (DNP3 Address 20, Port 20000):** Simulates a 3 MW utility-scale solar photovoltaic array. Tracks central inverter status, grid synchronism, anti-islanding protection, active generation curve (0-3000 kW), solar irradiance (W/m²), DC array voltage (760 V), DC array current (2400 A), and daily kWh yield. Executes CROB Direct Operate Curtailment and Inverter Run.
+* **DNP3 Master Station & Bi-Directional MQTT Telemetry Bridge (`master_bridge.py`):**
+  - Automated Master polling engine issuing cyclic Class 0/1/2/3 Integrity Polls across all configured outstation RTUs.
+  - Transforms raw IEEE 1815 binary and analog objects into clean JSON payloads published to Eclipse Mosquitto MQTT (`scada/dnp3/substation/...` and `scada/dnp3/solar/...`).
+  - Subscribes to MQTT control topics (`scada/dnp3/control/...`) and dynamically translates HMI commands into standard IEEE 1815 CROB Direct Operate frames sent over TCP.
+* **Pre-Configured FUXA SCADA / HMI Project (`project.fuxap` & `project.fuxap.db`):**
+  - Integrates modern open-source web SCADA platform [FUXA](https://github.com/frangoteam/FUXA) running on port `1881` (`fuxa.gbnt.local`).
+  - Pre-generated SQLite project database containing an interactive Single-Line Diagram (SLD), SVG substation breaker symbols with live color state transitions (Red = Closed/Live, Green = Open/Safe), dynamic busbar energization styling, analog gauge meters, solar generation dials, alarm banners, and interactive Breaker Trip/Close action buttons.
+* **Gubernator 1-Click POC Catalog Integration:**
+  - Registered under the new **"IoT & Industrial SCADA"** category (`internal/examples/data/scada-dnp3-fuxa.yml`, `internal/examples/examples.go`, and `poc_examples_dialog.dart`).
+  - Automated storage population via `EnsureSCADAStorageFiles()` creating `/var/contenedores/scada-dnp3/` before deployment.
+  - Full CLI (`gbnt stack deploy -c examples/example-scada-dnp3-fuxa/docker-compose.yml`) and Web UI parity.
+
 
 

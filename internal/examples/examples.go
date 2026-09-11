@@ -207,6 +207,17 @@ var catalog = []POCExample{
 		Icon:         "vpn_key",
 		Tags:         []string{"keycloak", "sso", "identity", "oauth2", "oidc", "security", "ldap"},
 	},
+	{
+		ID:           "scada-dnp3-fuxa",
+		Name:         "SCADA IoT Substation & Solar PV Grid (DNP3 IEEE 1815 + FUXA HMI)",
+		Category:     "IoT & Industrial SCADA",
+		Description:  "Industrial IoT critical infrastructure simulation: 25 kV Substation RTU, 3 MW Solar PV Farm central inverter, authentic IEEE 1815 DNP3 Master Station, Mosquitto MQTT, and FUXA Web SCADA with interactive circuit breaker controls.",
+		Filename:     "scada-dnp3-fuxa.yml",
+		DefaultStack: "scada-dnp3",
+		Services:     []string{"mqtt", "dnp3-substation-alpha", "dnp3-solar-farm", "dnp3-master-bridge", "fuxa"},
+		Icon:         "sensors",
+		Tags:         []string{"scada", "dnp3", "ieee-1815", "fuxa", "iot", "substation", "solar", "mqtt", "hmi", "industrial"},
+	},
 }
 
 // GetAllPOCExamples returns all built-in POC examples with their compose definitions populated.
@@ -273,7 +284,38 @@ Gubernator automatically discovers files in this directory. You can deploy them:
 		_ = os.WriteFile(readmePath, []byte(readmeContent), 0644)
 	}
 
+	_ = EnsureSCADAStorageFiles()
 	return ExportExamplesToDisk(DefaultServerExamplesDir())
+}
+
+// EnsureSCADAStorageFiles exports embedded DNP3 simulator scripts and FUXA project to /var/contenedores/scada-dnp3
+func EnsureSCADAStorageFiles() error {
+	destDirs := []string{
+		"/var/contenedores/scada-dnp3",
+		filepath.Join(DefaultServerExamplesDir(), "scada-dnp3"),
+	}
+
+	files := []string{
+		"dnp3_frame.py",
+		"outstation_substation.py",
+		"outstation_solar.py",
+		"master_bridge.py",
+		"mosquitto.conf",
+		"fuxa-appdata/project.fuxap",
+		"fuxa-appdata/project.fuxap.db",
+	}
+
+	for _, baseDir := range destDirs {
+		_ = os.MkdirAll(filepath.Join(baseDir, "fuxa-appdata"), 0777)
+		for _, f := range files {
+			data, err := embeddedExamples.ReadFile("data/scada-dnp3/" + f)
+			if err == nil {
+				target := filepath.Join(baseDir, f)
+				_ = os.WriteFile(target, data, 0755)
+			}
+		}
+	}
+	return nil
 }
 
 // ExportExamplesToDisk writes all embedded POC examples to the designated directory on the Master host.
@@ -317,6 +359,10 @@ func DeployPOCExample(id string, targetNode string) (*db.Stack, error) {
 
 	if DeployStackFn == nil {
 		return nil, fmt.Errorf("stack deployment engine not initialized")
+	}
+
+	if id == "scada-dnp3-fuxa" {
+		_ = EnsureSCADAStorageFiles()
 	}
 
 	return DeployStackFn(stackName, ex.ComposeRaw, targetNode)

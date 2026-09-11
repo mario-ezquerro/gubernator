@@ -162,6 +162,8 @@ class _POCExamplesDialogState extends State<POCExamplesDialog> {
         return Icons.science_outlined;
       case 'monitor_heart':
         return Icons.monitor_heart_outlined;
+      case 'sensors':
+        return Icons.sensors;
       default:
         return Icons.rocket_launch;
     }
@@ -169,7 +171,7 @@ class _POCExamplesDialogState extends State<POCExamplesDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['All', 'Web & Ingress', 'Database & CMS', 'SRE & Observability', 'Automation & AI', 'AI & Data Science'];
+    final categories = ['All', 'Web & Ingress', 'Database & CMS', 'SRE & Observability', 'Automation & AI', 'AI & Data Science', 'IoT & Industrial SCADA'];
     final filtered = _examples.where((ex) {
       if (_selectedCategory == 'All') return true;
       return ex.category == _selectedCategory;

@@ -60,6 +60,8 @@ gubernator.hosts
 
 # SQLite databases
 *.db
+!examples/example-scada-dnp3-fuxa/fuxa-appdata/*.db
+!internal/examples/data/scada-dnp3/fuxa-appdata/*.db
 
 # Local certificates
 *.crt

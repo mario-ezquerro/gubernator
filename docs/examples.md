@@ -154,3 +154,18 @@ This page is your index to the progressive tutorials included with Gubernator. E
 - Pre-configured Hugging Face `transformers`, `peft`, `trl`, and `datasets`
 - Headless automated training script (`train_script.py`)
 - Persistent shared storage mobility in `/var/contenedores/jupyter-llm`
+
+---
+
+## Example Industrial SCADA — IEEE 1815 (DNP3) + FUXA Web HMI
+
+**Target**: Advanced / IoT & Industrial Automation  
+**Goal**: Deploy a smart electric grid simulation featuring dual DNP3 RTUs, DNP3 Master Station Bridge, MQTT telemetry, and FUXA Web SCADA
+
+[Start Example Industrial SCADA →](example-scada-dnp3.md)
+
+- Dual industrial DNP3 outstations: 25 kV Substation Alpha RTU & 3 MW Solar PV Farm Beta RTU
+- Native IEEE 1815-2012 protocol implementation (CRC-16, Data Link, Transport, Application layers)
+- Cyclic Class 0/1/2/3 integrity polling and CROB Direct Operate breaker control
+- Pre-configured FUXA SCADA/HMI project with interactive Single-Line Diagram, gauges, and alarm banners
+- Ingress host `fuxa.gbnt.local:1881` with live bidirectional MQTT telemetry

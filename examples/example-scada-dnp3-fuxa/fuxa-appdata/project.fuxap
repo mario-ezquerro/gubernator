@@ -1,0 +1,454 @@
+{
+  "version": "1.00",
+  "server": {
+    "id": "0",
+    "name": "FUXA Server",
+    "type": "FuxaServer",
+    "property": {}
+  },
+  "devices": {
+    "dnp3_mqtt": {
+      "id": "dnp3_mqtt",
+      "name": "DNP3_MQTT_Gateway",
+      "type": "MQTT",
+      "enabled": true,
+      "property": {
+        "address": "mqtt://mqtt:1883",
+        "timeout": 10000
+      },
+      "tags": {
+        "sub_voltage": {
+          "id": "sub_voltage",
+          "name": "Substation Busbar Voltage",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/voltage_kv",
+          "description": "Grid Voltage 25 kV"
+        },
+        "sub_current": {
+          "id": "sub_current",
+          "name": "Substation Feeder Current",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/current_a",
+          "description": "Feeder Load Current (A)"
+        },
+        "sub_power": {
+          "id": "sub_power",
+          "name": "Substation Active Power",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/power_mw",
+          "description": "Active Power (MW)"
+        },
+        "sub_reactive": {
+          "id": "sub_reactive",
+          "name": "Substation Reactive Power",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/power_mvar",
+          "description": "Reactive Power (MVAr)"
+        },
+        "sub_freq": {
+          "id": "sub_freq",
+          "name": "Grid Frequency",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/freq_hz",
+          "description": "Grid Frequency (Hz)"
+        },
+        "sub_trafo_temp": {
+          "id": "sub_trafo_temp",
+          "name": "Power Transformer Temp",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/trafo_temp",
+          "description": "Transformer Temp (°C)"
+        },
+        "sub_breaker_status": {
+          "id": "sub_breaker_status",
+          "name": "Circuit Breaker 52-1 Status",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/breaker_status",
+          "description": "1=Closed/Live, 0=Tripped/Open"
+        },
+        "sub_breaker_cmd": {
+          "id": "sub_breaker_cmd",
+          "name": "Breaker 52-1 Command",
+          "type": "raw",
+          "address": "scada/dnp3/control/substation_alpha/breaker",
+          "description": "Trip/Close Breaker via DNP3 CROB"
+        },
+        "sub_oc_alarm": {
+          "id": "sub_oc_alarm",
+          "name": "Overcurrent Trip Alarm 50/51",
+          "type": "number",
+          "address": "scada/dnp3/substation_alpha/alarm_overcurrent",
+          "description": "Relay 50/51 Trip Status"
+        },
+        "sol_generation": {
+          "id": "sol_generation",
+          "name": "Solar Active Power",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/generation_kw",
+          "description": "Photovoltaic Generation (kW)"
+        },
+        "sol_irradiance": {
+          "id": "sol_irradiance",
+          "name": "Solar Irradiance",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/irradiance_wm2",
+          "description": "Solar Irradiance (W/m²)"
+        },
+        "sol_dc_voltage": {
+          "id": "sol_dc_voltage",
+          "name": "Solar DC String Voltage",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/dc_voltage_v",
+          "description": "DC Bus Voltage (V)"
+        },
+        "sol_dc_current": {
+          "id": "sol_dc_current",
+          "name": "Solar DC Array Current",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/dc_current_a",
+          "description": "DC Current (A)"
+        },
+        "sol_inv_temp": {
+          "id": "sol_inv_temp",
+          "name": "Solar Inverter Temp",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/inverter_temp",
+          "description": "IGBT Temperature (°C)"
+        },
+        "sol_ambient_temp": {
+          "id": "sol_ambient_temp",
+          "name": "Ambient Temperature",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/ambient_temp",
+          "description": "Ambient Temp (°C)"
+        },
+        "sol_inv_status": {
+          "id": "sol_inv_status",
+          "name": "Solar Inverter Status",
+          "type": "number",
+          "address": "scada/dnp3/solar_farm/inverter_running",
+          "description": "1=Exporting, 0=Curtailed"
+        },
+        "sol_inv_cmd": {
+          "id": "sol_inv_cmd",
+          "name": "Solar Inverter Command",
+          "type": "raw",
+          "address": "scada/dnp3/control/solar_farm/inverter",
+          "description": "Curtail/Enable Inverter via DNP3 CROB"
+        }
+      }
+    }
+  },
+  "hmi": {
+    "views": [
+      {
+        "id": "v_main_scada",
+        "name": "Electrical Substation & Solar SCADA (DNP3)",
+        "profile": {
+          "width": 1400,
+          "height": 850,
+          "bkcolor": "#0f141c"
+        },
+        "items": {
+          "VAL_sub_v": {
+            "id": "VAL_sub_v",
+            "type": "svg-ext-value",
+            "name": "sub_voltage",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sub_voltage",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_voltage",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " kV"
+                }
+              ]
+            }
+          },
+          "VAL_sub_i": {
+            "id": "VAL_sub_i",
+            "type": "svg-ext-value",
+            "name": "sub_current",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sub_current",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_current",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " A"
+                }
+              ]
+            }
+          },
+          "VAL_sub_p": {
+            "id": "VAL_sub_p",
+            "type": "svg-ext-value",
+            "name": "sub_power",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sub_power",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_power",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " MW"
+                }
+              ]
+            }
+          },
+          "VAL_sub_freq": {
+            "id": "VAL_sub_freq",
+            "type": "svg-ext-value",
+            "name": "sub_freq",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sub_freq",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_freq",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " Hz"
+                }
+              ]
+            }
+          },
+          "VAL_sub_temp": {
+            "id": "VAL_sub_temp",
+            "type": "svg-ext-value",
+            "name": "sub_trafo_temp",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sub_trafo_temp",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_trafo_temp",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " °C"
+                }
+              ]
+            }
+          },
+          "GSE_breaker": {
+            "id": "GSE_breaker",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "sub_breaker_status",
+            "label": "HtmlSemaphore",
+            "property": {
+              "events": [],
+              "variable": "sub_breaker_status",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_breaker_status",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "range",
+                  "min": 1,
+                  "max": 1,
+                  "color": "#ff3838"
+                },
+                {
+                  "type": "range",
+                  "min": 0,
+                  "max": 0,
+                  "color": "#2ed573"
+                }
+              ]
+            }
+          },
+          "HXB_trip_breaker": {
+            "id": "HXB_trip_breaker",
+            "type": "svg-ext-html_button",
+            "name": "TRIP",
+            "label": "HtmlButton",
+            "property": {
+              "events": [
+                {
+                  "type": "click",
+                  "action": "onSetValue",
+                  "actparam": "TRIP"
+                }
+              ],
+              "variable": "sub_breaker_cmd",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_breaker_cmd",
+              "variableSrc": "DNP3_MQTT_Gateway"
+            }
+          },
+          "HXB_close_breaker": {
+            "id": "HXB_close_breaker",
+            "type": "svg-ext-html_button",
+            "name": "CLOSE",
+            "label": "HtmlButton",
+            "property": {
+              "events": [
+                {
+                  "type": "click",
+                  "action": "onSetValue",
+                  "actparam": "CLOSE"
+                }
+              ],
+              "variable": "sub_breaker_cmd",
+              "variableId": "DNP3_MQTT_Gateway^~^sub_breaker_cmd",
+              "variableSrc": "DNP3_MQTT_Gateway"
+            }
+          },
+          "VAL_sol_gen": {
+            "id": "VAL_sol_gen",
+            "type": "svg-ext-value",
+            "name": "sol_generation",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sol_generation",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_generation",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " kW"
+                }
+              ]
+            }
+          },
+          "VAL_sol_irr": {
+            "id": "VAL_sol_irr",
+            "type": "svg-ext-value",
+            "name": "sol_irradiance",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sol_irradiance",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_irradiance",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " W/m²"
+                }
+              ]
+            }
+          },
+          "VAL_sol_dcv": {
+            "id": "VAL_sol_dcv",
+            "type": "svg-ext-value",
+            "name": "sol_dc_voltage",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sol_dc_voltage",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_dc_voltage",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " V"
+                }
+              ]
+            }
+          },
+          "VAL_sol_dca": {
+            "id": "VAL_sol_dca",
+            "type": "svg-ext-value",
+            "name": "sol_dc_current",
+            "label": "Value",
+            "property": {
+              "events": [],
+              "variable": "sol_dc_current",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_dc_current",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "unit",
+                  "text": " A"
+                }
+              ]
+            }
+          },
+          "GSE_sol_running": {
+            "id": "GSE_sol_running",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "sol_inv_status",
+            "label": "HtmlSemaphore",
+            "property": {
+              "events": [],
+              "variable": "sol_inv_status",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_inv_status",
+              "variableSrc": "DNP3_MQTT_Gateway",
+              "ranges": [
+                {
+                  "type": "range",
+                  "min": 1,
+                  "max": 1,
+                  "color": "#2ed573"
+                },
+                {
+                  "type": "range",
+                  "min": 0,
+                  "max": 0,
+                  "color": "#ffa502"
+                }
+              ]
+            }
+          },
+          "HXB_sol_enable": {
+            "id": "HXB_sol_enable",
+            "type": "svg-ext-html_button",
+            "name": "ENABLE",
+            "label": "HtmlButton",
+            "property": {
+              "events": [
+                {
+                  "type": "click",
+                  "action": "onSetValue",
+                  "actparam": "ENABLE"
+                }
+              ],
+              "variable": "sol_inv_cmd",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_inv_cmd",
+              "variableSrc": "DNP3_MQTT_Gateway"
+            }
+          },
+          "HXB_sol_curtail": {
+            "id": "HXB_sol_curtail",
+            "type": "svg-ext-html_button",
+            "name": "CURTAIL",
+            "label": "HtmlButton",
+            "property": {
+              "events": [
+                {
+                  "type": "click",
+                  "action": "onSetValue",
+                  "actparam": "CURTAIL"
+                }
+              ],
+              "variable": "sol_inv_cmd",
+              "variableId": "DNP3_MQTT_Gateway^~^sol_inv_cmd",
+              "variableSrc": "DNP3_MQTT_Gateway"
+            }
+          }
+        },
+        "variables": {},
+        "svgcontent": "<svg width=\"1400\" height=\"850\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:html=\"http://www.w3.org/1999/xhtml\">\n <defs>\n  <linearGradient id=\"grad_bg\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">\n   <stop offset=\"0%\" stop-color=\"#0f141c\"/>\n   <stop offset=\"100%\" stop-color=\"#1b2431\"/>\n  </linearGradient>\n  <linearGradient id=\"grad_panel\" x1=\"0%\" y1=\"0%\" x2=\"0%\" y2=\"100%\">\n   <stop offset=\"0%\" stop-color=\"#1f2a38\"/>\n   <stop offset=\"100%\" stop-color=\"#161e29\"/>\n  </linearGradient>\n  <filter id=\"glow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">\n   <feGaussianBlur stdDeviation=\"3\" result=\"blur\" />\n   <feComposite in=\"SourceGraphic\" in2=\"blur\" operator=\"over\" />\n  </filter>\n </defs>\n <g>\n  <!-- Main Background -->\n  <rect width=\"1400\" height=\"850\" fill=\"url(#grad_bg)\"/>\n\n  <!-- Top Banner -->\n  <rect x=\"20\" y=\"15\" width=\"1360\" height=\"60\" rx=\"8\" fill=\"url(#grad_panel)\" stroke=\"#303f52\" stroke-width=\"1.5\"/>\n  <text x=\"45\" y=\"52\" fill=\"#00d2d3\" font-family=\"'Segoe UI', Roboto, sans-serif\" font-size=\"22\" font-weight=\"bold\" letter-spacing=\"1\">⚡ GUBERNATOR SCADA</text>\n  <text x=\"310\" y=\"52\" fill=\"#f1f2f6\" font-family=\"'Segoe UI', Roboto, sans-serif\" font-size=\"16\">| Smart Grid &amp; DNP3 (IEEE 1815) Process Control</text>\n\n  <!-- Status badges -->\n  <rect x=\"880\" y=\"28\" width=\"140\" height=\"34\" rx=\"4\" fill=\"#0c2461\" stroke=\"#1e3799\" stroke-width=\"1\"/>\n  <text x=\"950\" y=\"50\" text-anchor=\"middle\" fill=\"#70a1ff\" font-family=\"monospace\" font-size=\"12\" font-weight=\"bold\">DNP3 MASTER :1</text>\n\n  <rect x=\"1035\" y=\"28\" width=\"165\" height=\"34\" rx=\"4\" fill=\"#0c2461\" stroke=\"#1e3799\" stroke-width=\"1\"/>\n  <text x=\"1117\" y=\"50\" text-anchor=\"middle\" fill=\"#7bed9f\" font-family=\"monospace\" font-size=\"12\" font-weight=\"bold\">SUBSTATION ADDR:10</text>\n\n  <rect x=\"1215\" y=\"28\" width=\"150\" height=\"34\" rx=\"4\" fill=\"#0c2461\" stroke=\"#1e3799\" stroke-width=\"1\"/>\n  <text x=\"1290\" y=\"50\" text-anchor=\"middle\" fill=\"#eccc68\" font-family=\"monospace\" font-size=\"12\" font-weight=\"bold\">SOLAR ADDR:20</text>\n\n  <!-- ================= LEFT PANEL: SUBSTATION ALPHA ================= -->\n  <rect x=\"20\" y=\"90\" width=\"670\" height=\"740\" rx=\"10\" fill=\"url(#grad_panel)\" stroke=\"#2c3e50\" stroke-width=\"1.5\"/>\n  <rect x=\"20\" y=\"90\" width=\"670\" height=\"45\" rx=\"10\" fill=\"#243342\"/>\n  <text x=\"45\" y=\"120\" fill=\"#ff4757\" font-family=\"'Segoe UI', Roboto, sans-serif\" font-size=\"18\" font-weight=\"bold\">🏛️ Substation Alpha - 25 kV Distribution (DNP3 RTU 10)</text>\n\n  <!-- Single-Line Diagram Frame -->\n  <rect x=\"40\" y=\"150\" width=\"630\" height=\"350\" rx=\"8\" fill=\"#121820\" stroke=\"#253241\" stroke-width=\"1\"/>\n\n  <!-- Busbar 25 kV Transmission Grid -->\n  <line x1=\"70\" y1=\"185\" x2=\"630\" y2=\"185\" stroke=\"#ff4757\" stroke-width=\"6\" stroke-linecap=\"round\"/>\n  <text x=\"80\" y=\"175\" fill=\"#ff6b81\" font-family=\"monospace\" font-size=\"13\" font-weight=\"bold\">25 kV DISTRIBUTION BUSBAR A</text>\n\n  <!-- Transformer T1 -->\n  <line x1=\"200\" y1=\"185\" x2=\"200\" y2=\"230\" stroke=\"#ffa502\" stroke-width=\"4\"/>\n  <!-- Disconnector 89-1 -->\n  <rect x=\"190\" y=\"230\" width=\"20\" height=\"30\" fill=\"#2f3542\" stroke=\"#ffa502\" stroke-width=\"2\"/>\n  <text x=\"220\" y=\"250\" fill=\"#a4b0be\" font-family=\"monospace\" font-size=\"11\">DISC 89-1</text>\n  <line x1=\"200\" y1=\"260\" x2=\"200\" y2=\"290\" stroke=\"#ffa502\" stroke-width=\"4\"/>\n\n  <!-- Transformer coils -->\n  <circle cx=\"200\" cy=\"305\" r=\"20\" fill=\"none\" stroke=\"#eccc68\" stroke-width=\"3\"/>\n  <circle cx=\"200\" cy=\"335\" r=\"20\" fill=\"none\" stroke=\"#eccc68\" stroke-width=\"3\"/>\n  <text x=\"235\" y=\"325\" fill=\"#eccc68\" font-family=\"'Segoe UI', sans-serif\" font-size=\"13\" font-weight=\"bold\">TR-1 (25kV/400V)</text>\n\n  <line x1=\"200\" y1=\"355\" x2=\"200\" y2=\"390\" stroke=\"#00d2d3\" stroke-width=\"4\"/>\n\n  <!-- Feeder Circuit Breaker 52-1 Box -->\n  <rect x=\"175\" y=\"390\" width=\"50\" height=\"50\" rx=\"6\" fill=\"#1e272e\" stroke=\"#00d2d3\" stroke-width=\"2.5\"/>\n  <text x=\"145\" y=\"460\" fill=\"#ced6e0\" font-family=\"monospace\" font-size=\"13\" font-weight=\"bold\">BREAKER 52-1</text>\n\n  <!-- Breaker Semaphore GSE_breaker -->\n  <g id=\"GSE_breaker\" type=\"svg-ext-gauge_semaphore\">\n   <circle cx=\"200\" cy=\"415\" r=\"14\" fill=\"#ff3838\" stroke=\"#ffffff\" stroke-width=\"1.5\" filter=\"url(#glow)\"/>\n  </g>\n\n  <line x1=\"200\" y1=\"440\" x2=\"200\" y2=\"480\" stroke=\"#00d2d3\" stroke-width=\"4\"/>\n  <text x=\"160\" y=\"495\" fill=\"#70a1ff\" font-family=\"monospace\" font-size=\"12\">FEEDER 1 TO LOAD</text>\n\n  <!-- Breaker Operator Control Box -->\n  <rect x=\"420\" y=\"220\" width=\"230\" height=\"250\" rx=\"8\" fill=\"#18222d\" stroke=\"#37475a\" stroke-width=\"1.5\"/>\n  <text x=\"435\" y=\"248\" fill=\"#f1f2f6\" font-family=\"'Segoe UI', sans-serif\" font-size=\"14\" font-weight=\"bold\">🎮 DNP3 CROB Direct Operate</text>\n  <text x=\"435\" y=\"270\" fill=\"#a4b0be\" font-family=\"'Segoe UI', sans-serif\" font-size=\"11\">IEEE 1815 Group 12 Var 1</text>\n\n  <!-- CLOSE Breaker Button -->\n  <g id=\"HXB_close_breaker\" type=\"svg-ext-html_button\">\n   <rect x=\"440\" y=\"295\" width=\"190\" height=\"42\" rx=\"6\" fill=\"#2ed573\" stroke=\"#26af5f\"/>\n   <foreignObject x=\"440\" y=\"295\" width=\"190\" height=\"42\">\n    <button style=\"width:100%;height:100%;background:#2ed573;color:#ffffff;font-size:14px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;\">⚡ CLOSE 52-1 (ENERGIZAR)</button>\n   </foreignObject>\n  </g>\n\n  <!-- TRIP Breaker Button -->\n  <g id=\"HXB_trip_breaker\" type=\"svg-ext-html_button\">\n   <rect x=\"440\" y=\"355\" width=\"190\" height=\"42\" rx=\"6\" fill=\"#ff4757\" stroke=\"#d63031\"/>\n   <foreignObject x=\"440\" y=\"355\" width=\"190\" height=\"42\">\n    <button style=\"width:100%;height:100%;background:#ff4757;color:#ffffff;font-size:14px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;\">🛑 TRIP 52-1 (DISPARAR)</button>\n   </foreignObject>\n  </g>\n  <text x=\"440\" y=\"425\" fill=\"#eccc68\" font-family=\"monospace\" font-size=\"10\">Real-time CROB latch via TCP:20000</text>\n\n  <!-- Substation Telemetry Instruments Grid -->\n  <text x=\"45\" y=\"530\" fill=\"#dfe4ea\" font-family=\"'Segoe UI', sans-serif\" font-size=\"15\" font-weight=\"bold\">📊 Substation Telemetry (Analog Inputs Group 30)</text>\n\n  <!-- Tile: Voltage -->\n  <rect x=\"40\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"55\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">BUSBAR VOLTAGE</text>\n  <g id=\"VAL_sub_v\" type=\"svg-ext-value\">\n   <text x=\"55\" y=\"610\" fill=\"#00d2d3\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">25.0 kV</text>\n  </g>\n\n  <!-- Tile: Current -->\n  <rect x=\"255\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"270\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">FEEDER CURRENT</text>\n  <g id=\"VAL_sub_i\" type=\"svg-ext-value\">\n   <text x=\"270\" y=\"610\" fill=\"#ffa502\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">150.0 A</text>\n  </g>\n\n  <!-- Tile: Active Power -->\n  <rect x=\"470\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"485\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">ACTIVE POWER</text>\n  <g id=\"VAL_sub_p\" type=\"svg-ext-value\">\n   <text x=\"485\" y=\"610\" fill=\"#ff4757\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">5.20 MW</text>\n  </g>\n\n  <!-- Tile: Frequency -->\n  <rect x=\"40\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"55\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">GRID FREQUENCY</text>\n  <g id=\"VAL_sub_freq\" type=\"svg-ext-value\">\n   <text x=\"55\" y=\"705\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">50.00 Hz</text>\n  </g>\n\n  <!-- Tile: Transformer Temp -->\n  <rect x=\"255\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"270\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">TRANSFORMER TEMP</text>\n  <g id=\"VAL_sub_temp\" type=\"svg-ext-value\">\n   <text x=\"270\" y=\"705\" fill=\"#eccc68\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">62.5 °C</text>\n  </g>\n\n  <!-- Tile: SF6 Pressure & Relay Status -->\n  <rect x=\"470\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"485\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">PROTECTIONS</text>\n  <text x=\"485\" y=\"695\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"14\" font-weight=\"bold\">● SF6 GAS NORMAL</text>\n  <text x=\"485\" y=\"714\" fill=\"#a4b0be\" font-family=\"monospace\" font-size=\"12\">● RELAY 50/51 OK</text>\n\n\n  <!-- ================= RIGHT PANEL: SOLAR PV FARM ================= -->\n  <rect x=\"710\" y=\"90\" width=\"670\" height=\"740\" rx=\"10\" fill=\"url(#grad_panel)\" stroke=\"#2c3e50\" stroke-width=\"1.5\"/>\n  <rect x=\"710\" y=\"90\" width=\"670\" height=\"45\" rx=\"10\" fill=\"#243342\"/>\n  <text x=\"735\" y=\"120\" fill=\"#eccc68\" font-family=\"'Segoe UI', Roboto, sans-serif\" font-size=\"18\" font-weight=\"bold\">☀️ Solar PV Farm Beta - 3 MW Inverter Field (DNP3 RTU 20)</text>\n\n  <!-- Solar Field Synoptic Frame -->\n  <rect x=\"730\" y=\"150\" width=\"630\" height=\"350\" rx=\"8\" fill=\"#121820\" stroke=\"#253241\" stroke-width=\"1\"/>\n\n  <!-- Solar Panel Array Graphic -->\n  <g transform=\"translate(760, 190)\">\n   <!-- PV Panel 1 -->\n   <rect x=\"0\" y=\"0\" width=\"70\" height=\"50\" rx=\"4\" fill=\"#0c2461\" stroke=\"#4a69bd\" stroke-width=\"2\"/>\n   <line x1=\"23\" y1=\"0\" x2=\"23\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"46\" y1=\"0\" x2=\"46\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"0\" y1=\"25\" x2=\"70\" y2=\"25\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <!-- PV Panel 2 -->\n   <rect x=\"85\" y=\"0\" width=\"70\" height=\"50\" rx=\"4\" fill=\"#0c2461\" stroke=\"#4a69bd\" stroke-width=\"2\"/>\n   <line x1=\"108\" y1=\"0\" x2=\"108\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"131\" y1=\"0\" x2=\"131\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"85\" y1=\"25\" x2=\"155\" y2=\"25\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <!-- PV Panel 3 -->\n   <rect x=\"170\" y=\"0\" width=\"70\" height=\"50\" rx=\"4\" fill=\"#0c2461\" stroke=\"#4a69bd\" stroke-width=\"2\"/>\n   <line x1=\"193\" y1=\"0\" x2=\"193\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"216\" y1=\"0\" x2=\"216\" y2=\"50\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n   <line x1=\"170\" y1=\"25\" x2=\"240\" y2=\"25\" stroke=\"#4a69bd\" stroke-width=\"1\"/>\n  </g>\n\n  <!-- Sun Graphic -->\n  <circle cx=\"1070\" cy=\"205\" r=\"24\" fill=\"#ffa502\" filter=\"url(#glow)\"/>\n  <text x=\"1070\" y=\"245\" text-anchor=\"middle\" fill=\"#eccc68\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">IRRADIANCE</text>\n\n  <!-- DC Bus to Central Inverter -->\n  <line x1=\"880\" y1=\"240\" x2=\"880\" y2=\"300\" stroke=\"#eccc68\" stroke-width=\"4\"/>\n  <rect x=\"830\" y=\"300\" width=\"100\" height=\"70\" rx=\"8\" fill=\"#1e272e\" stroke=\"#ffa502\" stroke-width=\"2.5\"/>\n  <text x=\"880\" y=\"332\" text-anchor=\"middle\" fill=\"#f1f2f6\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">INVERTER</text>\n  <text x=\"880\" y=\"350\" text-anchor=\"middle\" fill=\"#eccc68\" font-family=\"monospace\" font-size=\"10\">DC ➔ AC</text>\n\n  <!-- Inverter Semaphore GSE_sol_running -->\n  <g id=\"GSE_sol_running\" type=\"svg-ext-gauge_semaphore\">\n   <circle cx=\"880\" cy=\"395\" r=\"14\" fill=\"#2ed573\" stroke=\"#ffffff\" stroke-width=\"1.5\" filter=\"url(#glow)\"/>\n  </g>\n  <text x=\"880\" y=\"425\" text-anchor=\"middle\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"12\" font-weight=\"bold\">STATUS: RUNNING</text>\n\n  <!-- AC Connection to Grid -->\n  <line x1=\"880\" y1=\"440\" x2=\"880\" y2=\"480\" stroke=\"#2ed573\" stroke-width=\"4\"/>\n  <text x=\"880\" y=\"495\" text-anchor=\"middle\" fill=\"#00d2d3\" font-family=\"monospace\" font-size=\"12\">AC EXPORT TO GRID</text>\n\n  <!-- Solar Curtailment Control Box -->\n  <rect x=\"1110\" y=\"255\" width=\"230\" height=\"215\" rx=\"8\" fill=\"#18222d\" stroke=\"#37475a\" stroke-width=\"1.5\"/>\n  <text x=\"1125\" y=\"280\" fill=\"#f1f2f6\" font-family=\"'Segoe UI', sans-serif\" font-size=\"14\" font-weight=\"bold\">⚡ DNP3 Inverter Curtailment</text>\n  <text x=\"1125\" y=\"300\" fill=\"#a4b0be\" font-family=\"'Segoe UI', sans-serif\" font-size=\"11\">Direct Operate BO 0</text>\n\n  <!-- Enable Button -->\n  <g id=\"HXB_sol_enable\" type=\"svg-ext-html_button\">\n   <rect x=\"1130\" y=\"320\" width=\"190\" height=\"42\" rx=\"6\" fill=\"#2ed573\" stroke=\"#26af5f\"/>\n   <foreignObject x=\"1130\" y=\"320\" width=\"190\" height=\"42\">\n    <button style=\"width:100%;height:100%;background:#2ed573;color:#ffffff;font-size:14px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;\">☀️ ENABLE INVERTER</button>\n   </foreignObject>\n  </g>\n\n  <!-- Curtail Button -->\n  <g id=\"HXB_sol_curtail\" type=\"svg-ext-html_button\">\n   <rect x=\"1130\" y=\"380\" width=\"190\" height=\"42\" rx=\"6\" fill=\"#ffa502\" stroke=\"#e67e22\"/>\n   <foreignObject x=\"1130\" y=\"380\" width=\"190\" height=\"42\">\n    <button style=\"width:100%;height:100%;background:#ffa502;color:#ffffff;font-size:14px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;\">⚠️ CURTAIL / STOP</button>\n   </foreignObject>\n  </g>\n\n  <!-- Solar Measurements Grid -->\n  <text x=\"735\" y=\"530\" fill=\"#dfe4ea\" font-family=\"'Segoe UI', sans-serif\" font-size=\"15\" font-weight=\"bold\">📊 Photovoltaic Telemetry (Analog Inputs Group 30)</text>\n\n  <!-- Tile: Generation kW -->\n  <rect x=\"730\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"745\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">ACTIVE GENERATION</text>\n  <g id=\"VAL_sol_gen\" type=\"svg-ext-value\">\n   <text x=\"745\" y=\"610\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">2450 kW</text>\n  </g>\n\n  <!-- Tile: Irradiance W/m2 -->\n  <rect x=\"945\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"960\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">SOLAR IRRADIANCE</text>\n  <g id=\"VAL_sol_irr\" type=\"svg-ext-value\">\n   <text x=\"960\" y=\"610\" fill=\"#ffa502\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">820 W/m²</text>\n  </g>\n\n  <!-- Tile: DC Voltage -->\n  <rect x=\"1160\" y=\"545\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"1175\" y=\"572\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">DC STRING VOLTAGE</text>\n  <g id=\"VAL_sol_dcv\" type=\"svg-ext-value\">\n   <text x=\"1175\" y=\"610\" fill=\"#00d2d3\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">750.0 V</text>\n  </g>\n\n  <!-- Tile: DC Current -->\n  <rect x=\"730\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"745\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">DC ARRAY CURRENT</text>\n  <g id=\"VAL_sol_dca\" type=\"svg-ext-value\">\n   <text x=\"745\" y=\"705\" fill=\"#ffa502\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">3260 A</text>\n  </g>\n\n  <!-- Tile: Inverter Temp -->\n  <rect x=\"945\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"960\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">INVERTER TEMP</text>\n  <text x=\"960\" y=\"705\" fill=\"#eccc68\" font-family=\"monospace\" font-size=\"24\" font-weight=\"bold\">48.2 °C</text>\n\n  <!-- Tile: Anti-islanding & Sync -->\n  <rect x=\"1160\" y=\"640\" width=\"195\" height=\"80\" rx=\"8\" fill=\"#131c26\" stroke=\"#253545\" stroke-width=\"1\"/>\n  <text x=\"1175\" y=\"667\" fill=\"#747d8c\" font-family=\"'Segoe UI', sans-serif\" font-size=\"12\" font-weight=\"bold\">GRID SYNC / ISLAND</text>\n  <text x=\"1175\" y=\"695\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"14\" font-weight=\"bold\">● ANTI-ISLAND OK</text>\n  <text x=\"1175\" y=\"714\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"12\">● 50 Hz SYNC LOCKED</text>\n\n  <!-- Footer Info Bar -->\n  <rect x=\"40\" y=\"740\" width=\"1315\" height=\"70\" rx=\"8\" fill=\"#141c26\" stroke=\"#2c3e50\" stroke-width=\"1\"/>\n  <text x=\"60\" y=\"768\" fill=\"#70a1ff\" font-family=\"monospace\" font-size=\"13\" font-weight=\"bold\">PROTOCOL TELEMETRY BUS:</text>\n  <text x=\"270\" y=\"768\" fill=\"#a4b0be\" font-family=\"monospace\" font-size=\"12\">IEEE 1815-2012 (DNP3) ➔ Cyclic Integrity Poll Class 0/1/2/3 ➔ Mosquitto MQTT Bridge ➔ FUXA SVG Engine</text>\n  <text x=\"60\" y=\"792\" fill=\"#2ed573\" font-family=\"monospace\" font-size=\"12\">CROB FEEDBACK LOOP:</text>\n  <text x=\"270\" y=\"792\" fill=\"#ced6e0\" font-family=\"monospace\" font-size=\"12\">FUXA UI click ➔ MQTT topic 'scada/dnp3/control/...' ➔ DNP3 Master Station ➔ TCP Direct Operate ➔ RTU Breaker Action</text>\n </g>\n</svg>"
+      }
+    ],
+    "layout": {
+      "start": "v_main_scada",
+      "navigation": {
+        "mode": "top",
+        "items": []
+      }
+    }
+  },
+  "charts": {},
+  "alarms": {}
+}

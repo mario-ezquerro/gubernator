@@ -83,6 +83,7 @@ nav:
     - JupyterLab PyTorch LLM Lab: example-jupyter-llm.md
     - Kubeflow MLOps Platform: example-kubeflow.md
     - Public Domain HTTPS (Let's Encrypt): example-public-https.md
+    - Industrial SCADA & DNP3 (FUXA): example-scada-dnp3.md
 
 markdown_extensions:
   - admonition

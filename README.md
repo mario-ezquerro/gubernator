@@ -39,6 +39,7 @@ Gubernator operates using a single, portable binary (`gbnt`) that can run as eit
 * **SLO Engine & Error Budget Tracking:** Sloth-powered Google SRE multi-window multi-burn-rate alerting, Prometheus recording rules, and real-time Error Budget monitoring (see [docs/slo.md](docs/slo.md) and [docs/example-slo.md](docs/example-slo.md)).
 * **eBPF Live Hub, Animated Vector Mesh & Jaeger Tracing:** Non-invasive L4/L7 packet tracing, socket correlation, interactive 2D draggable service mesh canvas with directional Bézier curves, animated travelling data particles, and 1-click deep correlation with Jaeger Distributed Tracing (see [docs/ebpf.md](docs/ebpf.md)).
 * **Declarative Autoscaling & GPU/CPU Hardware Affinity:** Automatic horizontal container scaling driven by Compose labels (`gbnt.autoscaling.*`) on GPU (NVIDIA DCGM/SMI) and CPU metrics, strictly enforcing GPU hardware affinity and single-host vs. multi-host containment (see [docs/autoscaling.md](docs/autoscaling.md)).
+* **Industrial IoT & SCADA Simulation Subsystem:** Built-in electric grid simulator supporting standard DNP3 (IEEE 1815-2012), dual outstations (25 kV Substation Alpha & 3 MW Solar PV Beta), DNP3 Master Station Bridge, MQTT broker, and modern web-based FUXA SCADA/HMI with single-line diagrams and interactive breaker control (see [docs/example-scada-dnp3.md](docs/example-scada-dnp3.md)).
 * **Ingress & DNS:** Built-in hooks for CoreDNS (internal resolution) and multi-node Caddy Ingress with full 7-tab UI management (see [SPEC-caddy.md](SPEC-caddy.md) and [docs/caddy.md](docs/caddy.md)).
 
 *(See [architecture.md](docs/architecture.md) for a deeper dive).*
@@ -420,6 +421,20 @@ Gubernator provides enterprise-grade AI training blueprints with distributed sto
 
 * **🦙 LLaMA-Factory Visual Fine-Tuning Studio (`examples/example-llama-factory`)**: No-code / low-code web interface on `llama-factory.gbnt.local:7860` for fine-tuning Llama-3, Qwen2.5, DeepSeek, and SmolLM with LoRA/QLoRA and GGUF quantization export.
 * **🧪 JupyterLab PyTorch LLM Lab (`examples/example-jupyter-llm`)**: Interactive data science workspace on `jupyter-llm.gbnt.local:8888` featuring Hugging Face `TRL` (SFTTrainer), `PEFT`, interactive notebook (`llm_lora_finetuning.ipynb`), and automated batch script (`train_script.py`).
+
+---
+
+## ⚡ Industrial IoT & SCADA Subsystem (IEEE 1815 DNP3 + FUXA Web HMI) (v2.82.0)
+
+Gubernator provides a production-grade industrial automation & smart power grid simulation blueprint:
+
+* **⚡ Substation Alpha RTU (DNP3 Address 10)**: 25 kV distribution substation simulator tracking Busbar Voltage (kV), Feeder Current (A), Active/Reactive Power (MW/MVAr), Transformer Temp, and Feeder Breaker 52-1 state. Supports CROB Direct Operate Trip / Close.
+* **☀️ Solar PV Farm Beta RTU (DNP3 Address 20)**: 3 MW central inverter simulator tracking dynamic solar irradiance (W/m²), DC array voltage/current, active generation (kW), and daily yield (kWh). Supports CROB Curtailment control.
+* **🛰️ DNP3 Master Station Bridge**: Issues cyclic Class 0/1/2/3 integrity polls, serializes IEEE 1815 frames with CRC-16 polynomial `0xA653`, and bridges telemetry bi-directionally to Mosquitto MQTT (`mqtt:1883`).
+* **🖥️ FUXA Web SCADA / HMI (`http://fuxa.gbnt.local:1881`)**: Modern web SCADA pre-loaded with an interactive Single-Line Diagram, SVG breaker states, real-time gauges, and live breaker command buttons.
+* **🚀 1-Click Deployment**: Deployable instantly from the Gubernator Web UI POC Catalog under **"IoT & Industrial SCADA"** or via `gbnt stack deploy -c examples/example-scada-dnp3-fuxa/docker-compose.yml`.
+
+---
 
 
 ### Credentials (auto-generated on first boot)

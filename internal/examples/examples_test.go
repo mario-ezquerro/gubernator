@@ -42,6 +42,7 @@ func TestGetAllPOCExamples(t *testing.T) {
 		"jaeger-tracing",
 		"jupyter-datascience",
 		"sre-observability",
+		"scada-dnp3-fuxa",
 	}
 
 	for _, id := range expectedIDs {
