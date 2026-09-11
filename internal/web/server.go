@@ -1067,6 +1067,7 @@ func stateHandler(c *gin.Context) {
 		"dns_records":        getDNSRecords(),
 		"caddy_status":       caddy.Status(),
 		"caddyfile":          caddyfileContent,
+		"active_sre_profile": monitor.GetActiveProfile(),
 		"version":            GetVersion(),
 		"cluster_domain":     db.GetClusterDomain(),
 		"cluster_join_token": joinToken,

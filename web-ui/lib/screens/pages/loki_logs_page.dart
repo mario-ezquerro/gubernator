@@ -8,8 +8,13 @@ import '../../services/api_service.dart';
 /// Dedicated Loki Logs Explorer Page for cluster-wide container and node log inspection.
 class LokiLogsPage extends StatefulWidget {
   final String? initialContainer;
+  final String activeProfile;
 
-  const LokiLogsPage({super.key, this.initialContainer});
+  const LokiLogsPage({
+    super.key,
+    this.initialContainer,
+    this.activeProfile = 'cloud-native',
+  });
 
   @override
   State<LokiLogsPage> createState() => _LokiLogsPageState();
@@ -207,45 +212,75 @@ class _LokiLogsPageState extends State<LokiLogsPage> {
                       Row(
                         children: [
                           Text(
-                            'Loki Logs Explorer',
+                            widget.activeProfile == 'enterprise-elk'
+                                ? 'SIEM & Container Logs'
+                                : (widget.activeProfile == 'ultra-light' ? 'VictoriaLogs Explorer' : 'Loki Logs Explorer'),
                             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(width: 8),
                           // Status Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: (_driver == 'loki' ? Colors.green : Colors.blue).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (_driver == 'loki' ? Colors.green : Colors.blue).withValues(alpha: 0.3),
+                          if (widget.activeProfile == 'enterprise-elk')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.deepOrangeAccent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.3)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.security, size: 12, color: Colors.deepOrangeAccent),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'OPENSEARCH SIEM',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.deepOrangeAccent,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (_driver == 'loki' ? Colors.green : Colors.blue).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: (_driver == 'loki' ? Colors.green : Colors.blue).withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _driver == 'loki' ? Icons.bolt : Icons.layers,
+                                    size: 12,
+                                    color: _driver == 'loki' ? Colors.green : Colors.blue,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _driver == 'loki' ? 'LOKI AGGREGATOR' : 'DOCKER DRIVER',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: _driver == 'loki' ? Colors.green : Colors.blue,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _driver == 'loki' ? Icons.bolt : Icons.layers,
-                                  size: 12,
-                                  color: _driver == 'loki' ? Colors.green : Colors.blue,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _driver == 'loki' ? 'LOKI AGGREGATOR' : 'DOCKER DRIVER',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: _driver == 'loki' ? Colors.green : Colors.blue,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                       Text(
-                        'Cluster-wide container log aggregation and live stream search',
+                        widget.activeProfile == 'enterprise-elk'
+                            ? 'Fluent Bit log streaming and OpenSearch Lucene index exploration'
+                            : 'Cluster-wide container log aggregation and live stream search',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
@@ -258,6 +293,23 @@ class _LokiLogsPageState extends State<LokiLogsPage> {
               // Action Toolbar
               Row(
                 children: [
+                  if (widget.activeProfile == 'enterprise-elk') ...[
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.deepOrangeAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () {
+                        final host = html.window.location.hostname ?? 'localhost';
+                        html.window.open('http://$host:5601/app/discover', '_blank');
+                      },
+                      icon: const Icon(Icons.search, size: 16),
+                      label: const Text('OpenSearch Discover (:5601)'),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   // Live Tail Toggle
                   OutlinedButton.icon(
                     onPressed: _toggleLiveTail,

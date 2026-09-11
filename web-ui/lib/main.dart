@@ -48,6 +48,19 @@ void main() {
         ..setAttribute('allow', 'fullscreen');
     },
   );
+  // Register the iframe view factory for OpenSearch Dashboards
+  ui_web.platformViewRegistry.registerViewFactory(
+    'opensearch-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname ?? 'localhost';
+      return html.IFrameElement()
+        ..src = 'http://$host:5601/'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen');
+    },
+  );
   runApp(const GubernatorApp());
 }
 

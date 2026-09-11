@@ -28,14 +28,42 @@ const (
 	VolGrafanaData    = "gbnt-monitor-grafana-data"
 )
 
-// AllContainers returns all monitoring container names.
+// AllContainers returns all monitoring container names across all supported SRE profiles.
 func AllContainers() []string {
-	return []string{CadvisorName, NodeExporterName, PrometheusName, LokiName, PromtailName, GrafanaName, JaegerName}
+	return []string{
+		CadvisorName,
+		NodeExporterName,
+		PrometheusName,
+		LokiName,
+		PromtailName,
+		GrafanaName,
+		JaegerName,
+		"gbnt-monitor-victoriametrics",
+		"gbnt-monitor-victorialogs",
+		"gbnt-monitor-fluentbit",
+		"gbnt-monitor-clickhouse",
+		"gbnt-monitor-otel-collector",
+		"gbnt-monitor-opensearch",
+		"gbnt-monitor-opensearch-dashboards",
+		"gbnt-monitor-vector-forwarder",
+	}
 }
 
-// AllVolumes returns all monitoring volume names.
+// AllVolumes returns all monitoring volume names across all supported SRE profiles.
 func AllVolumes() []string {
-	return []string{VolPrometheus, VolLoki, VolLokiData, VolPromtail, VolGrafanaProv, VolPrometheusData, VolGrafanaData}
+	return []string{
+		VolPrometheus,
+		VolLoki,
+		VolLokiData,
+		VolPromtail,
+		VolGrafanaProv,
+		VolPrometheusData,
+		VolGrafanaData,
+		"gbnt-monitor-vm-data",
+		"gbnt-monitor-vl-data",
+		"gbnt-monitor-clickhouse-data",
+		"gbnt-monitor-opensearch-data",
+	}
 }
 
 // DeployManagerStack deploys the full SRE monitoring stack on the Manager node.
@@ -182,9 +210,23 @@ func StopAll() {
 	RemoveNetwork()
 }
 
-// IsRunning checks if the Grafana monitoring container is currently running.
+// IsRunning checks if the monitoring stack for the active profile is currently running.
 func IsRunning() bool {
-	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", GrafanaName).Output()
+	profileID := GetActiveProfile()
+	var checkContainer string
+	switch profileID {
+	case "enterprise-elk":
+		checkContainer = "gbnt-monitor-opensearch"
+	case "ultra-light":
+		checkContainer = "gbnt-monitor-victoriametrics"
+	case "unified-otel":
+		checkContainer = "gbnt-monitor-clickhouse"
+	case "external-saas":
+		checkContainer = "gbnt-monitor-vector-forwarder"
+	default:
+		checkContainer = GrafanaName
+	}
+	out, err := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", checkContainer).Output()
 	if err != nil {
 		return false
 	}

@@ -99,11 +99,6 @@ func Start(ctx context.Context) error {
 				fmt.Printf("❌ SRE Monitor: failed to create network: %v\n", err)
 				return
 			}
-			if err := monitor.WriteConfigs(nil); err != nil {
-				fmt.Printf("❌ SRE Monitor: failed to write configs: %v\n", err)
-				return
-			}
-			// Pass Gubernator web credentials for Grafana SSO
 			webUser := os.Getenv("GBNT_WEB_USER")
 			webPass := os.Getenv("GBNT_WEB_PASSWORD")
 			if webUser == "" {
@@ -112,16 +107,16 @@ func Start(ctx context.Context) error {
 			if webPass == "" {
 				webPass = "admin"
 			}
-			if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
-				fmt.Printf("❌ SRE Monitor: deployment failed: %v\n", err)
+			activeProfile := monitor.GetActiveProfile()
+			if envProfile := os.Getenv("GBNT_SRE_PROFILE"); envProfile != "" {
+				activeProfile = envProfile
+			}
+			if err := monitor.SwitchProfile(activeProfile, webUser, webPass); err != nil {
+				fmt.Printf("❌ SRE Monitor: deployment of profile %s failed: %v\n", activeProfile, err)
 				return
 			}
-			if err := monitor.RegisterInDB(db.GetDB()); err != nil {
-				fmt.Printf("⚠️  SRE Monitor: failed to register in DB: %v\n", err)
-			}
 			aqueducts.GenerateHostsFile()
-			fmt.Println("\n✅ SRE Monitoring Stack auto-deployed successfully!")
-			fmt.Println("  📈 Grafana: http://localhost:3000  |  🔥 Prometheus: http://localhost:9090  |  📋 Loki: http://localhost:3100")
+			fmt.Printf("\n✅ SRE Monitoring Stack [%s] auto-deployed successfully!\n", activeProfile)
 		}()
 	}
 

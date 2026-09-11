@@ -425,6 +425,7 @@ func deployEnterpriseStack() error {
 		"-p", "9600:9600",
 		"-e", "discovery.type=single-node",
 		"-e", "plugins.security.disabled=true",
+		"-e", "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx1024m",
 		"-e", "OPENSEARCH_INITIAL_ADMIN_PASSWORD=GubernatorSRE2026!",
 		"-v", "gbnt-monitor-opensearch-data:/usr/share/opensearch/data",
 		"opensearchproject/opensearch:latest",
@@ -432,10 +433,23 @@ func deployEnterpriseStack() error {
 		return fmt.Errorf("opensearch failed: %w", err)
 	}
 
+	// Prepare OpenSearch Dashboards config with CSP rules allowing embedding in Gubernator web UI
+	osdConfigDir := filepath.Join(MonitorDir(), "opensearch-dashboards")
+	_ = os.MkdirAll(osdConfigDir, 0755)
+	osdConfigFile := filepath.Join(osdConfigDir, "opensearch_dashboards.yml")
+	osdConfig := `server.host: '0.0.0.0'
+opensearch.hosts: [http://gbnt-monitor-opensearch:9200]
+opensearch.ssl.verificationMode: none
+csp.allowedFrameAncestorSources: ["*"]
+csp.warnLegacyBrowsers: false
+`
+	_ = os.WriteFile(osdConfigFile, []byte(osdConfig), 0644)
+
 	// OpenSearch Dashboards
 	if err := runContainer("gbnt-monitor-opensearch-dashboards", []string{
 		"--net", NetworkName,
 		"-p", "5601:5601",
+		"-v", osdConfigFile + ":/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro",
 		"-e", "OPENSEARCH_HOSTS=http://gbnt-monitor-opensearch:9200",
 		"-e", "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true",
 		"opensearchproject/opensearch-dashboards:latest",
@@ -443,9 +457,39 @@ func deployEnterpriseStack() error {
 		return fmt.Errorf("opensearch dashboards failed: %w", err)
 	}
 
+	// Prepare Fluent Bit config for OpenSearch log shipping
+	fbConfigDir := filepath.Join(MonitorDir(), "fluentbit")
+	_ = os.MkdirAll(fbConfigDir, 0755)
+	fbConfigFile := filepath.Join(fbConfigDir, "fluent-bit.conf")
+	fbConfig := `[SERVICE]
+    Flush        1
+    Daemon       Off
+    Log_Level    info
+
+[INPUT]
+    Name             tail
+    Path             /var/lib/docker/containers/*/*.log
+    Tag              docker.*
+    Refresh_Interval 5
+    Skip_Long_Lines  On
+
+[OUTPUT]
+    Name                opensearch
+    Match               *
+    Host                gbnt-monitor-opensearch
+    Port                9200
+    Index               gubernator-logs
+    Type                _doc
+    tls                 Off
+    tls.verify          Off
+    Suppress_Type_Name  On
+`
+	_ = os.WriteFile(fbConfigFile, []byte(fbConfig), 0644)
+
 	// Fluent Bit
 	_ = runContainer("gbnt-monitor-fluentbit", []string{
 		"--net", NetworkName,
+		"-v", fbConfigFile + ":/fluent-bit/etc/fluent-bit.conf:ro",
 		"-v", "/var/log:/var/log:ro",
 		"-v", "/var/lib/docker/containers:/var/lib/docker/containers:ro",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock:ro",

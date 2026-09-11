@@ -23,6 +23,8 @@ import 'pages/storage_page.dart';
 import 'pages/image_security_page.dart';
 import 'pages/compose_studio_page.dart';
 import 'pages/ebpf_page.dart';
+import 'pages/opensearch_dashboards_page.dart';
+import 'pages/sre_feature_adaptive_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
@@ -196,16 +198,29 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.manage_search,
         label: 'CoreDNS',
       ),
-      // Monitoring (Grafana), Loki Logs, Network & Jaeger
-      const SidebarItem(
-        icon: Icons.analytics_outlined,
-        activeIcon: Icons.analytics,
-        label: 'Monitoring',
+      // Monitoring (Grafana or OpenSearch Dashboards)
+      SidebarItem(
+        icon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.dashboard_customize_outlined
+            : Icons.analytics_outlined,
+        activeIcon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.dashboard_customize
+            : Icons.analytics,
+        label: _state.activeSreProfile == 'enterprise-elk'
+            ? 'OpenSearch Dashboards'
+            : (_state.activeSreProfile == 'ultra-light' ? 'VMUI / Grafana' : 'Monitoring'),
       ),
-      const SidebarItem(
-        icon: Icons.receipt_long_outlined,
-        activeIcon: Icons.receipt_long,
-        label: 'Loki Logs',
+      // Logs Explorer (Loki, OpenSearch SIEM or VictoriaLogs)
+      SidebarItem(
+        icon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.security_update_good_outlined
+            : Icons.receipt_long_outlined,
+        activeIcon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.security_update_good
+            : Icons.receipt_long,
+        label: _state.activeSreProfile == 'enterprise-elk'
+            ? 'SIEM & Audit Logs'
+            : (_state.activeSreProfile == 'ultra-light' ? 'VictoriaLogs' : 'Loki Logs'),
       ),
       const SidebarItem(
         icon: Icons.network_check_outlined,
@@ -261,6 +276,23 @@ class _AppShellState extends State<AppShell> {
     'Security & Directory',
     'Compose Studio',
   ];
+
+  String _getPageLabel(int index) {
+    if (index == 9) {
+      if (_state.activeSreProfile == 'enterprise-elk') return 'OpenSearch Dashboards';
+      if (_state.activeSreProfile == 'ultra-light') return 'VMUI / Grafana';
+      return 'Monitoring';
+    }
+    if (index == 10) {
+      if (_state.activeSreProfile == 'enterprise-elk') return 'SIEM & Audit Logs';
+      if (_state.activeSreProfile == 'ultra-light') return 'VictoriaLogs';
+      return 'Loki Logs';
+    }
+    if (index >= 0 && index < _pageLabels.length) {
+      return _pageLabels[index];
+    }
+    return 'Overview';
+  }
 
   Widget _buildCurrentPage() {
     switch (_selectedIndex) {
@@ -321,12 +353,34 @@ class _AppShellState extends State<AppShell> {
       case 8:
         return CoreDnsPage(state: _state, onRefresh: _fetchData);
       case 9:
+        if (_state.activeSreProfile == 'enterprise-elk') {
+          return const OpenSearchDashboardsPage();
+        }
         return const GrafanaPage();
       case 10:
-        return LokiLogsPage(initialContainer: _lokiFilterContainer);
+        return LokiLogsPage(
+          initialContainer: _lokiFilterContainer,
+          activeProfile: _state.activeSreProfile,
+        );
       case 11:
+        if (_state.activeSreProfile == 'enterprise-elk') {
+          return SreFeatureAdaptivePage(
+            featureName: 'Network Bandwidth & Traffic Monitor',
+            featureIcon: Icons.network_check,
+            activeProfileId: _state.activeSreProfile,
+            onSwitchedProfile: _fetchData,
+          );
+        }
         return const NetworkPage();
       case 12:
+        if (_state.activeSreProfile == 'enterprise-elk') {
+          return SreFeatureAdaptivePage(
+            featureName: 'Jaeger Distributed Tracing (OTLP)',
+            featureIcon: Icons.timeline,
+            activeProfileId: _state.activeSreProfile,
+            onSwitchedProfile: _fetchData,
+          );
+        }
         return const JaegerPage();
       case 13:
         return const ScopePage();
@@ -404,7 +458,7 @@ class _AppShellState extends State<AppShell> {
                     children: [
                       // Breadcrumb
                       Text(
-                        _selectedIndex < _pageLabels.length ? _pageLabels[_selectedIndex] : 'Overview',
+                        _getPageLabel(_selectedIndex),
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),

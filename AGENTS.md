@@ -892,5 +892,21 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Automated storage population via `EnsureSCADAStorageFiles()` creating `/var/contenedores/scada-dnp3/` before deployment.
   - Full CLI (`gbnt stack deploy -c examples/example-scada-dnp3-fuxa/docker-compose.yml`) and Web UI parity.
 
+### 99. Profile-Adaptive SRE Observability UI & Enterprise SIEM Stack (`v2.83.0`)
+* **Dynamic Profile-Adaptive Navigation Architecture:**
+  - Backend exposes `active_sre_profile` in `/api/state` and dynamically evaluates active containers per profile (`IsRunning()`).
+  - Web UI sidebar dynamically detects active SRE architecture and reorganizes navigation menus and breadcrumb titles:
+    - **Enterprise SIEM (`enterprise-elk`):** "Monitoring" dynamically switches to **"OpenSearch Dashboards"** (incrusting native OpenSearch Dashboards on `:5601`), and "Loki Logs" adapts to **"SIEM & Audit Logs"** with direct integration to Lucene search and Discover.
+    - **Incompatible Profile Adaptive Fallbacks (`SreFeatureAdaptivePage`):** When navigating to Grafana-dependent features like "Network Monitor" or tracing tools like "Jaeger" under an incompatible profile, the UI renders an informative architecture card explaining that the current SRE profile uses OpenSearch/Lucene or VictoriaMetrics instead of Grafana/Jaeger, with a 1-click button to open the SRE Profiles selector modal.
+* **Embedded OpenSearch Dashboards with Permissive CSP:**
+  - Configures `csp.allowedFrameAncestorSources: ["*"]` and `csp.warnLegacyBrowsers: false` inside auto-generated `opensearch_dashboards.yml` (`MonitorDir()/opensearch-dashboards/`).
+  - Seamlessly renders the full native OpenSearch Dashboards interface inside an embedded iframe on Gubernator Web UI (`:4001`) with top action toolbar (`Perfiles SRE`, `Discover Logs`, `Direct Port :5601`).
+* **OpenSearch Log Ingestion & Fluent Bit Integration:**
+  - Fluent Bit daemon configured via auto-generated `fluent-bit.conf` to tail `/var/lib/docker/containers/*/*.log` and ship cluster logs directly into OpenSearch (`gbnt-monitor-opensearch:9200`) under `gubernator-logs` index.
+* **Persistent Auto-Deployment & Cleanup:**
+  - Expanded `AllContainers()` and `AllVolumes()` across all SRE architectures (`victoriametrics`, `clickhouse`, `opensearch`, `opensearch-dashboards`, `fluentbit`, `vector`) ensuring zero leftover containers on profile switches.
+  - Server auto-deploy watchdog (`GBNT_MONITOR=true`) respects the persistent active SRE profile (`GetActiveProfile()`) or `GBNT_SRE_PROFILE` override, guaranteeing persistent reboot stability.
+
+
 
 

@@ -339,6 +339,7 @@ class DashboardState {
   final String latestVersion;
   final String releaseNotes;
   final String releaseUrl;
+  final String activeSreProfile;
   final UserSession? currentUser;
 
   DashboardState({
@@ -350,6 +351,7 @@ class DashboardState {
     this.monitorRunning = false,
     this.caddyStatus = 'not running',
     this.caddyfile = '',
+    this.activeSreProfile = 'cloud-native',
     this.version = 'dev',
     this.clusterDomain = 'gbnt.local',
     this.clusterJoinToken = '',
@@ -382,6 +384,7 @@ class DashboardState {
       monitorRunning: json['monitor_running'] ?? false,
       caddyStatus: json['caddy_status'] ?? 'not running',
       caddyfile: json['caddyfile'] ?? '',
+      activeSreProfile: json['active_sre_profile'] ?? 'cloud-native',
       version: json['version'] ?? 'dev',
       clusterDomain: json['cluster_domain'] ?? 'gbnt.local',
       clusterJoinToken: json['cluster_join_token'] ?? '',
