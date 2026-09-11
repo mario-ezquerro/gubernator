@@ -4,7 +4,7 @@ published: true
 tags: devops, docker, go, cloud
 series: Gubernator Orchestrator
 cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_autoscaling_cover.jpg
-canonical_url: https://github.com/mario-ezquerro/gubernator
+canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/autoscaling-docker-compose-gubernator.md
 description: "Discover how Gubernator delivers declarative Horizontal Pod Autoscaling (HPA) for plain Docker Compose stacks with CPU and NVIDIA GPU metrics across multi-node clusters."
 ---
 
