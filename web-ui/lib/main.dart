@@ -78,7 +78,19 @@ void main() {
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
       return html.IFrameElement()
-        ..src = 'http://$host:5601/app/discover'
+        ..src = 'http://$host:5601/app/discover#/view/gubernator-all-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen');
+    },
+  );
+  ui_web.platformViewRegistry.registerViewFactory(
+    'opensearch-discover-errors-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname ?? 'localhost';
+      return html.IFrameElement()
+        ..src = 'http://$host:5601/app/discover#/view/gubernator-error-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'

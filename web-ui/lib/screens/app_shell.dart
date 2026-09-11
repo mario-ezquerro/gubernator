@@ -24,6 +24,7 @@ import 'pages/image_security_page.dart';
 import 'pages/compose_studio_page.dart';
 import 'pages/ebpf_page.dart';
 import 'pages/opensearch_dashboards_page.dart';
+import 'pages/opensearch_discover_page.dart';
 import 'pages/sre_feature_adaptive_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
@@ -358,6 +359,11 @@ class _AppShellState extends State<AppShell> {
         }
         return const GrafanaPage();
       case 10:
+        if (_state.activeSreProfile == 'enterprise-elk') {
+          return OpenSearchDiscoverPage(
+            onSwitchedProfile: _fetchData,
+          );
+        }
         return LokiLogsPage(
           initialContainer: _lokiFilterContainer,
           activeProfile: _state.activeSreProfile,

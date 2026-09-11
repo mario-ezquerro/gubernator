@@ -931,6 +931,18 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Web UI Segmented Controller Toolbar:**
   - `web-ui/lib/screens/pages/opensearch_dashboards_page.dart` features a responsive top segmented view selector enabling 1-click switching between **Logs Overview** (`#/view/gubernator-cluster-logs`), **SIEM Audit** (`#/view/gubernator-siem-audit`), and **Discover** (`/app/discover`), while retaining full access to external launch (`:5601`) and SRE Profiles configuration.
 
+### 101. Full-Screen Embedded OpenSearch Discover & Bi-Directional SRE Profile State Restoration (`v2.83.2`)
+* **Dedicated Full-Screen Embedded Discover Explorer (`OpenSearchDiscoverPage`):**
+  - Completely replaces the legacy Loki Logs view when the active SRE profile is `enterprise-elk`.
+  - Directly embeds OpenSearch Discover (`opensearch-discover-iframe`) across the entire screen inside Gubernator, eliminating external popup tab requirements.
+  - Interactive top toolbar with quick segmented view toggling between **Live Logs Stream** (`gubernator-all-logs`) and **Errors & Security Audit** (`gubernator-error-logs`), live port :5601 badge, and direct SRE Profiles selector dialog.
+* **Bi-Directional Profile Restoration Guarantee:**
+  - Seamlessly reverts all navigation elements, views, and containers when switching back to the default/previous profile (`cloud-native` / `ultra-light`):
+    - "OpenSearch Dashboards" automatically restores to **Monitoring** (`GrafanaPage` on `:3000`).
+    - "SIEM & Audit Logs" automatically restores to **Loki Logs** (`LokiLogsPage` live querying `:3100`).
+    - Incompatible feature placeholders restore to **Network Monitor** (`NetworkPage`) and **Jaeger** (`JaegerPage`).
+  - Container lifecycle engine (`StopAll()`) cleanly stops and purges OpenSearch, OpenSearch Dashboards, and Fluent Bit, spinning up Prometheus, Grafana, Loki, Promtail, Jaeger, cAdvisor, and Node Exporter with zero leftover container conflicts.
+
 
 
 
