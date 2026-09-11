@@ -2,17 +2,13 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../../widgets/sre_profiles_dialog.dart';
 
-/// OpenSearch Dashboards page — embeds OpenSearch Dashboards with segmented tabs for
-/// Cluster Logs Overview, SIEM Security Audit, and Discover Explorer.
-class OpenSearchDashboardsPage extends StatefulWidget {
-  const OpenSearchDashboardsPage({super.key});
+/// Embedded OpenSearch Trace Analytics (APM) page.
+/// Replaces Jaeger when the active SRE profile is 'enterprise-elk'.
+/// Displays service maps, distributed spans, latency percentiles, and error traces.
+class OpenSearchTracesPage extends StatelessWidget {
+  final VoidCallback? onSwitchedProfile;
 
-  @override
-  State<OpenSearchDashboardsPage> createState() => _OpenSearchDashboardsPageState();
-}
-
-class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
-  int _selectedTab = 0;
+  const OpenSearchTracesPage({super.key, this.onSwitchedProfile});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +33,7 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
                   color: Colors.deepOrangeAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.dashboard_customize, color: Colors.deepOrangeAccent, size: 20),
+                child: const Icon(Icons.polyline, color: Colors.deepOrangeAccent, size: 20),
               ),
               const SizedBox(width: 12),
               Column(
@@ -46,7 +42,7 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
                   Row(
                     children: [
                       Text(
-                        'OpenSearch Dashboards & SIEM',
+                        'OpenSearch Trace Analytics & APM',
                         style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
@@ -75,7 +71,7 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
                             Icon(Icons.business_outlined, size: 12, color: Color(0xFF0284C7)),
                             SizedBox(width: 4),
                             Text(
-                              'ENTERPRISE SIEM',
+                              'ENTERPRISE SIEM & APM',
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
                             ),
                           ],
@@ -85,49 +81,12 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Full-text Lucene search, enterprise security analytics, SIEM compliance dashboards, and audit logs.',
+                    'Rastreo distribuido de microservicios, mapa de topología de dependencias, latencias P50/P90/P99 y grupos de trazas.',
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
               const Spacer(),
-
-              // Segmented view selector
-              SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment<int>(
-                    value: 0,
-                    icon: Icon(Icons.bar_chart, size: 16),
-                    label: Text('Logs Overview', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  ButtonSegment<int>(
-                    value: 1,
-                    icon: Icon(Icons.security, size: 16),
-                    label: Text('SIEM Audit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  ButtonSegment<int>(
-                    value: 2,
-                    icon: Icon(Icons.polyline, size: 16),
-                    label: Text('Trace Analytics', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  ButtonSegment<int>(
-                    value: 3,
-                    icon: Icon(Icons.travel_explore, size: 16),
-                    label: Text('Discover', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-                selected: {_selectedTab},
-                onSelectionChanged: (newSelection) {
-                  setState(() {
-                    _selectedTab = newSelection.first;
-                  });
-                },
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              const SizedBox(width: 12),
 
               FilledButton.icon(
                 style: FilledButton.styleFrom(
@@ -139,7 +98,9 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (_) => const SreProfilesDialog(),
+                    builder: (_) => SreProfilesDialog(
+                      onProfileChanged: onSwitchedProfile,
+                    ),
                   );
                 },
                 icon: const Icon(Icons.auto_awesome_motion, size: 16),
@@ -151,7 +112,7 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
               const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: () {
-                  html.window.open('http://$host:5601', '_blank');
+                  html.window.open('http://$host:5601/app/observability-dashboards#/trace_analytics', '_blank');
                 },
                 icon: const Icon(Icons.launch, size: 16),
                 label: const Text('Direct Port :5601'),
@@ -160,22 +121,14 @@ class _OpenSearchDashboardsPageState extends State<OpenSearchDashboardsPage> {
           ),
         ),
 
-        // IFrame View
-        Expanded(
+        // IFrame View — Embeds OpenSearch Trace Analytics directly across the entire screen
+        const Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Card(
               elevation: 0,
               clipBehavior: Clip.antiAlias,
-              child: IndexedStack(
-                index: _selectedTab,
-                children: const [
-                  HtmlElementView(viewType: 'opensearch-iframe'),
-                  HtmlElementView(viewType: 'opensearch-siem-iframe'),
-                  HtmlElementView(viewType: 'opensearch-traces-iframe'),
-                  HtmlElementView(viewType: 'opensearch-discover-iframe'),
-                ],
-              ),
+              child: HtmlElementView(viewType: 'opensearch-traces-iframe'),
             ),
           ),
         ),

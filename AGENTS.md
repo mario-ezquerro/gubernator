@@ -943,6 +943,15 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     - Incompatible feature placeholders restore to **Network Monitor** (`NetworkPage`) and **Jaeger** (`JaegerPage`).
   - Container lifecycle engine (`StopAll()`) cleanly stops and purges OpenSearch, OpenSearch Dashboards, and Fluent Bit, spinning up Prometheus, Grafana, Loki, Promtail, Jaeger, cAdvisor, and Node Exporter with zero leftover container conflicts.
 
+### 102. OpenSearch Trace Analytics & APM Integration (`v2.83.3`)
+* **OpenSearch Trace Analytics & Observability Embedding (`OpenSearchTracesPage`):**
+  - Adapts the sidebar item 12 to **"Trace Analytics"** (icon `polyline`) with breadcrumb `Trace Analytics (APM)` when the active profile is `enterprise-elk`.
+  - Directly embeds OpenSearch Trace Analytics / Observability (`/app/observability-dashboards#/trace_analytics/traces`), providing service dependency maps, distributed spans, P50/P90/P99 latency percentiles, and trace groups within Gubernator.
+  - Seamlessly reverts back to **Jaeger** (`JaegerPage` on port `:16686`) when switching to the `cloud-native` profile.
+* **4-Way OpenSearch Dashboards Segmented Navigation:**
+  - Expanded `OpenSearchDashboardsPage` top segmented controller to 4 dedicated views: **Logs Overview** (`#/view/gubernator-cluster-logs`), **SIEM Audit** (`#/view/gubernator-siem-audit`), **Trace Analytics** (`opensearch-traces-iframe`), and **Discover** (`/app/discover`).
+
+
 
 
 

@@ -25,6 +25,7 @@ import 'pages/compose_studio_page.dart';
 import 'pages/ebpf_page.dart';
 import 'pages/opensearch_dashboards_page.dart';
 import 'pages/opensearch_discover_page.dart';
+import 'pages/opensearch_traces_page.dart';
 import 'pages/sre_feature_adaptive_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
@@ -228,10 +229,16 @@ class _AppShellState extends State<AppShell> {
         activeIcon: Icons.network_check,
         label: 'Network Monitor',
       ),
-      const SidebarItem(
-        icon: Icons.timeline_outlined,
-        activeIcon: Icons.timeline,
-        label: 'Jaeger',
+      SidebarItem(
+        icon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.polyline_outlined
+            : Icons.timeline_outlined,
+        activeIcon: _state.activeSreProfile == 'enterprise-elk'
+            ? Icons.polyline
+            : Icons.timeline,
+        label: _state.activeSreProfile == 'enterprise-elk'
+            ? 'Trace Analytics'
+            : 'Jaeger',
       ),
       const SidebarItem(
         icon: Icons.hub_outlined,
@@ -288,6 +295,10 @@ class _AppShellState extends State<AppShell> {
       if (_state.activeSreProfile == 'enterprise-elk') return 'SIEM & Audit Logs';
       if (_state.activeSreProfile == 'ultra-light') return 'VictoriaLogs';
       return 'Loki Logs';
+    }
+    if (index == 12) {
+      if (_state.activeSreProfile == 'enterprise-elk') return 'Trace Analytics (APM)';
+      return 'Jaeger';
     }
     if (index >= 0 && index < _pageLabels.length) {
       return _pageLabels[index];
@@ -380,10 +391,7 @@ class _AppShellState extends State<AppShell> {
         return const NetworkPage();
       case 12:
         if (_state.activeSreProfile == 'enterprise-elk') {
-          return SreFeatureAdaptivePage(
-            featureName: 'Jaeger Distributed Tracing (OTLP)',
-            featureIcon: Icons.timeline,
-            activeProfileId: _state.activeSreProfile,
+          return OpenSearchTracesPage(
             onSwitchedProfile: _fetchData,
           );
         }

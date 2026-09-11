@@ -97,6 +97,18 @@ void main() {
         ..setAttribute('allow', 'fullscreen');
     },
   );
+  ui_web.platformViewRegistry.registerViewFactory(
+    'opensearch-traces-iframe',
+    (int viewId) {
+      final host = html.window.location.hostname ?? 'localhost';
+      return html.IFrameElement()
+        ..src = 'http://$host:5601/app/observability-dashboards#/trace_analytics/traces'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..setAttribute('allow', 'fullscreen');
+    },
+  );
   runApp(const GubernatorApp());
 }
 
