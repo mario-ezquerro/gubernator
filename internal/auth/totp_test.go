@@ -61,3 +61,27 @@ func TestBackupCodes(t *testing.T) {
 		}
 	}
 }
+
+func TestQRCodeGeneration(t *testing.T) {
+	uri := "otpauth://totp/Gubernator:admin?secret=JBSWY3DPEHPK3PXP&issuer=Gubernator"
+	pngBytes, err := GenerateQRCodePNG(uri, 256)
+	if err != nil {
+		t.Fatalf("GenerateQRCodePNG failed: %v", err)
+	}
+	if len(pngBytes) == 0 {
+		t.Fatal("GenerateQRCodePNG returned empty byte slice")
+	}
+	// PNG magic header is 0x89 'P' 'N' 'G'
+	if len(pngBytes) < 4 || pngBytes[0] != 0x89 || pngBytes[1] != 'P' || pngBytes[2] != 'N' || pngBytes[3] != 'G' {
+		t.Fatalf("expected PNG header, got %v", pngBytes[:4])
+	}
+
+	dataURI, err := GenerateQRCodeDataURI(uri, 256)
+	if err != nil {
+		t.Fatalf("GenerateQRCodeDataURI failed: %v", err)
+	}
+	prefix := "data:image/png;base64,"
+	if len(dataURI) <= len(prefix) || dataURI[:len(prefix)] != prefix {
+		t.Fatalf("expected data URI to start with '%s', got '%s'", prefix, dataURI)
+	}
+}

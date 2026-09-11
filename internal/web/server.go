@@ -451,6 +451,7 @@ func StartDashboard() {
 	{
 		api.GET("/auth/me", authMeHandler)
 		api.POST("/auth/mfa/setup", authMFASetupHandler)
+		api.GET("/auth/mfa/qr", authMFAQRCodeHandler)
 		api.POST("/auth/mfa/enable", authMFAEnableHandler)
 		api.POST("/auth/mfa/disable", authMFADisableHandler)
 
@@ -5896,30 +5897,82 @@ func authMFASetupHandler(c *gin.Context) {
 		return
 	}
 
+	targetUsername := session.Username
+	var req struct {
+		UserID interface{} `json:"user_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err == nil && req.UserID != nil {
+		if session.Role == auth.RoleAdmin {
+			var u db.LocalUser
+			switch uid := req.UserID.(type) {
+			case float64:
+				if err := db.DB.First(&u, uint(uid)).Error; err == nil {
+					targetUsername = u.Username
+				}
+			case string:
+				if err := db.DB.First(&u, "id = ? OR LOWER(username) = ?", uid, strings.ToLower(uid)).Error; err == nil {
+					targetUsername = u.Username
+				}
+			}
+		}
+	}
+
 	secret, err := auth.GenerateBase32Secret()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate secret"})
 		return
 	}
 
-	uri := auth.GenerateOTPAuthURI(session.Username, secret)
+	uri := auth.GenerateOTPAuthURI(targetUsername, secret)
 	backupCodes, err := auth.GenerateBackupCodes(8)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate backup codes"})
 		return
 	}
 
+	qrDataURI, err := auth.GenerateQRCodeDataURI(uri, 256)
+	if err != nil {
+		qrDataURI = ""
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"secret":       secret,
 		"otpauth_uri":  uri,
+		"qr_data_uri":  qrDataURI,
 		"backup_codes": backupCodes,
 	})
 }
 
+func authMFAQRCodeHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	secret := c.Query("secret")
+	if secret == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "secret parameter is required"})
+		return
+	}
+	username := c.Query("username")
+	if username == "" {
+		username = session.Username
+	}
+	uri := auth.GenerateOTPAuthURI(username, secret)
+	pngBytes, err := auth.GenerateQRCodePNG(uri, 300)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate QR code"})
+		return
+	}
+	c.Data(http.StatusOK, "image/png", pngBytes)
+}
+
 type authMFAEnableRequest struct {
-	Secret      string   `json:"secret" binding:"required"`
-	Code        string   `json:"code" binding:"required"`
-	BackupCodes []string `json:"backup_codes" binding:"required"`
+	UserID      interface{} `json:"user_id"`
+	Secret      string      `json:"secret" binding:"required"`
+	Code        string      `json:"code" binding:"required"`
+	BackupCodes []string    `json:"backup_codes" binding:"required"`
 }
 
 func authMFAEnableHandler(c *gin.Context) {
@@ -5941,9 +5994,24 @@ func authMFAEnableHandler(c *gin.Context) {
 	}
 
 	var localUser db.LocalUser
-	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Local user record not found"})
-		return
+	targetFound := false
+	if req.UserID != nil && session.Role == auth.RoleAdmin {
+		switch uid := req.UserID.(type) {
+		case float64:
+			if err := db.DB.First(&localUser, uint(uid)).Error; err == nil {
+				targetFound = true
+			}
+		case string:
+			if err := db.DB.First(&localUser, "id = ? OR LOWER(username) = ?", uid, strings.ToLower(uid)).Error; err == nil {
+				targetFound = true
+			}
+		}
+	}
+	if !targetFound {
+		if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Local user record not found"})
+			return
+		}
 	}
 
 	bCodesJSON, _ := json.Marshal(req.BackupCodes)
@@ -5957,12 +6025,13 @@ func authMFAEnableHandler(c *gin.Context) {
 		return
 	}
 
-	logAudit(c, session.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", "User activated TOTP multi-factor authentication (ENS op.acc.2)")
+	logAudit(c, session.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", fmt.Sprintf("MFA activated for user '%s' (ENS op.acc.2)", localUser.Username))
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication enabled successfully"})
 }
 
 type authMFADisableRequest struct {
-	Password string `json:"password"`
+	UserID   interface{} `json:"user_id"`
+	Password string      `json:"password"`
 }
 
 func authMFADisableHandler(c *gin.Context) {
@@ -5976,12 +6045,27 @@ func authMFADisableHandler(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	var localUser db.LocalUser
-	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
+	targetFound := false
+	if req.UserID != nil && session.Role == auth.RoleAdmin {
+		switch uid := req.UserID.(type) {
+		case float64:
+			if err := db.DB.First(&localUser, uint(uid)).Error; err == nil {
+				targetFound = true
+			}
+		case string:
+			if err := db.DB.First(&localUser, "id = ? OR LOWER(username) = ?", uid, strings.ToLower(uid)).Error; err == nil {
+				targetFound = true
+			}
+		}
+	}
+	if !targetFound {
+		if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(session.Username)).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
 	}
 
-	if req.Password != "" {
+	if req.Password != "" && (req.UserID == nil || session.Username == localUser.Username) {
 		if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect password"})
 			return
@@ -5998,7 +6082,7 @@ func authMFADisableHandler(c *gin.Context) {
 		return
 	}
 
-	logAudit(c, session.Username, "LOCAL", "MFA_DISABLED", "SUCCESS", "User deactivated TOTP multi-factor authentication")
+	logAudit(c, session.Username, "LOCAL", "MFA_DISABLED", "SUCCESS", fmt.Sprintf("MFA deactivated for user '%s'", localUser.Username))
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
 }
 

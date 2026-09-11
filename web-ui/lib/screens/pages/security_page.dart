@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
@@ -479,10 +481,20 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     try {
       final res = await ApiService.setupMFA(userId: user.id);
       final secret = res['secret'] as String? ?? '';
+      final qrDataUri = res['qr_data_uri'] as String? ?? '';
       final backupCodes = (res['backup_codes'] as List? ?? []).map((e) => e.toString()).toList();
       final codeCtrl = TextEditingController();
       bool enabling = false;
       String? error;
+      bool showManualKey = false;
+
+      Uint8List? qrImageBytes;
+      if (qrDataUri.isNotEmpty) {
+        try {
+          final cleanBase64 = qrDataUri.contains(',') ? qrDataUri.split(',')[1] : qrDataUri;
+          qrImageBytes = base64Decode(cleanBase64);
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
@@ -506,46 +518,123 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        "Paso 1: Vincula tu aplicación autenticadora",
+                        "Paso 1: Escanea el código con Google Authenticator",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        "Introduce esta clave secreta Base32 en tu app (Google Authenticator, Microsoft Authenticator, etc.):",
+                        "Abre la app Google Authenticator (o cualquier app TOTP compatible) en tu móvil y escanea este código QR:",
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: SelectableText(
-                                secret,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
+                      const SizedBox(height: 12),
+                      if (qrImageBytes != null) ...[
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.memory(
+                                    qrImageBytes,
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.qr_code_scanner, size: 15, color: Color(0xFF0EA5E9)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Google Authenticator",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey.shade800,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      InkWell(
+                        onTap: () {
+                          setDialogState(() => showManualKey = !showManualKey);
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                          child: Row(
+                            children: [
+                              Icon(
+                                showManualKey ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                                size: 18,
+                                color: const Color(0xFF0EA5E9),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 18),
-                              tooltip: "Copiar clave",
-                              onPressed: () {
-                                html.window.navigator.clipboard?.writeText(secret);
-                                _showSnackBar("Clave secreta copiada al portapapeles");
-                              },
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Text(
+                                showManualKey ? "Ocultar clave manual Base32" : "¿No puedes escanear? Ver clave manual Base32",
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      if (showManualKey) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: SelectableText(
+                                  secret,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 18),
+                                tooltip: "Copiar clave",
+                                onPressed: () {
+                                  html.window.navigator.clipboard?.writeText(secret);
+                                  _showSnackBar("Clave secreta copiada al portapapeles");
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       const Text(
                         "Paso 2: Guarda tus códigos de respaldo (Un solo uso)",

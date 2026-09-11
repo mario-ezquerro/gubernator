@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/subtle"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -13,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 // TOTPConfig holds configuration for RFC 6238 time-based one-time passwords.
@@ -132,4 +135,27 @@ func GenerateBackupCodes(count int) ([]string, error) {
 		codes[i] = sb.String()
 	}
 	return codes, nil
+}
+
+// GenerateQRCodePNG encodes the given content (e.g. otpauth:// URI) into a PNG byte slice.
+func GenerateQRCodePNG(content string, size int) ([]byte, error) {
+	if size <= 0 {
+		size = 256
+	}
+	pngBytes, err := qrcode.Encode(content, qrcode.Medium, size)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode QR code: %w", err)
+	}
+	return pngBytes, nil
+}
+
+// GenerateQRCodeDataURI encodes content into a base64 Data URI ("data:image/png;base64,...")
+// that can be embedded directly in an <img> tag or decoded in Flutter Web.
+func GenerateQRCodeDataURI(content string, size int) (string, error) {
+	pngBytes, err := GenerateQRCodePNG(content, size)
+	if err != nil {
+		return "", err
+	}
+	encoded := base64.StdEncoding.EncodeToString(pngBytes)
+	return fmt.Sprintf("data:image/png;base64,%s", encoded), nil
 }

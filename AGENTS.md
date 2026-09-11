@@ -849,3 +849,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Local Users Table MFA Column:** Visual chips displaying MFA status (`MFA Active` vs `Off`) with single-click setup and revocation modal dialogs.
   - **Audit Trail Data Table with SHA-256 Badges:** Monospace hash snippet chips with full SHA-256 / PrevHash inspection tooltips and quick-export dropdown menu (CSV, JSON, Syslog).
 
+### 96. Google Authenticator QR Code Onboarding & Offline Multi-Factor Authentication Suite (`v2.81.1`)
+* **Pure Go QR Code Engine (`internal/auth/totp.go`):**
+  - Integrated `github.com/skip2/go-qrcode` for 100% offline, pure Go QR code generation (zero external CGO or third-party web service dependencies, fully air-gap compliant).
+  - Generates standard 256x256 PNG images encoded into Base64 Data URIs (`data:image/png;base64,...`) from standard `otpauth://totp/Gubernator:<username>?secret=...&issuer=Gubernator` URIs.
+  - Added `GenerateQRCodePNG(content, size)` and `GenerateQRCodeDataURI(content, size)` with unit test validation (`TestQRCodeGeneration`).
+* **REST API QR Code Delivery (`internal/web/server.go`):**
+  - `/api/auth/mfa/setup`: Now returns `qr_data_uri` alongside `secret`, `otpauth_uri`, and `backup_codes`. Supports administrative MFA onboarding for target `user_id`.
+  - `/api/auth/mfa/qr`: Added direct `GET` endpoint streaming `image/png` bytes for direct browser preview or custom integrations.
+  - Enhanced `/api/auth/mfa/enable` and `/api/auth/mfa/disable` to support optional target `user_id` when triggered by cluster administrators.
+* **Interactive Google Authenticator Onboarding Modal (`web-ui/lib/screens/pages/security_page.dart`):**
+  - **Visual QR Code Card:** Renders a clean white card with elevated drop shadow, rounded corners, and branded Google Authenticator camera badge.
+  - **Seamless Offline Decoding:** Uses Flutter Web native `base64Decode` and `Image.memory` without external network calls.
+  - **Collapsible Manual Fallback:** Optional toggle to display the raw Base32 secret key with one-click clipboard copy for users without a camera.
+  - **Step-by-Step Security Flow:** Scan QR code -> Copy emergency single-use backup codes -> Verify 6-digit TOTP code to activate.
+
+

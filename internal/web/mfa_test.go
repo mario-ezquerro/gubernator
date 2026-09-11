@@ -19,7 +19,7 @@ import (
 func setupWebTestDB(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	var err error
-	db.DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db.DB, err = gorm.Open(sqlite.Open("file:mfa_test?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open memory db: %v", err)
 	}
@@ -35,6 +35,7 @@ func setupWebTestDB(t *testing.T) *gin.Engine {
 	api := r.Group("/api", auth.RequireAuth())
 	{
 		api.POST("/auth/mfa/setup", authMFASetupHandler)
+		api.GET("/auth/mfa/qr", authMFAQRCodeHandler)
 		api.POST("/auth/mfa/enable", authMFAEnableHandler)
 		api.POST("/auth/mfa/disable", authMFADisableHandler)
 		api.GET("/security/siem", getSIEMConfigHandler)
@@ -152,3 +153,70 @@ func TestMFALoginAndVerificationFlow(t *testing.T) {
 		t.Fatalf("expected valid audit chain, got %+v", auditResp)
 	}
 }
+
+func TestMFASetupQRCode(t *testing.T) {
+	router := setupWebTestDB(t)
+
+	// Create a token for admin user
+	token, err := auth.GenerateToken(auth.UserSession{
+		Username: "admin",
+		Role:     "admin",
+		Provider: "LOCAL",
+	})
+	if err != nil {
+		t.Fatalf("failed to generate token: %v", err)
+	}
+
+	// 1. Call POST /api/auth/mfa/setup
+	req, _ := http.NewRequest("POST", "/api/auth/mfa/setup", bytes.NewBufferString("{}"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK from mfa/setup, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var setupResp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &setupResp); err != nil {
+		t.Fatalf("failed to unmarshal setup response: %v", err)
+	}
+
+	secret, ok := setupResp["secret"].(string)
+	if !ok || secret == "" {
+		t.Fatalf("expected non-empty secret, got %v", setupResp["secret"])
+	}
+
+	uri, ok := setupResp["otpauth_uri"].(string)
+	if !ok || uri == "" {
+		t.Fatalf("expected non-empty otpauth_uri, got %v", setupResp["otpauth_uri"])
+	}
+
+	qrDataURI, ok := setupResp["qr_data_uri"].(string)
+	if !ok || qrDataURI == "" {
+		t.Fatalf("expected non-empty qr_data_uri, got %v", setupResp["qr_data_uri"])
+	}
+	expectedPrefix := "data:image/png;base64,"
+	if len(qrDataURI) <= len(expectedPrefix) || qrDataURI[:len(expectedPrefix)] != expectedPrefix {
+		t.Fatalf("expected qr_data_uri to start with '%s', got '%s'", expectedPrefix, qrDataURI)
+	}
+
+	// 2. Call GET /api/auth/mfa/qr
+	qrReq, _ := http.NewRequest("GET", "/api/auth/mfa/qr?secret="+secret+"&username=admin", nil)
+	qrReq.Header.Set("Authorization", "Bearer "+token)
+	qrW := httptest.NewRecorder()
+	router.ServeHTTP(qrW, qrReq)
+
+	if qrW.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK from GET /api/auth/mfa/qr, got %d: %s", qrW.Code, qrW.Body.String())
+	}
+	if ct := qrW.Header().Get("Content-Type"); ct != "image/png" {
+		t.Fatalf("expected Content-Type image/png, got %s", ct)
+	}
+	bodyBytes := qrW.Body.Bytes()
+	if len(bodyBytes) < 4 || bodyBytes[0] != 0x89 || bodyBytes[1] != 'P' || bodyBytes[2] != 'N' || bodyBytes[3] != 'G' {
+		t.Fatalf("expected valid PNG header, got %v", bodyBytes[:4])
+	}
+}
+
