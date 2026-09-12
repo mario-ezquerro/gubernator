@@ -476,6 +476,8 @@
       
         
       
+        
+      
     
     
     
@@ -660,6 +662,8 @@
   
     
     
+      
+        
       
         
       
@@ -912,6 +916,17 @@
     <span class="md-ellipsis">
       
         Example JupyterLab PyTorch — LLM Training &amp; Fine-Tuning Lab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-industrial-scada-ieee-1815-dnp3-fuxa-web-hmi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Industrial SCADA — IEEE 1815 (DNP3) + FUXA Web HMI
       
     </span>
   </a>
@@ -1179,6 +1194,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-scada-dnp3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Industrial SCADA & DNP3 (FUXA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1325,6 +1368,18 @@
 <li>Pre-configured Hugging Face <code>transformers</code>, <code>peft</code>, <code>trl</code>, and <code>datasets</code></li>
 <li>Headless automated training script (<code>train_script.py</code>)</li>
 <li>Persistent shared storage mobility in <code>/var/contenedores/jupyter-llm</code></li>
+</ul>
+<hr />
+<h2 id="example-industrial-scada-ieee-1815-dnp3-fuxa-web-hmi">Example Industrial SCADA — IEEE 1815 (DNP3) + FUXA Web HMI</h2>
+<p><strong>Target</strong>: Advanced / IoT &amp; Industrial Automation<br />
+<strong>Goal</strong>: Deploy a smart electric grid simulation featuring dual DNP3 RTUs, DNP3 Master Station Bridge, MQTT telemetry, and FUXA Web SCADA</p>
+<p><a href="../example-scada-dnp3/">Start Example Industrial SCADA →</a></p>
+<ul>
+<li>Dual industrial DNP3 outstations: 25 kV Substation Alpha RTU &amp; 3 MW Solar PV Farm Beta RTU</li>
+<li>Native IEEE 1815-2012 protocol implementation (CRC-16, Data Link, Transport, Application layers)</li>
+<li>Cyclic Class 0/1/2/3 integrity polling and CROB Direct Operate breaker control</li>
+<li>Pre-configured FUXA SCADA/HMI project with interactive Single-Line Diagram, gauges, and alarm banners</li>
+<li>Ingress host <code>fuxa.gbnt.local:1881</code> with live bidirectional MQTT telemetry</li>
 </ul>
 
 

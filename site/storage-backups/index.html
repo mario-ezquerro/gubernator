@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../auth-rbac/">
+        <link rel="prev" href="../ens/">
       
       
         <link rel="next" href="../glusterfs/">
@@ -478,6 +478,8 @@
       
         
       
+        
+      
     
     
     
@@ -616,6 +618,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../ens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Esquema Nacional de Seguridad (ENS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -713,10 +743,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-backups-snapshots" class="md-nav__link">
+  <a href="#2-backups-snapshots-encrypted-archives-ens-mpsi2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. 💾 Backups &amp; Snapshots
+        2. 💾 Backups, Snapshots &amp; Encrypted Archives (ENS mp.si.2)
       
     </span>
   </a>
@@ -824,10 +854,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#create-backup" class="md-nav__link">
+  <a href="#create-backup-standard-or-encrypted-aes-256-gcm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create Backup
+        Create Backup (Standard or Encrypted AES-256-GCM)
       
     </span>
   </a>
@@ -1252,6 +1282,8 @@
       
         
       
+        
+      
     
     
     
@@ -1361,13 +1393,15 @@
 <li><strong>Metadata &amp; Disk Usage</strong>: Displays associated Stack (Legion), Service, source and target paths, and exact size on disk.</li>
 <li><strong>1-Click Snapshot</strong>: Instantly trigger a point-in-time backup for any discovered volume.</li>
 </ul>
-<h3 id="2-backups-snapshots">2. 💾 Backups &amp; Snapshots</h3>
+<h3 id="2-backups-snapshots-encrypted-archives-ens-mpsi2">2. 💾 Backups, Snapshots &amp; Encrypted Archives (ENS mp.si.2)</h3>
 <ul>
-<li><strong>Compressed Archives (<code>.tar.gz</code>)</strong>: Full catalog of all backups with file size, creation timestamp, and cryptographic SHA-256 integrity hash.</li>
+<li><strong>Compressed Archives (<code>.tar.gz</code> / <code>.tar.gz.enc</code>)</strong>: Full catalog of all backups with file size, creation timestamp, and cryptographic SHA-256 integrity hash.</li>
+<li><strong>Cifrado en Reposo AES-256-GCM (ENS <code>mp.si.2</code>)</strong>: Cifrado autenticado en streaming con derivación de claves PBKDF2-HMAC-SHA256 ($\ge 100.000$ iteraciones) y salt criptográfico por archivo.</li>
+<li><strong>Restauración Autenticada</strong>: Detección automática de copias cifradas y solicitud obligatoria de contraseña antes de la descompresión.</li>
 <li><strong>Container Consistency Toggle</strong>: Supports freezing write operations (<code>docker pause</code> ➔ archive ➔ <code>docker unpause</code>) to guarantee 100% database consistency.</li>
 <li><strong>1-Click Restore</strong>: Restore backups in-place over the original volume or clone into a custom target path.</li>
-<li><strong>Direct Download</strong>: Download <code>.tar.gz</code> archives straight to your browser.</li>
-<li><strong>External Upload</strong>: Upload external <code>.tar.gz</code> backup files directly into the cluster storage repository.</li>
+<li><strong>Direct Download</strong>: Download archives straight to your browser.</li>
+<li><strong>External Upload</strong>: Upload external <code>.tar.gz</code> or <code>.tar.gz.enc</code> backup files directly into the cluster storage repository.</li>
 </ul>
 <h3 id="3-schedules-policies">3. ⏰ Schedules &amp; Policies</h3>
 <ul>
@@ -1435,14 +1469,23 @@
 <h3 id="list-volumes">List Volumes</h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gbnt<span class="w"> </span>volume<span class="w"> </span>ls
 </span></code></pre></div>
-<h3 id="create-backup">Create Backup</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>myapp<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;pre-upgrade-backup&quot;</span><span class="w"> </span>--pause
+<h3 id="create-backup-standard-or-encrypted-aes-256-gcm">Create Backup (Standard or Encrypted AES-256-GCM)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Standard compressed backup</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>myapp<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;pre-upgrade-backup&quot;</span><span class="w"> </span>--pause
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Encrypted backup in repose (ENS mp.si.2 / CCN-STIC)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>myapp<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;backup-cifrado&quot;</span><span class="w"> </span>--encrypt<span class="w"> </span>--password<span class="w"> </span><span class="s2">&quot;TuContraseñaRobusta123!#&quot;</span>
 </span></code></pre></div>
 <h3 id="list-backups">List Backups</h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>ls
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># Outputs: ID, NAME, STACK, SIZE, CREATED, SHA256, ENCRYPTION (🔒 AES-256 / Plain)</span>
 </span></code></pre></div>
 <h3 id="restore-backup">Restore Backup</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>&lt;BACKUP_ID&gt;<span class="w"> </span>--target<span class="w"> </span>/var/contenedores/myapp/postgres
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Standard restore</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>&lt;BACKUP_ID&gt;<span class="w"> </span>--target<span class="w"> </span>/var/contenedores/myapp/postgres
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Encrypted restore with passphrase validation</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>&lt;BACKUP_ID&gt;<span class="w"> </span>--target<span class="w"> </span>/var/contenedores/myapp/postgres<span class="w"> </span>--password<span class="w"> </span><span class="s2">&quot;TuContraseñaRobusta123!#&quot;</span>
 </span></code></pre></div>
 <h3 id="list-backup-schedules">List Backup Schedules</h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gbnt<span class="w"> </span>backup<span class="w"> </span>schedule<span class="w"> </span>ls

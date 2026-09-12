@@ -13,10 +13,8 @@
       
       
       
-        <link rel="prev" href="../example-kubeflow/">
+        <link rel="prev" href="../example-public-https/">
       
-      
-        <link rel="next" href="../example-scada-dnp3/">
       
       
         
@@ -27,7 +25,7 @@
     
     
       
-        <title>Public Domain HTTPS (Let's Encrypt) - Gubernator Orchestrator</title>
+        <title>Industrial SCADA & DNP3 (FUXA) - Gubernator Orchestrator</title>
       
     
     
@@ -80,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#example-automatic-public-https-with-lets-encrypt" class="md-skip">
+        <a href="#industrial-scada-dnp3-simulation-subsystem-ieee-1815-2012-fuxa-web-hmi" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Public Domain HTTPS (Let's Encrypt)
+              Industrial SCADA & DNP3 (FUXA)
             
           </span>
         </div>
@@ -991,6 +989,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-public-https/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Domain HTTPS (Let's Encrypt)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1010,7 +1036,7 @@
   <span class="md-ellipsis">
     
   
-    Public Domain HTTPS (Let's Encrypt)
+    Industrial SCADA & DNP3 (FUXA)
   
 
     
@@ -1028,7 +1054,7 @@
   <span class="md-ellipsis">
     
   
-    Public Domain HTTPS (Let's Encrypt)
+    Industrial SCADA & DNP3 (FUXA)
   
 
     
@@ -1054,10 +1080,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#architecture-overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ⚙️ How it Works
+        🏗️ Architecture Overview
       
     </span>
   </a>
@@ -1065,10 +1091,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#docker-compose-file" class="md-nav__link">
+  <a href="#dnp3-protocol-implementation-ieee-1815-2012" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📝 Docker Compose File
+        ⚡ DNP3 Protocol Implementation (IEEE 1815-2012)
       
     </span>
   </a>
@@ -1076,22 +1102,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-by-step-instructions" class="md-nav__link">
+  <a href="#industrial-points-mapping" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📋 Step-by-Step Instructions
+        📊 Industrial Points Mapping
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="📋 Step-by-Step Instructions">
+    <nav class="md-nav" aria-label="📊 Industrial Points Mapping">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-configure-dns" class="md-nav__link">
+  <a href="#1-substation-alpha-rtu-25-kv-distribution-substation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Configure DNS
+        1. Substation Alpha RTU (25 kV Distribution Substation)
       
     </span>
   </a>
@@ -1099,32 +1125,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-open-ingress-ports" class="md-nav__link">
+  <a href="#2-solar-pv-farm-beta-rtu-3-mw-grid-tied-inverter" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Open Ingress Ports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-deploy-with-gubernator" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Deploy with Gubernator
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-test-in-browser-inspect-certificate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Test in Browser &amp; Inspect Certificate
+        2. Solar PV Farm Beta RTU (3 MW Grid-Tied Inverter)
       
     </span>
   </a>
@@ -1136,38 +1140,82 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fuxa-scada-hmi-visual-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖥️ FUXA SCADA / HMI Visual Workspace
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-deploy-in-gubernator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 How to Deploy in Gubernator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚀 How to Deploy in Gubernator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-1-click-poc-catalog-web-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: 1-Click POC Catalog (Web Dashboard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-cli-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: CLI Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-c-standalone-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option C: Standalone Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-wireshark-traffic-inspection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧪 Verification &amp; Wireshark Traffic Inspection
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../example-scada-dnp3/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Industrial SCADA & DNP3 (FUXA)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1200,61 +1248,270 @@
   
 
 
-<h1 id="example-automatic-public-https-with-lets-encrypt">Example: Automatic Public HTTPS with Let's Encrypt</h1>
-<p>This guide explains how to deploy a web application in Gubernator attached to a <strong>public domain you own</strong> (e.g. <code>demo.fiware.app</code>), and how Gubernator's Caddy Ingress automatically provisions trusted <strong>Let's Encrypt / ZeroSSL SSL/TLS certificates</strong>.</p>
+<h1 id="industrial-scada-dnp3-simulation-subsystem-ieee-1815-2012-fuxa-web-hmi">Industrial SCADA &amp; DNP3 Simulation Subsystem (IEEE 1815-2012 + FUXA Web HMI)</h1>
+<p>Gubernator includes a production-grade <strong>IoT &amp; Industrial SCADA simulation environment</strong> featuring the standard electric grid protocol <strong>DNP3 (IEEE 1815-2012)</strong>, dual industrial outstation devices (Substation Alpha RTU and Solar PV Farm Beta RTU), a DNP3 Master Station Bridge, an MQTT broker, and the modern web-based SCADA/HMI system <strong><a href="https://github.com/frangoteam/FUXA">FUXA</a></strong>.</p>
 <hr />
-<h2 id="how-it-works">⚙️ How it Works</h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>graph TD
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    A[docker-compose.yml with ingress.host == demo.fiware.app] --&gt; B[Gubernator Manager]
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    B --&gt; C[Generates Caddyfile without &#39;tls internal&#39;]
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    C --&gt; D[Caddy Contacts Let&#39;s Encrypt via ACME]
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    D --&gt; E[ACME HTTP-01 / TLS-ALPN-01 Verification on Ports 80/443]
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    E --&gt; F[Trusted SSL Certificate Issued &amp; Installed]
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    F --&gt; G[HTTPS Active on Port 443 with HTTP-&gt;HTTPS Redirect]
+<h2 id="architecture-overview">🏗️ Architecture Overview</h2>
+<p>The blueprint simulates a modern smart electric grid where field Remote Terminal Units (RTUs) and intelligent electronic devices (IEDs) communicate over native DNP3 TCP/IP with an automated Master Station, which ingests telemetry and bridges control to an intuitive HMI.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                    ┌────────────────────────────────────────────────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                    │                   GUBERNATOR CLUSTER                   │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                    │                                                        │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                    │   ┌────────────────────────────────────────────────┐   │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                    │   │               FUXA Web SCADA / HMI             │   │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                    │   │          http://fuxa.gbnt.local:1881           │   │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                    │   │      (Interactive Single-Line Diagram &amp; UI)     │   │
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                    │   └───────────────────────▲────────────────────────┘   │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                    │                           │ WebSockets                 │
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                    │                           ▼                            │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                    │   ┌────────────────────────────────────────────────┐   │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                    │   │           Eclipse Mosquitto MQTT Broker        │   │
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                    │   │                  (Port 1883)                   │   │
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                    │   └───────────────▲─────────────────┬──────────────┘   │
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                    │                   │ Telemetry       │ CROB Commands    │
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                    │                   │ (JSON)          │ (Trip / Close)   │
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                    │   ┌───────────────┴─────────────────▼──────────────┐   │
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                    │   │           DNP3 Master Station Bridge           │   │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                    │   │     - Cyclic Class 0/1/2/3 Integrity Polls     │   │
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                    │   │     - Direct Operate CROB Translator           │   │
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                    │   └───────────────▲─────────────────▲──────────────┘   │
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                    │                   │ DNP3 TCP:20000  │ DNP3 TCP:20000   │
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                    │                   │ (IEEE 1815)     │ (IEEE 1815)      │
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                    │         ┌─────────┴──────┐   ┌──────┴─────────┐        │
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>                    │         │ Substation     │   │ Solar PV Farm  │        │
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                    │         │ Alpha RTU      │   │ Beta RTU       │        │
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                    │         │ (DNP3 Addr 10) │   │ (DNP3 Addr 20) │        │
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>                    │         └────────────────┘   └────────────────┘        │
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>                    └────────────────────────────────────────────────────────┘
 </span></code></pre></div>
-<p>When Gubernator detects a public domain (not ending in <code>.local</code>, <code>.internal</code>, <code>.lan</code>, or <code>localhost</code>), it automatically allows Caddy to execute its <strong>Automatic HTTPS</strong> protocol.</p>
 <hr />
-<h2 id="docker-compose-file">📝 Docker Compose File</h2>
-<p>Save the following file as <code>docker-compose.yml</code>:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">web</span><span class="p">:</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginxdemos/hello:plain-text</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;80&quot;</span><span class="w"> </span><span class="c1"># Target container port</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stack.name == production-demo</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">          </span><span class="c1"># Public domain for Automatic Let&#39;s Encrypt HTTPS:</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.host == demo.fiware.app</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">          </span><span class="c1"># (Optional) ACME email for certificate expiration alerts:</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingress.email == admin@fiware.app</span>
-</span></code></pre></div>
-<hr />
-<h2 id="step-by-step-instructions">📋 Step-by-Step Instructions</h2>
-<h3 id="step-1-configure-dns">Step 1: Configure DNS</h3>
-<p>Create an <code>A</code> record in your DNS provider pointing to your cloud instance's <strong>external public IP</strong>:
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>demo.fiware.app   300   IN   A   &lt;YOUR_EXTERNAL_PUBLIC_IP&gt;
-</span></code></pre></div></p>
-<blockquote>
-<p>[!NOTE]
-<strong>Cloud 1:1 NAT (Google Cloud / AWS / Azure)</strong>: If your VM only displays a private internal IP (e.g. <code>10.128.0.2</code> or <code>172.31.x.x</code>), point your DNS to the <strong>External Public IP</strong> provided by GCP/AWS. Caddy does not need to know the public IP; the cloud provider forwards incoming traffic from the public IP to the private IP automatically.</p>
-</blockquote>
-<h3 id="step-2-open-ingress-ports">Step 2: Open Ingress Ports</h3>
-<p>Ensure your cloud firewall (AWS Security Group, Hetzner Firewall, GCP VPC Firewall, etc.) allows inbound traffic on:
-* <strong>Port 80 TCP</strong> (HTTP &amp; ACME HTTP-01 challenge)
-* <strong>Port 443 TCP</strong> (HTTPS &amp; ACME TLS-ALPN-01 challenge)</p>
-<h3 id="step-3-deploy-with-gubernator">Step 3: Deploy with Gubernator</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-c<span class="w"> </span>docker-compose.yml<span class="w"> </span>production-demo
-</span></code></pre></div>
-<h3 id="step-4-test-in-browser-inspect-certificate">Step 4: Test in Browser &amp; Inspect Certificate</h3>
+<h2 id="dnp3-protocol-implementation-ieee-1815-2012">⚡ DNP3 Protocol Implementation (IEEE 1815-2012)</h2>
+<p>The simulation features a pure Python IEEE 1815-2012 engine (<code>dnp3_frame.py</code>) implementing:</p>
 <ol>
-<li>Open <code>https://demo.fiware.app</code> in your browser.</li>
-<li>In the Gubernator Dashboard, navigate to <strong>Caddy Ingress ➔ TLS Certs</strong> to inspect the live Let's Encrypt certificate details, issuer, validity period, and SANs.</li>
+<li><strong>Data Link Layer (DLL):</strong></li>
+<li>10-octet Link Header: Sync <code>0x05 0x64</code>, Length, Link Control byte (<code>DIR</code>, <code>PRM</code>, <code>FCB</code>, <code>FCV</code>, <code>DFC</code>), 16-bit Destination Address, and 16-bit Source Address.</li>
+<li><strong>CRC-16 Error Checking:</strong> Polynomial <code>0xA653</code> (inverted output), recalculated every 16 octets of payload for frame integrity.</li>
+<li><strong>Transport Layer (TL):</strong></li>
+<li>1-octet Transport Header with <code>FIN</code>, <code>FIR</code>, and 6-bit sequence numbering.</li>
+<li><strong>Application Layer (AL):</strong></li>
+<li>Application Control (<code>FIR</code>, <code>FIN</code>, <code>CON</code>, <code>UNS</code>, sequence number).</li>
+<li>Function Codes:<ul>
+<li><code>0x01</code> (READ): Class 0/1/2/3 Integrity Polls and specific object reads.</li>
+<li><code>0x81</code> (RESPONSE): Outstation internal indications (IIN) and typed object data.</li>
+<li><code>0x05</code> (DIRECT OPERATE): Control Relay Output Block (CROB) execution.</li>
+</ul>
+</li>
+<li><strong>DNP3 Object Groups:</strong></li>
+<li><strong>Group 1 Variation 2:</strong> Binary Input with status flags (<code>ONLINE</code>, <code>STATE</code>).</li>
+<li><strong>Group 12 Variation 1:</strong> Control Relay Output Block (CROB) with Code, Count, On-Time, Off-Time, and Status.</li>
+<li><strong>Group 30 Variation 1 &amp; 2:</strong> 32-bit and 16-bit Analog Inputs with engineering unit scaling.</li>
 </ol>
+<hr />
+<h2 id="industrial-points-mapping">📊 Industrial Points Mapping</h2>
+<h3 id="1-substation-alpha-rtu-25-kv-distribution-substation">1. Substation Alpha RTU (25 kV Distribution Substation)</h3>
+<ul>
+<li><strong>DNP3 Address:</strong> <code>10</code></li>
+<li><strong>Transport:</strong> TCP Port <code>20000</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Point Index</th>
+<th>DNP3 Type</th>
+<th>Description</th>
+<th>Engineering Units / States</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BI 0</strong></td>
+<td>Binary Input</td>
+<td>Feeder Breaker 52-1 State</td>
+<td><code>0</code> = Open (Trip), <code>1</code> = Closed</td>
+</tr>
+<tr>
+<td><strong>BI 1</strong></td>
+<td>Binary Input</td>
+<td>Disconnector Switch 89-1</td>
+<td><code>0</code> = Open, <code>1</code> = Closed</td>
+</tr>
+<tr>
+<td><strong>BI 2</strong></td>
+<td>Binary Input</td>
+<td>Overcurrent Relay 50/51</td>
+<td><code>0</code> = Normal, <code>1</code> = TRIP Alarm</td>
+</tr>
+<tr>
+<td><strong>BI 3</strong></td>
+<td>Binary Input</td>
+<td>SF6 Gas Pressure Gauge</td>
+<td><code>0</code> = Normal, <code>1</code> = Low Pressure</td>
+</tr>
+<tr>
+<td><strong>AI 0</strong></td>
+<td>Analog Input</td>
+<td>Busbar Line Voltage</td>
+<td><code>24.8 – 25.2</code> kV (0 kV if tripped)</td>
+</tr>
+<tr>
+<td><strong>AI 1</strong></td>
+<td>Analog Input</td>
+<td>Feeder Phase Current</td>
+<td><code>115.0 – 125.0</code> A</td>
+</tr>
+<tr>
+<td><strong>AI 2</strong></td>
+<td>Analog Input</td>
+<td>Active Three-Phase Power</td>
+<td><code>4.8 – 5.4</code> MW</td>
+</tr>
+<tr>
+<td><strong>AI 3</strong></td>
+<td>Analog Input</td>
+<td>Reactive Power</td>
+<td><code>0.7 – 0.9</code> MVAr</td>
+</tr>
+<tr>
+<td><strong>AI 4</strong></td>
+<td>Analog Input</td>
+<td>Main Transformer Temperature</td>
+<td><code>55.0 – 62.0</code> °C</td>
+</tr>
+<tr>
+<td><strong>CROB 0</strong></td>
+<td>Binary Output</td>
+<td>Direct Operate Breaker 52-1</td>
+<td>Code <code>0x41</code> (Trip) / Code <code>0x81</code> (Close)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="2-solar-pv-farm-beta-rtu-3-mw-grid-tied-inverter">2. Solar PV Farm Beta RTU (3 MW Grid-Tied Inverter)</h3>
+<ul>
+<li><strong>DNP3 Address:</strong> <code>20</code></li>
+<li><strong>Transport:</strong> TCP Port <code>20000</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Point Index</th>
+<th>DNP3 Type</th>
+<th>Description</th>
+<th>Engineering Units / States</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BI 0</strong></td>
+<td>Binary Input</td>
+<td>3 MW Central Inverter State</td>
+<td><code>0</code> = Stopped, <code>1</code> = Generating</td>
+</tr>
+<tr>
+<td><strong>BI 1</strong></td>
+<td>Binary Input</td>
+<td>Grid Synchronism Relay</td>
+<td><code>0</code> = Out of sync, <code>1</code> = Synced</td>
+</tr>
+<tr>
+<td><strong>BI 2</strong></td>
+<td>Binary Input</td>
+<td>Anti-Islanding Protection</td>
+<td><code>0</code> = Normal, <code>1</code> = Islanding Trip</td>
+</tr>
+<tr>
+<td><strong>AI 0</strong></td>
+<td>Analog Input</td>
+<td>Active Solar Power Output</td>
+<td><code>0.0 – 3000.0</code> kW (solar curve)</td>
+</tr>
+<tr>
+<td><strong>AI 1</strong></td>
+<td>Analog Input</td>
+<td>Solar Irradiance</td>
+<td><code>100.0 – 980.0</code> W/m²</td>
+</tr>
+<tr>
+<td><strong>AI 2</strong></td>
+<td>Analog Input</td>
+<td>DC Array Voltage</td>
+<td><code>740.0 – 820.0</code> V</td>
+</tr>
+<tr>
+<td><strong>AI 3</strong></td>
+<td>Analog Input</td>
+<td>DC Array Current</td>
+<td><code>2200.0 – 2600.0</code> A</td>
+</tr>
+<tr>
+<td><strong>AI 4</strong></td>
+<td>Analog Input</td>
+<td>Daily Energy Yield</td>
+<td>Accumulator in kWh</td>
+</tr>
+<tr>
+<td><strong>CROB 0</strong></td>
+<td>Binary Output</td>
+<td>Direct Operate Inverter Run</td>
+<td>Code <code>0x41</code> (Curtail) / Code <code>0x81</code> (Run)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="fuxa-scada-hmi-visual-workspace">🖥️ FUXA SCADA / HMI Visual Workspace</h2>
+<p>The pre-configured FUXA project (<code>project.fuxap</code> / <code>project.fuxap.db</code>) provides an instant industrial control room:</p>
+<ol>
+<li><strong>Substation Single-Line Diagram (SLD):</strong></li>
+<li>Dynamic busbar indicators (Green when energized at 25 kV, Grey when de-energized).</li>
+<li>Feeder Breaker 52-1 SVG symbol with live color state transitions (Red = Closed/Energized, Green = Open/Safe).</li>
+<li>Interactive control buttons: <strong>[TRIP 52-1]</strong> and <strong>[CLOSE 52-1]</strong> with confirmation modal.</li>
+<li>Analog gauge meters for Busbar Voltage (kV) and Power (MW).</li>
+<li><strong>Solar PV Generation Center:</strong></li>
+<li>Solar irradiance sensor widget (W/m²).</li>
+<li>Central Inverter state indicator with DC voltage and active generation (kW).</li>
+<li>Interactive control buttons: <strong>[CURTAIL PV]</strong> and <strong>[ENABLE PV]</strong>.</li>
+<li><strong>Alarm &amp; Event Banner:</strong></li>
+<li>High-contrast visual banners tracking Overcurrent 50/51 trips and Low SF6 Gas Pressure.</li>
+</ol>
+<hr />
+<h2 id="how-to-deploy-in-gubernator">🚀 How to Deploy in Gubernator</h2>
+<h3 id="option-a-1-click-poc-catalog-web-dashboard">Option A: 1-Click POC Catalog (Web Dashboard)</h3>
+<ol>
+<li>Open the Gubernator Web UI at <code>http://localhost:4001</code>.</li>
+<li>Navigate to <strong>Legions (Stacks)</strong> and click <strong>"Deploy POC"</strong> (or open the POC Catalog).</li>
+<li>Select the <strong>"IoT &amp; Industrial SCADA"</strong> category.</li>
+<li>Click on <strong>"Industrial SCADA: DNP3 Grid &amp; FUXA HMI"</strong>.</li>
+<li>Click <strong>"Deploy Stack"</strong>.</li>
+<li>Access FUXA at <strong><code>http://fuxa.gbnt.local:1881</code></strong> or via Caddy Ingress.</li>
+</ol>
+<h3 id="option-b-cli-deployment">Option B: CLI Deployment</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Deploy the SCADA stack directly with the gbnt CLI</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-c<span class="w"> </span>examples/example-scada-dnp3-fuxa/docker-compose.yml
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Check container status</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gbnt<span class="w"> </span>container<span class="w"> </span>ls
+</span></code></pre></div>
+<h3 id="option-c-standalone-docker-compose">Option C: Standalone Docker Compose</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">cd</span><span class="w"> </span>examples/example-scada-dnp3-fuxa
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</span></code></pre></div>
+<hr />
+<h2 id="verification-wireshark-traffic-inspection">🧪 Verification &amp; Wireshark Traffic Inspection</h2>
+<p>You can inspect the raw DNP3 protocol packets and verify bidirectional control from the terminal:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Subscribe to MQTT telemetry stream</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>scada-mqtt<span class="w"> </span>mosquitto_sub<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;scada/dnp3/#&quot;</span><span class="w"> </span>-v
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Issue a DNP3 Breaker TRIP command via MQTT</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>scada-mqtt<span class="w"> </span>mosquitto_pub<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;scada/dnp3/control/substation/breaker&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;TRIP&quot;</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Issue a DNP3 Breaker CLOSE command via MQTT</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>scada-mqtt<span class="w"> </span>mosquitto_pub<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;scada/dnp3/control/substation/breaker&quot;</span><span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;CLOSE&quot;</span>
+</span></code></pre></div>
+<p>To capture and inspect DNP3 packets in Wireshark:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Filter by DNP3 TCP port</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>tcp.port<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="m">20000</span><span class="w"> </span>and<span class="w"> </span>dnp3
+</span></code></pre></div>
+You will observe IEEE 1815 frames containing:
+- <code>Function Code: Response (0x81)</code> with <code>Group 1 Var 2</code> and <code>Group 30 Var 1</code>.
+- <code>Function Code: Direct Operate (0x05)</code> with <code>Group 12 Var 1</code> (CROB Trip/Close).</p>
 
 
 

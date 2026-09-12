@@ -270,6 +270,7 @@ type AuditLog struct {
 type SecurityConfig struct {
 	ID                        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
 	MFAEnforced               bool      `gorm:"default:false" json:"mfa_enforced"`
+	MFAEnforcePrivileged      bool      `gorm:"default:false" json:"mfa_enforce_privileged"`
 	MaxFailedLogins           int       `gorm:"default:5" json:"max_failed_logins"`
 	LockoutDurationMinutes    int       `gorm:"default:15" json:"lockout_duration_minutes"`
 	PasswordMinLength         int       `gorm:"default:12" json:"password_min_length"`

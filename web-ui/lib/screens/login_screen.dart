@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 
@@ -22,10 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   String? _timeoutNotice;
 
-  // MFA Challenge State (ENS op.acc.2)
+  // MFA Challenge State (ENS op.acc.2 & op.acc.6)
   bool _mfaRequired = false;
+  bool _mfaConfigured = true;
   String? _mfaToken;
   String? _mfaUsername;
+  String? _mfaSecret;
+  String? _mfaQrDataUri;
+  List<String> _mfaBackupCodes = [];
   final _mfaCodeController = TextEditingController();
   bool _mfaLoading = false;
 
@@ -140,6 +146,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _mfaRequired = true;
           _mfaToken = res['mfa_token'];
           _mfaUsername = res['username'] ?? username;
+          _mfaConfigured = res['mfa_configured'] ?? true;
+          _mfaSecret = res['secret'];
+          _mfaQrDataUri = res['qr_data_uri'];
+          _mfaBackupCodes = (res['backup_codes'] as List?)?.map((e) => e.toString()).toList() ?? [];
           _errorMessage = null;
         });
         return;
@@ -186,11 +196,47 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ── MFA Mandatory Initial Setup (ENS op.acc.6) ───────────────────────────
+  Future<void> _handleEnforcedMFASetup() async {
+    final code = _mfaCodeController.text.trim();
+    if (code.isEmpty) {
+      setState(() => _errorMessage = 'Introduzca el código TOTP de 6 dígitos generado en su app autenticadora');
+      return;
+    }
+
+    setState(() {
+      _mfaLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await ApiService.completeEnforcedMFASetup(
+      mfaToken: _mfaToken ?? '',
+      secret: _mfaSecret ?? '',
+      code: code,
+      backupCodes: _mfaBackupCodes,
+    );
+
+    if (!mounted) return;
+
+    if (res['success'] == true && res['user'] != null) {
+      widget.onLoginSuccess(res['user'] as UserSession);
+    } else {
+      setState(() {
+        _mfaLoading = false;
+        _errorMessage = res['error'] ?? 'Código TOTP incorrecto o expirado';
+      });
+    }
+  }
+
   void _cancelMFA() {
     setState(() {
       _mfaRequired = false;
+      _mfaConfigured = true;
       _mfaToken = null;
       _mfaUsername = null;
+      _mfaSecret = null;
+      _mfaQrDataUri = null;
+      _mfaBackupCodes = [];
       _mfaCodeController.clear();
       _mfaLoading = false;
       _errorMessage = null;
@@ -596,6 +642,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildMFAView(BuildContext context, bool isDark) {
+    if (!_mfaConfigured) {
+      return _buildMFAEnforcedSetupView(context, isDark);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -726,6 +775,228 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           icon: const Icon(Icons.arrow_back, size: 16),
           label: const Text('Back to Login', style: TextStyle(fontSize: 12)),
+          onPressed: _cancelMFA,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMFAEnforcedSetupView(BuildContext context, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.security_update_good, color: Color(0xFFF59E0B), size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Configuración MFA Obligatoria (ENS op.acc.6)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'TOTP RFC 6238 • Cuentas Privilegiadas (${_mfaUsername ?? ''})',
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Por directiva del Esquema Nacional de Seguridad (RD 311/2022), las cuentas privilegiadas deben disponer de doble factor de autenticación obligatorio. Escanee el código QR con su aplicación autenticadora (Google/Microsoft Authenticator, 1Password) o introduzca la clave manual:',
+          style: TextStyle(fontSize: 11, height: 1.4, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75)),
+        ),
+        const SizedBox(height: 14),
+
+        // QR Code Display
+        if (_mfaQrDataUri != null && _mfaQrDataUri!.isNotEmpty)
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 3)),
+                ],
+              ),
+              child: Image.memory(
+                base64Decode(_mfaQrDataUri!.contains(',') ? _mfaQrDataUri!.split(',').last : _mfaQrDataUri!),
+                width: 140,
+                height: 140,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+
+        // Manual Secret Key
+        if (_mfaSecret != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.key, size: 15, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SelectableText(
+                    _mfaSecret!,
+                    style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 16),
+                  tooltip: 'Copiar Clave Secreta',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _mfaSecret!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Clave secreta copiada'), duration: Duration(seconds: 2)),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Backup codes copy shortcut
+        if (_mfaBackupCodes.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
+              icon: const Icon(Icons.security, size: 14, color: Colors.teal),
+              label: Text(
+                'Copiar ${_mfaBackupCodes.length} códigos de recuperación de respaldo',
+                style: const TextStyle(fontSize: 11, color: Colors.teal),
+              ),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: _mfaBackupCodes.join('\n')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Códigos de respaldo copiados al portapapeles'), duration: Duration(seconds: 2)),
+                );
+              },
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 10),
+        Text(
+          'Código de Verificación TOTP (6 dígitos)',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _mfaCodeController,
+          autofocus: true,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 22,
+            letterSpacing: 6,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'monospace',
+          ),
+          decoration: InputDecoration(
+            hintText: '000000',
+            hintStyle: TextStyle(
+              letterSpacing: 6,
+              color: Colors.grey.withValues(alpha: 0.4),
+            ),
+            prefixIcon: const Icon(Icons.verified_user_outlined, size: 22),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          onSubmitted: (_) => _handleEnforcedMFASetup(),
+        ),
+        const SizedBox(height: 14),
+
+        if (_errorMessage != null) ...[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFF59E0B),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          icon: _mfaLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.shield, size: 18),
+          label: Text(
+            _mfaLoading ? 'Verificando y Activando...' : 'Verificar y Activar MFA Obligatorio',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+          onPressed: _mfaLoading ? null : _handleEnforcedMFASetup,
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          icon: const Icon(Icons.arrow_back, size: 16),
+          label: const Text('Volver al Login', style: TextStyle(fontSize: 12)),
           onPressed: _cancelMFA,
         ),
       ],

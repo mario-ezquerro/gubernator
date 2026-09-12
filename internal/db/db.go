@@ -439,6 +439,7 @@ func seedInitialSecurityConfig() {
 		defaultConfig := SecurityConfig{
 			ID:                        "default",
 			MFAEnforced:               false,
+			MFAEnforcePrivileged:      false,
 			MaxFailedLogins:           5,
 			LockoutDurationMinutes:    15,
 			PasswordMinLength:         12,

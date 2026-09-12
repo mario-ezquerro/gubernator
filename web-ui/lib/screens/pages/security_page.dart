@@ -1621,13 +1621,38 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                               ),
                       ),
                       DataCell(
-                        Chip(
-                          avatar: Icon(usr.mfaEnabled ? Icons.shield : Icons.shield_outlined, size: 14, color: usr.mfaEnabled ? Colors.tealAccent.shade700 : Colors.grey),
-                          label: Text(usr.mfaEnabled ? "MFA Active" : "Off", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: usr.mfaEnabled ? Colors.teal.shade800 : Colors.grey.shade600)),
-                          backgroundColor: (usr.mfaEnabled ? Colors.teal : Colors.grey).withValues(alpha: 0.12),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
+                        Builder(builder: (ctx) {
+                          final isPrivileged = usr.role.toLowerCase() == "admin" || usr.role.toLowerCase() == "operator";
+                          final isEnforced = (_siemConfig?.mfaEnforcePrivileged == true && isPrivileged) || (_siemConfig?.mfaEnforced == true);
+                          if (usr.mfaEnabled) {
+                            return Chip(
+                              avatar: Icon(Icons.shield, size: 14, color: Colors.tealAccent.shade700),
+                              label: Text("MFA Active", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+                              backgroundColor: Colors.teal.withValues(alpha: 0.12),
+                              padding: EdgeInsets.zero,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            );
+                          } else if (isEnforced) {
+                            return Tooltip(
+                              message: "MFA obligatorio por política ENS op.acc.6. Se exigirá enrolamiento en el próximo login.",
+                              child: Chip(
+                                avatar: const Icon(Icons.shield_outlined, size: 14, color: Colors.amber),
+                                label: const Text("Pending (ENS)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber)),
+                                backgroundColor: Colors.amber.withValues(alpha: 0.15),
+                                padding: EdgeInsets.zero,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            );
+                          } else {
+                            return Chip(
+                              avatar: const Icon(Icons.shield_outlined, size: 14, color: Colors.grey),
+                              label: Text("Off", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                              backgroundColor: Colors.grey.withValues(alpha: 0.12),
+                              padding: EdgeInsets.zero,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            );
+                          }
+                        }),
                       ),
                       DataCell(Text(usr.lastLogin != null ? usr.lastLogin!.split("T")[0] : "Never")),
                       DataCell(Row(
@@ -2801,12 +2826,27 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             ],
           ),
           const SizedBox(height: 12),
-          // MFA Enforcement Switch
+          // MFA Enforcement Switches (ENS op.acc.6)
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text("Exigir Doble Factor (MFA) a todos los Administradores (ENS op.acc.2)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Los administradores que no hayan configurado TOTP deberán activarlo en su próximo inicio de sesión.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            secondary: const Icon(Icons.shield, color: Color(0xFFF59E0B), size: 22),
+            title: const Text("Exigir Doble Factor (MFA/TOTP) a Cuentas Privilegiadas (ENS op.acc.6)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Obligatorio para roles de Administrador y Operador. Si no tienen TOTP configurado, el sistema forzará su enrolamiento inmediato en el próximo inicio de sesión.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            value: cfg.mfaEnforcePrivileged,
+            onChanged: (val) {
+              setState(() {
+                _siemConfig = cfg.copyWith(mfaEnforcePrivileged: val);
+              });
+            },
+          ),
+          const SizedBox(height: 6),
+          SwitchListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.security, color: Colors.teal, size: 22),
+            title: const Text("Exigir Doble Factor (MFA) a Todos los Usuarios del Clúster", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Extiende la directiva de doble factor obligatorio a todos los perfiles y roles del clúster.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.mfaEnforced,
             onChanged: (val) {
               setState(() {

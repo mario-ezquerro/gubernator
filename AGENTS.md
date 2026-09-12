@@ -1064,3 +1064,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Tamper-Evident Forensic Audit Trail (ENS `op.mon.1` & `op.acc.2`):**
   - Dedicated audit actions `USER_SUSPEND` and `USER_REACTIVATE` cryptographically chained in the SHA-256 hash log recording actor, timestamp, IP, and targeted user account.
 
+### 110. Spanish ENS (RD 311/2022) Compliance Phase 4: Mandatory Multi-Factor Authentication (MFA / TOTP) for Privileged Accounts (op.acc.6) (`v2.88.0`)
+* **Privileged Accounts Mandatory MFA Policy Engine (`internal/db/models.go`, `internal/web/server.go`):**
+  - Added `MFAEnforcePrivileged` boolean setting to `SecurityConfig` and updated `updateSIEMConfigRequest` / `updateSIEMConfigHandler`.
+  - Selective enforcement on accounts with roles `admin` and `operator`, requiring TOTP (RFC 6238) multi-factor authentication while allowing smooth access for non-privileged roles unless cluster-wide `MFAEnforced` is active.
+* **Pre-Session Login Interception & Instant Enrollment Handshake:**
+  - Login endpoint `/api/auth/login` checks whether the authenticated user requires MFA. If required and unconfigured (`mfa_configured == false`), returns a temporary restricted challenge token (`mfa_token`, 5-minute validity) alongside generated Base32 secret, OTPAuth URI, high-resolution QR code data URI, and 8 one-time backup recovery codes.
+* **Dedicated Authenticated Setup Endpoint (`POST /api/auth/mfa/setup-complete`):**
+  - Validates `mfa_token`, checks submitted 6-digit TOTP code against the secret in real-time, persists `mfa_enabled = true` and backup codes into the database, registers the `MFA_ENABLED` forensic audit event, and issues the full `gbnt_session` cookie and JWT session.
+* **Elevated ENS Compliance Evaluation (`internal/security/ens.go`):**
+  - Evaluates `op.acc.6` at **100% (COMPLIANT)** when `MFAEnforcePrivileged` or `MFAEnforced` is enabled or when all privileged accounts have MFA configured.
+  - Automatically boosts cluster compliance scores: **Nivel MEDIO (+6.4%)** and **Nivel ALTO (+6.4%)** to `79.1%`.
+* **Adaptive Flutter Web Login & Security Management UI:**
+  - Login screen detects `mfa_configured == false` and displays a dedicated mandatory enrollment wizard with high-resolution offline QR code, copyable manual secret key, backup recovery codes shortcut, and 6-digit verification input.
+  - Security configuration panel features switches for both *"Exigir Doble Factor (MFA/TOTP) a Cuentas Privilegiadas (ENS op.acc.6)"* and *"Exigir Doble Factor (MFA) a Todos los Usuarios del Clúster"*.
+  - Local Users table displays prominent amber `⚠️ Pending (ENS)` badges for unconfigured privileged accounts when the policy is active.
+* **Official Documentation & GitHub Pages:**
+  - Updated `docs/ens.md` with full technical breakdown of Phase 4 and deployed to GitHub Pages (`gh-pages`).
+
+

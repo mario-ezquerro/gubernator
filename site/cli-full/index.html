@@ -476,6 +476,8 @@
       
         
       
+        
+      
     
     
     
@@ -749,6 +751,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#security-ens-compliance-rd-3112022" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 Security &amp; ENS Compliance (RD 311/2022)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-storage-encrypted-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        💾 Persistent Storage &amp; Encrypted Backups
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -868,6 +892,8 @@
   
     
     
+      
+        
       
         
       
@@ -1078,6 +1104,60 @@
 <li>
 <p><strong><code>gbnt monitor stop</code></strong>
   Stops and removes all monitoring containers and the <code>gbnt-monitor-net</code> Docker network.</p>
+</li>
+</ul>
+<hr />
+<h2 id="security-ens-compliance-rd-3112022">🔒 Security &amp; ENS Compliance (RD 311/2022)</h2>
+<p>Commands for security governance, automated compliance auditing against the Spanish National Security Framework (ENS), software supply-chain security, and cryptographic signing.</p>
+<ul>
+<li>
+<p><strong><code>gbnt security ens</code></strong>
+  Executes an automated technical compliance evaluation across 11 controls of Annex II RD 311/2022 and prints an ANSI-formatted status scorecard for BÁSICO, MEDIO, and ALTO tiers.</p>
+</li>
+<li>
+<p><strong><code>gbnt security ens --report</code></strong>
+  Generates and exports the complete technical compliance evidence report in CommonMark Markdown format ready for official CCN-STIC auditor submissions.</p>
+</li>
+<li>
+<p><strong><code>gbnt scan [image]</code></strong>
+  Scans container images for CVE vulnerabilities and displays CVSS severity metrics.</p>
+</li>
+<li>
+<p><strong><code>gbnt sbom [image]</code></strong>
+  Generates Software Bill of Materials in CycloneDX JSON or SPDX JSON.</p>
+</li>
+<li>
+<p><strong><code>gbnt image sign [image] --key [key_file]</code></strong>
+  Cryptographically signs a container image digest using ECDSA P-256 (Cosign compatible).</p>
+</li>
+<li>
+<p><strong><code>gbnt security policy [audit|enforce]</code></strong>
+  Configures the Gatekeeper admission controller mode for verifying image signatures before container scheduling.</p>
+</li>
+</ul>
+<hr />
+<h2 id="persistent-storage-encrypted-backups">💾 Persistent Storage &amp; Encrypted Backups</h2>
+<p>Commands for managing multi-node storage pools, Docker volumes, and encrypted backups.</p>
+<ul>
+<li>
+<p><strong><code>gbnt volume ls</code></strong>
+  Lists all discovered volumes across Centurion nodes with their physical host residency, mountpoints, and disk usage.</p>
+</li>
+<li>
+<p><strong><code>gbnt backup create [volume_or_stack] [--name NAME] [--encrypt] [--password PASS] [--pause]</code></strong>
+  Creates a point-in-time compressed backup. When <code>--encrypt</code> is passed, encrypts the payload using AES-256-GCM authenticated streaming with PBKDF2 key derivation (ENS <code>mp.si.2</code>).</p>
+</li>
+<li>
+<p><strong><code>gbnt backup ls</code></strong>
+  Displays catalog of all backups, sizes, SHA-256 digests, and encryption status (<code>🔒 AES-256</code> or <code>Plain</code>).</p>
+</li>
+<li>
+<p><strong><code>gbnt backup restore [backup_id] --target [path] [--password PASS]</code></strong>
+  Restores a backup into the target directory. If the archive is encrypted, validates the password and checks AEAD block integrity before decompressing.</p>
+</li>
+<li>
+<p><strong><code>gbnt backup schedule ls</code></strong>
+  Lists automated recurring backup cron policies and retention rotations.</p>
 </li>
 </ul>
 

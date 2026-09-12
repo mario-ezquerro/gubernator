@@ -1218,6 +1218,7 @@ class AuditLog {
 
 class SIEMConfig {
   final bool mfaEnforced;
+  final bool mfaEnforcePrivileged;
   final int maxFailedLogins;
   final int lockoutDurationMinutes;
   final int passwordMinLength;
@@ -1232,6 +1233,7 @@ class SIEMConfig {
 
   SIEMConfig({
     this.mfaEnforced = false,
+    this.mfaEnforcePrivileged = false,
     this.maxFailedLogins = 5,
     this.lockoutDurationMinutes = 15,
     this.passwordMinLength = 12,
@@ -1248,6 +1250,7 @@ class SIEMConfig {
   factory SIEMConfig.fromJson(Map<String, dynamic> json) {
     return SIEMConfig(
       mfaEnforced: json['mfa_enforced'] == true,
+      mfaEnforcePrivileged: json['mfa_enforce_privileged'] == true,
       maxFailedLogins: (json['max_failed_logins'] as num?)?.toInt() ?? 5,
       lockoutDurationMinutes: (json['lockout_duration_minutes'] as num?)?.toInt() ?? 15,
       passwordMinLength: (json['password_min_length'] as num?)?.toInt() ?? 12,
@@ -1265,6 +1268,7 @@ class SIEMConfig {
   Map<String, dynamic> toJson() {
     return {
       'mfa_enforced': mfaEnforced,
+      'mfa_enforce_privileged': mfaEnforcePrivileged,
       'max_failed_logins': maxFailedLogins,
       'lockout_duration_minutes': lockoutDurationMinutes,
       'password_min_length': passwordMinLength,
@@ -1280,6 +1284,7 @@ class SIEMConfig {
 
   SIEMConfig copyWith({
     bool? mfaEnforced,
+    bool? mfaEnforcePrivileged,
     int? maxFailedLogins,
     int? lockoutDurationMinutes,
     int? passwordMinLength,
@@ -1294,6 +1299,7 @@ class SIEMConfig {
   }) {
     return SIEMConfig(
       mfaEnforced: mfaEnforced ?? this.mfaEnforced,
+      mfaEnforcePrivileged: mfaEnforcePrivileged ?? this.mfaEnforcePrivileged,
       maxFailedLogins: maxFailedLogins ?? this.maxFailedLogins,
       lockoutDurationMinutes: lockoutDurationMinutes ?? this.lockoutDurationMinutes,
       passwordMinLength: passwordMinLength ?? this.passwordMinLength,

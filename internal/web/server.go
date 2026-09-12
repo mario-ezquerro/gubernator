@@ -439,6 +439,7 @@ func StartDashboard() {
 	r.GET("/api/auth/providers", authProvidersHandler)
 	r.POST("/api/auth/login", authLoginHandler)
 	r.POST("/api/auth/mfa/verify", authMFAVerifyHandler)
+	r.POST("/api/auth/mfa/setup-complete", authMFASetupCompleteHandler)
 	r.POST("/api/auth/logout", authLogoutHandler)
 
 	// OIDC / OAuth2 — Public SSO flow (no auth required: browser redirects)
@@ -5579,20 +5580,35 @@ func authLoginHandler(c *gin.Context) {
 					ExpiresAt:   time.Now().Add(24 * time.Hour),
 				}
 
-				// Check if user has MFA active or cluster enforces MFA
-				if localUser.MFAEnabled || mfaEnforced {
+				// Check if user has MFA active or cluster enforces MFA (globally or for privileged roles: admin/operator)
+				isPrivileged := (role == auth.RoleAdmin || role == auth.RoleOperator)
+				userRequiresMFA := localUser.MFAEnabled || mfaEnforced || (secCfg.MFAEnforcePrivileged && isPrivileged)
+				if userRequiresMFA {
 					pendingToken, tErr := auth.GenerateMFAPendingToken(session)
 					if tErr != nil {
 						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate MFA challenge token"})
 						return
 					}
-					logAudit(c, localUser.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA authentication challenge issued (ENS op.acc.2)")
-					c.JSON(http.StatusOK, gin.H{
+					logAudit(c, localUser.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA authentication challenge issued (ENS op.acc.6)")
+					resp := gin.H{
 						"mfa_required":   true,
 						"mfa_token":      pendingToken,
 						"username":       localUser.Username,
 						"mfa_configured": localUser.MFAEnabled,
-					})
+					}
+					if !localUser.MFAEnabled {
+						secret, sErr := auth.GenerateBase32Secret()
+						if sErr == nil {
+							uri := auth.GenerateOTPAuthURI(localUser.Username, secret)
+							backupCodes, _ := auth.GenerateBackupCodes(8)
+							qrDataURI, _ := auth.GenerateQRCodeDataURI(uri, 256)
+							resp["secret"] = secret
+							resp["otpauth_uri"] = uri
+							resp["qr_data_uri"] = qrDataURI
+							resp["backup_codes"] = backupCodes
+						}
+					}
+					c.JSON(http.StatusOK, resp)
 					return
 				}
 
@@ -5659,19 +5675,30 @@ func authLoginHandler(c *gin.Context) {
 		}
 		if req.Username == expectedUser && req.Password == expectedPass {
 			session := auth.GenerateLocalAdminSession(req.Username)
-			if mfaEnforced {
+			if mfaEnforced || secCfg.MFAEnforcePrivileged {
 				pendingToken, err := auth.GenerateMFAPendingToken(session)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate MFA challenge token"})
 					return
 				}
-				logAudit(c, req.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA challenge required for fallback admin")
-				c.JSON(http.StatusOK, gin.H{
+				logAudit(c, req.Username, "LOCAL", "MFA_CHALLENGE", "SUCCESS", "MFA challenge required for fallback admin (ENS op.acc.6)")
+				resp := gin.H{
 					"mfa_required":   true,
 					"mfa_token":      pendingToken,
 					"username":       req.Username,
 					"mfa_configured": false,
-				})
+				}
+				secret, sErr := auth.GenerateBase32Secret()
+				if sErr == nil {
+					uri := auth.GenerateOTPAuthURI(req.Username, secret)
+					backupCodes, _ := auth.GenerateBackupCodes(8)
+					qrDataURI, _ := auth.GenerateQRCodeDataURI(uri, 256)
+					resp["secret"] = secret
+					resp["otpauth_uri"] = uri
+					resp["qr_data_uri"] = qrDataURI
+					resp["backup_codes"] = backupCodes
+				}
+				c.JSON(http.StatusOK, resp)
 				return
 			}
 
@@ -6296,6 +6323,83 @@ func authMFAVerifyHandler(c *gin.Context) {
 	})
 }
 
+type authMFASetupCompleteRequest struct {
+	MFAToken    string   `json:"mfa_token" binding:"required"`
+	Secret      string   `json:"secret" binding:"required"`
+	Code        string   `json:"code" binding:"required"`
+	BackupCodes []string `json:"backup_codes"`
+}
+
+func authMFASetupCompleteHandler(c *gin.Context) {
+	var req authMFASetupCompleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "mfa_token, secret and verification code are required"})
+		return
+	}
+
+	userSession, err := auth.ValidateMFAPendingToken(req.MFAToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "MFA token has expired or is invalid. Please log in again."})
+		return
+	}
+
+	cleanCode := strings.TrimSpace(req.Code)
+	if !auth.ValidateCode(req.Secret, cleanCode) {
+		logAudit(c, userSession.Username, "LOCAL", "MFA_FAILED", "FAILURE", "Invalid TOTP code provided during enforced MFA enrollment (ENS op.acc.6)")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid TOTP verification code. Ensure your device time is synchronized."})
+		return
+	}
+
+	var localUser db.LocalUser
+	if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(userSession.Username)).Error; err != nil {
+		expectedUser := os.Getenv("GBNT_WEB_USER")
+		if expectedUser == "" {
+			expectedUser = "admin"
+		}
+		if strings.EqualFold(userSession.Username, expectedUser) {
+			hash, _ := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+			localUser = db.LocalUser{
+				ID:           "usr-admin-default",
+				Username:     userSession.Username,
+				PasswordHash: string(hash),
+				DisplayName:  "Default Administrator",
+				Role:         "admin",
+				Enabled:      true,
+			}
+			db.DB.Create(&localUser)
+		} else {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User record not found"})
+			return
+		}
+	}
+
+	bCodesJSON, _ := json.Marshal(req.BackupCodes)
+	if err := db.DB.Model(&localUser).Updates(map[string]interface{}{
+		"mfa_enabled":      true,
+		"mfa_secret":       req.Secret,
+		"mfa_backup_codes": string(bCodesJSON),
+		"updated_at":       time.Now(),
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to activate MFA"})
+		return
+	}
+
+	logAudit(c, localUser.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", fmt.Sprintf("MFA/TOTP mandatory enrollment completed for '%s' (ENS op.acc.6)", localUser.Username))
+	logAudit(c, localUser.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "MFA verification succeeded after initial mandatory enrollment (ENS op.acc.6)")
+
+	token, err := auth.GenerateToken(*userSession)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate session token"})
+		return
+	}
+	c.SetCookie("gbnt_session", token, 3600*24, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  userSession,
+	})
+}
+
 func authMFASetupHandler(c *gin.Context) {
 	session := auth.ExtractUserSession(c)
 	if session == nil {
@@ -6502,6 +6606,7 @@ func getSIEMConfigHandler(c *gin.Context) {
 		cfg = db.SecurityConfig{
 			ID:                        "default",
 			MFAEnforced:               false,
+			MFAEnforcePrivileged:      false,
 			MaxFailedLogins:           5,
 			LockoutDurationMinutes:    15,
 			PasswordMinLength:         12,
@@ -6535,6 +6640,7 @@ func getSIEMConfigHandler(c *gin.Context) {
 
 type updateSIEMConfigRequest struct {
 	MFAEnforced               bool   `json:"mfa_enforced"`
+	MFAEnforcePrivileged      bool   `json:"mfa_enforce_privileged"`
 	MaxFailedLogins           int    `json:"max_failed_logins"`
 	LockoutDurationMinutes    int    `json:"lockout_duration_minutes"`
 	PasswordMinLength         int    `json:"password_min_length"`
@@ -6574,6 +6680,7 @@ func updateSIEMConfigHandler(c *gin.Context) {
 	}
 
 	cfg.MFAEnforced = req.MFAEnforced
+	cfg.MFAEnforcePrivileged = req.MFAEnforcePrivileged
 	if req.MaxFailedLogins > 0 {
 		cfg.MaxFailedLogins = req.MaxFailedLogins
 	} else if cfg.MaxFailedLogins == 0 {

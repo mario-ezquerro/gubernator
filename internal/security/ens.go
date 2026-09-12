@@ -231,16 +231,21 @@ func EvaluateENSCompliance(database *gorm.DB) ENSSummary {
 			m.Score = 100.0
 			m.Evidence = fmt.Sprintf("El 100%% de las cuentas con privilegios de administración y operación (%d/%d) tienen MFA/TOTP activado con generación offline de QR y códigos de respaldo.", mfaCount, adminCount)
 			m.Recommendation = "Mantener la obligatoriedad de MFA para todas las nuevas incorporaciones con rol privilegiado."
+		} else if secConfig.MFAEnforced || secConfig.MFAEnforcePrivileged {
+			m.Status = ENSStatusCompliant
+			m.Score = 100.0
+			m.Evidence = fmt.Sprintf("Política de MFA obligatorio activa (ENS op.acc.6). %d de %d cuentas privilegiadas disponen de TOTP configurado y el sistema intercepta forzosamente el acceso a las restantes hasta completar el enrolamiento.", mfaCount, adminCount)
+			m.Recommendation = "Mantener la obligatoriedad de autenticación multifactor (TOTP RFC 6238) para todas las cuentas privilegiadas."
 		} else if mfaCount > 0 {
 			m.Status = ENSStatusPartial
 			m.Score = 65.0
-			m.Evidence = fmt.Sprintf("Soporte TOTP offline activo. %d de %d cuentas privilegiadas tienen MFA habilitado.", mfaCount, adminCount)
-			m.Recommendation = "Habilitar MFA de forma obligatoria en las cuentas de administración restantes para alcanzar nivel ENS ALTO."
+			m.Evidence = fmt.Sprintf("Soporte TOTP offline activo. %d de %d cuentas privilegiadas tienen MFA habilitado voluntariamente.", mfaCount, adminCount)
+			m.Recommendation = "Habilitar la directiva 'Exigir MFA a Cuentas Privilegiadas (ENS op.acc.6)' en Configuración de Seguridad para alcanzar el 100% de conformidad."
 		} else {
 			m.Status = ENSStatusPartial
 			m.Score = 40.0
-			m.Evidence = fmt.Sprintf("Motor TOTP RFC 6238 integrado en el backend, pero ninguna cuenta privilegiada (%d administradores/operadores) tiene MFA habilitado actualmente.", adminCount)
-			m.Recommendation = "Activar el doble factor de autenticación (TOTP) en los perfiles de usuario desde la Web UI o API."
+			m.Evidence = fmt.Sprintf("Motor TOTP RFC 6238 integrado en el backend, pero la política de obligatoriedad está inactiva y ninguna cuenta privilegiada (%d administradores/operadores) tiene MFA activo.", adminCount)
+			m.Recommendation = "Activar la directiva 'Exigir MFA a Cuentas Privilegiadas (ENS op.acc.6)' en Configuración de Seguridad o habilitar TOTP en los perfiles de usuario."
 		}
 		measures = append(measures, m)
 	}

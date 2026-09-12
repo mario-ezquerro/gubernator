@@ -16,7 +16,7 @@
         <link rel="prev" href="../web-ui/">
       
       
-        <link rel="next" href="../storage-backups/">
+        <link rel="next" href="../ens/">
       
       
         
@@ -478,6 +478,8 @@
       
         
       
+        
+      
     
     
     
@@ -815,6 +817,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Esquema Nacional de Seguridad (ENS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1208,6 +1238,8 @@
       
         
       
+        
+      
     
     
     
@@ -1308,12 +1340,14 @@
 </span></code></pre></div>
 <hr />
 <h2 id="role-based-access-control-rbac-matrix">👥 Role-Based Access Control (RBAC) Matrix</h2>
+<p>Gubernator implementa una matriz RBAC de 4 niveles que garantiza la <strong>segregación de funciones y responsabilidades diferenciadas</strong> exigida por el <strong>Esquema Nacional de Seguridad (ENS <code>org.2</code>)</strong>:</p>
 <table>
 <thead>
 <tr>
 <th style="text-align: left;">Capability</th>
 <th style="text-align: center;">👑 Admin</th>
 <th style="text-align: center;">⚡ Operator</th>
+<th style="text-align: center;">🛡️ Auditor (ENS <code>org.2</code>)</th>
 <th style="text-align: center;">👁️ Read-Only</th>
 </tr>
 </thead>
@@ -1323,11 +1357,13 @@
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">✅ Full</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Deploy Stacks (<code>docker-compose.yml</code>)</strong></td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
@@ -1335,10 +1371,12 @@
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Delete Stacks</strong></td>
 <td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 </tr>
@@ -1347,16 +1385,19 @@
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Container &amp; Node Terminal Shell</strong></td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Centurions Management (Drain / Activate / Leave)</strong></td>
 <td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 </tr>
@@ -1365,10 +1406,12 @@
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>CoreDNS Forwarders &amp; Custom Records</strong></td>
 <td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
 </tr>
@@ -1377,9 +1420,25 @@
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">❌ Restricted</td>
 <td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">❌ Restricted</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Forensic Audit &amp; SIEM Logs (<code>op.mon.1</code>)</strong></td>
+<td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">✅ Full (Read &amp; Verify)</td>
+<td style="text-align: center;">❌ Restricted</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ENS Compliance Dashboard (<code>RD 311/2022</code>)</strong></td>
+<td style="text-align: center;">✅ Full</td>
+<td style="text-align: center;">❌ Restricted</td>
+<td style="text-align: center;">✅ Full (Audit &amp; Export)</td>
+<td style="text-align: center;">❌ Restricted</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Grafana, Jaeger &amp; Weave Scope Dashboards</strong></td>
+<td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>
 <td style="text-align: center;">✅ Full</td>

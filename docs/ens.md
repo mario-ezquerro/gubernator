@@ -38,6 +38,12 @@ Gubernator opera como orquestador soberano y autocontenido, garantizando que el 
 │  - 4 Tarjetas KPI: Categoría Global alcanzada, BÁSICO %, MEDIO %, ALTO %    │
 │  - Exportador de informes técnicos en CommonMark para auditorías CCN-STIC   │
 │  - Paridad total en CLI (`gbnt security ens` y `gbnt security ens --report`)│
+├─────────────────────────────────────────────────────────────────────────────┤
+│  FASE 4: MFA/TOTP OBLIGATORIO PARA CUENTAS PRIVILEGIADAS (v2.88.0)          │
+│  - Directiva de obligatoriedad `op.acc.6` para roles `admin` y `operator`   │
+│  - Intercepción forzada del login con asistente interactivo de enrolamiento │
+│  - Generación de QR offline, clave secreta manual y 8 códigos de respaldo   │
+│  - Elevación de puntuación op.acc.6 al 100% COMPLIANT en nivel MEDIO y ALTO │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -120,7 +126,29 @@ Accesible desde el menú lateral **Security & Directory** $\to$ pestaña **Cumpl
 
 ---
 
-## 💻 7. Comandos CLI para Auditoría ENS
+## 🔑 7. Autenticación Multifactor (MFA/TOTP) Obligatoria para Cuentas Privilegiadas (`op.acc.6`)
+
+El ENS exige que el acceso a funciones de administración o configuración requiera de autenticación multifactor.
+
+* **Directiva `MFAEnforcePrivileged`:**
+  * Configurable desde la Web UI (pestaña *Security & Directory* $\to$ *SIEM & Forensic Audit Trail*).
+  * Aplica de forma selectiva a roles privilegiados (`admin`, `operator`), manteniendo el acceso fluido para roles de auditoría o consulta si así se desea.
+* **Flujo de Intercepción Forzada en Login:**
+  * Cuando un administrador u operador sin MFA configurado introduce sus credenciales correctas, el sistema no emite la sesión final.
+  * Se responde con `mfa_required: true` y `mfa_configured: false`, suministrando un token temporal restringido (`mfa_token`, 5 minutos de validez) y el payload criptográfico inicial.
+* **Asistente de Enrolamiento en Pantalla:**
+  * La pantalla de login detecta el estado y despliega el código QR generado offline, la clave secreta manual en Base32 y los 8 códigos de recuperación de un solo uso.
+  * El usuario debe escanear el QR en su aplicación TOTP (Google Authenticator, Microsoft Authenticator, 1Password, etc.) e ingresar el primer código de 6 dígitos.
+* **Endpoint Autenticado de Completitud (`POST /api/auth/mfa/setup-complete`):**
+  * Verifica el código TOTP contra el secreto en tiempo real.
+  * Persiste `mfa_enabled = true` y los códigos de respaldo en la base de datos.
+  * Emite el evento forense `MFA_ENABLED` y otorga el token de sesión definitivo (`gbnt_session`).
+* **Incentivo en la Puntuación de Cumplimiento:**
+  * La activación de la directiva o el enrolamiento del 100% de las cuentas privilegiadas eleva inmediatamente la medida `op.acc.6` al **100% (COMPLIANT)**, permitiendo certificar el clúster en categoría **MEDIO** y **ALTO**.
+
+---
+
+## 💻 8. Comandos CLI para Auditoría ENS
 
 ```bash
 # Ver la tabla resumen de cumplimiento en terminal

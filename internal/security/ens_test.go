@@ -194,6 +194,54 @@ func TestEvaluateENSComplianceDegraded(t *testing.T) {
 	}
 }
 
+func TestEvaluateENSComplianceMFAEnforcePrivileged(t *testing.T) {
+	database := setupTestENSDB(t)
+
+	// Config with MFAEnforcePrivileged enabled (ENS op.acc.6)
+	secConfig := db.SecurityConfig{
+		ID:                        "default",
+		MFAEnforcePrivileged:      true,
+		MaxFailedLogins:           5,
+		LockoutDurationMinutes:    15,
+		PasswordMinLength:         12,
+		PasswordRequireComplexity: true,
+		SessionTimeoutMinutes:     15,
+	}
+	database.Create(&secConfig)
+
+	// Seed privileged admin without MFA configured yet
+	now := time.Now()
+	database.Create(&db.LocalUser{
+		ID:         "user-admin",
+		Username:   "admin",
+		Role:       "admin",
+		MFAEnabled: false,
+		CreatedAt:  now,
+	})
+
+	summary := EvaluateENSCompliance(database)
+
+	var mfaMeasure *ENSMeasure
+	for i := range summary.Measures {
+		if summary.Measures[i].ID == "op.acc.6" {
+			mfaMeasure = &summary.Measures[i]
+			break
+		}
+	}
+
+	if mfaMeasure == nil {
+		t.Fatalf("op.acc.6 measure not found in summary")
+	}
+
+	if mfaMeasure.Status != ENSStatusCompliant {
+		t.Errorf("expected op.acc.6 to be COMPLIANT when MFAEnforcePrivileged is true, got %s", mfaMeasure.Status)
+	}
+
+	if mfaMeasure.Score != 100.0 {
+		t.Errorf("expected op.acc.6 score to be 100.0, got %.1f", mfaMeasure.Score)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || (len(s) > 0 && len(substr) > 0 && (stringIndex(s, substr) >= 0)))
 }

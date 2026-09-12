@@ -1064,6 +1064,11 @@ class ApiService {
           'mfa_required': true,
           'mfa_token': data['mfa_token'],
           'username': data['username'],
+          'mfa_configured': data['mfa_configured'] ?? true,
+          'secret': data['secret'],
+          'otpauth_uri': data['otpauth_uri'],
+          'qr_data_uri': data['qr_data_uri'],
+          'backup_codes': (data['backup_codes'] as List?)?.map((e) => e.toString()).toList(),
         };
       }
       if (data['token'] != null) {
@@ -1094,6 +1099,32 @@ class ApiService {
       return {'success': true, 'user': UserSession.fromJson(data['user'])};
     }
     return {'success': false, 'error': data['error'] ?? 'MFA verification failed (${response.statusCode})'};
+  }
+
+  /// Completes initial MFA setup during login when MFA is enforced (ENS op.acc.6)
+  static Future<Map<String, dynamic>> completeEnforcedMFASetup({
+    required String mfaToken,
+    required String secret,
+    required String code,
+    List<String>? backupCodes,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/auth/mfa/setup-complete'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'mfa_token': mfaToken,
+        'secret': secret,
+        'code': code.trim(),
+        'backup_codes': backupCodes ?? [],
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['token'] != null) {
+      authToken = data['token'];
+      return {'success': true, 'user': UserSession.fromJson(data['user'])};
+    }
+    return {'success': false, 'error': data['error'] ?? 'MFA mandatory setup failed (${response.statusCode})'};
   }
 
   /// Initiates MFA setup for current user or admin target user.
