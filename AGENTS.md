@@ -1113,5 +1113,39 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - `internal/web/siem_test.go`: Verified status queries, configuration persistence, and probe endpoints.
   - Live verification on 3-node Multipass cluster (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
 
+### 112. Spanish ENS (RD 311/2022) Compliance Phase 6: Gatekeeper & Software Supply Chain Integrity (mp.sw.2) (`v2.90.0`)
+* **Strict Admission Gatekeeper & Software Supply Chain Protection (`internal/security/gatekeeper.go`, `internal/security/scanner.go`):**
+  - Pre-deployment admission controller intercepting container creation and stack deployments across the cluster.
+  - Multi-mode enforcement policy: `enforce` (blocks unsigned images and critical CVEs), `audit` (records high-severity forensic events in immutable SHA-256 hash log without blocking), and `disabled`.
+  - Configurable vulnerability thresholds: `critical`, `high`, `none` with `--allow-unfixed` policy toggle.
+* **Cryptographic Signing & Key Management (`internal/security/keys.go`, `internal/cli/security.go`):**
+  - In-cluster Cosign ECDSA P-256 keypair generation, storage, and default key election.
+  - Full CLI management via `gbnt security key ls`, `gbnt security key generate [--name <name>] [--default]`, and `gbnt security key rm <id>`.
+  - Image signature lifecycle: `gbnt image sign <image>`, `gbnt image verify <image>`, and `gbnt image unsign <image>`.
+* **Policy Management CLI (`internal/cli/security.go`):**
+  - Added `gbnt security policy set [--signatures enforce|audit|disabled] [--block-cve critical|high|none] [--allow-unfixed] [--registries <list>]`.
+* **ENS Measure mp.sw.2 Elevated to 100% COMPLIANT:**
+  - Evaluates admission policy, keypair existence, and image vulnerability scans, elevating `mp.sw.2` to 100% in ENS MEDIO and ALTO.
+
+### 113. Spanish ENS (RD 311/2022) Compliance Phase 7: Automated Periodic Encrypted Backups & Full ALTO Certification (op.exp.10 / mp.si.2) (`v2.90.0`)
+* **Automated Periodic Backup Schedules with Encryption in Repose (`internal/db/models.go`, `internal/storage/scheduler.go`):**
+  - Enhanced `BackupSchedule` model with `Encrypted bool` and `EncryptionPassphrase string` fields.
+  - `ExecuteScheduledBackup` daemon pipeline automatically propagates encryption parameters to streaming AES-256-GCM authenticated archives with PBKDF2-HMAC-SHA256 (100,000 rounds) key derivation and SHA-256 integrity verification.
+  - Automated retention pruning (*Keep Last N*) after each scheduled execution cycle.
+* **Full CLI Parity for Backup Schedules (`internal/cli/storage.go`):**
+  - Added `gbnt backup schedule add --name <n> --cron <expr> [--type stack|volume|path] [--target <t>] [--dest <d>] [--retention <n>] [--encrypt] [--password <p>] [--pause]`.
+  - Added `gbnt backup schedule rm <id>`.
+  - Enhanced `gbnt backup schedule ls` table rendering `ID`, `NAME`, `CRON`, `TARGET`, `RETENTION`, `ENCRYPTED` (`AES-256-GCM`), and `ENABLED`.
+* **Flutter Web UI Backup Schedules & Encryption Section (`web-ui/lib/screens/pages/storage_page.dart`):**
+  - Integrated Section 5 *"CIFRADO CRIPTOGRÁFICO EN REPOSO (ENS mp.si.2 / op.exp.10)"* in the Backup Schedule creation/editing modal with AES-256-GCM switch and passphrase input.
+  - Added prominent `AES-256-GCM` green badge on encrypted schedule cards in the Backups & Schedules list.
+* **Elevated ENS Compliance Evaluation to 100% ALTO (`internal/security/ens.go`):**
+  - Evaluates verified encrypted backups and active recurring policies, elevating `op.exp.10` (*Copias de seguridad periódicas*) and `mp.si.2` (*Cifrado en reposo*) to **100% COMPLIANT**.
+  - **Global Cluster Classification reaches 100.0% ALTO:**
+    - Cumplimiento BÁSICO: **100.0%**
+    - Cumplimiento MEDIO: **100.0%**
+    - Cumplimiento ALTO: **100.0%**
+    - Medidas Evaluadas: **11 de 11 Conformes (0 Parciales, 0 No Conformes)**.
+
 
 

@@ -207,6 +207,18 @@ var backupScheduleCmd = &cobra.Command{
 	Short: "Manage automated backup schedules and retention policies",
 }
 
+var (
+	schedNameFlag       string
+	schedCronFlag       string
+	schedTypeFlag       string
+	schedTargetFlag     string
+	schedDestFlag       string
+	schedRetentionFlag  int
+	schedPauseFlag      bool
+	schedEncryptFlag    bool
+	schedPassphraseFlag string
+)
+
 var backupScheduleLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List all backup schedules",
@@ -235,15 +247,106 @@ var backupScheduleLsCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("%-20s %-15s %-15s %-10s %-10s\n", "NAME", "CRON", "TARGET", "RETENTION", "ENABLED")
-		fmt.Println("-----------------------------------------------------------------------------")
+		fmt.Printf("%-36s %-20s %-15s %-15s %-10s %-12s %-10s\n", "ID", "NAME", "CRON", "TARGET", "RETENTION", "ENCRYPTED", "ENABLED")
+		fmt.Println("-----------------------------------------------------------------------------------------------------------------------------")
 		for _, s := range schedules {
 			enabledStr := "Yes"
 			if !s.Enabled {
 				enabledStr = "No"
 			}
-			fmt.Printf("%-20s %-15s %-15s %-10d %-10s\n", s.Name, s.CronExpression, s.TargetName, s.RetentionCount, enabledStr)
+			encStr := "No"
+			if s.Encrypted {
+				encStr = "AES-256-GCM"
+			}
+			target := s.TargetName
+			if target == "" {
+				target = s.TargetID
+			}
+			fmt.Printf("%-36s %-20s %-15s %-15s %-10d %-12s %-10s\n", s.ID, s.Name, s.CronExpression, target, s.RetentionCount, encStr, enabledStr)
 		}
+	},
+}
+
+var backupScheduleAddCmd = &cobra.Command{
+	Use:   "add --name <name> --cron <cron> [--target <target>] [--type <stack|volume|path>]",
+	Short: "Create or update an automated periodic backup schedule",
+	Run: func(cmd *cobra.Command, args []string) {
+		if schedNameFlag == "" {
+			fmt.Fprintln(os.Stderr, "Error: --name is required")
+			os.Exit(1)
+		}
+		if schedCronFlag == "" {
+			fmt.Fprintln(os.Stderr, "Error: --cron expression is required (e.g. '0 3 * * *')")
+			os.Exit(1)
+		}
+		if schedTargetFlag == "" {
+			schedTargetFlag = "all"
+		}
+		if schedDestFlag == "" {
+			schedDestFlag = "/var/backups/gbnt"
+		}
+
+		payload := map[string]interface{}{
+			"name":                  schedNameFlag,
+			"cron_expression":       schedCronFlag,
+			"target_type":           schedTypeFlag,
+			"target_id":             schedTargetFlag,
+			"target_name":           schedTargetFlag,
+			"destination_path":      schedDestFlag,
+			"retention_count":       schedRetentionFlag,
+			"pause_containers":      schedPauseFlag,
+			"enabled":               true,
+			"encrypted":             schedEncryptFlag,
+			"encryption_passphrase": schedPassphraseFlag,
+		}
+
+		reqBytes, _ := json.Marshal(payload)
+		resp, err := DoAPIRequest("POST", "/v1/backup/schedules", bytes.NewBuffer(reqBytes))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to create schedule: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		encMsg := "No"
+		if schedEncryptFlag {
+			encMsg = "Yes (AES-256-GCM authenticated)"
+		}
+		fmt.Printf("✅ Backup schedule '%s' registered successfully!\n", schedNameFlag)
+		fmt.Printf("  • Cron Expression: %s\n", schedCronFlag)
+		fmt.Printf("  • Target:          %s (%s)\n", schedTargetFlag, schedTypeFlag)
+		fmt.Printf("  • Retention:       Keep last %d copies\n", schedRetentionFlag)
+		fmt.Printf("  • Encrypted:       %s\n", encMsg)
+		fmt.Printf("  • Destination:     %s\n", schedDestFlag)
+	},
+}
+
+var backupScheduleRmCmd = &cobra.Command{
+	Use:   "rm <schedule-id>",
+	Short: "Delete an automated backup schedule",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		resp, err := DoAPIRequest("DELETE", "/v1/backup/schedules/"+id, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to delete schedule: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		fmt.Printf("✅ Backup schedule '%s' deleted successfully.\n", id)
 	},
 }
 
@@ -258,7 +361,19 @@ func init() {
 	backupRestoreCmd.Flags().StringVarP(&backupRestoreTarget, "target", "t", "", "Custom destination path (defaults to original source path)")
 	backupRestoreCmd.Flags().StringVar(&backupRestorePassphrase, "password", "", "Passphrase for decrypting AES-256-GCM backup")
 
+	backupScheduleAddCmd.Flags().StringVarP(&schedNameFlag, "name", "n", "", "Schedule name (required)")
+	backupScheduleAddCmd.Flags().StringVarP(&schedCronFlag, "cron", "c", "0 3 * * *", "Cron expression (e.g. '0 3 * * *')")
+	backupScheduleAddCmd.Flags().StringVarP(&schedTypeFlag, "type", "t", "stack", "Target type ('stack', 'volume', 'path')")
+	backupScheduleAddCmd.Flags().StringVar(&schedTargetFlag, "target", "all", "Target Stack ID, Volume Name, or directory path")
+	backupScheduleAddCmd.Flags().StringVarP(&schedDestFlag, "dest", "d", "/var/backups/gbnt", "Destination folder on host")
+	backupScheduleAddCmd.Flags().IntVarP(&schedRetentionFlag, "retention", "r", 7, "Number of backups to retain")
+	backupScheduleAddCmd.Flags().BoolVarP(&schedPauseFlag, "pause", "p", true, "Pause containers during backup")
+	backupScheduleAddCmd.Flags().BoolVarP(&schedEncryptFlag, "encrypt", "e", false, "Encrypt backup archives with AES-256-GCM (ENS mp.si.2 / op.exp.10)")
+	backupScheduleAddCmd.Flags().StringVar(&schedPassphraseFlag, "password", "", "Passphrase for AES-256-GCM encryption")
+
 	backupScheduleCmd.AddCommand(backupScheduleLsCmd)
+	backupScheduleCmd.AddCommand(backupScheduleAddCmd)
+	backupScheduleCmd.AddCommand(backupScheduleRmCmd)
 
 	backupCmd.AddCommand(backupLsCmd)
 	backupCmd.AddCommand(backupCreateCmd)

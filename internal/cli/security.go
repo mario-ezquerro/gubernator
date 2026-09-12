@@ -281,6 +281,86 @@ var securityPolicyCmd = &cobra.Command{
 	},
 }
 
+var (
+	policySignaturesFlag   string
+	policyBlockCVEFlag     string
+	policyAllowUnfixedFlag bool
+	policyRegistriesFlag   string
+
+	keyGenNameFlag    string
+	keyGenDefaultFlag bool
+)
+
+var securityPolicySetCmd = &cobra.Command{
+	Use:   "set [--signatures enforce|audit|disabled] [--block-cve critical|high|none] [--allow-unfixed] [--registries <list>]",
+	Short: "Configure cluster admission security policy (Gatekeeper ENS mp.sw.2)",
+	Run: func(cmd *cobra.Command, args []string) {
+		// 1. Fetch current policy
+		resp, err := DoAPIRequest("GET", "/v1/security/policy", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		var result struct {
+			Policy db.SecurityPolicy `json:"policy"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse current policy: %v\n", err)
+			os.Exit(1)
+		}
+
+		p := result.Policy
+
+		if cmd.Flags().Changed("signatures") {
+			sig := strings.ToLower(policySignaturesFlag)
+			if sig != "enforce" && sig != "audit" && sig != "disabled" {
+				fmt.Fprintln(os.Stderr, "Error: --signatures must be 'enforce', 'audit', or 'disabled'")
+				os.Exit(1)
+			}
+			p.EnforceSignatures = sig
+		}
+
+		if cmd.Flags().Changed("block-cve") {
+			cve := strings.ToLower(policyBlockCVEFlag)
+			if cve != "critical" && cve != "high" && cve != "none" {
+				fmt.Fprintln(os.Stderr, "Error: --block-cve must be 'critical', 'high', or 'none'")
+				os.Exit(1)
+			}
+			p.BlockCVESeverity = cve
+		}
+
+		if cmd.Flags().Changed("allow-unfixed") {
+			p.AllowUnfixedCVE = policyAllowUnfixedFlag
+		}
+
+		if cmd.Flags().Changed("registries") {
+			p.TrustedRegistries = policyRegistriesFlag
+		}
+
+		reqBody, _ := json.Marshal(p)
+		postResp, err := DoAPIRequest("POST", "/v1/security/policy", bytes.NewReader(reqBody))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to update policy: %v\n", err)
+			os.Exit(1)
+		}
+		defer postResp.Body.Close()
+
+		if postResp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(postResp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to save security policy (%d): %s\n", postResp.StatusCode, string(body))
+			os.Exit(1)
+		}
+
+		fmt.Println("✅ Cluster Admission Security Policy updated successfully!")
+		fmt.Printf("  • Enforce Signatures:    %s\n", strings.ToUpper(p.EnforceSignatures))
+		fmt.Printf("  • Block on CVE Severity: %s\n", strings.ToUpper(p.BlockCVESeverity))
+		fmt.Printf("  • Allow Unfixed CVEs:    %v\n", p.AllowUnfixedCVE)
+		fmt.Printf("  • Trusted Registries:    %s\n", p.TrustedRegistries)
+	},
+}
+
 var securityKeyCmd = &cobra.Command{
 	Use:   "key",
 	Short: "Manage trusted public signing keys",
@@ -317,6 +397,68 @@ var securityKeyLsCmd = &cobra.Command{
 			fmt.Printf("%-15s %-25s %-15s %-10s %-20s\n",
 				k.ID, k.Name, k.KeyType, defStr, k.CreatedAt.Format("2006-01-02 15:04"))
 		}
+	},
+}
+
+var securityKeyGenerateCmd = &cobra.Command{
+	Use:   "generate [--name <name>] [--default]",
+	Short: "Generate a new cryptographic ECDSA P-256 signing key pair (Cosign)",
+	Run: func(cmd *cobra.Command, args []string) {
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"name":       keyGenNameFlag,
+			"is_default": keyGenDefaultFlag,
+		})
+
+		resp, err := DoAPIRequest("POST", "/v1/security/keys/generate", bytes.NewReader(reqBody))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to generate signing key: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var res struct {
+			Message   string               `json:"message"`
+			Key       db.TrustedSigningKey `json:"key"`
+			PublicPEM string               `json:"public_pem"`
+		}
+		json.NewDecoder(resp.Body).Decode(&res)
+
+		fmt.Printf("✅ ECDSA P-256 Signing Key generated successfully!\n")
+		fmt.Printf("  • ID:         %s\n", res.Key.ID)
+		fmt.Printf("  • Name:       %s\n", res.Key.Name)
+		fmt.Printf("  • Algorithm:  %s\n", res.Key.KeyType)
+		fmt.Printf("  • Default:    %v\n", res.Key.IsDefault)
+		fmt.Println("\n📜 Public Key PEM:")
+		fmt.Println(strings.TrimSpace(res.PublicPEM))
+	},
+}
+
+var securityKeyRmCmd = &cobra.Command{
+	Use:   "rm <key-id>",
+	Short: "Delete a trusted public signing key",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id := args[0]
+		resp, err := DoAPIRequest("DELETE", "/v1/security/keys/"+id, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to delete key: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		fmt.Printf("✅ Trusted signing key '%s' deleted successfully.\n", id)
 	},
 }
 
@@ -799,7 +941,18 @@ func init() {
 	scanCmd.AddCommand(scanPruneCmd)
 	scanCmd.AddCommand(scanRmCmd)
 
+	securityPolicySetCmd.Flags().StringVarP(&policySignaturesFlag, "signatures", "s", "enforce", "Signature policy mode: enforce, audit, disabled")
+	securityPolicySetCmd.Flags().StringVarP(&policyBlockCVEFlag, "block-cve", "b", "critical", "Block images on CVE severity: critical, high, none")
+	securityPolicySetCmd.Flags().BoolVar(&policyAllowUnfixedFlag, "allow-unfixed", false, "Allow vulnerable images if no fix is available")
+	securityPolicySetCmd.Flags().StringVar(&policyRegistriesFlag, "registries", "", "Comma-separated list of trusted container registries")
+	securityPolicyCmd.AddCommand(securityPolicySetCmd)
+
+	securityKeyGenerateCmd.Flags().StringVarP(&keyGenNameFlag, "name", "n", "cluster-signing-key", "Key identification name")
+	securityKeyGenerateCmd.Flags().BoolVarP(&keyGenDefaultFlag, "default", "d", true, "Set as default signing key for cluster containers")
 	securityKeyCmd.AddCommand(securityKeyLsCmd)
+	securityKeyCmd.AddCommand(securityKeyGenerateCmd)
+	securityKeyCmd.AddCommand(securityKeyRmCmd)
+
 	securityCmd.AddCommand(securityPolicyCmd)
 	securityCmd.AddCommand(securityKeyCmd)
 	securityCmd.AddCommand(securitySiemCmd)

@@ -339,12 +339,14 @@ type BackupSchedule struct {
 	TargetName      string     `gorm:"type:varchar(255)" json:"target_name"`
 	DestinationPath string     `gorm:"type:text" json:"destination_path"` // Destination directory for backup archives
 	RetentionCount  int        `gorm:"default:7" json:"retention_count"` // Keep last N backups
-	PauseContainers bool       `gorm:"default:true" json:"pause_containers"`
-	Enabled         bool       `gorm:"default:true" json:"enabled"`
-	LastRunAt       *time.Time `json:"last_run_at,omitempty"`
-	NextRunAt       *time.Time `json:"next_run_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	PauseContainers      bool       `gorm:"default:true" json:"pause_containers"`
+	Enabled              bool       `gorm:"default:true" json:"enabled"`
+	Encrypted            bool       `gorm:"default:false" json:"encrypted"`
+	EncryptionPassphrase string     `gorm:"type:varchar(255)" json:"encryption_passphrase,omitempty"`
+	LastRunAt            *time.Time `json:"last_run_at,omitempty"`
+	NextRunAt            *time.Time `json:"next_run_at,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 // StoragePool represents a shared filesystem storage mount.

@@ -2343,6 +2343,9 @@ volumes:
         : (_volumes.isNotEmpty ? _volumes.first.id : (_mounts.isNotEmpty ? _mounts.first.id : ''));
     int retention = schedule?.retentionCount ?? 7;
     bool pauseContainers = schedule?.pauseContainers ?? true;
+    bool encrypted = schedule?.encrypted ?? false;
+    final passphraseCtrl = TextEditingController(text: schedule?.encryptionPassphrase ?? '');
+    bool obscurePassphrase = true;
     bool isCreatingSourceDir = false;
     bool isCreatingDestDir = false;
 
@@ -2788,6 +2791,48 @@ volumes:
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+
+                      // 5. CIFRADO CRIPTOGRÁFICO EN REPOSO (ENS mp.si.2 / op.exp.10)
+                      _buildSectionHeader('5. CIFRADO CRIPTOGRÁFICO EN REPOSO (ENS mp.si.2 / op.exp.10)', Icons.security, const Color(0xFF10B981), isDark),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Cifrado AES-256-GCM Autenticado', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                SizedBox(height: 2),
+                                Text('Derivación de clave PBKDF2-HMAC-SHA256 (100.000 iteraciones) para cumplimiento ENS nivel ALTO.',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: encrypted,
+                            activeColor: const Color(0xFF10B981),
+                            onChanged: (val) => setDlgState(() => encrypted = val),
+                          ),
+                        ],
+                      ),
+                      if (encrypted) ...[
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: passphraseCtrl,
+                          obscureText: obscurePassphrase,
+                          decoration: InputDecoration(
+                            labelText: 'Contraseña de Cifrado / Passphrase',
+                            hintText: 'Clave robusta para cifrar las copias periódicas',
+                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF10B981)),
+                            suffixIcon: IconButton(
+                              icon: Icon(obscurePassphrase ? Icons.visibility_off : Icons.visibility, size: 20),
+                              onPressed: () => setDlgState(() => obscurePassphrase = !obscurePassphrase),
+                            ),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2833,6 +2878,8 @@ volumes:
                         retentionCount: retention,
                         pauseContainers: pauseContainers,
                         enabled: schedule?.enabled ?? true,
+                        encrypted: encrypted,
+                        encryptionPassphrase: encrypted && passphraseCtrl.text.isNotEmpty ? passphraseCtrl.text.trim() : null,
                       );
                       await ApiService.saveBackupSchedule(item);
                       _showSnackBar('✅ Schedule saved successfully!');
@@ -3676,6 +3723,31 @@ volumes:
                                           ),
                                         ),
                                       ),
+                                      if (s.encrypted) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.lock, size: 10, color: Color(0xFF10B981)),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'AES-256-GCM',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF10B981),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                   const SizedBox(height: 4),

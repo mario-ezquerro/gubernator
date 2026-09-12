@@ -163,5 +163,67 @@ Commands for managing multi-node storage pools, Docker volumes, and encrypted ba
   Restores a backup into the target directory. If the archive is encrypted, validates the password and checks AEAD block integrity before decompressing.
 
 - **`gbnt backup schedule ls`**
-  Lists automated recurring backup cron policies and retention rotations.
+  Lists automated recurring backup cron policies and retention rotations with encryption status.
+
+- **`gbnt backup schedule add --name <name> --cron <cron> [--type stack|volume|path] [--target <t>] [--dest <d>] [--retention <n>] [--encrypt] [--password <p>] [--pause]`**
+  Registers an automated periodic backup schedule. Supports `--encrypt` with `--password` for AES-256-GCM encryption in repose (ENS `op.exp.10` / `mp.si.2`).
+
+- **`gbnt backup schedule rm <schedule_id>`**
+  Deletes an automated backup schedule and stops its periodic execution.
+
+---
+
+## 🛡️ Security, Gatekeeper & ENS Compliance Subsystem
+
+Complete CLI suite for software supply chain security, admission control, SIEM forwarding, and Esquema Nacional de Seguridad (ENS RD 311/2022) compliance auditing.
+
+### Admission Policies & Gatekeeper (`mp.sw.2`)
+- **`gbnt security policy`**
+  Displays current cluster admission security policy (enforce signatures, block CVE severity, allow unfixed CVEs, trusted registries).
+
+- **`gbnt security policy set [--signatures enforce|audit|disabled] [--block-cve critical|high|none] [--allow-unfixed] [--registries <list>]`**
+  Configures admission gatekeeper policy. Mode `enforce` blocks unsigned images or images with critical/high CVEs.
+
+### Cryptographic Keys Management (Cosign ECDSA P-256)
+- **`gbnt security key ls`**
+  Lists trusted public signing keys configured in the cluster.
+
+- **`gbnt security key generate [--name <name>] [--default]`**
+  Generates a new ECDSA P-256 keypair in the cluster and prints its public key PEM.
+
+- **`gbnt security key rm <key_id>`**
+  Removes a trusted signing key from the cluster.
+
+### Image Signing, Verification & SBOM
+- **`gbnt image sign <image> [--key <key.pem>] [--signer <name>]`**
+  Cryptographically signs a container image digest using an in-cluster or external ECDSA key.
+
+- **`gbnt image verify <image>`**
+  Verifies the cryptographic signature of an image against trusted keys and policy.
+
+- **`gbnt image unsign <image>`**
+  Revokes/removes the cryptographic signature from an image.
+
+- **`gbnt sbom <image> [--format cyclonedx-json|spdx-json]`**
+  Generates a Software Bill of Materials in CycloneDX or SPDX format.
+
+- **`gbnt scan <image>`**
+  Triggers vulnerability scanning and CVE inspection for a container image.
+
+### ENS Compliance Audit & SIEM
+- **`gbnt security ens [--report] [--format table|json|markdown]`**
+  Audits the cluster against the 11 technical measures of ENS RD 311/2022 (BÁSICO, MEDIO, ALTO). Pass `--report` for full Markdown export.
+
+- **`gbnt security siem status`**
+  Displays real-time SIEM event forwarding metrics, intrusion alerts, and collector link state.
+
+- **`gbnt security siem test [--host <h>] [--port <p>] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]`**
+  Dispatches an active probe to the SIEM receiver and measures roundtrip network latency in milliseconds.
+
+- **`gbnt security siem enable --host <h> [--port <p>] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]`**
+  Activates real-time SIEM forwarding, elevating measure `op.mon.2` to 100% COMPLIANT.
+
+- **`gbnt security siem disable`**
+  Disables real-time SIEM forwarding.
+
 

@@ -1668,6 +1668,9 @@ class BackupScheduleModel {
   final String? lastRunAt;
   final String createdAt;
 
+  final bool encrypted;
+  final String? encryptionPassphrase;
+
   BackupScheduleModel({
     required this.id,
     required this.name,
@@ -1679,6 +1682,8 @@ class BackupScheduleModel {
     this.retentionCount = 7,
     this.pauseContainers = true,
     this.enabled = true,
+    this.encrypted = false,
+    this.encryptionPassphrase,
     this.lastRunAt,
     this.createdAt = '',
   });
@@ -1695,6 +1700,8 @@ class BackupScheduleModel {
       retentionCount: (json['retention_count'] as num?)?.toInt() ?? 7,
       pauseContainers: json['pause_containers'] != false,
       enabled: json['enabled'] != false,
+      encrypted: json['encrypted'] == true,
+      encryptionPassphrase: json['encryption_passphrase'],
       lastRunAt: json['last_run_at'],
       createdAt: json['created_at'] ?? '',
     );
@@ -1712,6 +1719,8 @@ class BackupScheduleModel {
       'retention_count': retentionCount,
       'pause_containers': pauseContainers,
       'enabled': enabled,
+      'encrypted': encrypted,
+      'encryption_passphrase': encryptionPassphrase,
     };
   }
 }

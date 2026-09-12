@@ -86,6 +86,9 @@ func EvaluateENSCompliance(database *gorm.DB) ENSSummary {
 	var backups []db.Backup
 	database.Find(&backups)
 
+	var backupSchedules []db.BackupSchedule
+	database.Find(&backupSchedules)
+
 	var auditCount int64
 	database.Model(&db.AuditLog{}).Count(&auditCount)
 
@@ -252,7 +255,7 @@ func EvaluateENSCompliance(database *gorm.DB) ENSSummary {
 	}
 
 	// ==========================================
-	// 5. op.exp.10 - Copias de seguridad cifradas en reposo
+	// 5. op.exp.10 - Copias de seguridad periódicas e integridad de restauración
 	// ==========================================
 	{
 		m := ENSMeasure{
@@ -271,21 +274,43 @@ func EvaluateENSCompliance(database *gorm.DB) ENSSummary {
 			}
 		}
 
-		if len(backups) > 0 && encryptedBackups > 0 {
+		activeSchedules := 0
+		encryptedSchedules := 0
+		for _, s := range backupSchedules {
+			if s.Enabled {
+				activeSchedules++
+				if s.Encrypted {
+					encryptedSchedules++
+				}
+			}
+		}
+
+		if len(backups) > 0 && encryptedBackups > 0 && activeSchedules > 0 {
 			m.Status = ENSStatusCompliant
 			m.Score = 100.0
+			m.Evidence = fmt.Sprintf("Copias de seguridad verificadas: %d (%d cifradas AES-256-GCM y PBKDF2). Políticas periódicas automatizadas: %d activas (%d con cifrado programado) con retención configurable y digest SHA-256.",
+				len(backups), encryptedBackups, activeSchedules, encryptedSchedules)
+			m.Recommendation = "Mantener la custodia segura de passphrases y verificar periódicamente simulacros de restauración ('gbnt backup restore')."
+		} else if len(backups) > 0 && encryptedBackups > 0 {
+			m.Status = ENSStatusCompliant
+			m.Score = 95.0
 			m.Evidence = fmt.Sprintf("Total copias registradas: %d (%d cifradas con AES-256-GCM y PBKDF2-SHA256). Verificación criptográfica SHA-256 en cada archivo.", len(backups), encryptedBackups)
-			m.Recommendation = "Programar políticas periódicas de copias automatizadas con retención segura (cron schedules)."
+			m.Recommendation = "Programar políticas periódicas de copias automatizadas con retención segura ('gbnt backup schedule add')."
+		} else if activeSchedules > 0 {
+			m.Status = ENSStatusPartial
+			m.Score = 70.0
+			m.Evidence = fmt.Sprintf("Políticas periódicas activas configuradas (%d programadas), a la espera de la ejecución del primer ciclo programado o copia manual cifrada.", activeSchedules)
+			m.Recommendation = "Generar una copia de seguridad manual cifrada ('gbnt backup create --encrypt') o aguardar al siguiente ciclo del planificador."
 		} else if len(backups) > 0 {
 			m.Status = ENSStatusPartial
 			m.Score = 60.0
-			m.Evidence = fmt.Sprintf("Existen %d copias de seguridad generadas con digest SHA-256, pero ninguna de ellas utiliza cifrado en reposo AES-256-GCM.", len(backups))
-			m.Recommendation = "Generar copias de seguridad utilizando la opción de cifrado AES-256-GCM (ENS mp.si.2 / op.exp.10)."
+			m.Evidence = fmt.Sprintf("Existen %d copias de seguridad generadas con digest SHA-256, pero ninguna de ellas utiliza cifrado en reposo AES-256-GCM ni políticas periódicas.", len(backups))
+			m.Recommendation = "Generar copias de seguridad utilizando la opción de cifrado AES-256-GCM (ENS mp.si.2 / op.exp.10) y configurar políticas periódicas."
 		} else {
 			m.Status = ENSStatusNonCompliant
 			m.Score = 20.0
-			m.Evidence = "No se han detectado copias de seguridad de volumen o de clúster creadas en el sistema."
-			m.Recommendation = "Crear copias de seguridad comprimidas y cifradas de los volúmenes de datos y configuraciones críticas."
+			m.Evidence = "No se han detectado copias de seguridad de volumen o de clúster creadas en el sistema ni políticas programadas."
+			m.Recommendation = "Crear copias de seguridad comprimidas y cifradas de los volúmenes de datos y programar políticas periódicas ('gbnt backup schedule add')."
 		}
 		measures = append(measures, m)
 	}

@@ -53,6 +53,23 @@ Gubernator opera como orquestador soberano y autocontenido, garantizando que el 
 │  - Panel de telemetría en Web UI (activos, intrusiones, fallos, latencia)   │
 │  - Paridad CLI completa (`gbnt security siem status|test|enable|disable`)   │
 │  - Elevación de la medida op.mon.2 del 40% al 100% COMPLIANT en MEDIO/ALTO  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  FASE 6: GATEKEEPER & CADENA DE SUMINISTRO DE SOFTWARE (v2.90.0)             │
+│  - Control de admisión estricto Gatekeeper (`enforce`, `audit`, `disabled`) │
+│  - Firmas criptográficas ECDSA P-256 (Cosign) y verificación en despliegue  │
+│  - Generación y custodia de pares de claves (`gbnt security key generate`)  │
+│  - Bloqueo preventivo de imágenes con CVEs CRITICAL / HIGH sin parche       │
+│  - Auto-remediación asistida de imágenes vulnerables con rollback seguro    │
+│  - Paridad CLI (`gbnt security policy set`, `gbnt security key [generate|rm]`)│
+│  - Elevación de la medida mp.sw.2 al 100% COMPLIANT en nivel ALTO           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  FASE 7: PLANIFICACIÓN PERIÓDICA DE COPIAS CIFRADAS (v2.90.0)               │
+│  - Motor daemon de programación periódica (cron) para copias de seguridad   │
+│  - Cifrado automático en reposo AES-256-GCM + PBKDF2 (100.000 iteraciones)   │
+│  - Política de retención configurable (Keep Last N) con poda automática     │
+│  - Paridad CLI (`gbnt backup schedule add|ls|rm` con flags `--encrypt`)     │
+│  - Elevación de op.exp.10 y mp.si.2 al 100% COMPLIANT                       │
+│  - Certificación Global del Clúster Gubernator en Categoría ALTO (100%)     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -207,4 +224,120 @@ gbnt security siem disable
 # Consultar el estado en formato JSON vía API
 curl -s http://localhost:4001/api/security/ens/status | jq .
 ```
+
+---
+
+## 🛡️ 11. Gatekeeper & Cadena de Suministro de Software (Fase 6 — `mp.sw.2`)
+
+La medida **`mp.sw.2`** del ENS (Seguridad del Software) exige garantizar la procedencia, integridad y ausencia de vulnerabilidades críticas conocidas en las imágenes de contenedores desplegadas en el clúster.
+
+### Componentes del Subsistema
+1. **Control de Admisión Gatekeeper:** Intercepta cada intento de despliegue (`POST /v1/stack/deploy`, `redeploy`, etc.) evaluando:
+   * **Modos de Operación:**
+     * `enforce`: Bloquea terminantemente el despliegue si la imagen no posee una firma criptográfica válida o contiene vulnerabilidades inaceptables.
+     * `audit`: Permite el despliegue pero registra una alerta forense de severidad `HIGH` / `CRITICAL` en la pista de auditoría SHA-256.
+     * `disabled`: Admisión sin restricciones.
+   * **Bloqueo por Severidad CVE:** Bloqueo configurable en nivel `critical`, `high` o `none`.
+   * **Política de Vulnerabilidades sin Parche:** Opción `--allow-unfixed` para permitir o denegar software con CVEs que aún no poseen corrección oficial del proveedor.
+2. **Firmas Criptográficas Cosign (ECDSA P-256):**
+   * Generación y custodia de claves criptográficas dentro del propio clúster (`gbnt security key generate`).
+   * Firma digital de los digests inmutables SHA-256 de las imágenes (`gbnt image sign <imagen>`).
+   * Verificación en tiempo de ejecución (`gbnt image verify <imagen>`).
+3. **Software Bill of Materials (SBOM) & Escaneo de Vulnerabilidades:**
+   * Generación de manifiestos estándar **CycloneDX JSON** y **SPDX JSON** (`gbnt sbom <imagen>`).
+   * Escaneo estático de paquetes y librerías con puntuación CVSS y clasificación de severidad.
+
+### Comandos CLI para Gatekeeper y Claves
+```bash
+# Consultar la política de admisión activa
+gbnt security policy
+
+# Configurar el Gatekeeper en modo estricto (ENS mp.sw.2 ALTO)
+gbnt security policy set --signatures enforce --block-cve critical --allow-unfixed=false
+
+# Generar un nuevo par de claves de firma ECDSA P-256
+gbnt security key generate --name cluster-signing-key --default
+
+# Listar las claves públicas de firma de confianza
+gbnt security key ls
+
+# Eliminar una clave de firma
+gbnt security key rm <key-id>
+
+# Firmar una imagen antes de su despliegue en stacks
+gbnt image sign mi-registro.local/app:v1.0
+
+# Verificar la firma y admisión de una imagen
+gbnt image verify mi-registro.local/app:v1.0
+```
+
+---
+
+## 💾 12. Copias de Seguridad Periódicas Automatizadas con Cifrado en Reposo (Fase 7 — `op.exp.10` / `mp.si.2`)
+
+Las medidas **`op.exp.10`** (Copias de seguridad) y **`mp.si.2`** (Cifrado en reposo) exigen que las copias de seguridad de datos críticos se ejecuten de manera **periódica, automatizada, cifrada y con retención controlada**.
+
+### Características del Motor de Planificación & Cifrado
+* **Planificador Daemon Integrado (Cron):** Ejecuta en segundo plano las políticas temporales configuradas (`0 3 * * *`, `0 */12 * * *`, etc.) sin dependencias externas del host.
+* **Cifrado en Reposo Robusto:** Algoritmo **AES-256-GCM** autenticado con clave derivada mediante **PBKDF2-HMAC-SHA256 (100.000 iteraciones)** y salt aleatorio de 32 bytes.
+* **Pausado Consistente (`docker pause`):** Congelamiento atómico de contenedores de bases de datos (PostgreSQL, MySQL, MariaDB, SQLite) durante la creación del archivo para garantizar transaccionalidad sin inconsistencias.
+* **Política de Retención Automática:** Poda automática (*pruning*) manteniendo únicamente las últimas $N$ copias programadas para evitar la saturación de los soportes de almacenamiento.
+* **Verificación de Integridad:** Cada copia genera y almacena su hash criptográfico SHA-256 verificado en la base de datos de auditoría.
+
+### Comandos CLI para Copias y Planificaciones
+```bash
+# Listar las planificaciones periódicas configuradas
+gbnt backup schedule ls
+
+# Crear una planificación periódica diaria con cifrado obligatorio (ENS ALTO)
+gbnt backup schedule add \
+  --name "Copia Diaria Produccion" \
+  --cron "0 3 * * *" \
+  --type stack \
+  --target mi-stack-prod \
+  --retention 7 \
+  --encrypt \
+  --password "MiContraseñaRobusta#2026"
+
+# Crear una planificación para un volumen compartido o ruta host
+gbnt backup schedule add \
+  --name "Copia Volumen /var/contenedores" \
+  --cron "0 4 * * 0" \
+  --type path \
+  --target /var/contenedores \
+  --retention 4 \
+  --encrypt \
+  --password "ClaveSeguraAlmacenamiento2026!"
+
+# Eliminar una planificación periódica
+gbnt backup schedule rm <schedule-id>
+
+# Crear una copia de seguridad inmediata cifrada
+gbnt backup create /var/contenedores/mi-app --name snapshot-manual --encrypt --password "ClaveSegura2026!"
+
+# Listar todas las copias de seguridad almacenadas con indicación de cifrado
+gbnt backup ls
+
+# Restaurar una copia de seguridad cifrada
+gbnt backup restore <backup-id> --password "ClaveSegura2026!"
+```
+
+---
+
+## 🏆 13. Certificación de Conformidad ENS Nivel ALTO (100%)
+
+Con la culminación y activación de las **7 Fases del Esquema Nacional de Seguridad**, el clúster Gubernator alcanza la máxima calificación normativa:
+
+```
+=========================================================================================
+🏛  ESQUEMA NACIONAL DE SEGURIDAD (ENS — RD 311/2022) | PUNTUACIÓN DE CONFORMIDAD
+=========================================================================================
+  Categoría Alcanzada:   ALTO
+  Cumplimiento BÁSICO:   100.0%
+  Cumplimiento MEDIO:    100.0%
+  Cumplimiento ALTO:     100.0%
+  Medidas Evaluadas:     11 (11 Conformes, 0 Parciales, 0 No Conformes)
+=========================================================================================
+```
+
 

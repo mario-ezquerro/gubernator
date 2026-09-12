@@ -89,14 +89,16 @@ func ExecuteScheduledBackup(s db.BackupSchedule) {
 	}
 
 	req := CreateBackupRequest{
-		Name:            s.Name,
-		StackID:         stackID,
-		VolumeName:      volumeName,
-		SourcePath:      sourcePath,
-		DestinationPath: s.DestinationPath,
-		PauseContainers: s.PauseContainers,
-		IsScheduled:     true,
-		ScheduleID:      s.ID,
+		Name:                 s.Name,
+		StackID:              stackID,
+		VolumeName:           volumeName,
+		SourcePath:           sourcePath,
+		DestinationPath:      s.DestinationPath,
+		PauseContainers:      s.PauseContainers,
+		Encrypted:            s.Encrypted,
+		EncryptionPassphrase: s.EncryptionPassphrase,
+		IsScheduled:          true,
+		ScheduleID:           s.ID,
 	}
 
 	backup, err := CreateBackup(req)
