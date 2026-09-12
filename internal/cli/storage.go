@@ -94,32 +94,45 @@ var backupLsCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("%-36s %-25s %-15s %-10s %-20s %-10s\n", "ID", "NAME", "STACK", "SIZE", "CREATED AT", "STATUS")
-		fmt.Println("----------------------------------------------------------------------------------------------------------------")
+		fmt.Printf("%-36s %-25s %-15s %-10s %-20s %-12s %-10s\n", "ID", "NAME", "STACK", "SIZE", "CREATED AT", "ENCRYPTION", "STATUS")
+		fmt.Println("-----------------------------------------------------------------------------------------------------------------------------")
 		for _, b := range backups {
 			sizeStr := storage.FormatBytes(b.SizeBytes)
 			createdStr := b.CreatedAt.Format("2006-01-02 15:04:05")
-			fmt.Printf("%-36s %-25s %-15s %-10s %-20s %-10s\n", b.ID, b.Name, b.StackName, sizeStr, createdStr, b.Status)
+			encStr := "Plain"
+			if b.IsEncrypted {
+				encStr = "🔒 AES-256"
+			}
+			fmt.Printf("%-36s %-25s %-15s %-10s %-20s %-12s %-10s\n", b.ID, b.Name, b.StackName, sizeStr, createdStr, encStr, b.Status)
 		}
 	},
 }
 
 var (
-	backupCreatePause bool
-	backupCreateName  string
+	backupCreatePause      bool
+	backupCreateName       string
+	backupCreateEncrypt    bool
+	backupCreatePassphrase string
 )
 
 var backupCreateCmd = &cobra.Command{
 	Use:   "create <stack_id_or_path>",
-	Short: "Create a point-in-time compressed backup",
+	Short: "Create a point-in-time compressed backup (optional AES-256-GCM encryption)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
+		if backupCreateEncrypt && backupCreatePassphrase == "" {
+			fmt.Fprintf(os.Stderr, "Error: --password is required when --encrypt is enabled (ENS mp.si.2)\n")
+			os.Exit(1)
+		}
+
 		req := storage.CreateBackupRequest{
-			Name:            backupCreateName,
-			StackID:         target,
-			SourcePath:      target,
-			PauseContainers: backupCreatePause,
+			Name:                 backupCreateName,
+			StackID:              target,
+			SourcePath:           target,
+			PauseContainers:      backupCreatePause,
+			Encrypted:            backupCreateEncrypt,
+			EncryptionPassphrase: backupCreatePassphrase,
 		}
 
 		reqBytes, _ := json.Marshal(req)
@@ -143,15 +156,21 @@ var backupCreateCmd = &cobra.Command{
 		}
 
 		fmt.Printf("✅ Backup successfully created:\n")
-		fmt.Printf("   ID:        %s\n", b.ID)
-		fmt.Printf("   Name:      %s\n", b.Name)
-		fmt.Printf("   Size:      %s\n", storage.FormatBytes(b.SizeBytes))
-		fmt.Printf("   SHA-256:   %s\n", b.SHA256)
-		fmt.Printf("   File Path: %s\n", b.FilePath)
+		fmt.Printf("   ID:         %s\n", b.ID)
+		fmt.Printf("   Name:       %s\n", b.Name)
+		fmt.Printf("   Size:       %s\n", storage.FormatBytes(b.SizeBytes))
+		fmt.Printf("   SHA-256:    %s\n", b.SHA256)
+		if b.IsEncrypted {
+			fmt.Printf("   Encryption: 🔒 AES-256-GCM (ENS mp.si.2 / CCN-STIC)\n")
+		}
+		fmt.Printf("   File Path:  %s\n", b.FilePath)
 	},
 }
 
-var backupRestoreTarget string
+var (
+	backupRestoreTarget     string
+	backupRestorePassphrase string
+)
 
 var backupRestoreCmd = &cobra.Command{
 	Use:   "restore <backup_id>",
@@ -160,8 +179,9 @@ var backupRestoreCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		backupID := args[0]
 		req := storage.RestoreBackupRequest{
-			BackupID:   backupID,
-			TargetPath: backupRestoreTarget,
+			BackupID:             backupID,
+			TargetPath:           backupRestoreTarget,
+			EncryptionPassphrase: backupRestorePassphrase,
 		}
 
 		reqBytes, _ := json.Marshal(req)
@@ -232,8 +252,11 @@ func init() {
 
 	backupCreateCmd.Flags().BoolVarP(&backupCreatePause, "pause", "p", true, "Pause containers during backup for database consistency")
 	backupCreateCmd.Flags().StringVarP(&backupCreateName, "name", "n", "", "Custom backup name")
+	backupCreateCmd.Flags().BoolVarP(&backupCreateEncrypt, "encrypt", "e", false, "Encrypt backup archive with AES-256-GCM (ENS mp.si.2)")
+	backupCreateCmd.Flags().StringVar(&backupCreatePassphrase, "password", "", "Passphrase for AES-256-GCM encryption")
 
 	backupRestoreCmd.Flags().StringVarP(&backupRestoreTarget, "target", "t", "", "Custom destination path (defaults to original source path)")
+	backupRestoreCmd.Flags().StringVar(&backupRestorePassphrase, "password", "", "Passphrase for decrypting AES-256-GCM backup")
 
 	backupScheduleCmd.AddCommand(backupScheduleLsCmd)
 

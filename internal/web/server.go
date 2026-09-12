@@ -7320,6 +7320,21 @@ func backupCreateHandler(c *gin.Context) {
 		return
 	}
 
+	actor := "system"
+	provider := "LOCAL"
+	if sess := auth.ExtractUserSession(c); sess != nil {
+		actor = sess.Username
+		if sess.Provider != "" {
+			provider = sess.Provider
+		}
+	}
+	encMode := "unencrypted"
+	if b.IsEncrypted {
+		encMode = "AES-256-GCM (ENS mp.si.2)"
+	}
+	logAudit(c, actor, provider, "BACKUP_CREATE", "SUCCESS",
+		fmt.Sprintf("Created backup '%s' (id: %s, size: %s, encryption: %s)", b.Name, b.ID, b.SizeFormatted, encMode))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Backup created successfully",
 		"backup":  b,
@@ -7333,10 +7348,24 @@ func backupRestoreHandler(c *gin.Context) {
 		return
 	}
 
+	actor := "system"
+	provider := "LOCAL"
+	if sess := auth.ExtractUserSession(c); sess != nil {
+		actor = sess.Username
+		if sess.Provider != "" {
+			provider = sess.Provider
+		}
+	}
+
 	if err := storage.RestoreBackup(req); err != nil {
+		logAudit(c, actor, provider, "BACKUP_RESTORE", "FAILED",
+			fmt.Sprintf("Failed to restore backup '%s': %v", req.BackupID, err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	logAudit(c, actor, provider, "BACKUP_RESTORE", "SUCCESS",
+		fmt.Sprintf("Restored backup '%s' successfully to target '%s'", req.BackupID, req.TargetPath))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Backup restored successfully"})
 }
@@ -7389,27 +7418,49 @@ func backupUploadHandler(c *gin.Context) {
 	_, _ = io.Copy(hasher, f)
 	shaHex := hex.EncodeToString(hasher.Sum(nil))
 
+	isEnc, _ := storage.IsEncryptedArchive(destPath)
+	encAlgo := ""
+	if isEnc {
+		encAlgo = "AES-256-GCM"
+	}
+
+	cleanUploadName := strings.TrimSuffix(strings.TrimSuffix(file.Filename, ".tar.gz.enc"), ".tar.gz")
+
 	stackID := c.PostForm("stack_id")
 	volumeName := c.PostForm("volume_name")
 	sourcePath := c.PostForm("source_path")
 	now := time.Now()
 
 	bRecord := db.Backup{
-		ID:            uuid.New().String(),
-		Name:          strings.TrimSuffix(file.Filename, ".tar.gz"),
-		StackID:       stackID,
-		VolumeName:    volumeName,
-		SourcePath:    sourcePath,
-		FilePath:      destPath,
-		SizeBytes:     file.Size,
-		SizeFormatted: storage.FormatBytes(file.Size),
-		SHA256:        shaHex,
-		Status:        "completed",
-		CreatedAt:     now,
-		CompletedAt:   &now,
+		ID:             uuid.New().String(),
+		Name:           cleanUploadName,
+		StackID:        stackID,
+		VolumeName:     volumeName,
+		SourcePath:     sourcePath,
+		FilePath:       destPath,
+		SizeBytes:      file.Size,
+		SizeFormatted:  storage.FormatBytes(file.Size),
+		SHA256:         shaHex,
+		Status:         "completed",
+		IsEncrypted:    isEnc,
+		EncryptionAlgo: encAlgo,
+		CreatedAt:      now,
+		CompletedAt:    &now,
 	}
 
 	db.DB.Create(&bRecord)
+
+	actor := "system"
+	provider := "LOCAL"
+	if sess := auth.ExtractUserSession(c); sess != nil {
+		actor = sess.Username
+		if sess.Provider != "" {
+			provider = sess.Provider
+		}
+	}
+	logAudit(c, actor, provider, "BACKUP_UPLOAD", "SUCCESS",
+		fmt.Sprintf("Uploaded backup '%s' (encrypted=%v)", bRecord.Name, isEnc))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Backup uploaded successfully",
 		"backup":  bRecord,

@@ -1016,3 +1016,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Extended `db.Backup` model with `IsEncrypted` and `EncryptionAlgo` ("AES-256-GCM").
   - Added unit test suites `crypto_test.go` and `backup_encryption_test.go` verifying multi-chunk streams, wrong passphrase rejection, and ciphertext bit-flip tampering resistance.
 
+### 107. Spanish ENS (RD 311/2022) Compliance Phase 2: Encrypted Backups in Repose (AES-256-GCM) with Full Web UI & CLI Parity (`v2.86.0`)
+* **Interactive Web UI Encryption & Decryption Workflows (`web-ui/lib/screens/pages/storage_page.dart`):**
+  - **Create Backup Dialog:** Added dedicated section *"5. CIFRADO EN REPOSO (ENS mp.si.2 / op.exp.10)"* with toggle switch for AES-256-GCM authenticated encryption, PBKDF2-SHA256 passphrase inputs, password confirmation checks, and visual ENS guidance.
+  - **Restore Dialog:** Automatically detects `backup.isEncrypted` and displays an amber warning banner prompting the operator for the decryption passphrase before initiating decompression.
+  - **Backups Inventory Badges:** Backups table prominently renders a green `🔒 AES-256 (ENS)` badge alongside SCHEDULED/MANUAL status chips for all cryptographically protected archives.
+* **REST API Endpoints & Immutable Forensic Audit (`internal/web/server.go` — ENS `op.mon.1`):**
+  - Updated `POST /api/backups/create` and `POST /api/backups/restore` to bind encryption payloads and record forensic audit events (`BACKUP_CREATE`, `BACKUP_RESTORE`).
+  - Added encryption details (`AES-256-GCM (ENS mp.si.2)` vs unencrypted) and operator identity to the tamper-evident audit hash chain forwarded to SIEM listeners.
+  - Hardened `POST /api/backups/upload` with automatic header inspection (`IsEncryptedArchive`), automatically marking uploaded `.tar.gz.enc` files as encrypted in the database.
+* **Full CLI Parity (`internal/cli/storage.go`):**
+  - Upgraded `gbnt backup ls` with dedicated `ENCRYPTION` column displaying `🔒 AES-256` or `Plain`.
+  - Added flags `--encrypt` / `-e` and `--password` to `gbnt backup create`.
+  - Added flag `--password` to `gbnt backup restore`.
+* **Multi-Node Cluster Deployment & Live Verification:**
+  - Verified end-to-end backup creation, encryption, password verification, tamper rejection, and in-place restoration across physical/virtual Centurion nodes.
+
+

@@ -1455,6 +1455,10 @@ volumes:
     bool pauseContainer = true;
     bool isCreatingSourceDir = false;
     bool isCreatingDestDir = false;
+    bool encryptBackup = false;
+    final passphraseCtrl = TextEditingController();
+    final confirmPassphraseCtrl = TextEditingController();
+    bool obscurePassphrase = true;
 
     // Collect all selectable storage targets
     final List<Map<String, String>> selectableTargets = [];
@@ -1935,6 +1939,106 @@ volumes:
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
+
+                      // 5. CIFRADO EN REPOSO (ENS - Esquema Nacional de Seguridad)
+                      _buildSectionHeader('5. CIFRADO EN REPOSO (ENS mp.si.2 / op.exp.10)', Icons.security, const Color(0xFF10B981), isDark),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: encryptBackup
+                              ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: encryptBackup
+                                ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.enhanced_encryption,
+                                  size: 22,
+                                  color: encryptBackup ? const Color(0xFF10B981) : Colors.grey,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Cifrar Copia con AES-256-GCM',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      Text(
+                                        'Cumplimiento ENS categoría MEDIA/ALTA (mp.si.2) con PBKDF2-SHA256 (100k iter.)',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: encryptBackup,
+                                  activeColor: const Color(0xFF10B981),
+                                  onChanged: (val) => setDlgState(() => encryptBackup = val),
+                                ),
+                              ],
+                            ),
+                            if (encryptBackup) ...[
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: passphraseCtrl,
+                                obscureText: obscurePassphrase,
+                                decoration: InputDecoration(
+                                  labelText: 'Contraseña de Cifrado (Passphrase)',
+                                  hintText: 'Mínimo 8 caracteres para derivar clave AES-256',
+                                  prefixIcon: const Icon(Icons.key, size: 18),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      obscurePassphrase ? Icons.visibility : Icons.visibility_off,
+                                      size: 18,
+                                    ),
+                                    onPressed: () => setDlgState(() => obscurePassphrase = !obscurePassphrase),
+                                  ),
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: confirmPassphraseCtrl,
+                                obscureText: obscurePassphrase,
+                                decoration: const InputDecoration(
+                                  labelText: 'Confirmar Contraseña',
+                                  hintText: 'Repita la contraseña de cifrado',
+                                  prefixIcon: Icon(Icons.check_circle_outline, size: 18),
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 14, color: Colors.amber),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'El archivo se guardará como .tar.gz.enc. Sin la contraseña será imposible restaurar los datos.',
+                                      style: TextStyle(fontSize: 11, color: Colors.amber),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1953,9 +2057,20 @@ volumes:
                       _showSnackBar('Please specify a backup name or source path', isError: true);
                       return;
                     }
+                    if (encryptBackup) {
+                      final pass = passphraseCtrl.text;
+                      if (pass.length < 8) {
+                        _showSnackBar('La contraseña de cifrado debe tener al menos 8 caracteres', isError: true);
+                        return;
+                      }
+                      if (pass != confirmPassphraseCtrl.text) {
+                        _showSnackBar('Las contraseñas de cifrado no coinciden', isError: true);
+                        return;
+                      }
+                    }
                     Navigator.pop(ctx);
                     try {
-                      _showSnackBar('Creating backup archive...');
+                      _showSnackBar(encryptBackup ? 'Creating AES-256 encrypted backup...' : 'Creating backup archive...');
                       await ApiService.createBackup(
                         name: name,
                         stackId: selectedStack,
@@ -1963,8 +2078,10 @@ volumes:
                         sourcePath: srcPath,
                         destinationPath: destPath,
                         pauseContainers: pauseContainer,
+                        encrypted: encryptBackup,
+                        encryptionPassphrase: encryptBackup ? passphraseCtrl.text : '',
                       );
-                      _showSnackBar('✅ Backup created successfully!');
+                      _showSnackBar(encryptBackup ? '✅ Encrypted backup (AES-256-GCM) created successfully!' : '✅ Backup created successfully!');
                       _loadAllData();
                     } catch (e) {
                       _showSnackBar('❌ Failed to create backup: $e', isError: true);
@@ -1999,6 +2116,8 @@ volumes:
 
   void _showRestoreDialog(BackupModel backup) {
     final targetCtrl = TextEditingController(text: backup.sourcePath);
+    final passphraseCtrl = TextEditingController();
+    bool obscurePassphrase = true;
     bool isCreatingTarget = false;
 
     showDialog(
@@ -2111,6 +2230,55 @@ volumes:
                         ),
                       ],
                     ),
+                    if (backup.isEncrypted) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.lock, size: 18, color: Color(0xFF10B981)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Copia de Seguridad Cifrada (AES-256-GCM / ENS)',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF10B981)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Esta copia está cifrada criptográficamente. Introduzca la clave establecida durante su creación para descifrarla.',
+                              style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: passphraseCtrl,
+                              obscureText: obscurePassphrase,
+                              decoration: InputDecoration(
+                                labelText: 'Contraseña de Descifrado',
+                                hintText: 'Ingrese la clave de cifrado',
+                                prefixIcon: const Icon(Icons.key, size: 18),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    obscurePassphrase ? Icons.visibility : Icons.visibility_off,
+                                    size: 18,
+                                  ),
+                                  onPressed: () => setDlgState(() => obscurePassphrase = !obscurePassphrase),
+                                ),
+                                border: const OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     const Text(
                       '⚠️ Existing files with the same name in the target directory will be overwritten with backup contents.',
@@ -2126,12 +2294,17 @@ volumes:
                   label: const Text('Restore Now'),
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
                   onPressed: () async {
+                    if (backup.isEncrypted && passphraseCtrl.text.isEmpty) {
+                      _showSnackBar('Debe ingresar la contraseña de descifrado', isError: true);
+                      return;
+                    }
                     Navigator.pop(ctx);
                     try {
                       _showSnackBar('Restoring backup archive...');
                       await ApiService.restoreBackup(
                         backupId: backup.id,
                         targetPath: targetCtrl.text.trim(),
+                        encryptionPassphrase: backup.isEncrypted ? passphraseCtrl.text : '',
                       );
                       _showSnackBar('✅ Backup restored successfully!');
                       _loadAllData();
@@ -3341,6 +3514,32 @@ volumes:
                                           ),
                                         ),
                                       ),
+                                      if (b.isEncrypted) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.lock, size: 10, color: Color(0xFF10B981)),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'AES-256 (ENS)',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF10B981),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                   const SizedBox(height: 4),

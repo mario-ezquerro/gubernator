@@ -1721,7 +1721,7 @@ class ApiService {
     throw Exception('Failed to fetch backups: ${response.statusCode}');
   }
 
-  /// Creates a new compressed backup archive.
+  /// Creates a new compressed backup archive (with optional AES-256-GCM encryption).
   static Future<BackupModel> createBackup({
     required String name,
     String stackId = '',
@@ -1729,6 +1729,8 @@ class ApiService {
     String sourcePath = '',
     String destinationPath = '',
     bool pauseContainers = true,
+    bool encrypted = false,
+    String encryptionPassphrase = '',
   }) async {
     final body = jsonEncode({
       'name': name,
@@ -1737,6 +1739,8 @@ class ApiService {
       'source_path': sourcePath,
       'destination_path': destinationPath,
       'pause_containers': pauseContainers,
+      'encrypted': encrypted,
+      'encryption_passphrase': encryptionPassphrase,
     });
     final response = await http.post(
       Uri.parse('/api/backups/create'),
@@ -1751,14 +1755,16 @@ class ApiService {
     throw Exception(errData['error'] ?? 'Failed to create backup');
   }
 
-  /// Restores a backup archive to target directory.
+  /// Restores a backup archive to target directory (with optional AES-256-GCM decryption).
   static Future<bool> restoreBackup({
     required String backupId,
     String targetPath = '',
+    String encryptionPassphrase = '',
   }) async {
     final body = jsonEncode({
       'backup_id': backupId,
       'target_path': targetPath,
+      'encryption_passphrase': encryptionPassphrase,
     });
     final response = await http.post(
       Uri.parse('/api/backups/restore'),

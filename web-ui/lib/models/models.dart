@@ -1548,6 +1548,8 @@ class BackupModel {
   final String status;
   final bool isScheduled;
   final String scheduleId;
+  final bool isEncrypted;
+  final String encryptionAlgo;
   final String createdAt;
 
   BackupModel({
@@ -1564,6 +1566,8 @@ class BackupModel {
     this.status = 'completed',
     this.isScheduled = false,
     this.scheduleId = '',
+    this.isEncrypted = false,
+    this.encryptionAlgo = '',
     this.createdAt = '',
   });
 
@@ -1582,6 +1586,8 @@ class BackupModel {
       status: json['status'] ?? 'completed',
       isScheduled: json['is_scheduled'] == true,
       scheduleId: json['schedule_id'] ?? '',
+      isEncrypted: json['is_encrypted'] == true,
+      encryptionAlgo: json['encryption_algo'] ?? '',
       createdAt: json['created_at'] ?? '',
     );
   }
