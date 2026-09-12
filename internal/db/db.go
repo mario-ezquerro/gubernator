@@ -437,19 +437,44 @@ func seedInitialSecurityConfig() {
 	DB.Model(&SecurityConfig{}).Count(&count)
 	if count == 0 {
 		defaultConfig := SecurityConfig{
-			ID:           "default",
-			MFAEnforced:  false,
-			SIEMEnabled:  false,
-			SIEMHost:     "",
-			SIEMPort:     514,
-			SIEMProtocol: "UDP",
-			SIEMFormat:   "RFC5424",
-			UpdatedAt:    time.Now(),
+			ID:                        "default",
+			MFAEnforced:               false,
+			MaxFailedLogins:           5,
+			LockoutDurationMinutes:    15,
+			PasswordMinLength:         12,
+			PasswordRequireComplexity: true,
+			SIEMEnabled:               false,
+			SIEMHost:                  "",
+			SIEMPort:                  514,
+			SIEMProtocol:              "UDP",
+			SIEMFormat:                "RFC5424",
+			UpdatedAt:                 time.Now(),
 		}
 		if err := DB.Create(&defaultConfig).Error; err != nil {
 			slog.Error("failed to seed initial security config", "err", err)
 		} else {
-			slog.Info("initial cluster security config seeded")
+			slog.Info("initial cluster security config seeded (ENS op.acc.2 defaults)")
+		}
+	} else {
+		// Ensure existing records get ENS defaults if fields are unpopulated
+		var existing SecurityConfig
+		if err := DB.First(&existing, "id = ?", "default").Error; err == nil {
+			updated := false
+			if existing.MaxFailedLogins == 0 {
+				existing.MaxFailedLogins = 5
+				updated = true
+			}
+			if existing.LockoutDurationMinutes == 0 {
+				existing.LockoutDurationMinutes = 15
+				updated = true
+			}
+			if existing.PasswordMinLength == 0 {
+				existing.PasswordMinLength = 12
+				updated = true
+			}
+			if updated {
+				DB.Save(&existing)
+			}
 		}
 	}
 }

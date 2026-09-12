@@ -252,6 +252,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         decoration: const InputDecoration(
                           labelText: "Password *",
                           hintText: "••••••••",
+                          helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -319,7 +320,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   if (!isEdit) {
                     final pass = passwordCtrl.text;
                     if (pass.isEmpty) {
-                      _showSnackBar("Password is required for new users", isError: true);
+                      _showSnackBar("Password is required", isError: true);
                       return;
                     }
                     final res = await ApiService.createLocalUser(
@@ -331,36 +332,31 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       enabled: enabled,
                     );
                     if (res["error"] != null) {
-                      _showSnackBar("Failed: " + res["error"].toString(), isError: true);
+                      _showSnackBar("Failed to create user: ${res['error']}", isError: true);
                       return;
-                    }
-                    if (mounted) {
-                      _showSnackBar("Local user '$username' created successfully");
                     }
                   } else {
                     final updatedUser = LocalUser(
                       id: user.id,
-                      username: user.username,
+                      username: username,
                       displayName: displayNameCtrl.text.trim(),
                       email: emailCtrl.text.trim(),
                       role: role,
                       enabled: enabled,
                       mfaEnabled: user.mfaEnabled,
                       createdAt: user.createdAt,
-                      updatedAt: user.updatedAt,
+                      updatedAt: DateTime.now().toIso8601String(),
                     );
                     final res = await ApiService.updateLocalUser(updatedUser);
                     if (res["error"] != null) {
-                      _showSnackBar("Failed: " + res["error"].toString(), isError: true);
+                      _showSnackBar("Failed to update user: ${res['error']}", isError: true);
                       return;
-                    }
-                    if (mounted) {
-                      _showSnackBar("User account '${user.username}' updated");
                     }
                   }
 
                   if (mounted) {
                     Navigator.pop(ctx);
+                    _showSnackBar(isEdit ? "User '$username' updated successfully" : "User '$username' created successfully");
                     _loadLocalUsers();
                   }
                 },
@@ -398,6 +394,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 decoration: const InputDecoration(
                   labelText: "New Password",
                   hintText: "••••••••",
+                  helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
                 ),
               ),
               const SizedBox(height: 12),
@@ -443,6 +440,40 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         ],
       ),
     );
+  }
+
+  void _unlockUser(LocalUser user) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.lock_open, color: Colors.green),
+            SizedBox(width: 10),
+            Text("Desbloquear Cuenta (ENS op.acc.2)"),
+          ],
+        ),
+        content: Text("¿Deseas desbloquear la cuenta de '${user.username}' y restablecer sus ${user.failedLoginAttempts} intentos fallidos?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Desbloquear Cuenta"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final res = await ApiService.unlockLocalUser(user.id);
+      if (res["error"] != null) {
+        _showSnackBar("Error al desbloquear: ${res['error']}", isError: true);
+      } else {
+        _showSnackBar("Cuenta de '${user.username}' desbloqueada correctamente (ENS op.acc.2)");
+        _loadLocalUsers();
+      }
+    }
   }
 
   Future<void> _deleteUser(LocalUser user) async {
@@ -1387,13 +1418,24 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       DataCell(Text(usr.email.isEmpty ? "-" : usr.email)),
                       DataCell(_buildRoleBadgeLabel(usr.role)),
                       DataCell(
-                        Chip(
-                          avatar: Icon(usr.enabled ? Icons.check_circle : Icons.block, size: 14, color: usr.enabled ? Colors.green : Colors.red),
-                          label: Text(usr.enabled ? "Active" : "Disabled", style: TextStyle(fontSize: 11, color: usr.enabled ? Colors.green.shade800 : Colors.red.shade800)),
-                          backgroundColor: (usr.enabled ? Colors.green : Colors.red).withValues(alpha: 0.1),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
+                        usr.isLocked
+                            ? Tooltip(
+                                message: "Bloqueada por ${usr.failedLoginAttempts} intentos fallidos hasta ${usr.lockedUntil} (ENS op.acc.2)",
+                                child: Chip(
+                                  avatar: const Icon(Icons.lock, size: 14, color: Colors.deepOrange),
+                                  label: Text("Bloqueada (${usr.lockRemainingMinutes}m)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange.shade800)),
+                                  backgroundColor: Colors.deepOrange.withValues(alpha: 0.15),
+                                  padding: EdgeInsets.zero,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              )
+                            : Chip(
+                                avatar: Icon(usr.enabled ? Icons.check_circle : Icons.block, size: 14, color: usr.enabled ? Colors.green : Colors.red),
+                                label: Text(usr.enabled ? "Active" : "Disabled", style: TextStyle(fontSize: 11, color: usr.enabled ? Colors.green.shade800 : Colors.red.shade800)),
+                                backgroundColor: (usr.enabled ? Colors.green : Colors.red).withValues(alpha: 0.1),
+                                padding: EdgeInsets.zero,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
                       ),
                       DataCell(
                         Chip(
@@ -1407,6 +1449,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       DataCell(Text(usr.lastLogin != null ? usr.lastLogin!.split("T")[0] : "Never")),
                       DataCell(Row(
                         children: [
+                          if (usr.isLocked)
+                            IconButton(
+                              icon: const Icon(Icons.lock_open, size: 18, color: Colors.green),
+                              tooltip: "Desbloquear Cuenta (ENS op.acc.2)",
+                              onPressed: () => _unlockUser(usr),
+                            ),
                           IconButton(
                             icon: const Icon(Icons.edit, size: 18),
                             tooltip: "Edit User",
@@ -2569,14 +2617,96 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             value: cfg.mfaEnforced,
             onChanged: (val) {
               setState(() {
-                _siemConfig = SIEMConfig(
-                  mfaEnforced: val,
-                  siemEnabled: cfg.siemEnabled,
-                  siemHost: cfg.siemHost,
-                  siemPort: cfg.siemPort,
-                  siemProtocol: cfg.siemProtocol,
-                  siemFormat: cfg.siemFormat,
-                );
+                _siemConfig = cfg.copyWith(mfaEnforced: val);
+              });
+            },
+          ),
+          const Divider(height: 16),
+          // ENS op.acc.2: Account Lockout & Password Policy Controls
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: [3, 5, 10].contains(cfg.maxFailedLogins) ? cfg.maxFailedLogins : 5,
+                  decoration: const InputDecoration(
+                    labelText: "Intentos Fallidos Bloqueo (ENS op.acc.2)",
+                    isDense: true,
+                    helperText: "Bloquea cuenta tras N intentos erróneos",
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 3, child: Text("3 Intentos (Estricto)")),
+                    DropdownMenuItem(value: 5, child: Text("5 Intentos (ENS Medio)")),
+                    DropdownMenuItem(value: 10, child: Text("10 Intentos (Permisivo)")),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _siemConfig = cfg.copyWith(maxFailedLogins: val);
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: [5, 15, 30, 60].contains(cfg.lockoutDurationMinutes) ? cfg.lockoutDurationMinutes : 15,
+                  decoration: const InputDecoration(
+                    labelText: "Duración Bloqueo (Minutos)",
+                    isDense: true,
+                    helperText: "Enfriamiento antes de rehabilitar",
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 5, child: Text("5 minutos")),
+                    DropdownMenuItem(value: 15, child: Text("15 minutos (ENS Medio)")),
+                    DropdownMenuItem(value: 30, child: Text("30 minutos (ENS Alto)")),
+                    DropdownMenuItem(value: 60, child: Text("60 minutos")),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _siemConfig = cfg.copyWith(lockoutDurationMinutes: val);
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: [8, 12, 14, 16].contains(cfg.passwordMinLength) ? cfg.passwordMinLength : 12,
+                  decoration: const InputDecoration(
+                    labelText: "Longitud Mínima Contraseña",
+                    isDense: true,
+                    helperText: "Longitud exigida por política",
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 8, child: Text("8 caracteres (Básico)")),
+                    DropdownMenuItem(value: 12, child: Text("12 caracteres (ENS Medio)")),
+                    DropdownMenuItem(value: 14, child: Text("14 caracteres")),
+                    DropdownMenuItem(value: 16, child: Text("16 caracteres (ENS Alto)")),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _siemConfig = cfg.copyWith(passwordMinLength: val);
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: const Text("Exigir Complejidad Criptográfica en Contraseñas (CCN-STIC)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Obligatorio combinar mayúsculas, minúsculas, números y símbolos especiales en toda nueva contraseña.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            value: cfg.passwordRequireComplexity,
+            onChanged: (val) {
+              setState(() {
+                _siemConfig = cfg.copyWith(passwordRequireComplexity: val);
               });
             },
           ),
@@ -2590,14 +2720,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             value: cfg.siemEnabled,
             onChanged: (val) {
               setState(() {
-                _siemConfig = SIEMConfig(
-                  mfaEnforced: cfg.mfaEnforced,
-                  siemEnabled: val,
-                  siemHost: cfg.siemHost,
-                  siemPort: cfg.siemPort,
-                  siemProtocol: cfg.siemProtocol,
-                  siemFormat: cfg.siemFormat,
-                );
+                _siemConfig = cfg.copyWith(siemEnabled: val);
               });
             },
           ),
@@ -2615,14 +2738,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       isDense: true,
                     ),
                     onChanged: (v) {
-                      _siemConfig = SIEMConfig(
-                        mfaEnforced: cfg.mfaEnforced,
-                        siemEnabled: cfg.siemEnabled,
-                        siemHost: v.trim(),
-                        siemPort: cfg.siemPort,
-                        siemProtocol: cfg.siemProtocol,
-                        siemFormat: cfg.siemFormat,
-                      );
+                      _siemConfig = (_siemConfig ?? cfg).copyWith(siemHost: v.trim());
                     },
                   ),
                 ),
@@ -2635,14 +2751,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     keyboardType: TextInputType.number,
                     onChanged: (v) {
                       final p = int.tryParse(v.trim()) ?? 514;
-                      _siemConfig = SIEMConfig(
-                        mfaEnforced: cfg.mfaEnforced,
-                        siemEnabled: cfg.siemEnabled,
-                        siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
-                        siemPort: p,
-                        siemProtocol: cfg.siemProtocol,
-                        siemFormat: cfg.siemFormat,
-                      );
+                      _siemConfig = (_siemConfig ?? cfg).copyWith(siemPort: p);
                     },
                   ),
                 ),
@@ -2660,14 +2769,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     onChanged: (v) {
                       if (v != null) {
                         setState(() {
-                          _siemConfig = SIEMConfig(
-                            mfaEnforced: cfg.mfaEnforced,
-                            siemEnabled: cfg.siemEnabled,
-                            siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
-                            siemPort: _siemConfig?.siemPort ?? cfg.siemPort,
-                            siemProtocol: v,
-                            siemFormat: cfg.siemFormat,
-                          );
+                          _siemConfig = (_siemConfig ?? cfg).copyWith(siemProtocol: v);
                         });
                       }
                     },
@@ -2687,14 +2789,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     onChanged: (v) {
                       if (v != null) {
                         setState(() {
-                          _siemConfig = SIEMConfig(
-                            mfaEnforced: cfg.mfaEnforced,
-                            siemEnabled: cfg.siemEnabled,
-                            siemHost: _siemConfig?.siemHost ?? cfg.siemHost,
-                            siemPort: _siemConfig?.siemPort ?? cfg.siemPort,
-                            siemProtocol: cfg.siemProtocol,
-                            siemFormat: v,
-                          );
+                          _siemConfig = (_siemConfig ?? cfg).copyWith(siemFormat: v);
                         });
                       }
                     },

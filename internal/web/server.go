@@ -471,6 +471,7 @@ func StartDashboard() {
 		api.POST("/security/users", auth.RequireRole(auth.RoleAdmin), createSecurityUserHandler)
 		api.PUT("/security/users/:id", auth.RequireRole(auth.RoleAdmin), updateSecurityUserHandler)
 		api.POST("/security/users/:id/password", auth.RequireRole(auth.RoleAdmin), resetSecurityUserPasswordHandler)
+		api.POST("/security/users/:id/unlock", auth.RequireRole(auth.RoleAdmin), unlockSecurityUserHandler)
 		api.DELETE("/security/users/:id", auth.RequireRole(auth.RoleAdmin), deleteSecurityUserHandler)
 
 		// Forense Audit Trail & SIEM (Admin and Auditor)
@@ -5531,6 +5532,18 @@ func authLoginHandler(c *gin.Context) {
 	if req.Provider == "local" || req.Provider == "" {
 		var localUser db.LocalUser
 		if err := db.DB.First(&localUser, "LOWER(username) = ?", strings.ToLower(req.Username)).Error; err == nil {
+			if localUser.LockedUntil != nil && time.Now().Before(*localUser.LockedUntil) {
+				remaining := int(time.Until(*localUser.LockedUntil).Minutes()) + 1
+				logAudit(c, req.Username, "LOCAL", "LOGIN_LOCKED_ATTEMPT", "FAILURE",
+					fmt.Sprintf("Account locked until %s (%d min remaining) due to excessive failed attempts (ENS op.acc.2)",
+						localUser.LockedUntil.Format(time.RFC3339), remaining))
+				c.JSON(http.StatusLocked, gin.H{
+					"error":        fmt.Sprintf("Account is temporarily locked due to excessive failed attempts (ENS op.acc.2). Try again in %d minute(s) or contact an administrator.", remaining),
+					"locked":       true,
+					"locked_until": localUser.LockedUntil,
+				})
+				return
+			}
 			if !localUser.Enabled {
 				logAudit(c, req.Username, "LOCAL", "LOGIN_FAILED", "FAILURE", "Account is disabled")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "User account is disabled"})
@@ -5539,7 +5552,13 @@ func authLoginHandler(c *gin.Context) {
 			if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err == nil {
 				now := time.Now()
 				localUser.LastLogin = &now
-				db.DB.Model(&localUser).Update("last_login", now)
+				localUser.FailedLoginAttempts = 0
+				localUser.LockedUntil = nil
+				db.DB.Model(&localUser).Select("LastLogin", "FailedLoginAttempts", "LockedUntil").Updates(map[string]interface{}{
+					"last_login":            now,
+					"failed_login_attempts": 0,
+					"locked_until":          nil,
+				})
 
 				role := auth.NormalizeRole(localUser.Role)
 				session := auth.UserSession{
@@ -5579,6 +5598,43 @@ func authLoginHandler(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{
 					"token": token,
 					"user":  session,
+				})
+				return
+			} else {
+				maxAttempts := secCfg.MaxFailedLogins
+				if maxAttempts <= 0 {
+					maxAttempts = 5
+				}
+				lockMinutes := secCfg.LockoutDurationMinutes
+				if lockMinutes <= 0 {
+					lockMinutes = 15
+				}
+
+				localUser.FailedLoginAttempts++
+				if localUser.FailedLoginAttempts >= maxAttempts {
+					lockUntil := time.Now().Add(time.Duration(lockMinutes) * time.Minute)
+					localUser.LockedUntil = &lockUntil
+					db.DB.Model(&localUser).Updates(map[string]interface{}{
+						"failed_login_attempts": localUser.FailedLoginAttempts,
+						"locked_until":          lockUntil,
+					})
+					logAudit(c, localUser.Username, "LOCAL", "ACCOUNT_LOCKED", "FAILURE",
+						fmt.Sprintf("Account locked for %d minutes after %d consecutive failed login attempts (ENS op.acc.2)", lockMinutes, localUser.FailedLoginAttempts))
+					c.JSON(http.StatusLocked, gin.H{
+						"error":        fmt.Sprintf("Account has been locked for %d minutes due to %d consecutive failed login attempts (ENS op.acc.2).", lockMinutes, localUser.FailedLoginAttempts),
+						"locked":       true,
+						"locked_until": lockUntil,
+					})
+					return
+				}
+
+				db.DB.Model(&localUser).Update("failed_login_attempts", localUser.FailedLoginAttempts)
+				remaining := maxAttempts - localUser.FailedLoginAttempts
+				logAudit(c, localUser.Username, "LOCAL", "LOGIN_FAILED", "FAILURE",
+					fmt.Sprintf("Invalid credentials (attempt %d of %d, ENS op.acc.2)", localUser.FailedLoginAttempts, maxAttempts))
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":              fmt.Sprintf("Invalid credentials. %d attempt(s) remaining before account lockout.", remaining),
+					"remaining_attempts": remaining,
 				})
 				return
 			}
@@ -5805,6 +5861,30 @@ func createSecurityUserHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User with this username already exists"})
 		return
 	}
+
+	// Validate password against ENS op.acc.2 policy
+	var secCfg db.SecurityConfig
+	minLen := 12
+	reqComplexity := true
+	if err := db.DB.First(&secCfg, "id = ?", "default").Error; err == nil {
+		if secCfg.PasswordMinLength > 0 {
+			minLen = secCfg.PasswordMinLength
+		}
+		reqComplexity = secCfg.PasswordRequireComplexity
+	}
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+
+	if err := auth.ValidatePassword(req.Password, username, minLen, reqComplexity); err != nil {
+		logAudit(c, actor, "LOCAL", "PASSWORD_POLICY_VIOLATION", "FAILURE", fmt.Sprintf("Password validation failed for user '%s': %v (ENS op.acc.2)", username, err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
@@ -5814,25 +5894,22 @@ func createSecurityUserHandler(c *gin.Context) {
 	if role == "" {
 		role = "readonly"
 	}
+	now := time.Now()
 	user := db.LocalUser{
-		ID:           "usr-" + uuid.New().String()[:8],
-		Username:     username,
-		PasswordHash: string(hash),
-		DisplayName:  req.DisplayName,
-		Email:        req.Email,
-		Role:         role,
-		Enabled:      req.Enabled,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:                "usr-" + uuid.New().String()[:8],
+		Username:          username,
+		PasswordHash:      string(hash),
+		DisplayName:       req.DisplayName,
+		Email:             req.Email,
+		Role:              role,
+		Enabled:           req.Enabled,
+		PasswordChangedAt: &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 	if err := db.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
 		return
-	}
-	sess := auth.ExtractUserSession(c)
-	actor := "system"
-	if sess != nil {
-		actor = sess.Username
 	}
 	logAudit(c, actor, "LOCAL", "USER_CREATE", "SUCCESS", fmt.Sprintf("Created local user '%s' (%s)", username, role))
 	c.JSON(http.StatusOK, gin.H{"message": "User created successfully", "user": user})
@@ -5889,24 +5966,80 @@ func resetSecurityUserPasswordHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
+
+	// Validate password against ENS op.acc.2 policy
+	var secCfg db.SecurityConfig
+	minLen := 12
+	reqComplexity := true
+	if err := db.DB.First(&secCfg, "id = ?", "default").Error; err == nil {
+		if secCfg.PasswordMinLength > 0 {
+			minLen = secCfg.PasswordMinLength
+		}
+		reqComplexity = secCfg.PasswordRequireComplexity
 	}
-	user.PasswordHash = string(hash)
-	user.UpdatedAt = time.Now()
-	if err := db.DB.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+
 	sess := auth.ExtractUserSession(c)
 	actor := "system"
 	if sess != nil {
 		actor = sess.Username
 	}
+
+	if err := auth.ValidatePassword(req.NewPassword, user.Username, minLen, reqComplexity); err != nil {
+		logAudit(c, actor, "LOCAL", "PASSWORD_POLICY_VIOLATION", "FAILURE", fmt.Sprintf("Password validation failed for user '%s': %v (ENS op.acc.2)", user.Username, err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+	now := time.Now()
+	user.PasswordHash = string(hash)
+	user.PasswordChangedAt = &now
+	user.FailedLoginAttempts = 0
+	user.LockedUntil = nil
+	user.UpdatedAt = now
+	if err := db.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	logAudit(c, actor, "LOCAL", "PASSWORD_CHANGE", "SUCCESS", fmt.Sprintf("Reset password for user '%s'", user.Username))
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
+func unlockSecurityUserHandler(c *gin.Context) {
+	id := c.Param("id")
+	var user db.LocalUser
+	if err := db.DB.First(&user, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	now := time.Now()
+	user.FailedLoginAttempts = 0
+	user.LockedUntil = nil
+	user.UpdatedAt = now
+	if err := db.DB.Model(&user).Select("FailedLoginAttempts", "LockedUntil", "UpdatedAt").Updates(map[string]interface{}{
+		"failed_login_attempts": 0,
+		"locked_until":          nil,
+		"updated_at":            now,
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+	logAudit(c, actor, "LOCAL", "ACCOUNT_UNLOCKED", "SUCCESS", fmt.Sprintf("Administratively unlocked account for local user '%s' (ENS op.acc.2)", user.Username))
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Account for '%s' unlocked successfully", user.Username),
+		"user":    user,
+	})
 }
 
 func deleteSecurityUserHandler(c *gin.Context) {
@@ -6253,27 +6386,46 @@ func getSIEMConfigHandler(c *gin.Context) {
 	var cfg db.SecurityConfig
 	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
 		cfg = db.SecurityConfig{
-			ID:           "default",
-			MFAEnforced:  false,
-			SIEMEnabled:  false,
-			SIEMHost:     "",
-			SIEMPort:     514,
-			SIEMProtocol: "UDP",
-			SIEMFormat:   "RFC5424",
-			UpdatedAt:    time.Now(),
+			ID:                        "default",
+			MFAEnforced:               false,
+			MaxFailedLogins:           5,
+			LockoutDurationMinutes:    15,
+			PasswordMinLength:         12,
+			PasswordRequireComplexity: true,
+			SIEMEnabled:               false,
+			SIEMHost:                  "",
+			SIEMPort:                  514,
+			SIEMProtocol:              "UDP",
+			SIEMFormat:                "RFC5424",
+			UpdatedAt:                 time.Now(),
 		}
 		_ = db.DB.Create(&cfg)
+	} else {
+		// Provide ENS defaults for display if unpopulated
+		if cfg.MaxFailedLogins == 0 {
+			cfg.MaxFailedLogins = 5
+		}
+		if cfg.LockoutDurationMinutes == 0 {
+			cfg.LockoutDurationMinutes = 15
+		}
+		if cfg.PasswordMinLength == 0 {
+			cfg.PasswordMinLength = 12
+		}
 	}
 	c.JSON(http.StatusOK, cfg)
 }
 
 type updateSIEMConfigRequest struct {
-	MFAEnforced  bool   `json:"mfa_enforced"`
-	SIEMEnabled  bool   `json:"siem_enabled"`
-	SIEMHost     string `json:"siem_host"`
-	SIEMPort     int    `json:"siem_port"`
-	SIEMProtocol string `json:"siem_protocol"`
-	SIEMFormat   string `json:"siem_format"`
+	MFAEnforced               bool   `json:"mfa_enforced"`
+	MaxFailedLogins           int    `json:"max_failed_logins"`
+	LockoutDurationMinutes    int    `json:"lockout_duration_minutes"`
+	PasswordMinLength         int    `json:"password_min_length"`
+	PasswordRequireComplexity bool   `json:"password_require_complexity"`
+	SIEMEnabled               bool   `json:"siem_enabled"`
+	SIEMHost                  string `json:"siem_host"`
+	SIEMPort                  int    `json:"siem_port"`
+	SIEMProtocol              string `json:"siem_protocol"`
+	SIEMFormat                string `json:"siem_format"`
 }
 
 func updateSIEMConfigHandler(c *gin.Context) {
@@ -6303,6 +6455,23 @@ func updateSIEMConfigHandler(c *gin.Context) {
 	}
 
 	cfg.MFAEnforced = req.MFAEnforced
+	if req.MaxFailedLogins > 0 {
+		cfg.MaxFailedLogins = req.MaxFailedLogins
+	} else if cfg.MaxFailedLogins == 0 {
+		cfg.MaxFailedLogins = 5
+	}
+	if req.LockoutDurationMinutes > 0 {
+		cfg.LockoutDurationMinutes = req.LockoutDurationMinutes
+	} else if cfg.LockoutDurationMinutes == 0 {
+		cfg.LockoutDurationMinutes = 15
+	}
+	if req.PasswordMinLength > 0 {
+		cfg.PasswordMinLength = req.PasswordMinLength
+	} else if cfg.PasswordMinLength == 0 {
+		cfg.PasswordMinLength = 12
+	}
+	cfg.PasswordRequireComplexity = req.PasswordRequireComplexity
+
 	cfg.SIEMEnabled = req.SIEMEnabled
 	cfg.SIEMHost = strings.TrimSpace(req.SIEMHost)
 	cfg.SIEMPort = port
@@ -6320,8 +6489,8 @@ func updateSIEMConfigHandler(c *gin.Context) {
 		actor = session.Username
 	}
 	logAudit(c, actor, "LOCAL", "SECURITY_CONFIG_UPDATE", "SUCCESS",
-		fmt.Sprintf("Updated ENS settings: mfa_enforced=%v, siem_enabled=%v, siem_host=%s:%d",
-			cfg.MFAEnforced, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
+		fmt.Sprintf("Updated ENS op.acc.2 & op.mon.1 settings: mfa_enforced=%v, max_failed_logins=%d, lockout_min=%d, pwd_min_len=%d, siem_enabled=%v, siem_host=%s:%d",
+			cfg.MFAEnforced, cfg.MaxFailedLogins, cfg.LockoutDurationMinutes, cfg.PasswordMinLength, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
 
 	c.JSON(http.StatusOK, cfg)
 }

@@ -1381,6 +1381,15 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  /// Administratively unlocks a locked local user account (ENS op.acc.2).
+  static Future<Map<String, dynamic>> unlockLocalUser(String id) async {
+    final response = await http.post(
+      Uri.parse("/api/security/users/$id/unlock"),
+      headers: authHeaders,
+    );
+    return jsonDecode(response.body);
+  }
+
   /// Deletes a local user account.
   static Future<bool> deleteLocalUser(String id) async {
     final response = await http.delete(Uri.parse("/api/security/users/$id"), headers: authHeaders);

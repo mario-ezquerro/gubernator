@@ -964,9 +964,26 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     3. **Docker Engine API Actions / Sec**: Real-time rate of Docker API operations processed by each daemon (`changes`, `commit`, `create`, `start`, etc.).
     4. **Docker Daemon Memory & Goroutines**: Dual-axis graph monitoring `dockerd` heap allocations (`go_memstats_alloc_bytes`) alongside active goroutines concurrency per cluster host.
 
-
-
-
-
-
-
+### 104. Spanish ENS (RD 311/2022) Compliance Step 1: Account Lockout (op.acc.2), Administrative Unlock & Password Complexity Policy (CCN-STIC) (`v2.85.0`)
+* **Automatic Account Lockout Engine (`internal/web/server.go` — ENS `op.acc.2`):**
+  - Configurable brute-force mitigation policy automatically locking local user accounts after $N$ consecutive failed login attempts (`max_failed_logins`, default 5).
+  - Enforces a temporal cooling-off lockout window (`lockout_duration_minutes`, default 15 minutes), rejecting incoming login requests with `HTTP 423 StatusLocked` and exact remaining minutes until unlock.
+  - Automatically resets failed attempts to zero upon successful authentication with verified credentials.
+* **Administrative Account Unlock API & UI Actions:**
+  - Added REST endpoint `POST /api/security/users/:id/unlock` restricted to `RoleAdmin`.
+  - Instantly rehabilitates locked user accounts, resets failed attempt counters, and clears `locked_until` timestamps without requiring cooling-off period expiration.
+  - Injected dedicated "Desbloquear Cuenta" action button (`Icons.lock_open`) into the Local Users table in the Web Dashboard.
+* **Cryptographic Password Complexity Policy (`internal/auth/password_policy.go` — CCN-STIC 823):**
+  - Pure Go password validation engine enforcing minimum length ($\ge 12$ characters by default for ENS Medio/Alto).
+  - Mandatory complexity requirements: checks presence of uppercase (`[A-Z]`), lowercase (`[a-z]`), numeric digits (`[0-9]`), and special symbols/punctuation (`!@#$%^&*...`).
+  - Prohibits passwords matching or containing the account username and rejects trivial/common dictionary passwords.
+  - Enforced across both local user creation (`POST /api/security/users`) and password reset (`POST /api/security/users/:id/password`).
+* **Immutable Forensic Audit Instrumentation (ENS `op.mon.1`):**
+  - Every account lockout event is cryptographically sealed into the SHA-256 hash chain with action `ACCOUNT_LOCKED` and immediately forwarded to configured SIEMs (Syslog, CEF, JSON).
+  - Failed login attempts during lock emit `LOGIN_LOCKED_ATTEMPT`.
+  - Administrative unlocks generate immutable audit records `ACCOUNT_UNLOCKED`.
+  - Password policy violations generate `PASSWORD_POLICY_VIOLATION`.
+* **Flutter Web Security Center Dashboard Enhancements (`web-ui/lib/screens/pages/security_page.dart`):**
+  - **Visual Lockout Badges:** Local Users table displays prominent `🔒 Bloqueada (Xm - ENS)` chips with detailed tooltips and instant administrative unlock buttons.
+  - **Policy Guidance in Modals:** Create User and Reset Password dialogs include contextual `helperText` explaining ENS op.acc.2 requirements.
+  - **Global ENS Security Configuration Controls:** Added dropdown selectors and toggles to the SIEM & Global Security card for `Max Failed Logins`, `Lockout Duration`, `Password Min Length`, and `Require Complexity`.

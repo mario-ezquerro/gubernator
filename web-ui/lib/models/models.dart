@@ -1097,6 +1097,9 @@ class LocalUser {
   final String role;
   final bool enabled;
   final bool mfaEnabled;
+  final int failedLoginAttempts;
+  final String? lockedUntil;
+  final String? passwordChangedAt;
   final String? lastLogin;
   final String createdAt;
   final String updatedAt;
@@ -1109,10 +1112,34 @@ class LocalUser {
     required this.role,
     required this.enabled,
     this.mfaEnabled = false,
+    this.failedLoginAttempts = 0,
+    this.lockedUntil,
+    this.passwordChangedAt,
     this.lastLogin,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  bool get isLocked {
+    if (lockedUntil == null || lockedUntil!.isEmpty) return false;
+    try {
+      final lockTime = DateTime.parse(lockedUntil!);
+      return DateTime.now().toUtc().isBefore(lockTime.toUtc());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  int get lockRemainingMinutes {
+    if (!isLocked) return 0;
+    try {
+      final lockTime = DateTime.parse(lockedUntil!);
+      final diff = lockTime.toUtc().difference(DateTime.now().toUtc()).inMinutes;
+      return diff <= 0 ? 1 : diff + 1;
+    } catch (_) {
+      return 0;
+    }
+  }
 
   factory LocalUser.fromJson(Map<String, dynamic> json) {
     return LocalUser(
@@ -1123,6 +1150,9 @@ class LocalUser {
       role: json["role"] ?? "readonly",
       enabled: json["enabled"] ?? true,
       mfaEnabled: json["mfa_enabled"] == true,
+      failedLoginAttempts: (json["failed_login_attempts"] as num?)?.toInt() ?? 0,
+      lockedUntil: json["locked_until"],
+      passwordChangedAt: json["password_changed_at"],
       lastLogin: json["last_login"],
       createdAt: json["created_at"] ?? "",
       updatedAt: json["updated_at"] ?? "",
@@ -1138,6 +1168,9 @@ class LocalUser {
       "role": role,
       "enabled": enabled,
       "mfa_enabled": mfaEnabled,
+      "failed_login_attempts": failedLoginAttempts,
+      "locked_until": lockedUntil,
+      "password_changed_at": passwordChangedAt,
     };
   }
 }
@@ -1185,6 +1218,10 @@ class AuditLog {
 
 class SIEMConfig {
   final bool mfaEnforced;
+  final int maxFailedLogins;
+  final int lockoutDurationMinutes;
+  final int passwordMinLength;
+  final bool passwordRequireComplexity;
   final bool siemEnabled;
   final String siemHost;
   final int siemPort;
@@ -1194,6 +1231,10 @@ class SIEMConfig {
 
   SIEMConfig({
     this.mfaEnforced = false,
+    this.maxFailedLogins = 5,
+    this.lockoutDurationMinutes = 15,
+    this.passwordMinLength = 12,
+    this.passwordRequireComplexity = true,
     this.siemEnabled = false,
     this.siemHost = '',
     this.siemPort = 514,
@@ -1205,6 +1246,10 @@ class SIEMConfig {
   factory SIEMConfig.fromJson(Map<String, dynamic> json) {
     return SIEMConfig(
       mfaEnforced: json['mfa_enforced'] == true,
+      maxFailedLogins: (json['max_failed_logins'] as num?)?.toInt() ?? 5,
+      lockoutDurationMinutes: (json['lockout_duration_minutes'] as num?)?.toInt() ?? 15,
+      passwordMinLength: (json['password_min_length'] as num?)?.toInt() ?? 12,
+      passwordRequireComplexity: json['password_require_complexity'] != false,
       siemEnabled: json['siem_enabled'] == true,
       siemHost: json['siem_host'] ?? '',
       siemPort: (json['siem_port'] as num?)?.toInt() ?? 514,
@@ -1217,12 +1262,44 @@ class SIEMConfig {
   Map<String, dynamic> toJson() {
     return {
       'mfa_enforced': mfaEnforced,
+      'max_failed_logins': maxFailedLogins,
+      'lockout_duration_minutes': lockoutDurationMinutes,
+      'password_min_length': passwordMinLength,
+      'password_require_complexity': passwordRequireComplexity,
       'siem_enabled': siemEnabled,
       'siem_host': siemHost,
       'siem_port': siemPort,
       'siem_protocol': siemProtocol,
       'siem_format': siemFormat,
     };
+  }
+
+  SIEMConfig copyWith({
+    bool? mfaEnforced,
+    int? maxFailedLogins,
+    int? lockoutDurationMinutes,
+    int? passwordMinLength,
+    bool? passwordRequireComplexity,
+    bool? siemEnabled,
+    String? siemHost,
+    int? siemPort,
+    String? siemProtocol,
+    String? siemFormat,
+    String? updatedAt,
+  }) {
+    return SIEMConfig(
+      mfaEnforced: mfaEnforced ?? this.mfaEnforced,
+      maxFailedLogins: maxFailedLogins ?? this.maxFailedLogins,
+      lockoutDurationMinutes: lockoutDurationMinutes ?? this.lockoutDurationMinutes,
+      passwordMinLength: passwordMinLength ?? this.passwordMinLength,
+      passwordRequireComplexity: passwordRequireComplexity ?? this.passwordRequireComplexity,
+      siemEnabled: siemEnabled ?? this.siemEnabled,
+      siemHost: siemHost ?? this.siemHost,
+      siemPort: siemPort ?? this.siemPort,
+      siemProtocol: siemProtocol ?? this.siemProtocol,
+      siemFormat: siemFormat ?? this.siemFormat,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }
 

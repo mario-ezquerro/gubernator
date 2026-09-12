@@ -234,19 +234,22 @@ type OIDCConfig struct {
 }
 
 type LocalUser struct {
-	ID             string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Username       string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
-	PasswordHash   string     `gorm:"type:varchar(255);not null" json:"-"`
-	DisplayName    string     `gorm:"type:varchar(255)" json:"display_name"`
-	Email          string     `gorm:"type:varchar(255)" json:"email"`
-	Role           string     `gorm:"type:varchar(50);default:'readonly'" json:"role"` // admin, operator, readonly, auditor
-	Enabled        bool       `gorm:"default:true" json:"enabled"`
-	MFAEnabled     bool       `gorm:"default:false" json:"mfa_enabled"`
-	MFASecret      string     `gorm:"type:varchar(255)" json:"-"`
-	MFABackupCodes string     `gorm:"type:text" json:"-"`
-	LastLogin      *time.Time `json:"last_login,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID                  string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Username            string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
+	PasswordHash        string     `gorm:"type:varchar(255);not null" json:"-"`
+	DisplayName         string     `gorm:"type:varchar(255)" json:"display_name"`
+	Email               string     `gorm:"type:varchar(255)" json:"email"`
+	Role                string     `gorm:"type:varchar(50);default:'readonly'" json:"role"` // admin, operator, readonly, auditor
+	Enabled             bool       `gorm:"default:true" json:"enabled"`
+	MFAEnabled          bool       `gorm:"default:false" json:"mfa_enabled"`
+	MFASecret           string     `gorm:"type:varchar(255)" json:"-"`
+	MFABackupCodes      string     `gorm:"type:text" json:"-"`
+	FailedLoginAttempts int        `gorm:"default:0" json:"failed_login_attempts"`
+	LockedUntil         *time.Time `json:"locked_until,omitempty"`
+	PasswordChangedAt   *time.Time `json:"password_changed_at,omitempty"`
+	LastLogin           *time.Time `json:"last_login,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 // AuditLog represents a security event or user access log entry with cryptographic tamper-evidence.
@@ -265,14 +268,18 @@ type AuditLog struct {
 
 // SecurityConfig stores cluster-wide security policies, MFA enforcement, and SIEM forwarding settings.
 type SecurityConfig struct {
-	ID           string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	MFAEnforced  bool      `gorm:"default:false" json:"mfa_enforced"`
-	SIEMEnabled  bool      `gorm:"default:false" json:"siem_enabled"`
-	SIEMHost     string    `gorm:"type:varchar(255)" json:"siem_host"`
-	SIEMPort     int       `gorm:"default:514" json:"siem_port"`
-	SIEMProtocol string    `gorm:"type:varchar(10);default:'UDP'" json:"siem_protocol"` // UDP, TCP, TLS
-	SIEMFormat   string    `gorm:"type:varchar(20);default:'RFC5424'" json:"siem_format"` // RFC5424, CEF, JSON
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	MFAEnforced               bool      `gorm:"default:false" json:"mfa_enforced"`
+	MaxFailedLogins           int       `gorm:"default:5" json:"max_failed_logins"`
+	LockoutDurationMinutes    int       `gorm:"default:15" json:"lockout_duration_minutes"`
+	PasswordMinLength         int       `gorm:"default:12" json:"password_min_length"`
+	PasswordRequireComplexity bool      `gorm:"default:true" json:"password_require_complexity"`
+	SIEMEnabled               bool      `gorm:"default:false" json:"siem_enabled"`
+	SIEMHost                  string    `gorm:"type:varchar(255)" json:"siem_host"`
+	SIEMPort                  int       `gorm:"default:514" json:"siem_port"`
+	SIEMProtocol              string    `gorm:"type:varchar(10);default:'UDP'" json:"siem_protocol"` // UDP, TCP, TLS
+	SIEMFormat                string    `gorm:"type:varchar(20);default:'RFC5424'" json:"siem_format"` // RFC5424, CEF, JSON
+	UpdatedAt                 time.Time `json:"updated_at"`
 }
 
 // StorageVolume represents a discovered persistent volume or bind mount.
