@@ -120,6 +120,18 @@ Commands for security governance, automated compliance auditing against the Span
 - **`gbnt security ens --report`**
   Generates and exports the complete technical compliance evidence report in CommonMark Markdown format ready for official CCN-STIC auditor submissions.
 
+- **`gbnt security siem status`**
+  Displays live SIEM delivery metrics, transmission success/failure counters, intrusion detection statistics, and ENS `op.mon.2` compliance status.
+
+- **`gbnt security siem test [--host H] [--port P] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]`**
+  Dispatches a diagnostic test probe to verify SIEM ingestion and measures exact network roundtrip latency in milliseconds.
+
+- **`gbnt security siem enable --host <IP> [--port <port>] [--proto <proto>] [--format <format>]`**
+  Enables real-time SIEM event forwarding and elevates the ENS measure `op.mon.2` to 100% COMPLIANT.
+
+- **`gbnt security siem disable`**
+  Disables real-time SIEM event forwarding.
+
 - **`gbnt scan [image]`**
   Scans container images for CVE vulnerabilities and displays CVSS severity metrics.
 

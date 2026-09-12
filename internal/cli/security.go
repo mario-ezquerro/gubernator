@@ -538,9 +538,250 @@ var ensCmd = &cobra.Command{
 	},
 }
 
+var (
+	siemHostFlag   string
+	siemPortFlag   int
+	siemProtoFlag  string
+	siemFormatFlag string
+)
+
+var securitySiemCmd = &cobra.Command{
+	Use:   "siem",
+	Short: "Manage real-time SIEM and forensic audit event forwarding (ENS op.mon.2)",
+}
+
+var securitySiemStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "View live SIEM delivery metrics, connection health, and ENS compliance",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/siem/status", nil)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Error (%d): %s\n", resp.StatusCode, string(body))
+			return
+		}
+
+		var data struct {
+			Config struct {
+				SIEMEnabled  bool   `json:"siem_enabled"`
+				SIEMHost     string `json:"siem_host"`
+				SIEMPort     int    `json:"siem_port"`
+				SIEMProtocol string `json:"siem_protocol"`
+				SIEMFormat   string `json:"siem_format"`
+				UpdatedAt    string `json:"updated_at"`
+			} `json:"config"`
+			Stats struct {
+				TotalDispatched  int64   `json:"total_dispatched"`
+				TotalFailed      int64   `json:"total_failed"`
+				IntrusionAlerts  int64   `json:"intrusion_alerts"`
+				LastDispatchedAt *string `json:"last_dispatched_at"`
+				LastFailedAt     *string `json:"last_failed_at"`
+				LastError        string  `json:"last_error"`
+				Status           string  `json:"status"`
+			} `json:"stats"`
+			ENSCompliant bool   `json:"ens_compliant"`
+			ENSMeasure   string `json:"ens_measure"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			fmt.Printf("Failed to decode response: %v\n", err)
+			return
+		}
+
+		fmt.Println("=========================================================================================")
+		fmt.Println("🛡️  GUBERNATOR SIEM FORWARDING & INTRUSION DETECTION (ENS op.mon.2)")
+		fmt.Println("=========================================================================================")
+
+		statusBadge := "⚪ DESHABILITADO"
+		switch data.Stats.Status {
+		case "ACTIVE":
+			statusBadge = "🟢 ACTIVO (Entregando eventos en tiempo real)"
+		case "READY":
+			statusBadge = "🟡 PREPARADO (En espera de eventos)"
+		case "DEGRADED":
+			statusBadge = "🟠 DEGRADADO (Fallos intermitentes de entrega)"
+		case "UNREACHABLE":
+			statusBadge = "🔴 INALCANZABLE (Error de conexión con el colector)"
+		}
+
+		fmt.Printf("  Estado Operativo:     %s\n", statusBadge)
+		if data.Config.SIEMEnabled && data.Config.SIEMHost != "" {
+			fmt.Printf("  Destino SIEM:         %s://%s:%d\n", data.Config.SIEMProtocol, data.Config.SIEMHost, data.Config.SIEMPort)
+			fmt.Printf("  Formato de Eventos:   %s\n", data.Config.SIEMFormat)
+		} else {
+			fmt.Printf("  Destino SIEM:         (No configurado)\n")
+		}
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("  Eventos Transmitidos: %d\n", data.Stats.TotalDispatched)
+		fmt.Printf("  Alertas de Intrusión: %d (Marcadas con severidad crítica RFC5424/CEF)\n", data.Stats.IntrusionAlerts)
+		fmt.Printf("  Envíos Fallidos:      %d\n", data.Stats.TotalFailed)
+		if data.Stats.LastDispatchedAt != nil {
+			fmt.Printf("  Última Transmisión:   %s\n", *data.Stats.LastDispatchedAt)
+		} else {
+			fmt.Printf("  Última Transmisión:   Nunca\n")
+		}
+		if data.Stats.LastError != "" {
+			fmt.Printf("  Último Error:         %s\n", data.Stats.LastError)
+		}
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		if data.ENSCompliant {
+			fmt.Println("  Conformidad ENS:      ✅ COMPLIANT (100.0%) — Medida op.mon.2 satisfecha")
+		} else {
+			fmt.Println("  Conformidad ENS:      ⚠️  PARTIAL (40.0%) — Ejecuta 'gbnt security siem enable --host <IP>'")
+		}
+		fmt.Println("=========================================================================================")
+	},
+}
+
+var securitySiemTestCmd = &cobra.Command{
+	Use:   "test",
+	Short: "Dispatch a diagnostic test probe to verify SIEM ingestion",
+	Run: func(cmd *cobra.Command, args []string) {
+		reqBody := map[string]interface{}{}
+		if siemHostFlag != "" {
+			reqBody["siem_host"] = siemHostFlag
+			port := siemPortFlag
+			if port <= 0 {
+				port = 514
+			}
+			reqBody["siem_port"] = port
+			proto := siemProtoFlag
+			if proto == "" {
+				proto = "UDP"
+			}
+			reqBody["siem_protocol"] = proto
+			format := siemFormatFlag
+			if format == "" {
+				format = "RFC5424"
+			}
+			reqBody["siem_format"] = format
+		}
+
+		b, _ := json.Marshal(reqBody)
+		fmt.Println("📡 Enviando sonda de diagnóstico a colector SIEM...")
+		resp, err := DoAPIRequest("POST", "/v1/security/siem/test", bytes.NewReader(b))
+		if err != nil {
+			fmt.Printf("Error de conexión con Manager: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var res struct {
+			Success   bool   `json:"success"`
+			LatencyMs int64  `json:"latency_ms"`
+			Message   string `json:"message"`
+			Error     string `json:"error"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&res)
+
+		if resp.StatusCode == http.StatusOK && res.Success {
+			fmt.Printf("✅ Sonda SIEM entregada con éxito en %dms!\n", res.LatencyMs)
+			fmt.Printf("   Detalle: %s\n", res.Message)
+		} else {
+			fmt.Printf("❌ Fallo en la sonda SIEM: %s\n", res.Error)
+			if res.Message != "" {
+				fmt.Printf("   Mensaje: %s\n", res.Message)
+			}
+		}
+	},
+}
+
+var securitySiemEnableCmd = &cobra.Command{
+	Use:   "enable",
+	Short: "Enable real-time SIEM event forwarding (ENS op.mon.2)",
+	Run: func(cmd *cobra.Command, args []string) {
+		if siemHostFlag == "" {
+			fmt.Println("Error: --host es requerido (e.g. --host 192.168.1.50)")
+			return
+		}
+		port := siemPortFlag
+		if port <= 0 {
+			port = 514
+		}
+		proto := strings.ToUpper(strings.TrimSpace(siemProtoFlag))
+		if proto == "" {
+			proto = "UDP"
+		}
+		format := strings.ToUpper(strings.TrimSpace(siemFormatFlag))
+		if format == "" {
+			format = "RFC5424"
+		}
+
+		payload := map[string]interface{}{
+			"siem_enabled":  true,
+			"siem_host":     siemHostFlag,
+			"siem_port":     port,
+			"siem_protocol": proto,
+			"siem_format":   format,
+		}
+		b, _ := json.Marshal(payload)
+		resp, err := DoAPIRequest("POST", "/v1/security/siem", bytes.NewReader(b))
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Error al habilitar SIEM (%d): %s\n", resp.StatusCode, string(body))
+			return
+		}
+
+		fmt.Printf("✅ Reenvío a SIEM habilitado: %s://%s:%d (%s format)\n", proto, siemHostFlag, port, format)
+		fmt.Println("   Cumplimiento ENS: Medida op.mon.2 ahora al 100% COMPLIANT.")
+	},
+}
+
+var securitySiemDisableCmd = &cobra.Command{
+	Use:   "disable",
+	Short: "Disable real-time SIEM event forwarding",
+	Run: func(cmd *cobra.Command, args []string) {
+		payload := map[string]interface{}{
+			"siem_enabled": false,
+		}
+		b, _ := json.Marshal(payload)
+		resp, err := DoAPIRequest("POST", "/v1/security/siem", bytes.NewReader(b))
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("Error al deshabilitar SIEM (%d): %s\n", resp.StatusCode, string(body))
+			return
+		}
+
+		fmt.Println("⚪ Reenvío a SIEM deshabilitado.")
+	},
+}
+
 func init() {
 	ensCmd.Flags().StringVarP(&ensFormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
 	ensCmd.Flags().BoolVarP(&ensReportFlag, "report", "r", false, "Display full technical compliance audit report")
+
+	securitySiemTestCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
+	securitySiemTestCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
+	securitySiemTestCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
+	securitySiemTestCmd.Flags().StringVar(&siemFormatFlag, "format", "RFC5424", "Event format (RFC5424, CEF, JSON)")
+
+	securitySiemEnableCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
+	securitySiemEnableCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
+	securitySiemEnableCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
+	securitySiemEnableCmd.Flags().StringVar(&siemFormatFlag, "format", "RFC5424", "Event format (RFC5424, CEF, JSON)")
+
+	securitySiemCmd.AddCommand(securitySiemStatusCmd)
+	securitySiemCmd.AddCommand(securitySiemTestCmd)
+	securitySiemCmd.AddCommand(securitySiemEnableCmd)
+	securitySiemCmd.AddCommand(securitySiemDisableCmd)
 
 	sbomCmd.Flags().StringVarP(&sbomFormatFlag, "format", "f", "cyclonedx-json", "SBOM format (cyclonedx-json, spdx-json)")
 
@@ -561,6 +802,7 @@ func init() {
 	securityKeyCmd.AddCommand(securityKeyLsCmd)
 	securityCmd.AddCommand(securityPolicyCmd)
 	securityCmd.AddCommand(securityKeyCmd)
+	securityCmd.AddCommand(securitySiemCmd)
 	securityCmd.AddCommand(ensCmd)
 
 	rootCmd.AddCommand(scanCmd)
@@ -569,4 +811,5 @@ func init() {
 	rootCmd.AddCommand(securityCmd)
 	rootCmd.AddCommand(ensCmd)
 }
+
 

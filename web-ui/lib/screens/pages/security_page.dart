@@ -46,6 +46,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
   // SIEM & ENS Global Security State (ENS op.mon.1, op.acc.2)
   SIEMConfig? _siemConfig;
+  SIEMStats? _siemStats;
   bool _siemLoading = true;
   bool _siemSaving = false;
   bool _siemTesting = false;
@@ -108,10 +109,13 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
   Future<void> _loadSIEMConfig() async {
     setState(() => _siemLoading = true);
-    final cfg = await ApiService.fetchSIEMConfig();
+    final status = await ApiService.fetchSIEMStatus();
     if (mounted) {
       setState(() {
-        _siemConfig = cfg;
+        if (status != null) {
+          _siemConfig = status.config;
+          _siemStats = status.stats;
+        }
         _siemLoading = false;
       });
     }
@@ -2972,8 +2976,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text("Reenvío de Eventos a SIEM / Syslog Centralizado (ENS op.mon.1)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Transmite inmediatamente cada acceso y operación del clúster a un servidor SIEM externo (Splunk, Wazuh, QRadar, Rsyslog).", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text("Reenvío de Eventos a SIEM / Syslog Centralizado (ENS op.mon.2)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Transmite en tiempo real accesos, intrusiones y operaciones a tu colector SIEM (Splunk, Wazuh, QRadar, Rsyslog) con severidad RFC5424/CEF.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.siemEnabled,
             onChanged: (val) {
               setState(() {
@@ -2983,6 +2987,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           ),
           if (cfg.siemEnabled) ...[
             const SizedBox(height: 10),
+            _buildSIEMTelemetryBar(isDark, cfg, _siemStats),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -3071,9 +3077,13 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     if (mounted) {
                       setState(() => _siemTesting = false);
                       if (res['success'] == true) {
-                        _showSnackBar("Sonda SIEM enviada con éxito: ${res['message']}");
+                        final latency = res['latency_ms'] != null ? " en ${res['latency_ms']}ms" : "";
+                        _showSnackBar("✅ Sonda SIEM enviada con éxito$latency: ${res['message']}");
+                        _loadSIEMConfig();
+                        _loadENSStatus();
                       } else {
-                        _showSnackBar("Error al enviar sonda SIEM: ${res['error']}", isError: true);
+                        _showSnackBar("❌ Error al enviar sonda SIEM: ${res['error'] ?? res['message']}", isError: true);
+                        _loadSIEMConfig();
                       }
                     }
                   },
@@ -3092,6 +3102,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     if (res['success'] == true) {
                       _showSnackBar("Configuración de seguridad y SIEM guardada correctamente");
                       _loadSIEMConfig();
+                      _loadENSStatus();
                     } else {
                       _showSnackBar("Error al guardar configuración: ${res['error']}", isError: true);
                     }
@@ -3099,6 +3110,177 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 },
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSIEMTelemetryBar(bool isDark, SIEMConfig cfg, SIEMStats? stats) {
+    if (!cfg.siemEnabled) return const SizedBox.shrink();
+
+    final status = stats?.status ?? (cfg.siemHost.isNotEmpty ? 'READY' : 'DISABLED');
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    switch (status) {
+      case 'ACTIVE':
+        statusColor = const Color(0xFF10B981);
+        statusIcon = Icons.check_circle;
+        statusText = "Conexión Activa (En tiempo real)";
+        break;
+      case 'READY':
+        statusColor = const Color(0xFFF59E0B);
+        statusIcon = Icons.hourglass_top;
+        statusText = "Preparado (En espera de eventos)";
+        break;
+      case 'DEGRADED':
+        statusColor = const Color(0xFFF97316);
+        statusIcon = Icons.warning_amber_rounded;
+        statusText = "Degradado (Fallos detectados)";
+        break;
+      case 'UNREACHABLE':
+        statusColor = const Color(0xFFEF4444);
+        statusIcon = Icons.error_outline;
+        statusText = "Inalcanzable (Error de conexión)";
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.circle_outlined;
+        statusText = "Deshabilitado";
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(statusIcon, color: statusColor, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                "Estado del Enlace SIEM: $statusText",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified, size: 12, color: Color(0xFF10B981)),
+                    SizedBox(width: 4),
+                    Text("ENS op.mon.2: 100% COMPLIANT",
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              _buildSIEMMetricChip(
+                icon: Icons.outbox,
+                label: "Eventos Transmitidos",
+                value: "${stats?.totalDispatched ?? 0}",
+                color: Colors.blue,
+                isDark: isDark,
+              ),
+              _buildSIEMMetricChip(
+                icon: Icons.crisis_alert,
+                label: "Alertas de Intrusión (ENS)",
+                value: "${stats?.intrusionAlerts ?? 0}",
+                color: (stats?.intrusionAlerts ?? 0) > 0 ? const Color(0xFFEF4444) : Colors.amber,
+                isDark: isDark,
+              ),
+              _buildSIEMMetricChip(
+                icon: Icons.error_outline,
+                label: "Fallos de Envío",
+                value: "${stats?.totalFailed ?? 0}",
+                color: (stats?.totalFailed ?? 0) > 0 ? const Color(0xFFEF4444) : Colors.green,
+                isDark: isDark,
+              ),
+              _buildSIEMMetricChip(
+                icon: Icons.schedule,
+                label: "Último Envío",
+                value: stats?.lastDispatchedAt != null
+                    ? stats!.lastDispatchedAt!.split("T").join(" ").split(".").first
+                    : "Ninguno",
+                color: Colors.purple,
+                isDark: isDark,
+              ),
+            ],
+          ),
+          if (stats?.lastError != null && stats!.lastError.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 13, color: Colors.redAccent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      "Último error: ${stats.lastError}",
+                      style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSIEMMetricChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            "$label: ",
+            style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[700]),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),

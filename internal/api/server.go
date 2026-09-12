@@ -311,6 +311,10 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/remediate", SecurityRemediateExecuteHandler)
 			securityRoute.GET("/ens/status", SecurityENSStatusHandler)
 			securityRoute.GET("/ens/report", SecurityENSReportHandler)
+			securityRoute.GET("/siem", SecuritySIEMConfigHandler)
+			securityRoute.GET("/siem/status", SecuritySIEMStatusHandler)
+			securityRoute.POST("/siem", SecuritySIEMUpdateHandler)
+			securityRoute.POST("/siem/test", SecuritySIEMTestHandler)
 		}
 
 		imagesRoute := v1.Group("/images", authMiddleware)

@@ -44,6 +44,15 @@ Gubernator opera como orquestador soberano y autocontenido, garantizando que el 
 │  - Intercepción forzada del login con asistente interactivo de enrolamiento │
 │  - Generación de QR offline, clave secreta manual y 8 códigos de respaldo   │
 │  - Elevación de puntuación op.acc.6 al 100% COMPLIANT en nivel MEDIO y ALTO │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  FASE 5: REENVÍO A SIEM EN TIEMPO REAL & DETECCIÓN DE INTRUSIÓN (v2.89.0)   │
+│  - Monitorización continua de eventos y telemetría en tiempo real (op.mon.2)│
+│  - Formatos RFC5424 (Syslog), CEF (ArcSight) y JSON vía UDP, TCP y TLS      │
+│  - Clasificación de severidad y alertas de intrusión automáticas (PRI 33/9) │
+│  - Diagnóstico de sondas en vivo con medición de latencia (roundtrip ms)    │
+│  - Panel de telemetría en Web UI (activos, intrusiones, fallos, latencia)   │
+│  - Paridad CLI completa (`gbnt security siem status|test|enable|disable`)   │
+│  - Elevación de la medida op.mon.2 del 40% al 100% COMPLIANT en MEDIO/ALTO  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -148,15 +157,54 @@ El ENS exige que el acceso a funciones de administración o configuración requi
 
 ---
 
-## 💻 8. Comandos CLI para Auditoría ENS
+---
+
+## 📡 9. Monitorización Continua, Detección de Intrusión y Reenvío a SIEM (`op.mon.2`)
+
+El ENS exige en sus niveles **MEDIO** y **ALTO** la detección activa de intrusiones, eventos anómalos y la centralización de pistas de auditoría en sistemas de monitorización (SIEM / Syslog).
+
+* **Formatos y Protocolos Soportados:**
+  * **RFC5424 (Syslog):** Formato estándar IETF con encabezados estructurados (`PRI`, `TIMESTAMP`, `HOSTNAME`, `APP-NAME`, `STRUCTURED-DATA`).
+  * **CEF (Common Event Format):** Formato nativo para integración directa con plataformas SIEM líderes (Splunk, ArcSight, QRadar, Wazuh).
+  * **JSON:** Payload estructurado con metadatos extendidos para ingesta en OpenSearch, Elasticsearch o Loki.
+  * **Protocolos de Red:** **UDP** (baja sobrecarga), **TCP** (entrega confiable) y **TLS** (canal seguro cifrado).
+* **Clasificación Automática de Severidad & Detección de Intrusión:**
+  * Eventos críticos como bloqueo de cuentas por fuerza bruta (`AUTH_LOCKOUT`), manipulación de la cadena forense (`AUDIT_CHAIN_COMPROMISED`), rechazo por política de admisión (`SECURITY_GATEKEEPER_BLOCKED`) o intentos de acceso a cuentas suspendidas son clasificados automáticamente como **Alertas de Intrusión**.
+  * En **CEF**, reciben **severidad 9 o 10** y categoría `cat=IntrusionAlert`.
+  * En **RFC5424**, reciben **`PRI 33`** (`auth.alert`) con el flag estructurado `intrusion="true" level="critical"`.
+  * En **JSON**, se etiquetan con `"is_intrusion": true` y `"severity": "CRITICAL"`.
+* **Telemetría y Diagnóstico de Conexión en Vivo:**
+  * Métricas en tiempo real: Eventos transmitidos, alertas de intrusión, fallos de entrega y estampa temporal de la última transmisión.
+  * Estados del enlace: `🟢 ACTIVO`, `🟡 PREPARADO`, `🟠 DEGRADADO`, `🔴 INALCANZABLE`, `⚪ DESHABILITADO`.
+  * Medición de latencia de red (roundtrip en milisegundos) en pruebas de sonda.
+
+---
+
+## 💻 10. Comandos CLI para Auditoría ENS & Gestión de SIEM
 
 ```bash
-# Ver la tabla resumen de cumplimiento en terminal
+# Ver la tabla resumen de cumplimiento ENS
 gbnt security ens
 
 # Exportar el informe técnico oficial de auditoría en Markdown
 gbnt security ens --report > informe-auditoria-ens.md
 
+# Consultar el estado operativo y telemetría de reenvío a SIEM
+gbnt security siem status
+
+# Enviar una sonda de prueba de conectividad al colector SIEM (mide latencia)
+gbnt security siem test
+
+# Enviar sonda a un host o puerto alternativo
+gbnt security siem test --host 192.168.1.50 --port 514 --proto UDP --format RFC5424
+
+# Habilitar el reenvío a SIEM (eleva op.mon.2 al 100% COMPLIANT)
+gbnt security siem enable --host 192.168.1.50 --port 514 --proto UDP --format RFC5424
+
+# Deshabilitar el reenvío a SIEM
+gbnt security siem disable
+
 # Consultar el estado en formato JSON vía API
 curl -s http://localhost:4001/api/security/ens/status | jq .
 ```
+

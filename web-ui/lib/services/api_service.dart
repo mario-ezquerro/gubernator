@@ -1470,6 +1470,18 @@ class ApiService {
     return null;
   }
 
+  /// Fetches cluster SIEM delivery metrics, connection health, and ENS compliance status.
+  static Future<SIEMStatusResponse?> fetchSIEMStatus() async {
+    try {
+      final response = await http.get(Uri.parse('/api/security/siem/status'), headers: authHeaders);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return SIEMStatusResponse.fromJson(data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Saves cluster SIEM and ENS security configuration.
   static Future<Map<String, dynamic>> saveSIEMConfig(SIEMConfig config) async {
     final response = await http.post(

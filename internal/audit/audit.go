@@ -104,6 +104,16 @@ func RecordEvent(username, provider, ipAddress, action, status, details string) 
 	}
 
 	// Non-blocking dispatch to SIEM worker channel
+	if IsIntrusionAlert(entry.Action) {
+		RecordIntrusionAlert()
+		slog.Warn("ENS op.mon.2 SECURITY INTRUSION ALERT DETECTED",
+			"action", entry.Action,
+			"user", entry.Username,
+			"ip", entry.IPAddress,
+			"details", entry.Details,
+		)
+	}
+
 	select {
 	case siemChan <- &entry:
 	default:
@@ -111,6 +121,113 @@ func RecordEvent(username, provider, ipAddress, action, status, details string) 
 	}
 
 	return &entry, nil
+}
+
+// SIEMStats captures real-time delivery telemetry and operational health for SIEM forwarding (ENS op.mon.2).
+type SIEMStats struct {
+	TotalDispatched  int64      `json:"total_dispatched"`
+	TotalFailed      int64      `json:"total_failed"`
+	IntrusionAlerts  int64      `json:"intrusion_alerts"`
+	LastDispatchedAt *time.Time `json:"last_dispatched_at,omitempty"`
+	LastFailedAt     *time.Time `json:"last_failed_at,omitempty"`
+	LastError        string     `json:"last_error,omitempty"`
+	Status           string     `json:"status"` // "ACTIVE", "READY", "UNREACHABLE", "DEGRADED", "DISABLED"
+}
+
+// SIEMTestResult captures the diagnostic output of a SIEM probe test.
+type SIEMTestResult struct {
+	Success      bool      `json:"success"`
+	LatencyMs    int64     `json:"latency_ms"`
+	Message      string    `json:"message"`
+	Error        string    `json:"error,omitempty"`
+	DispatchedAt time.Time `json:"dispatched_at"`
+}
+
+var (
+	statsMu   sync.RWMutex
+	siemStats SIEMStats
+)
+
+// RecordSIEMSuccess updates transmission metrics upon successful event delivery.
+func RecordSIEMSuccess() {
+	statsMu.Lock()
+	defer statsMu.Unlock()
+	now := time.Now().UTC()
+	siemStats.TotalDispatched++
+	siemStats.LastDispatchedAt = &now
+	siemStats.LastError = ""
+}
+
+// RecordSIEMFailure updates transmission metrics upon delivery failure.
+func RecordSIEMFailure(err error) {
+	statsMu.Lock()
+	defer statsMu.Unlock()
+	now := time.Now().UTC()
+	siemStats.TotalFailed++
+	siemStats.LastFailedAt = &now
+	if err != nil {
+		siemStats.LastError = err.Error()
+	}
+}
+
+// RecordIntrusionAlert increments the count of critical intrusion/security events detected.
+func RecordIntrusionAlert() {
+	statsMu.Lock()
+	defer statsMu.Unlock()
+	siemStats.IntrusionAlerts++
+}
+
+// ResetSIEMStats resets telemetry counters for testing.
+func ResetSIEMStats() {
+	statsMu.Lock()
+	defer statsMu.Unlock()
+	siemStats = SIEMStats{}
+}
+
+// GetSIEMStats returns a snapshot of current SIEM delivery telemetry and operational health.
+func GetSIEMStats() SIEMStats {
+	statsMu.RLock()
+	defer statsMu.RUnlock()
+	st := siemStats
+
+	// Determine status dynamically based on current configuration and delivery metrics
+	var cfg db.SecurityConfig
+	if db.DB != nil && db.DB.First(&cfg, "id = ?", "default").Error == nil {
+		if !cfg.SIEMEnabled || strings.TrimSpace(cfg.SIEMHost) == "" {
+			st.Status = "DISABLED"
+		} else if st.TotalFailed == 0 && st.TotalDispatched > 0 {
+			st.Status = "ACTIVE"
+		} else if st.TotalFailed > 0 && st.TotalDispatched > 0 {
+			st.Status = "DEGRADED"
+		} else if st.TotalFailed > 0 && st.TotalDispatched == 0 {
+			st.Status = "UNREACHABLE"
+		} else {
+			st.Status = "READY"
+		}
+	} else {
+		st.Status = "DISABLED"
+	}
+	return st
+}
+
+// IsIntrusionAlert checks whether an audit event action signifies a critical security event or intrusion attempt (ENS op.mon.2).
+func IsIntrusionAlert(action string) bool {
+	act := strings.ToUpper(strings.TrimSpace(action))
+	switch act {
+	case "AUTH_LOCKOUT",
+		"AUDIT_CHAIN_COMPROMISED",
+		"SECURITY_GATEKEEPER_BLOCKED",
+		"AUTH_SUSPENDED_LOGIN_ATTEMPT",
+		"AUTH_UNAUTHORIZED_ROLE_ACCESS",
+		"SECURITY_IMAGE_SCAN_CRITICAL_CVE",
+		"SECURITY_UNTRUSTED_KEY_REJECTED":
+		return true
+	default:
+		return strings.Contains(act, "LOCKOUT") ||
+			strings.Contains(act, "COMPROMISED") ||
+			strings.Contains(act, "INTRUSION") ||
+			strings.Contains(act, "ATTACK")
+	}
 }
 
 // VerificationResult holds the report of cryptographic chain validation.
@@ -172,43 +289,70 @@ func VerifyChainIntegrity() (*VerificationResult, error) {
 	return res, nil
 }
 
-// FormatSIEMMessage formats an audit log entry for SIEM consumption.
+// FormatSIEMMessage formats an audit log entry for SIEM consumption with security severity classifications (ENS op.mon.2).
 func FormatSIEMMessage(entry *db.AuditLog, format string) []byte {
 	hostname, _ := os.Hostname()
 	if hostname == "" {
 		hostname = "gubernator-host"
 	}
 
+	isIntrusion := IsIntrusionAlert(entry.Action)
+
 	switch strings.ToUpper(strings.TrimSpace(format)) {
 	case "CEF":
 		// Common Event Format: CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
 		cleanDetails := strings.ReplaceAll(entry.Details, "|", "\\|")
-		return []byte(fmt.Sprintf("CEF:0|Gubernator|Orchestrator|v2.81.2|%s|%s|5|src=%s suser=%s msg=%s proto=%s status=%s id=%s hash=%s\n",
-			entry.Action, entry.Action, entry.IPAddress, entry.Username, cleanDetails, entry.Provider, entry.Status, entry.ID, entry.Hash))
+		severity := 3
+		cat := "Audit"
+		if isIntrusion {
+			severity = 9
+			cat = "IntrusionAlert"
+		} else if strings.ToUpper(entry.Status) == "FAILURE" {
+			severity = 6
+			cat = "SecurityWarning"
+		}
+		return []byte(fmt.Sprintf("CEF:0|Gubernator|Orchestrator|v2.89.0|%s|%s|%d|src=%s suser=%s msg=%s proto=%s status=%s cat=%s id=%s hash=%s\n",
+			entry.Action, entry.Action, severity, entry.IPAddress, entry.Username, cleanDetails, entry.Provider, entry.Status, cat, entry.ID, entry.Hash))
 
 	case "JSON":
+		severity := "INFO"
+		if isIntrusion {
+			severity = "CRITICAL"
+		} else if strings.ToUpper(entry.Status) == "FAILURE" {
+			severity = "WARNING"
+		}
 		payload := map[string]interface{}{
-			"facility":   "auth",
-			"hostname":   hostname,
-			"timestamp":  entry.Timestamp.Format(time.RFC3339Nano),
-			"id":         entry.ID,
-			"username":   entry.Username,
-			"provider":   entry.Provider,
-			"ip_address": entry.IPAddress,
-			"action":     entry.Action,
-			"status":     entry.Status,
-			"details":    entry.Details,
-			"prev_hash":  entry.PrevHash,
-			"hash":       entry.Hash,
+			"facility":     "auth",
+			"hostname":     hostname,
+			"timestamp":    entry.Timestamp.Format(time.RFC3339Nano),
+			"id":           entry.ID,
+			"username":     entry.Username,
+			"provider":     entry.Provider,
+			"ip_address":   entry.IPAddress,
+			"action":       entry.Action,
+			"status":       entry.Status,
+			"severity":     severity,
+			"is_intrusion": isIntrusion,
+			"details":      entry.Details,
+			"prev_hash":    entry.PrevHash,
+			"hash":         entry.Hash,
 		}
 		b, _ := json.Marshal(payload)
 		return append(b, '\n')
 
 	default: // RFC5424 Syslog
-		// <PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MSG
-		// Facility auth (4) * 8 + Severity notice (5) = 37 (or 134 for local0.info)
+		// Facility auth (4) * 8 = 32
+		// Severity: alert (1) -> PRI 33, warning (4) -> PRI 36, notice/info (6) -> PRI 38 (or 134 for local0.info)
 		pri := 134
-		msg := fmt.Sprintf("<%d>1 %s %s gubernator - %s [gbnt@32473 action=\"%s\" status=\"%s\" user=\"%s\" ip=\"%s\" hash=\"%s\"] %s\n",
+		alertTag := "info"
+		if isIntrusion {
+			pri = 33 // auth.alert
+			alertTag = "critical"
+		} else if strings.ToUpper(entry.Status) == "FAILURE" {
+			pri = 36 // auth.warning
+			alertTag = "warning"
+		}
+		msg := fmt.Sprintf("<%d>1 %s %s gubernator - %s [gbnt@32473 action=\"%s\" status=\"%s\" user=\"%s\" ip=\"%s\" intrusion=\"%t\" level=\"%s\" hash=\"%s\"] %s\n",
 			pri,
 			entry.Timestamp.Format(time.RFC3339),
 			hostname,
@@ -217,6 +361,8 @@ func FormatSIEMMessage(entry *db.AuditLog, format string) []byte {
 			entry.Status,
 			entry.Username,
 			entry.IPAddress,
+			isIntrusion,
+			alertTag,
 			entry.Hash,
 			entry.Details,
 		)
@@ -225,10 +371,10 @@ func FormatSIEMMessage(entry *db.AuditLog, format string) []byte {
 }
 
 // SendSIEMTestProbe attempts a direct connection and sends a test probe event to the configured SIEM.
-func SendSIEMTestProbe(cfg db.SecurityConfig) error {
+func SendSIEMTestProbe(cfg db.SecurityConfig) (*SIEMTestResult, error) {
 	host := strings.TrimSpace(cfg.SIEMHost)
 	if host == "" {
-		return fmt.Errorf("SIEM host is not configured")
+		return nil, fmt.Errorf("SIEM host is not configured")
 	}
 	port := cfg.SIEMPort
 	if port <= 0 {
@@ -243,7 +389,7 @@ func SendSIEMTestProbe(cfg db.SecurityConfig) error {
 		IPAddress: "127.0.0.1",
 		Action:    "SIEM_TEST_PROBE",
 		Status:    "SUCCESS",
-		Details:   "Gubernator SIEM connectivity diagnostic probe (ENS op.mon.1)",
+		Details:   "Gubernator SIEM connectivity diagnostic probe (ENS op.mon.2)",
 		PrevHash:  genesisHash,
 		Hash:      ComputeHash(genesisHash, "probe", time.Now().UTC(), "system", "LOCAL", "127.0.0.1", "PROBE", "OK", "TEST"),
 	}
@@ -251,7 +397,28 @@ func SendSIEMTestProbe(cfg db.SecurityConfig) error {
 	data := FormatSIEMMessage(&testLog, cfg.SIEMFormat)
 	addr := fmt.Sprintf("%s:%d", host, port)
 
-	return dispatchToNetwork(addr, cfg.SIEMProtocol, data)
+	start := time.Now()
+	err := dispatchToNetwork(addr, cfg.SIEMProtocol, data)
+	latency := time.Since(start).Milliseconds()
+
+	res := &SIEMTestResult{
+		DispatchedAt: start.UTC(),
+		LatencyMs:    latency,
+	}
+
+	if err != nil {
+		RecordSIEMFailure(err)
+		res.Success = false
+		res.Error = err.Error()
+		res.Message = fmt.Sprintf("Failed to reach SIEM (%s:%d/%s): %v", host, port, cfg.SIEMProtocol, err)
+		return res, err
+	}
+
+	RecordSIEMSuccess()
+	res.Success = true
+	res.Message = fmt.Sprintf("Successfully dispatched SIEM test probe to %s:%d via %s in %dms (%s format)",
+		host, port, cfg.SIEMProtocol, latency, cfg.SIEMFormat)
+	return res, nil
 }
 
 func dispatchToNetwork(addr, protocol string, data []byte) error {
@@ -296,7 +463,7 @@ func siemWorker() {
 			continue
 		}
 		var cfg db.SecurityConfig
-		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || !cfg.SIEMEnabled || cfg.SIEMHost == "" {
+		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || !cfg.SIEMEnabled || strings.TrimSpace(cfg.SIEMHost) == "" {
 			continue
 		}
 
@@ -309,6 +476,9 @@ func siemWorker() {
 
 		if err := dispatchToNetwork(addr, cfg.SIEMProtocol, data); err != nil {
 			slog.Debug("failed to dispatch log to SIEM", "addr", addr, "err", err)
+			RecordSIEMFailure(err)
+		} else {
+			RecordSIEMSuccess()
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/security"
 )
@@ -431,3 +432,125 @@ func SecurityENSReportHandler(c *gin.Context) {
 	c.Header("Content-Type", "text/markdown; charset=utf-8")
 	c.String(http.StatusOK, report)
 }
+
+// SecuritySIEMConfigHandler returns the active SIEM & ENS configuration.
+func SecuritySIEMConfigHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{
+			ID:           "default",
+			SIEMEnabled:  false,
+			SIEMHost:     "",
+			SIEMPort:     514,
+			SIEMProtocol: "UDP",
+			SIEMFormat:   "RFC5424",
+		}
+	}
+	c.JSON(http.StatusOK, cfg)
+}
+
+// SecuritySIEMStatusHandler returns the live SIEM transmission telemetry and ENS status.
+func SecuritySIEMStatusHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{
+			ID:           "default",
+			SIEMEnabled:  false,
+			SIEMHost:     "",
+			SIEMPort:     514,
+			SIEMProtocol: "UDP",
+			SIEMFormat:   "RFC5424",
+		}
+	}
+
+	stats := audit.GetSIEMStats()
+	ensCompliant := cfg.SIEMEnabled && strings.TrimSpace(cfg.SIEMHost) != ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"config":        cfg,
+		"stats":         stats,
+		"ens_compliant": ensCompliant,
+		"ens_measure":   "op.mon.2",
+	})
+}
+
+// SecuritySIEMUpdateHandler updates the SIEM configuration.
+func SecuritySIEMUpdateHandler(c *gin.Context) {
+	var req struct {
+		SIEMEnabled  bool   `json:"siem_enabled"`
+		SIEMHost     string `json:"siem_host"`
+		SIEMPort     int    `json:"siem_port"`
+		SIEMProtocol string `json:"siem_protocol"`
+		SIEMFormat   string `json:"siem_format"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	proto := strings.ToUpper(strings.TrimSpace(req.SIEMProtocol))
+	if proto != "UDP" && proto != "TCP" && proto != "TLS" {
+		proto = "UDP"
+	}
+	format := strings.ToUpper(strings.TrimSpace(req.SIEMFormat))
+	if format != "RFC5424" && format != "CEF" && format != "JSON" {
+		format = "RFC5424"
+	}
+	port := req.SIEMPort
+	if port <= 0 {
+		port = 514
+	}
+
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{ID: "default"}
+	}
+
+	cfg.SIEMEnabled = req.SIEMEnabled
+	cfg.SIEMHost = strings.TrimSpace(req.SIEMHost)
+	cfg.SIEMPort = port
+	cfg.SIEMProtocol = proto
+	cfg.SIEMFormat = format
+	cfg.UpdatedAt = time.Now()
+
+	if err := db.DB.Save(&cfg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, cfg)
+}
+
+// SecuritySIEMTestHandler dispatches a test probe event to verify SIEM connectivity.
+func SecuritySIEMTestHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := c.ShouldBindJSON(&cfg); err != nil || strings.TrimSpace(cfg.SIEMHost) == "" {
+		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || strings.TrimSpace(cfg.SIEMHost) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Please provide a valid SIEM host address or save it first",
+			})
+			return
+		}
+	}
+
+	result, err := audit.SendSIEMTestProbe(cfg)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success":       false,
+			"latency_ms":    result.LatencyMs,
+			"dispatched_at": result.DispatchedAt,
+			"error":         result.Error,
+			"message":       result.Message,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"latency_ms":    result.LatencyMs,
+		"dispatched_at": result.DispatchedAt,
+		"message":       result.Message,
+	})
+}
+

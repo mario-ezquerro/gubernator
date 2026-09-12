@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
 )
@@ -329,10 +330,15 @@ func EvaluateENSCompliance(database *gorm.DB) ENSSummary {
 			Weight:           1.2,
 		}
 
-		if secConfig.SIEMEnabled && secConfig.SIEMHost != "" {
+		if secConfig.SIEMEnabled && strings.TrimSpace(secConfig.SIEMHost) != "" {
 			m.Status = ENSStatusCompliant
 			m.Score = 100.0
-			m.Evidence = fmt.Sprintf("Reenvío de auditoría y telemetría a SIEM activo (%s://%s:%d en formato %s).", secConfig.SIEMProtocol, secConfig.SIEMHost, secConfig.SIEMPort, secConfig.SIEMFormat)
+			stats := audit.GetSIEMStats()
+			evidence := fmt.Sprintf("Reenvío de auditoría y telemetría a SIEM activo (%s://%s:%d en formato %s).", secConfig.SIEMProtocol, secConfig.SIEMHost, secConfig.SIEMPort, secConfig.SIEMFormat)
+			if stats.TotalDispatched > 0 || stats.TotalFailed > 0 || stats.IntrusionAlerts > 0 {
+				evidence += fmt.Sprintf(" Telemetría: %d eventos entregados (%d fallidos, %d alertas de intrusión detectadas).", stats.TotalDispatched, stats.TotalFailed, stats.IntrusionAlerts)
+			}
+			m.Evidence = evidence
 			m.Recommendation = "Verificar periódicamente la recepción de eventos en el colector SIEM centralizado."
 		} else {
 			m.Status = ENSStatusPartial

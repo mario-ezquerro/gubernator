@@ -1315,6 +1315,61 @@ class SIEMConfig {
   }
 }
 
+class SIEMStats {
+  final int totalDispatched;
+  final int totalFailed;
+  final int intrusionAlerts;
+  final String? lastDispatchedAt;
+  final String? lastFailedAt;
+  final String lastError;
+  final String status;
+
+  SIEMStats({
+    this.totalDispatched = 0,
+    this.totalFailed = 0,
+    this.intrusionAlerts = 0,
+    this.lastDispatchedAt,
+    this.lastFailedAt,
+    this.lastError = '',
+    this.status = 'DISABLED',
+  });
+
+  factory SIEMStats.fromJson(Map<String, dynamic> json) {
+    return SIEMStats(
+      totalDispatched: (json['total_dispatched'] as num?)?.toInt() ?? 0,
+      totalFailed: (json['total_failed'] as num?)?.toInt() ?? 0,
+      intrusionAlerts: (json['intrusion_alerts'] as num?)?.toInt() ?? 0,
+      lastDispatchedAt: json['last_dispatched_at'],
+      lastFailedAt: json['last_failed_at'],
+      lastError: json['last_error'] ?? '',
+      status: json['status'] ?? 'DISABLED',
+    );
+  }
+}
+
+class SIEMStatusResponse {
+  final SIEMConfig config;
+  final SIEMStats stats;
+  final bool ensCompliant;
+  final String ensMeasure;
+
+  SIEMStatusResponse({
+    required this.config,
+    required this.stats,
+    required this.ensCompliant,
+    required this.ensMeasure,
+  });
+
+  factory SIEMStatusResponse.fromJson(Map<String, dynamic> json) {
+    return SIEMStatusResponse(
+      config: SIEMConfig.fromJson(json['config'] ?? {}),
+      stats: SIEMStats.fromJson(json['stats'] ?? {}),
+      ensCompliant: json['ens_compliant'] == true,
+      ensMeasure: json['ens_measure'] ?? 'op.mon.2',
+    );
+  }
+}
+
 class AuditVerificationResult {
   final bool valid;
   final int totalRecords;

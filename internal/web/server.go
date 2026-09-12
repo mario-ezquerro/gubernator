@@ -481,6 +481,7 @@ func StartDashboard() {
 		api.GET("/security/audit-logs/verify", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), verifyAuditLogsHandler)
 		api.GET("/security/audit-logs/export", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), exportAuditLogsHandler)
 		api.GET("/security/siem", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), getSIEMConfigHandler)
+		api.GET("/security/siem/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor), getSIEMStatusHandler)
 		api.POST("/security/siem", auth.RequireRole(auth.RoleAdmin), updateSIEMConfigHandler)
 		api.POST("/security/siem/test", auth.RequireRole(auth.RoleAdmin), testSIEMHandler)
 
@@ -6726,27 +6727,59 @@ func updateSIEMConfigHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, cfg)
 }
 
+func getSIEMStatusHandler(c *gin.Context) {
+	var cfg db.SecurityConfig
+	if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil {
+		cfg = db.SecurityConfig{
+			ID:           "default",
+			SIEMEnabled:  false,
+			SIEMHost:     "",
+			SIEMPort:     514,
+			SIEMProtocol: "UDP",
+			SIEMFormat:   "RFC5424",
+		}
+	}
+
+	stats := audit.GetSIEMStats()
+	ensCompliant := cfg.SIEMEnabled && strings.TrimSpace(cfg.SIEMHost) != ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"config":        cfg,
+		"stats":         stats,
+		"ens_compliant": ensCompliant,
+		"ens_measure":   "op.mon.2",
+	})
+}
+
 func testSIEMHandler(c *gin.Context) {
 	var cfg db.SecurityConfig
-	if err := c.ShouldBindJSON(&cfg); err != nil || cfg.SIEMHost == "" {
-		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || cfg.SIEMHost == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Please provide a valid SIEM host address"})
+	if err := c.ShouldBindJSON(&cfg); err != nil || strings.TrimSpace(cfg.SIEMHost) == "" {
+		if err := db.DB.First(&cfg, "id = ?", "default").Error; err != nil || strings.TrimSpace(cfg.SIEMHost) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Please provide a valid SIEM host address or save it first",
+			})
 			return
 		}
 	}
 
-	if err := audit.SendSIEMTestProbe(cfg); err != nil {
+	result, err := audit.SendSIEMTestProbe(cfg)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   fmt.Sprintf("Failed to reach SIEM (%s:%d/%s): %v", cfg.SIEMHost, cfg.SIEMPort, cfg.SIEMProtocol, err),
+			"success":       false,
+			"latency_ms":    result.LatencyMs,
+			"dispatched_at": result.DispatchedAt,
+			"error":         result.Error,
+			"message":       result.Message,
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Successfully dispatched SIEM test probe to %s:%d via %s (%s format)",
-			cfg.SIEMHost, cfg.SIEMPort, cfg.SIEMProtocol, cfg.SIEMFormat),
+		"success":       true,
+		"latency_ms":    result.LatencyMs,
+		"dispatched_at": result.DispatchedAt,
+		"message":       result.Message,
 	})
 }
 

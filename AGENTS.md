@@ -1082,4 +1082,36 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Official Documentation & GitHub Pages:**
   - Updated `docs/ens.md` with full technical breakdown of Phase 4 and deployed to GitHub Pages (`gh-pages`).
 
+### 111. Spanish ENS (RD 311/2022) Compliance Phase 5: Continuous Monitoring, Real-Time SIEM Ingestion & Intrusion Detection (op.mon.2) (`v2.89.0`)
+* **Real-Time SIEM Event Forwarding & Intrusion Detection Engine (`internal/audit/audit.go`):**
+  - Continuous telemetry metrics tracking: `TotalDispatched`, `TotalFailed`, `IntrusionAlerts`, `LastDispatchedAt`, `LastFailedAt`, `LastError`, and dynamic status (`ACTIVE`, `READY`, `DEGRADED`, `UNREACHABLE`, `DISABLED`).
+  - Automated intrusion classification via `IsIntrusionAlert`: Detects brute force lockouts (`AUTH_LOCKOUT`), forensic hash chain tampering (`AUDIT_CHAIN_COMPROMISED`), Gatekeeper policy rejections (`SECURITY_GATEKEEPER_BLOCKED`), and suspended user access attempts.
+  - Multi-standard event formatting with security severity tagging:
+    - **CEF (ArcSight/Splunk):** Severity 9/10 and `cat=IntrusionAlert` for attacks; severity 6 for warnings; severity 3 for standard audit.
+    - **RFC5424 (Syslog):** PRI 33 (`auth.alert`) and structured data `intrusion="true" level="critical"`.
+    - **JSON:** Explicit fields `"is_intrusion": true` and `"severity": "CRITICAL"`.
+  - Latency-aware network dispatch over UDP, TCP, and TLS with microsecond roundtrip calculation.
+* **REST API Telemetry & Diagnostic Endpoints (`internal/web/server.go`, `internal/api/security_handlers.go`, `internal/api/server.go`):**
+  - Added `GET /api/security/siem/status` and `/v1/security/siem/status` exposing live configuration, delivery metrics, operational status, and ENS compliance flag.
+  - Enhanced `POST /api/security/siem/test` and `/v1/security/siem/test` returning diagnostic roundtrip latency (`latency_ms`), timestamp, and formatted delivery message.
+  - Parity across port 4000 (Manager API) and port 4001 (Web UI Dashboard).
+* **Elevated ENS Compliance Evaluation (`internal/security/ens.go`):**
+  - Evaluates `op.mon.2` (*Monitorización continua, detección de intrusión y reenvío a SIEM*) at **100% (COMPLIANT)** when SIEM is enabled.
+  - Automatically incorporates live telemetry evidence into audit reports (e.g. *"Reenvío a SIEM activo vía UDP://192.168.252.39:514 en formato RFC5424. Telemetría: 1 eventos entregados (0 fallidos, 0 alertas de intrusión)"*).
+  - Elevates cluster compliance scores: **Nivel MEDIO (+5.2%)** and **Nivel ALTO (+5.2%)** to **84.3%**.
+* **Modern Web Dashboard Telemetry Bar & Metric Chips (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Integrated `_buildSIEMTelemetryBar` rendering live connection status (🟢 Conexión Activa, 🟡 Preparado, 🟠 Degradado, 🔴 Inalcanzable), prominent `ENS op.mon.2: 100% COMPLIANT` badge, and 4 KPI metric chips (Eventos Transmitidos, Alertas de Intrusión, Fallos de Envío, Último Envío).
+  - Enhanced *"Probar Envío (Probe)"* action button displaying exact roundtrip latency in snackbar notifications and auto-refreshing telemetry state.
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - Dedicated command group `gbnt security siem`:
+    - `gbnt security siem status`: Visual SRE telemetry table with connection health, transmission metrics, intrusion counts, and ENS rating.
+    - `gbnt security siem test [--host <h>] [--port <p>] [--proto <proto>] [--format <fmt>]`: Diagnostic connectivity probe with latency feedback.
+    - `gbnt security siem enable --host <h> [--port <p>] [--proto <proto>] [--format <fmt>]`: Instant activation with ENS compliance boost.
+    - `gbnt security siem disable`: Safe deactivation.
+* **Comprehensive Automated Testing & Validation:**
+  - `internal/audit/audit_test.go`: Verified SIEM telemetry tracking, intrusion classification, CEF/RFC5424/JSON severity mappings, and UDP probe listener.
+  - `internal/web/siem_test.go`: Verified status queries, configuration persistence, and probe endpoints.
+  - Live verification on 3-node Multipass cluster (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
+
+
 

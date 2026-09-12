@@ -130,9 +130,15 @@ func TestSIEMTestProbeUDP(t *testing.T) {
 		SIEMFormat:   "RFC5424",
 	}
 
-	err = SendSIEMTestProbe(cfg)
+	res, err := SendSIEMTestProbe(cfg)
 	if err != nil {
 		t.Fatalf("SendSIEMTestProbe failed: %v", err)
+	}
+	if !res.Success {
+		t.Fatalf("expected res.Success to be true, got false: %s", res.Error)
+	}
+	if res.LatencyMs < 0 {
+		t.Errorf("expected non-negative latency, got %d", res.LatencyMs)
 	}
 
 	buf := make([]byte, 1024)
@@ -147,3 +153,76 @@ func TestSIEMTestProbeUDP(t *testing.T) {
 		t.Errorf("expected received message to contain SIEM_TEST_PROBE, got: %s", received)
 	}
 }
+
+func TestIntrusionAlertClassification(t *testing.T) {
+	intrusionLog := db.AuditLog{
+		ID:        "aud-alert-1",
+		Timestamp: time.Now().UTC(),
+		Username:  "intruder",
+		Provider:  "LOCAL",
+		IPAddress: "198.51.100.22",
+		Action:    "AUTH_LOCKOUT",
+		Status:    "FAILURE",
+		Details:   "Account locked due to 5 consecutive invalid passwords",
+		PrevHash:  genesisHash,
+		Hash:      "hash-alert-1",
+	}
+
+	// 1. CEF must have severity 9 and category IntrusionAlert
+	cef := string(FormatSIEMMessage(&intrusionLog, "CEF"))
+	if !strings.Contains(cef, "|9|") || !strings.Contains(cef, "cat=IntrusionAlert") {
+		t.Errorf("expected CEF to have severity 9 and IntrusionAlert category, got: %s", cef)
+	}
+
+	// 2. JSON must have is_intrusion = true and severity = CRITICAL
+	jsonBytes := FormatSIEMMessage(&intrusionLog, "JSON")
+	if !strings.Contains(string(jsonBytes), `"is_intrusion":true`) || !strings.Contains(string(jsonBytes), `"severity":"CRITICAL"`) {
+		t.Errorf("expected JSON to flag intrusion and CRITICAL severity, got: %s", string(jsonBytes))
+	}
+
+	// 3. RFC5424 must have PRI 33 and intrusion="true"
+	rfc := string(FormatSIEMMessage(&intrusionLog, "RFC5424"))
+	if !strings.HasPrefix(rfc, "<33>1") || !strings.Contains(rfc, `intrusion="true"`) {
+		t.Errorf("expected RFC5424 to have PRI 33 and intrusion flag, got: %s", rfc)
+	}
+}
+
+func TestSIEMStatsAndIntrusionTracking(t *testing.T) {
+	setupTestDB(t)
+	ResetSIEMStats()
+
+	// Initial stats
+	stats := GetSIEMStats()
+	if stats.TotalDispatched != 0 || stats.IntrusionAlerts != 0 {
+		t.Errorf("expected zero stats initially, got %+v", stats)
+	}
+
+	// Record an intrusion alert
+	_, err := RecordEvent("attacker", "LOCAL", "10.0.0.99", "AUTH_LOCKOUT", "FAILURE", "Locked out")
+	if err != nil {
+		t.Fatalf("failed to record lockout: %v", err)
+	}
+
+	stats = GetSIEMStats()
+	if stats.IntrusionAlerts != 1 {
+		t.Errorf("expected 1 intrusion alert, got %d", stats.IntrusionAlerts)
+	}
+
+	// Record success and failure
+	RecordSIEMSuccess()
+	RecordSIEMFailure(assertError("network timeout"))
+
+	stats = GetSIEMStats()
+	if stats.TotalDispatched != 1 || stats.TotalFailed != 1 {
+		t.Errorf("expected 1 dispatched and 1 failed, got %+v", stats)
+	}
+	if stats.LastError != "network timeout" {
+		t.Errorf("expected 'network timeout' error, got %s", stats.LastError)
+	}
+}
+
+type testErr string
+
+func (e testErr) Error() string { return string(e) }
+func assertError(msg string) error { return testErr(msg) }
+
