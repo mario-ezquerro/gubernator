@@ -303,32 +303,98 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: role,
-                            decoration: const InputDecoration(labelText: "Assigned Role"),
-                            items: const [
-                              DropdownMenuItem(value: "admin", child: Text("👑 Administrator")),
-                              DropdownMenuItem(value: "operator", child: Text("⚡ Operator")),
-                              DropdownMenuItem(value: "readonly", child: Text("👁️ Read-Only")),
-                              DropdownMenuItem(value: "auditor", child: Text("🛡️ Security Auditor (ENS org.2)")),
-                            ],
-                            onChanged: (v) {
-                              if (v != null) setDialogState(() => role = v);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SwitchListTile(
-                            title: const Text("Account Active", style: TextStyle(fontSize: 13)),
-                            value: enabled,
-                            onChanged: (v) => setDialogState(() => enabled = v),
-                          ),
-                        ),
+                    DropdownButtonFormField<String>(
+                      initialValue: role,
+                      decoration: const InputDecoration(labelText: "Assigned Role"),
+                      items: const [
+                        DropdownMenuItem(value: "admin", child: Text("👑 Administrator")),
+                        DropdownMenuItem(value: "operator", child: Text("⚡ Operator")),
+                        DropdownMenuItem(value: "readonly", child: Text("👁️ Read-Only")),
+                        DropdownMenuItem(value: "auditor", child: Text("🛡️ Security Auditor (ENS org.2)")),
                       ],
+                      onChanged: (v) {
+                        if (v != null) setDialogState(() => role = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: enabled ? Colors.green.withValues(alpha: 0.08) : Colors.amber.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: enabled ? Colors.green.withValues(alpha: 0.35) : Colors.amber.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            enabled ? Icons.check_circle_outline : Icons.pause_circle_outline,
+                            color: enabled ? Colors.green : Colors.amber.shade800,
+                            size: 26,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      enabled ? "Cuenta Activa" : "Cuenta Suspendida",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: enabled ? Colors.green.shade800 : Colors.amber.shade900,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: (enabled ? Colors.green : Colors.amber).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        enabled ? "Acceso Permitido" : "Acceso Bloqueado",
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: enabled ? Colors.green.shade800 : Colors.amber.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  enabled
+                                      ? "El usuario puede autenticarse y operar con normalidad."
+                                      : "El usuario NO podrá iniciar sesión en Gubernator hasta que sea reactivado.",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Tooltip(
+                            message: (user?.username.toLowerCase() == "admin")
+                                ? "La cuenta principal 'admin' no puede ser suspendida"
+                                : (enabled ? "Suspender acceso temporalmente" : "Activar cuenta"),
+                            child: Switch(
+                              value: enabled,
+                              activeColor: Colors.green,
+                              inactiveThumbColor: Colors.amber.shade800,
+                              inactiveTrackColor: Colors.amber.withValues(alpha: 0.35),
+                              onChanged: (user?.username.toLowerCase() == "admin")
+                                  ? null
+                                  : (v) => setDialogState(() => enabled = v),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -503,6 +569,57 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         _showSnackBar("Cuenta de '${user.username}' desbloqueada correctamente (ENS op.acc.2)");
         _loadLocalUsers();
       }
+    }
+  }
+
+  Future<void> _toggleUserStatus(LocalUser user, bool targetState) async {
+    if (user.username.toLowerCase() == "admin" && !targetState) {
+      _showSnackBar("La cuenta de administrador principal 'admin' no puede ser suspendida", isError: true);
+      return;
+    }
+
+    if (!targetState) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.pause_circle_filled, color: Colors.amber, size: 24),
+              SizedBox(width: 10),
+              Text("Suspender Usuario Temporalmente"),
+            ],
+          ),
+          content: Text(
+            "¿Deseas suspender temporalmente el acceso del usuario '${user.username}'?\n\n"
+            "El usuario no podrá autenticarse ni acceder a los servicios de Gubernator hasta que vuelva a ser reactivado.\n"
+            "Los datos, roles y configuraciones permanecerán intactos.",
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.shade800,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Suspender Acceso"),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    final res = await ApiService.toggleLocalUserStatus(user.id, enabled: targetState);
+    if (res["error"] != null) {
+      _showSnackBar("Error al actualizar estado: ${res['error']}", isError: true);
+    } else {
+      _showSnackBar(
+        targetState
+            ? "Cuenta de '${user.username}' reactivada con éxito"
+            : "Cuenta de '${user.username}' suspendida temporalmente",
+      );
+      _loadLocalUsers();
     }
   }
 
@@ -1461,12 +1578,46 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
                               )
-                            : Chip(
-                                avatar: Icon(usr.enabled ? Icons.check_circle : Icons.block, size: 14, color: usr.enabled ? Colors.green : Colors.red),
-                                label: Text(usr.enabled ? "Active" : "Disabled", style: TextStyle(fontSize: 11, color: usr.enabled ? Colors.green.shade800 : Colors.red.shade800)),
-                                backgroundColor: (usr.enabled ? Colors.green : Colors.red).withValues(alpha: 0.1),
-                                padding: EdgeInsets.zero,
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Chip(
+                                    avatar: Icon(
+                                      usr.enabled ? Icons.check_circle : Icons.pause_circle_filled,
+                                      size: 14,
+                                      color: usr.enabled ? Colors.green : Colors.amber.shade800,
+                                    ),
+                                    label: Text(
+                                      usr.enabled ? "Activo" : "Suspendido",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: usr.enabled ? Colors.green.shade800 : Colors.amber.shade900,
+                                      ),
+                                    ),
+                                    backgroundColor: (usr.enabled ? Colors.green : Colors.amber).withValues(alpha: 0.14),
+                                    padding: EdgeInsets.zero,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Tooltip(
+                                    message: usr.username.toLowerCase() == "admin"
+                                        ? "El administrador principal 'admin' no puede ser suspendido"
+                                        : (usr.enabled ? "Clic para suspender temporalmente" : "Clic para reactivar usuario"),
+                                    child: Transform.scale(
+                                      scale: 0.8,
+                                      child: Switch(
+                                        value: usr.enabled,
+                                        activeColor: Colors.green,
+                                        inactiveThumbColor: Colors.amber.shade800,
+                                        inactiveTrackColor: Colors.amber.withValues(alpha: 0.3),
+                                        onChanged: usr.username.toLowerCase() == "admin"
+                                            ? null
+                                            : (bool val) => _toggleUserStatus(usr, val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                       ),
                       DataCell(
@@ -1492,6 +1643,16 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                             tooltip: "Edit User",
                             onPressed: () => _openUserDialog(usr),
                           ),
+                          if (usr.username.toLowerCase() != "admin")
+                            IconButton(
+                              icon: Icon(
+                                usr.enabled ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                                size: 18,
+                                color: usr.enabled ? Colors.amber.shade800 : Colors.green,
+                              ),
+                              tooltip: usr.enabled ? "Suspender Usuario" : "Reactivar Usuario",
+                              onPressed: () => _toggleUserStatus(usr, !usr.enabled),
+                            ),
                           IconButton(
                             icon: Icon(
                               usr.mfaEnabled ? Icons.phonelink_erase : Icons.phonelink_lock,

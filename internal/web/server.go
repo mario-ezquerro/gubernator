@@ -470,6 +470,7 @@ func StartDashboard() {
 		api.GET("/security/users", auth.RequireRole(auth.RoleAdmin), listSecurityUsersHandler)
 		api.POST("/security/users", auth.RequireRole(auth.RoleAdmin), createSecurityUserHandler)
 		api.PUT("/security/users/:id", auth.RequireRole(auth.RoleAdmin), updateSecurityUserHandler)
+		api.POST("/security/users/:id/toggle-status", auth.RequireRole(auth.RoleAdmin), toggleSecurityUserStatusHandler)
 		api.POST("/security/users/:id/password", auth.RequireRole(auth.RoleAdmin), resetSecurityUserPasswordHandler)
 		api.POST("/security/users/:id/unlock", auth.RequireRole(auth.RoleAdmin), unlockSecurityUserHandler)
 		api.DELETE("/security/users/:id", auth.RequireRole(auth.RoleAdmin), deleteSecurityUserHandler)
@@ -5549,8 +5550,11 @@ func authLoginHandler(c *gin.Context) {
 				return
 			}
 			if !localUser.Enabled {
-				logAudit(c, req.Username, "LOCAL", "LOGIN_FAILED", "FAILURE", "Account is disabled")
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "User account is disabled"})
+				logAudit(c, req.Username, "LOCAL", "LOGIN_FAILED", "FAILURE", "Account is temporarily suspended/disabled")
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":     "La cuenta de usuario está suspendida temporalmente. Contacte con un administrador.",
+					"suspended": true,
+				})
 				return
 			}
 			if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err == nil {
@@ -5959,24 +5963,107 @@ func updateSecurityUserHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
+
+	sess := auth.ExtractUserSession(c)
+	actor := "system"
+	if sess != nil {
+		actor = sess.Username
+	}
+
+	if !req.Enabled && user.Enabled {
+		if strings.ToLower(user.Username) == "admin" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "La cuenta de administrador principal 'admin' no puede ser suspendida"})
+			return
+		}
+		if sess != nil && strings.ToLower(sess.Username) == strings.ToLower(user.Username) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No puedes suspender tu propia cuenta activa"})
+			return
+		}
+	}
+
 	user.DisplayName = req.DisplayName
 	user.Email = req.Email
 	if req.Role != "" {
 		user.Role = req.Role
 	}
+	statusChanged := user.Enabled != req.Enabled
+	wasSuspended := user.Enabled && !req.Enabled
 	user.Enabled = req.Enabled
 	user.UpdatedAt = time.Now()
 	if err := db.DB.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	if statusChanged {
+		if wasSuspended {
+			logAudit(c, actor, "LOCAL", "USER_SUSPEND", "SUCCESS", fmt.Sprintf("Suspended local user account '%s'", user.Username))
+		} else {
+			logAudit(c, actor, "LOCAL", "USER_REACTIVATE", "SUCCESS", fmt.Sprintf("Reactivated local user account '%s'", user.Username))
+		}
+	} else {
+		logAudit(c, actor, "LOCAL", "USER_UPDATE", "SUCCESS", fmt.Sprintf("Updated local user '%s'", user.Username))
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "user": user})
+}
+
+func toggleSecurityUserStatusHandler(c *gin.Context) {
+	id := c.Param("id")
+	var user db.LocalUser
+	if err := db.DB.First(&user, "id = ? OR username = ?", id, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
 	sess := auth.ExtractUserSession(c)
 	actor := "system"
 	if sess != nil {
 		actor = sess.Username
 	}
-	logAudit(c, actor, "LOCAL", "USER_UPDATE", "SUCCESS", fmt.Sprintf("Updated local user '%s'", user.Username))
-	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "user": user})
+
+	var req struct {
+		Enabled *bool `json:"enabled"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	targetEnabled := !user.Enabled
+	if req.Enabled != nil {
+		targetEnabled = *req.Enabled
+	}
+
+	if !targetEnabled {
+		if strings.ToLower(user.Username) == "admin" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "La cuenta de administrador principal 'admin' no puede ser suspendida"})
+			return
+		}
+		if sess != nil && strings.ToLower(sess.Username) == strings.ToLower(user.Username) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No puedes suspender tu propia cuenta activa"})
+			return
+		}
+	}
+
+	user.Enabled = targetEnabled
+	user.UpdatedAt = time.Now()
+	if err := db.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	action := "USER_REACTIVATE"
+	actionDesc := "Reactivated"
+	msgSpanish := "reactivada con éxito"
+	if !targetEnabled {
+		action = "USER_SUSPEND"
+		actionDesc = "Suspended"
+		msgSpanish = "suspendida temporalmente"
+	}
+	logAudit(c, actor, "LOCAL", action, "SUCCESS", fmt.Sprintf("%s local user account '%s'", actionDesc, user.Username))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Cuenta de usuario '%s' %s", user.Username, msgSpanish),
+		"user":    user,
+		"enabled": user.Enabled,
+	})
 }
 
 func resetSecurityUserPasswordHandler(c *gin.Context) {

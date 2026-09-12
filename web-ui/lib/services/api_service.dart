@@ -1372,6 +1372,17 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  /// Toggles suspension status of a local user account.
+  static Future<Map<String, dynamic>> toggleLocalUserStatus(String id, {bool? enabled}) async {
+    final body = enabled != null ? jsonEncode({"enabled": enabled}) : "{}";
+    final response = await http.post(
+      Uri.parse("/api/security/users/$id/toggle-status"),
+      headers: authHeaders,
+      body: body,
+    );
+    return jsonDecode(response.body);
+  }
+
   /// Resets a local user password.
   static Future<Map<String, dynamic>> resetLocalUserPassword(String id, String newPassword) async {
     final response = await http.post(

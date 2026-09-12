@@ -1050,3 +1050,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     - One-click CommonMark audit report export modal with live preview, clipboard copying, and `.md` file download.
 * **Full CLI Parity (`internal/cli/security.go`):**
   - Added `gbnt security ens` displaying formatted terminal audit table and `gbnt security ens --report` exporting complete technical markdown reports.
+
+### 109. Local User Temporary Suspension & Reactivation Subsystem (`v2.87.1`)
+* **Instant One-Click Inline Suspension Switch (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Added interactive inline toggle `Switch` directly within the *Status* column of the Local Users table, displaying color-coded status badges (`🟢 Activo` vs `⏸️ Suspendido`).
+  - Implemented suspension confirmation dialog preventing accidental triggers and quick pause/play icon buttons (`⏸️` / `▶️`) in the Actions row.
+* **Enhanced Edit User Modal with Dedicated Status Card:**
+  - Redesigned user edit dialog with a prominent "Cuenta Activa / Suspendida" status card displaying access permission indicators, descriptive subtext, and account toggle controls.
+* **Lockout Safeguards & Anti-Disruption Rules (`internal/web/server.go`):**
+  - Strict backend safeguards blocking attempts to suspend the primary `admin` root account or self-suspension by the currently authenticated administrator.
+* **Authentication Interception & Informative Messaging:**
+  - Login attempts with suspended accounts are rejected with `401 Unauthorized`, returning localized feedback (`"La cuenta de usuario está suspendida temporalmente. Contacte con un administrador."`) and flagging `"suspended": true`.
+* **Tamper-Evident Forensic Audit Trail (ENS `op.mon.1` & `op.acc.2`):**
+  - Dedicated audit actions `USER_SUSPEND` and `USER_REACTIVATE` cryptographically chained in the SHA-256 hash log recording actor, timestamp, IP, and targeted user account.
+
