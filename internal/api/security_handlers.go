@@ -1,8 +1,11 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mario-ezquerro/gubernator/internal/db"
@@ -391,4 +394,40 @@ func SecurityRemediateExecuteHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// SecurityENSStatusHandler returns the Spanish ENS (RD 311/2022) compliance assessment.
+func SecurityENSStatusHandler(c *gin.Context) {
+	summary := security.EvaluateENSCompliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+// SecurityENSReportHandler generates and exports the technical ENS compliance report.
+func SecurityENSReportHandler(c *gin.Context) {
+	summary := security.EvaluateENSCompliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=ens-compliance-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	version := "v2.87.0"
+	for _, p := range []string{"VERSION", "/home/ubuntu/VERSION", "/data/VERSION", "/app/VERSION", "../VERSION"} {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			v := strings.TrimSpace(string(b))
+			if v != "" && strings.HasPrefix(v, "v") {
+				version = v
+				break
+			}
+		}
+	}
+
+	report := security.GenerateENSReportMarkdown(summary, version)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=informe-cumplimiento-ens-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
 }

@@ -309,6 +309,8 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/evaluate", SecurityAdmissionEvaluateHandler)
 			securityRoute.GET("/remediate/preview", SecurityRemediatePreviewHandler)
 			securityRoute.POST("/remediate", SecurityRemediateExecuteHandler)
+			securityRoute.GET("/ens/status", SecurityENSStatusHandler)
+			securityRoute.GET("/ens/report", SecurityENSReportHandler)
 		}
 
 		imagesRoute := v1.Group("/images", authMiddleware)

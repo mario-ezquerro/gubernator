@@ -2740,6 +2740,40 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  // ── Esquema Nacional de Seguridad (ENS RD 311/2022) ──────────────────────────
+
+  /// Fetches Spanish ENS (RD 311/2022) compliance evaluation summary.
+  static Future<ENSSummaryModel?> fetchENSStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/ens/status'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return ENSSummaryModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads the technical ENS compliance and evidence report in Markdown or JSON.
+  static Future<String?> fetchENSReport({String format = 'markdown'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/ens/report?format=$format'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -3070,6 +3104,7 @@ class GlusterSnapshotModel {
     );
   }
 }
+
 
 
 

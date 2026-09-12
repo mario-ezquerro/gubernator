@@ -3349,3 +3349,110 @@ class EbpfTopology {
   }
 }
 
+// ---------------------------------------------------------------------------
+// ESQUEMA NACIONAL DE SEGURIDAD (ENS RD 311/2022) MODELS
+// ---------------------------------------------------------------------------
+
+class ENSMeasureModel {
+  final String id;
+  final String name;
+  final String area;
+  final String dimension;
+  final List<String> applicableLevels;
+  final String status; // COMPLIANT, PARTIAL, NON_COMPLIANT
+  final double score;
+  final String evidence;
+  final String recommendation;
+  final double weight;
+
+  ENSMeasureModel({
+    required this.id,
+    required this.name,
+    required this.area,
+    required this.dimension,
+    required this.applicableLevels,
+    required this.status,
+    required this.score,
+    required this.evidence,
+    required this.recommendation,
+    required this.weight,
+  });
+
+  bool get isCompliant => status == 'COMPLIANT';
+  bool get isPartial => status == 'PARTIAL';
+  bool get isNonCompliant => status == 'NON_COMPLIANT';
+
+  factory ENSMeasureModel.fromJson(Map<String, dynamic> json) {
+    final levels = <String>[];
+    if (json['applicable_levels'] != null && json['applicable_levels'] is List) {
+      for (final l in json['applicable_levels']) {
+        levels.add(l.toString());
+      }
+    }
+    return ENSMeasureModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      area: json['area'] ?? '',
+      dimension: json['dimension'] ?? '',
+      applicableLevels: levels,
+      status: json['status'] ?? 'NON_COMPLIANT',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      evidence: json['evidence'] ?? '',
+      recommendation: json['recommendation'] ?? '',
+      weight: (json['weight'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+}
+
+class ENSSummaryModel {
+  final String evaluatedAt;
+  final String clusterStatus;
+  final double basicoScore;
+  final double medioScore;
+  final double altoScore;
+  final String overallCategory; // BASICO, MEDIO, ALTO, INSUFICIENTE
+  final int compliantCount;
+  final int partialCount;
+  final int nonCompliantCount;
+  final int totalMeasures;
+  final List<ENSMeasureModel> measures;
+
+  ENSSummaryModel({
+    required this.evaluatedAt,
+    required this.clusterStatus,
+    required this.basicoScore,
+    required this.medioScore,
+    required this.altoScore,
+    required this.overallCategory,
+    required this.compliantCount,
+    required this.partialCount,
+    required this.nonCompliantCount,
+    required this.totalMeasures,
+    required this.measures,
+  });
+
+  factory ENSSummaryModel.fromJson(Map<String, dynamic> json) {
+    final mList = <ENSMeasureModel>[];
+    if (json['measures'] != null && json['measures'] is List) {
+      for (final m in json['measures']) {
+        if (m is Map<String, dynamic>) {
+          mList.add(ENSMeasureModel.fromJson(m));
+        }
+      }
+    }
+    return ENSSummaryModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      clusterStatus: json['cluster_status'] ?? 'ACTIVE',
+      basicoScore: (json['basico_score'] as num?)?.toDouble() ?? 0.0,
+      medioScore: (json['medio_score'] as num?)?.toDouble() ?? 0.0,
+      altoScore: (json['alto_score'] as num?)?.toDouble() ?? 0.0,
+      overallCategory: json['overall_category'] ?? 'INSUFICIENTE',
+      compliantCount: (json['compliant_count'] as num?)?.toInt() ?? 0,
+      partialCount: (json['partial_count'] as num?)?.toInt() ?? 0,
+      nonCompliantCount: (json['non_compliant_count'] as num?)?.toInt() ?? 0,
+      totalMeasures: (json['total_measures'] as num?)?.toInt() ?? 0,
+      measures: mList,
+    );
+  }
+}
+

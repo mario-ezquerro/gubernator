@@ -459,7 +459,89 @@ var scanRmCmd = &cobra.Command{
 	},
 }
 
+var (
+	ensFormatFlag string
+	ensReportFlag bool
+)
+
+var ensCmd = &cobra.Command{
+	Use:   "ens",
+	Short: "Audit cluster compliance with Spanish ENS (RD 311/2022)",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/ens/status", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to evaluate ENS compliance: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var s security.ENSSummary
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			os.Exit(1)
+		}
+
+		if ensReportFlag || ensFormatFlag == "markdown" || ensFormatFlag == "md" {
+			reportResp, err := DoAPIRequest("GET", "/v1/security/ens/report", nil)
+			if err == nil && reportResp.StatusCode == http.StatusOK {
+				defer reportResp.Body.Close()
+				body, _ := io.ReadAll(reportResp.Body)
+				fmt.Println(string(body))
+				return
+			}
+		}
+
+		if ensFormatFlag == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(s)
+			return
+		}
+
+		// Formatted terminal summary
+		fmt.Println("=========================================================================================")
+		fmt.Printf("🏛  ESQUEMA NACIONAL DE SEGURIDAD (ENS — RD 311/2022) | PUNTUACIÓN DE CONFORMIDAD\n")
+		fmt.Println("=========================================================================================")
+		fmt.Printf("  Categoría Alcanzada:   %s\n", s.OverallCategory)
+		fmt.Printf("  Cumplimiento BÁSICO:   %.1f%%\n", s.BasicoScore)
+		fmt.Printf("  Cumplimiento MEDIO:    %.1f%%\n", s.MedioScore)
+		fmt.Printf("  Cumplimiento ALTO:     %.1f%%\n", s.AltoScore)
+		fmt.Printf("  Medidas Evaluadas:     %d (%d Conformes, %d Parciales, %d No Conformes)\n", s.TotalMeasures, s.CompliantCount, s.PartialCount, s.NonCompliantCount)
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("%-10s %-32s %-12s %-8s %-30s\n", "ID", "MEDIDA", "ESTADO", "SCORE", "EVIDENCIA TÉCNICA")
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		for _, m := range s.Measures {
+			statusStr := "❌ No Cumple"
+			if m.Status == security.ENSStatusCompliant {
+				statusStr = "✅ Cumple"
+			} else if m.Status == security.ENSStatusPartial {
+				statusStr = "⚠️ Parcial"
+			}
+			evid := m.Evidence
+			if len(evid) > 40 {
+				evid = evid[:37] + "..."
+			}
+			name := m.Name
+			if len(name) > 30 {
+				name = name[:27] + "..."
+			}
+			fmt.Printf("%-10s %-32s %-12s %-8.0f%% %-30s\n", m.ID, name, statusStr, m.Score, evid)
+		}
+		fmt.Println("=========================================================================================")
+		fmt.Println("Tip: Ejecuta 'gbnt security ens --report' para ver el informe técnico completo de auditoría.")
+	},
+}
+
 func init() {
+	ensCmd.Flags().StringVarP(&ensFormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
+	ensCmd.Flags().BoolVarP(&ensReportFlag, "report", "r", false, "Display full technical compliance audit report")
+
 	sbomCmd.Flags().StringVarP(&sbomFormatFlag, "format", "f", "cyclonedx-json", "SBOM format (cyclonedx-json, spdx-json)")
 
 	imageSignCmd.Flags().StringVarP(&imageKeyFlag, "key", "k", "", "Path to PEM-encoded ECDSA private key")
@@ -479,9 +561,12 @@ func init() {
 	securityKeyCmd.AddCommand(securityKeyLsCmd)
 	securityCmd.AddCommand(securityPolicyCmd)
 	securityCmd.AddCommand(securityKeyCmd)
+	securityCmd.AddCommand(ensCmd)
 
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(sbomCmd)
 	rootCmd.AddCommand(imageCmd)
 	rootCmd.AddCommand(securityCmd)
+	rootCmd.AddCommand(ensCmd)
 }
+

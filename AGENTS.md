@@ -1032,4 +1032,21 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Node Cluster Deployment & Live Verification:**
   - Verified end-to-end backup creation, encryption, password verification, tamper rejection, and in-place restoration across physical/virtual Centurion nodes.
 
-
+### 108. Spanish ENS (RD 311/2022) Compliance Phase 3: Live Audit Engine, Compliance Dashboard & CCN-STIC Evidence Reports (`v2.87.0`)
+* **Automated ENS Compliance Engine (`internal/security/ens.go`):**
+  - Live heuristic and stateful evaluation of 11 technical security controls from Annex II of Spanish Royal Decree 311/2022 across 3 operational frameworks:
+    - **Marco Organizativo:** `org.2` (Segregación de funciones y responsabilidades / RBAC matrix & dedicated Auditor role).
+    - **Marco Operacional:** `op.acc.1` (Identificación unívoca / UUID, bcrypt & signed JWTs), `op.acc.2` (Control de acceso / 5-attempt lockout, CCN-STIC 823 password complexity, 15m session timeout), `op.acc.6` (MFA / TOTP RFC 6238), `op.exp.10` (Copias de seguridad periódicas), `op.mon.1` (Pista de auditoría forense inmutable con SHA-256 hash chain), `op.mon.2` (Monitorización SIEM continua y reenvío Syslog/CEF), `op.cont.2` (Continuidad de actividad / clúster multi-nodo HA con auto-restart).
+    - **Medidas de Protección:** `mp.si.1` (Comunicaciones TLS 1.2/1.3 automáticas con Caddy Ingress), `mp.si.2` (Cifrado en reposo AES-256-GCM con PBKDF2), `mp.sw.2` (Firma criptográfica Cosign, SBOM y Gatekeeper).
+  - Dynamically calculates weighted conformity percentages for tiers BÁSICO, MEDIO, and ALTO, assigning the overall qualifying category (`BASICO`, `MEDIO`, `ALTO`, or `INSUFICIENTE`).
+* **REST & Web APIs (`internal/api/security_handlers.go`, `internal/web/server.go`):**
+  - Exposed `GET /v1/security/ens/status` & `GET /api/security/ens/status` returning complete compliance evaluation summaries and measure details.
+  - Exposed `GET /v1/security/ens/report` & `GET /api/security/ens/report` exporting formatted CommonMark technical audit reports ready for CCN-STIC submission.
+* **Web UI ENS Compliance Dashboard (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Integrated dedicated 5th tab *"Cumplimiento ENS (RD 311/2022)"* with rich aesthetics:
+    - 4 real-time KPI scorecards: Categoría Global Alcanzada, Nivel BÁSICO (%), Nivel MEDIO (%), Nivel ALTO (%).
+    - Multi-dimensional filters: `Todas`, `BÁSICO`, `MEDIO`, `ALTO`, and `⚠️ Requieren Acción`.
+    - Interactive measure cards with live status badges (`✅ CUMPLE (100%)`, `⚠️ PARCIAL`, `❌ NO CUMPLE (0%)`), technical evidence inspectors, and CCN-STIC remediation advice.
+    - One-click CommonMark audit report export modal with live preview, clipboard copying, and `.md` file download.
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - Added `gbnt security ens` displaying formatted terminal audit table and `gbnt security ens --report` exporting complete technical markdown reports.

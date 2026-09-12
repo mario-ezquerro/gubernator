@@ -482,6 +482,10 @@ func StartDashboard() {
 		api.POST("/security/siem", auth.RequireRole(auth.RoleAdmin), updateSIEMConfigHandler)
 		api.POST("/security/siem/test", auth.RequireRole(auth.RoleAdmin), testSIEMHandler)
 
+		// Esquema Nacional de Seguridad (ENS RD 311/2022) Compliance Suite
+		api.GET("/security/ens/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), ensStatusHandler)
+		api.GET("/security/ens/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), ensReportHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -6605,6 +6609,33 @@ func exportAuditLogsHandler(c *gin.Context) {
 		}
 		c.String(http.StatusOK, sb.String())
 	}
+}
+
+// ---------------------------------------------------------------------------
+// ESQUEMA NACIONAL DE SEGURIDAD (ENS RD 311/2022) HANDLERS
+// ---------------------------------------------------------------------------
+
+func ensStatusHandler(c *gin.Context) {
+	summary := security.EvaluateENSCompliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+func ensReportHandler(c *gin.Context) {
+	summary := security.EvaluateENSCompliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=informe-cumplimiento-ens-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateENSReportMarkdown(summary, GetVersion())
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=informe-cumplimiento-ens-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
 }
 
 // ---------------------------------------------------------------------------
