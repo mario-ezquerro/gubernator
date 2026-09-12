@@ -74,6 +74,9 @@ func Start(ctx context.Context) error {
 			if err := monitor.RegisterInDB(db.GetDB()); err != nil {
 				slog.Warn("sre stack: failed to register in database", "err", err)
 			}
+			if err := monitor.EnsureDockerDaemonMetrics(); err != nil {
+				slog.Warn("docker daemon: failed to activate metrics on port 9323", "err", err)
+			}
 			aqueducts.GenerateHostsFile()
 			if err := slo.SyncSLORulesToPrometheus(db.GetDB()); err != nil {
 				slog.Warn("slo engine: failed to sync rules on startup", "err", err)

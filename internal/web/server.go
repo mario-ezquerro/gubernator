@@ -3813,6 +3813,13 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 			pr.SetURL(targetURL)
 			pr.Out.Header.Set("X-WEBAUTH-USER", username)
 			pr.Out.Header.Del("Authorization")
+			if pr.In.Header.Get("Upgrade") != "" {
+				pr.Out.Header.Set("Upgrade", pr.In.Header.Get("Upgrade"))
+				pr.Out.Header.Set("Connection", pr.In.Header.Get("Connection"))
+			}
+			if pr.In.Header.Get("Origin") != "" {
+				pr.Out.Header.Set("Origin", targetURL.String())
+			}
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			resp.Header.Del("X-Frame-Options")

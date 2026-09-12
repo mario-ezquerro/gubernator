@@ -75,6 +75,12 @@ func prometheusConfig(workerTargets []string) string {
 		nodeExporterTargets = append(nodeExporterTargets, fmt.Sprintf("'%s:9100'", ip))
 	}
 
+	// Build Docker Daemon targets (port 9323)
+	dockerDaemonTargets := []string{"'host.docker.internal:9323'"}
+	for _, ip := range workerTargets {
+		dockerDaemonTargets = append(dockerDaemonTargets, fmt.Sprintf("'%s:9323'", ip))
+	}
+
 	return fmt.Sprintf(`global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -110,6 +116,15 @@ scrape_configs:
         labels:
           service: 'node-exporter'
 
+  # Docker Engine Daemon — dockerd runtime telemetry & health (port 9323)
+  - job_name: 'docker-daemon'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: [%s]
+        labels:
+          service: 'docker-daemon'
+
   # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
@@ -121,7 +136,7 @@ scrape_configs:
       - targets: ['gbnt-monitor-loki:3100']
         labels:
           service: 'loki'
-`, strings.Join(cadvisorTargets, ", "), strings.Join(nodeExporterTargets, ", "))
+`, strings.Join(cadvisorTargets, ", "), strings.Join(nodeExporterTargets, ", "), strings.Join(dockerDaemonTargets, ", "))
 }
 
 func lokiConfig() string {

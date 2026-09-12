@@ -336,6 +336,8 @@ func deployUltraLightStack(webUser, webPass string) error {
 		"-e", "GF_SERVER_ROOT_URL=/grafana/",
 		"-e", "GF_SERVER_SERVE_FROM_SUB_PATH=true",
 		"-e", "GF_SECURITY_ALLOW_EMBEDDING=true",
+		"-e", "GF_SECURITY_COOKIE_SAMESITE=disabled",
+		"-e", "GF_LIVE_ALLOWED_ORIGINS=*",
 		"-e", "GF_AUTH_ANONYMOUS_ENABLED=true",
 		"grafana/grafana:latest",
 	})
@@ -394,6 +396,8 @@ func deployUnifiedOtelStack(webUser, webPass string) error {
 		"-e", "GF_SERVER_ROOT_URL=/grafana/",
 		"-e", "GF_SERVER_SERVE_FROM_SUB_PATH=true",
 		"-e", "GF_SECURITY_ALLOW_EMBEDDING=true",
+		"-e", "GF_SECURITY_COOKIE_SAMESITE=disabled",
+		"-e", "GF_LIVE_ALLOWED_ORIGINS=*",
 		"-e", "GF_AUTH_ANONYMOUS_ENABLED=true",
 		"grafana/grafana:latest",
 	})

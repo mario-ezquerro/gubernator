@@ -947,9 +947,23 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **OpenSearch Trace Analytics & Observability Embedding (`OpenSearchTracesPage`):**
   - Adapts the sidebar item 12 to **"Trace Analytics"** (icon `polyline`) with breadcrumb `Trace Analytics (APM)` when the active profile is `enterprise-elk`.
   - Directly embeds OpenSearch Trace Analytics / Observability (`/app/observability-dashboards#/trace_analytics/traces`), providing service dependency maps, distributed spans, P50/P90/P99 latency percentiles, and trace groups within Gubernator.
-  - Seamlessly reverts back to **Jaeger** (`JaegerPage` on port `:16686`) when switching to the `cloud-native` profile.
-* **4-Way OpenSearch Dashboards Segmented Navigation:**
-  - Expanded `OpenSearchDashboardsPage` top segmented controller to 4 dedicated views: **Logs Overview** (`#/view/gubernator-cluster-logs`), **SIEM Audit** (`#/view/gubernator-siem-audit`), **Trace Analytics** (`opensearch-traces-iframe`), and **Discover** (`/app/discover`).
+### 103. Automated Docker Daemon Metrics (Port 9323), Prometheus Telemetry & Grafana Runtime Dashboards (`v2.84.0`)
+* **Zero-Touch Docker Engine Daemon Metrics Auto-Configuration (`internal/monitor/deploy.go`, `internal/cli/legion.go`, `internal/api/server.go`):**
+  - Added `EnsureDockerDaemonMetrics()`: automatically checks `/etc/docker/daemon.json` on node initialization and registration (`gbnt legion init`, `gbnt legion join` / `EnsureWorkerMonitoring`, and Manager startup).
+  - Guarantees `"metrics-addr": "0.0.0.0:9323"`, `"experimental": true`, and `"live-restore": true` are active without manual intervention, saving a timestamped backup (`/etc/docker/daemon.json.bak.<ts>`) and safely reloading/restarting Docker without container downtime.
+* **Dynamic Prometheus Scraping Integration (`internal/monitor/configs.go`):**
+  - Integrated `job_name: 'docker-daemon'` into the automated Prometheus configuration generator:
+    - Manager: `'host.docker.internal:9323'`
+    - Workers: `'<worker_ip>:9323'`
+    - 15-second scrape interval with `service: 'docker-daemon'` label.
+  - Automatically updates and reloads via SIGHUP across all node join/leave lifecycle events via `UpdatePrometheusConfig()`.
+* **Dedicated Grafana Engine Runtime Dashboard Panels (`internal/monitor/gubernator_dashboard.json` & `monitoring/grafana/dashboards/gubernator.json`):**
+  - Added full-width collapsible row **`"Docker Engine Daemon Runtime (Port 9323)"`** containing 4 production panels:
+    1. **Active Docker Daemons (Port 9323)**: Real-time stat card tracking healthy `dockerd` engines across the cluster.
+    2. **Docker Containers by State (Daemon Level)**: Stacked timeseries/bar chart breakdown showing live counts of `running`, `stopped`, and `paused` containers per Centurion node.
+    3. **Docker Engine API Actions / Sec**: Real-time rate of Docker API operations processed by each daemon (`changes`, `commit`, `create`, `start`, etc.).
+    4. **Docker Daemon Memory & Goroutines**: Dual-axis graph monitoring `dockerd` heap allocations (`go_memstats_alloc_bytes`) alongside active goroutines concurrency per cluster host.
+
 
 
 

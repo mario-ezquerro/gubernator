@@ -48,6 +48,7 @@ var legionInitCmd = &cobra.Command{
 		json.NewDecoder(resp.Body).Decode(&data)
 
 		fmt.Println("🏛 Gubernator Legion Initialized!")
+		_ = monitor.EnsureDockerDaemonMetrics()
 		fmt.Println("\nTo add a worker to this swarm, run the following command on the worker node:")
 		fmt.Printf("\n  gbnt legion join --token %s --manager <MANAGER-IP>:4000\n\n", data.Token)
 

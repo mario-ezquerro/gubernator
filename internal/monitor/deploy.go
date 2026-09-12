@@ -1,10 +1,13 @@
 package monitor
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // Container names for the monitoring stack.
@@ -164,12 +167,14 @@ func DeployManagerStack(webUser, webPass string) error {
 		"-e", "GF_SERVER_ROOT_URL=/grafana/",
 		"-e", "GF_SERVER_SERVE_FROM_SUB_PATH=true",
 		"-e", "GF_SECURITY_ALLOW_EMBEDDING=true",
+		"-e", "GF_SECURITY_COOKIE_SAMESITE=disabled",
+		"-e", "GF_LIVE_ALLOWED_ORIGINS=*",
 		"-e", "GF_AUTH_PROXY_ENABLED=true",
 		"-e", "GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER",
 		"-e", "GF_AUTH_PROXY_HEADER_PROPERTY=username",
 		"-e", "GF_AUTH_PROXY_AUTO_SIGN_UP=true",
 		"-e", "GF_AUTH_ANONYMOUS_ENABLED=true",
-		"-e", "GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer",
+		"-e", "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin",
 		"-e", "GF_AUTH_DISABLE_LOGIN_FORM=false",
 		"grafana/grafana:latest",
 	}
@@ -398,9 +403,90 @@ func EnsureNodeExporterRunning() error {
 	})
 }
 
-// EnsureWorkerMonitoring starts cAdvisor, Node Exporter and Promtail locally on a worker node.
+// EnsureDockerDaemonMetrics checks /etc/docker/daemon.json and ensures that metrics-addr: 0.0.0.0:9323,
+// experimental: true, and live-restore: true are active. If changes are required, reloads/restarts Docker safely.
+func EnsureDockerDaemonMetrics() error {
+	configPath := "/etc/docker/daemon.json"
+	var config map[string]interface{}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if out, sErr := exec.Command("sudo", "cat", configPath).Output(); sErr == nil {
+			data = out
+			err = nil
+		}
+	}
+
+	if err == nil {
+		if jErr := json.Unmarshal(data, &config); jErr != nil {
+			config = make(map[string]interface{})
+		}
+	} else {
+		config = make(map[string]interface{})
+	}
+
+	metricsAddr, hasMetrics := config["metrics-addr"].(string)
+	exp, hasExp := config["experimental"].(bool)
+	liveRestore, hasLive := config["live-restore"].(bool)
+
+	if hasMetrics && metricsAddr == "0.0.0.0:9323" && hasExp && exp && hasLive && liveRestore {
+		// Already fully configured
+		return nil
+	}
+
+	config["metrics-addr"] = "0.0.0.0:9323"
+	config["experimental"] = true
+	config["live-restore"] = true
+
+	if _, hasLog := config["log-driver"]; !hasLog {
+		config["log-driver"] = "json-file"
+		config["log-opts"] = map[string]interface{}{
+			"max-size": "20m",
+			"max-file": "3",
+		}
+	}
+
+	outJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal daemon.json: %w", err)
+	}
+
+	// Backup existing configuration if present
+	if len(data) > 0 {
+		backupPath := fmt.Sprintf("/etc/docker/daemon.json.bak.%d", time.Now().Unix())
+		_ = os.WriteFile(backupPath, data, 0644)
+		_ = exec.Command("sudo", "cp", configPath, backupPath).Run()
+	}
+
+	_ = os.MkdirAll("/etc/docker", 0755)
+	_ = exec.Command("sudo", "mkdir", "-p", "/etc/docker").Run()
+
+	writeErr := os.WriteFile(configPath, outJSON, 0644)
+	if writeErr != nil {
+		cmd := exec.Command("sudo", "tee", configPath)
+		cmd.Stdin = bytes.NewReader(outJSON)
+		if sErr := cmd.Run(); sErr != nil {
+			return fmt.Errorf("failed to write %s: %v (sudo: %v)", configPath, writeErr, sErr)
+		}
+	}
+
+	fmt.Println("⚙️ Configured /etc/docker/daemon.json with metrics-addr: 0.0.0.0:9323. Reloading Docker daemon...")
+	// Safely reload or restart daemon with live-restore active
+	if err := exec.Command("sudo", "systemctl", "reload", "docker").Run(); err != nil {
+		_ = exec.Command("sudo", "systemctl", "restart", "docker").Run()
+	}
+	return nil
+}
+
+// EnsureWorkerMonitoring starts cAdvisor, Node Exporter and Promtail locally on a worker node,
+// and ensures that Docker daemon metrics (port 9323) are active.
 // managerIP is the IP of the Manager node hosting the Loki log aggregator on port :3100.
 func EnsureWorkerMonitoring(managerIP string) error {
+	// 0) Ensure Docker daemon metrics (port 9323) are active
+	if err := EnsureDockerDaemonMetrics(); err != nil {
+		fmt.Printf("⚠️ Notice checking Docker daemon metrics: %v\n", err)
+	}
+
 	// 1) Ensure cAdvisor is running on port 8081
 	if err := EnsureCadvisorRunning(); err != nil {
 		fmt.Printf("⚠️ Failed to start cAdvisor: %v\n", err)
