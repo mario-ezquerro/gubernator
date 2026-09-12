@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -20,20 +21,23 @@ import (
 
 // CreateBackupRequest defines the parameters for creating a new backup.
 type CreateBackupRequest struct {
-	Name            string `json:"name"`
-	StackID         string `json:"stack_id"`
-	VolumeName      string `json:"volume_name"`
-	SourcePath      string `json:"source_path"`
-	DestinationPath string `json:"destination_path"`
-	PauseContainers bool   `json:"pause_containers"`
-	IsScheduled     bool   `json:"is_scheduled"`
-	ScheduleID      string `json:"schedule_id"`
+	Name                 string `json:"name"`
+	StackID              string `json:"stack_id"`
+	VolumeName           string `json:"volume_name"`
+	SourcePath           string `json:"source_path"`
+	DestinationPath      string `json:"destination_path"`
+	PauseContainers      bool   `json:"pause_containers"`
+	IsScheduled          bool   `json:"is_scheduled"`
+	ScheduleID           string `json:"schedule_id"`
+	Encrypted            bool   `json:"encrypted"`
+	EncryptionPassphrase string `json:"encryption_passphrase"`
 }
 
 // RestoreBackupRequest defines the parameters for restoring an existing backup.
 type RestoreBackupRequest struct {
-	BackupID   string `json:"backup_id"`
-	TargetPath string `json:"target_path"` // If empty, restores over the original SourcePath
+	BackupID             string `json:"backup_id"`
+	TargetPath           string `json:"target_path"` // If empty, restores over the original SourcePath
+	EncryptionPassphrase string `json:"encryption_passphrase"`
 }
 
 // ListBackups returns all backup records from the database.
@@ -130,6 +134,9 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		cleanName = fmt.Sprintf("backup-%s-%s", filepath.Base(sourcePath), timestamp)
 	}
 	fileName := fmt.Sprintf("%s.tar.gz", cleanName)
+	if req.Encrypted {
+		fileName = fmt.Sprintf("%s.tar.gz.enc", cleanName)
+	}
 	destFilePath := filepath.Join(destDir, fileName)
 
 	// Collect containers associated with the stack to pause if requested
@@ -167,7 +174,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		}
 	}()
 
-	// Create tar.gz file
+	// Create backup file on disk
 	outFile, err := os.Create(destFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup file: %w", err)
@@ -177,8 +184,34 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	hasher := sha256.New()
 	multiWriter := io.MultiWriter(outFile, hasher)
 
-	gw := gzip.NewWriter(multiWriter)
-	tw := tar.NewWriter(gw)
+	var (
+		tw       *tar.Writer
+		gw       *gzip.Writer
+		encPipeR *io.PipeReader
+		encPipeW *io.PipeWriter
+		encErrCh chan error
+	)
+
+	if req.Encrypted {
+		if strings.TrimSpace(req.EncryptionPassphrase) == "" {
+			outFile.Close()
+			os.Remove(destFilePath)
+			return nil, errors.New("encryption passphrase is required for encrypted backup (ENS mp.si.2)")
+		}
+		encPipeR, encPipeW = io.Pipe()
+		encErrCh = make(chan error, 1)
+
+		go func() {
+			err := EncryptStream(encPipeR, multiWriter, req.EncryptionPassphrase)
+			encErrCh <- err
+		}()
+
+		gw = gzip.NewWriter(encPipeW)
+		tw = tar.NewWriter(gw)
+	} else {
+		gw = gzip.NewWriter(multiWriter)
+		tw = tar.NewWriter(gw)
+	}
 
 	// Walk source directory and add files to tar.gz
 	err = filepath.Walk(sourcePath, func(path string, info os.FileInfo, walkErr error) error {
@@ -226,17 +259,38 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	if err != nil {
 		tw.Close()
 		gw.Close()
+		if encPipeW != nil {
+			_ = encPipeW.CloseWithError(err)
+		}
+		outFile.Close()
 		os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed during tar compression: %w", err)
 	}
 
 	if closeErr := tw.Close(); closeErr != nil {
+		if encPipeW != nil {
+			_ = encPipeW.CloseWithError(closeErr)
+		}
+		outFile.Close()
 		os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed to close tar writer: %w", closeErr)
 	}
 	if closeGzErr := gw.Close(); closeGzErr != nil {
+		if encPipeW != nil {
+			_ = encPipeW.CloseWithError(closeGzErr)
+		}
+		outFile.Close()
 		os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed to close gzip writer: %w", closeGzErr)
+	}
+
+	if req.Encrypted {
+		_ = encPipeW.Close()
+		if encErr := <-encErrCh; encErr != nil {
+			outFile.Close()
+			os.Remove(destFilePath)
+			return nil, fmt.Errorf("failed during AES-256-GCM encryption: %w", encErr)
+		}
 	}
 
 	// Calculate final file stats
@@ -261,10 +315,17 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		SizeFormatted: FormatBytes(sizeBytes),
 		SHA256:        sha256Hex,
 		Status:        "completed",
-		IsScheduled:   req.IsScheduled,
-		ScheduleID:    req.ScheduleID,
-		CreatedAt:     now,
-		CompletedAt:   &now,
+		IsEncrypted:   req.Encrypted,
+		EncryptionAlgo: func() string {
+			if req.Encrypted {
+				return "AES-256-GCM"
+			}
+			return ""
+		}(),
+		IsScheduled: req.IsScheduled,
+		ScheduleID:  req.ScheduleID,
+		CreatedAt:   now,
+		CompletedAt: &now,
 	}
 
 	if err := db.DB.Create(&bRecord).Error; err != nil {
@@ -272,11 +333,11 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		return nil, err
 	}
 
-	slog.Info("backup: successfully created archive", "name", bRecord.Name, "size", bRecord.SizeFormatted, "sha256", sha256Hex)
+	slog.Info("backup: successfully created archive", "name", bRecord.Name, "size", bRecord.SizeFormatted, "sha256", sha256Hex, "encrypted", bRecord.IsEncrypted)
 	return &bRecord, nil
 }
 
-// RestoreBackup unpacks a backup tar.gz archive into the target destination directory.
+// RestoreBackup unpacks a backup tar.gz or encrypted .tar.gz.enc archive into the target destination directory.
 func RestoreBackup(req RestoreBackupRequest) error {
 	var b db.Backup
 	if err := db.DB.First(&b, "id = ?", req.BackupID).Error; err != nil {
@@ -285,6 +346,18 @@ func RestoreBackup(req RestoreBackupRequest) error {
 
 	if _, err := os.Stat(b.FilePath); os.IsNotExist(err) {
 		return fmt.Errorf("backup file not found on disk: %s", b.FilePath)
+	}
+
+	// Check if archive is encrypted either via DB flag or magic header
+	isEncrypted := b.IsEncrypted
+	if !isEncrypted {
+		if enc, _ := IsEncryptedArchive(b.FilePath); enc {
+			isEncrypted = true
+		}
+	}
+
+	if isEncrypted && strings.TrimSpace(req.EncryptionPassphrase) == "" {
+		return errors.New("backup is encrypted (AES-256-GCM): encryption passphrase is required to restore")
 	}
 
 	targetPath := req.TargetPath
@@ -305,8 +378,25 @@ func RestoreBackup(req RestoreBackupRequest) error {
 	}
 	defer file.Close()
 
-	gr, err := gzip.NewReader(file)
+	var reader io.Reader = file
+	if isEncrypted {
+		decPipeR, decPipeW := io.Pipe()
+		go func() {
+			err := DecryptStream(file, decPipeW, req.EncryptionPassphrase)
+			if err != nil {
+				_ = decPipeW.CloseWithError(err)
+			} else {
+				_ = decPipeW.Close()
+			}
+		}()
+		reader = decPipeR
+	}
+
+	gr, err := gzip.NewReader(reader)
 	if err != nil {
+		if isEncrypted {
+			return ErrInvalidPassphrase
+		}
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer gr.Close()
@@ -319,6 +409,9 @@ func RestoreBackup(req RestoreBackupRequest) error {
 			break
 		}
 		if err != nil {
+			if isEncrypted && errors.Is(err, ErrInvalidPassphrase) {
+				return ErrInvalidPassphrase
+			}
 			return fmt.Errorf("failed to read tar header: %w", err)
 		}
 
@@ -351,7 +444,7 @@ func RestoreBackup(req RestoreBackupRequest) error {
 		}
 	}
 
-	slog.Info("backup: successfully restored archive", "backup_id", b.ID, "target_path", targetPath)
+	slog.Info("backup: successfully restored archive", "backup_id", b.ID, "target_path", targetPath, "encrypted", isEncrypted)
 	return nil
 }
 

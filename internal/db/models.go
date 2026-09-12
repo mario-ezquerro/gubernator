@@ -319,6 +319,8 @@ type Backup struct {
 	SizeFormatted string     `gorm:"-" json:"size_formatted"`
 	SHA256        string     `gorm:"type:varchar(64)" json:"sha256"`
 	Status        string     `gorm:"type:varchar(50);default:'completed'" json:"status"` // completed, failed, in_progress
+	IsEncrypted   bool       `gorm:"default:false" json:"is_encrypted"`
+	EncryptionAlgo string    `gorm:"type:varchar(50);default:''" json:"encryption_algo"`
 	IsScheduled   bool       `json:"is_scheduled"`
 	ScheduleID    string     `gorm:"type:varchar(50)" json:"schedule_id"`
 	ErrorMessage  string     `gorm:"type:text" json:"error_message,omitempty"`

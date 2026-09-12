@@ -1001,3 +1001,18 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Configurable Session Timeout Controls (`web-ui/lib/screens/pages/security_page.dart`):**
   - Added dedicated "Inactividad Sesión (ENS op.acc.2)" dropdown selector (5 min, 15 min ENS Medio/Alto, 30 min, 60 min) inside the SIEM & Global Security card.
   - Dynamically updates cluster configuration and synchronizes across active browser sessions.
+
+### 106. Spanish ENS (RD 311/2022) Compliance Step 3: AES-256-GCM Streaming Encrypted Backups Engine (mp.si.2, op.exp.10) (`v2.85.2`)
+* **Authenticated Streaming Encryption Engine (`internal/storage/crypto.go` — ENS `mp.si.2`):**
+  - High-performance, streaming authenticated encryption utilizing **AES-256-GCM** with **PBKDF2-HMAC-SHA256** key derivation ($\ge 100,000$ iterations per CCN-STIC / NIST SP 800-38D).
+  - Employs cryptographically secure random 32-byte salt and 12-byte base nonce per archive, with chunk sequence numbers bound in Additional Authenticated Data (AAD) to prevent block reordering or truncation.
+  - Streaming pipeline processes arbitrary archive sizes (from small volumes to gigabytes) with constant 64 KB memory buffers.
+  - Prepends cryptographic magic header `GBNTENC1` and outputs `.tar.gz.enc` format.
+* **Encrypted Archive Creation & Consistent Restoration (`internal/storage/backup.go`):**
+  - Extended `CreateBackup` to support optional passphrase encryption streaming directly via `io.Pipe()` with concurrent SHA-256 integrity calculation.
+  - Extended `RestoreBackup` with automatic header inspection (`IsEncryptedArchive`) and on-the-fly GCM authentication and decryption, rejecting invalid passphrases or tampered blocks before unpacking files.
+  - Preserved 100% backward-compatibility with existing unencrypted `.tar.gz` archives.
+* **Storage Data Model & Comprehensive Unit Testing:**
+  - Extended `db.Backup` model with `IsEncrypted` and `EncryptionAlgo` ("AES-256-GCM").
+  - Added unit test suites `crypto_test.go` and `backup_encryption_test.go` verifying multi-chunk streams, wrong passphrase rejection, and ciphertext bit-flip tampering resistance.
+
