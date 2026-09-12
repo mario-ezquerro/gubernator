@@ -23,9 +23,14 @@ func setupLockoutTestDB(t *testing.T) *gin.Engine {
 		t.Fatalf("failed to connect database: %v", err)
 	}
 
+	sqlDB, _ := db.DB.DB()
+	if sqlDB != nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
+
 	_ = db.DB.AutoMigrate(&db.LocalUser{}, &db.AuditLog{}, &db.SecurityConfig{}, &db.LDAPConfig{})
 
-	// Seed security config with 5 attempts and 15 min lock
+	// Seed security config with 5 attempts, 15 min lock, and 15 min session timeout
 	cfg := db.SecurityConfig{
 		ID:                        "default",
 		MFAEnforced:               false,
@@ -33,12 +38,14 @@ func setupLockoutTestDB(t *testing.T) *gin.Engine {
 		LockoutDurationMinutes:    15,
 		PasswordMinLength:         12,
 		PasswordRequireComplexity: true,
+		SessionTimeoutMinutes:     15,
 		UpdatedAt:                 time.Now(),
 	}
 	db.DB.Save(&cfg)
 
 	r := gin.New()
 	r.POST("/api/auth/login", authLoginHandler)
+	r.POST("/api/auth/logout", authLogoutHandler)
 	r.POST("/api/security/users", createSecurityUserHandler)
 	r.POST("/api/security/users/:id/unlock", unlockSecurityUserHandler)
 
@@ -183,3 +190,37 @@ func TestENSAccountLockoutAndUnlock(t *testing.T) {
 		t.Fatalf("expected at least 2 ENS audit log entries, found %d", auditCount)
 	}
 }
+
+func TestENSSessionTimeoutLogout(t *testing.T) {
+	r := setupLockoutTestDB(t)
+
+	// 1. Call logout with INACTIVITY_TIMEOUT
+	timeoutPayload, _ := json.Marshal(map[string]string{
+		"reason": "INACTIVITY_TIMEOUT",
+	})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/auth/logout", bytes.NewBuffer(timeoutPayload))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200 on inactivity logout, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["action"] != "SESSION_TIMEOUT" {
+		t.Fatalf("expected action SESSION_TIMEOUT, got %v", resp["action"])
+	}
+
+	// 2. Verify SESSION_TIMEOUT was logged in audit_logs
+	var timeoutLog db.AuditLog
+	err := db.DB.Where("action = ?", "SESSION_TIMEOUT").First(&timeoutLog).Error
+	if err != nil {
+		t.Fatalf("expected SESSION_TIMEOUT audit log to exist: %v", err)
+	}
+	if timeoutLog.Status != "SUCCESS" {
+		t.Fatalf("expected status SUCCESS, got %s", timeoutLog.Status)
+	}
+}
+

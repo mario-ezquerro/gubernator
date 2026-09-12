@@ -987,3 +987,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Visual Lockout Badges:** Local Users table displays prominent `🔒 Bloqueada (Xm - ENS)` chips with detailed tooltips and instant administrative unlock buttons.
   - **Policy Guidance in Modals:** Create User and Reset Password dialogs include contextual `helperText` explaining ENS op.acc.2 requirements.
   - **Global ENS Security Configuration Controls:** Added dropdown selectors and toggles to the SIEM & Global Security card for `Max Failed Logins`, `Lockout Duration`, `Password Min Length`, and `Require Complexity`.
+
+### 105. Spanish ENS (RD 311/2022) Compliance Step 2: Automatic Session Inactivity Timeout (op.acc.2), Forensic Audit & Visual Expiry Notice (`v2.85.1`)
+* **Session Inactivity Enforcement Engine (`web-ui/lib/main.dart` — ENS `op.acc.2`):**
+  - Integrated cluster-wide session inactivity timeout tracking with default 15-minute expiration per RD 311/2022 and CCN-STIC recommendations.
+  - Native browser event listeners (`html.window.onMouseMove`, `html.window.onKeyDown`) and Flutter touch/pointer listeners continuously monitor user activity without performance overhead.
+  - Background periodic timer terminates sessions when elapsed idle time exceeds `session_timeout_minutes`.
+* **Forensic Audit Logging (`internal/web/server.go` — ENS `op.mon.1`):**
+  - Updated `POST /api/auth/logout` to accept optional termination reason payload (`{"reason": "INACTIVITY_TIMEOUT"}`).
+  - Automatically records `SESSION_TIMEOUT` with details indicating termination under ENS `op.acc.2` into the tamper-evident SHA-256 hash chain and forwards it immediately to SIEM listeners.
+* **Visual Session Expiry Warning (`web-ui/lib/screens/login_screen.dart`):**
+  - Inactivity logout triggers an amber warning banner directly on the login screen informing the operator that their previous session was terminated due to inactivity under ENS `op.acc.2`.
+* **Configurable Session Timeout Controls (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Added dedicated "Inactividad Sesión (ENS op.acc.2)" dropdown selector (5 min, 15 min ENS Medio/Alto, 30 min, 60 min) inside the SIEM & Global Security card.
+  - Dynamically updates cluster configuration and synchronizes across active browser sessions.

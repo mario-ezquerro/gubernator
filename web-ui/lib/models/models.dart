@@ -1222,6 +1222,7 @@ class SIEMConfig {
   final int lockoutDurationMinutes;
   final int passwordMinLength;
   final bool passwordRequireComplexity;
+  final int sessionTimeoutMinutes;
   final bool siemEnabled;
   final String siemHost;
   final int siemPort;
@@ -1235,6 +1236,7 @@ class SIEMConfig {
     this.lockoutDurationMinutes = 15,
     this.passwordMinLength = 12,
     this.passwordRequireComplexity = true,
+    this.sessionTimeoutMinutes = 15,
     this.siemEnabled = false,
     this.siemHost = '',
     this.siemPort = 514,
@@ -1250,6 +1252,7 @@ class SIEMConfig {
       lockoutDurationMinutes: (json['lockout_duration_minutes'] as num?)?.toInt() ?? 15,
       passwordMinLength: (json['password_min_length'] as num?)?.toInt() ?? 12,
       passwordRequireComplexity: json['password_require_complexity'] != false,
+      sessionTimeoutMinutes: (json['session_timeout_minutes'] as num?)?.toInt() ?? 15,
       siemEnabled: json['siem_enabled'] == true,
       siemHost: json['siem_host'] ?? '',
       siemPort: (json['siem_port'] as num?)?.toInt() ?? 514,
@@ -1266,6 +1269,7 @@ class SIEMConfig {
       'lockout_duration_minutes': lockoutDurationMinutes,
       'password_min_length': passwordMinLength,
       'password_require_complexity': passwordRequireComplexity,
+      'session_timeout_minutes': sessionTimeoutMinutes,
       'siem_enabled': siemEnabled,
       'siem_host': siemHost,
       'siem_port': siemPort,
@@ -1280,6 +1284,7 @@ class SIEMConfig {
     int? lockoutDurationMinutes,
     int? passwordMinLength,
     bool? passwordRequireComplexity,
+    int? sessionTimeoutMinutes,
     bool? siemEnabled,
     String? siemHost,
     int? siemPort,
@@ -1293,6 +1298,7 @@ class SIEMConfig {
       lockoutDurationMinutes: lockoutDurationMinutes ?? this.lockoutDurationMinutes,
       passwordMinLength: passwordMinLength ?? this.passwordMinLength,
       passwordRequireComplexity: passwordRequireComplexity ?? this.passwordRequireComplexity,
+      sessionTimeoutMinutes: sessionTimeoutMinutes ?? this.sessionTimeoutMinutes,
       siemEnabled: siemEnabled ?? this.siemEnabled,
       siemHost: siemHost ?? this.siemHost,
       siemPort: siemPort ?? this.siemPort,

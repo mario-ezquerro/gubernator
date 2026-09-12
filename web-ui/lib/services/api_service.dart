@@ -1167,9 +1167,10 @@ class ApiService {
   }
 
   /// Logs out the user and clears stored session tokens.
-  static Future<void> logout() async {
+  static Future<void> logout({String? reason}) async {
     try {
-      await http.post(Uri.parse('/api/auth/logout'), headers: authHeaders);
+      final body = reason != null ? jsonEncode({'reason': reason}) : null;
+      await http.post(Uri.parse('/api/auth/logout'), headers: authHeaders, body: body);
     } catch (_) {}
     authToken = null;
   }

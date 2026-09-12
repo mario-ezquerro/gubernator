@@ -13,9 +13,13 @@ import (
 
 func setupTestDB(t *testing.T) {
 	var err error
-	db.DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db.DB, err = gorm.Open(sqlite.Open("file:audit_test?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open memory db: %v", err)
+	}
+	sqlDB, _ := db.DB.DB()
+	if sqlDB != nil {
+		sqlDB.SetMaxOpenConns(1)
 	}
 	err = db.DB.AutoMigrate(&db.AuditLog{}, &db.SecurityConfig{})
 	if err != nil {

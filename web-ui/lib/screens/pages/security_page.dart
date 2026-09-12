@@ -2695,6 +2695,30 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   },
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: [5, 15, 30, 60].contains(cfg.sessionTimeoutMinutes) ? cfg.sessionTimeoutMinutes : 15,
+                  decoration: const InputDecoration(
+                    labelText: "Inactividad Sesión (ENS op.acc.2)",
+                    isDense: true,
+                    helperText: "Cierre automático de sesión",
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 5, child: Text("5 min (Estricto)")),
+                    DropdownMenuItem(value: 15, child: Text("15 min (ENS Medio/Alto)")),
+                    DropdownMenuItem(value: 30, child: Text("30 min")),
+                    DropdownMenuItem(value: 60, child: Text("60 min (Permisivo)")),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _siemConfig = cfg.copyWith(sessionTimeoutMinutes: val);
+                      });
+                    }
+                  },
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),

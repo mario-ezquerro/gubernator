@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui_web' as ui_web;
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
@@ -126,10 +127,75 @@ class _GubernatorAppState extends State<GubernatorApp> {
   UserSession? _currentUser;
   bool _checkingAuth = true;
 
+  // ENS op.acc.2 Session Inactivity State
+  DateTime _lastActivity = DateTime.now();
+  Timer? _inactivityTimer;
+  int _sessionTimeoutMinutes = 15;
+  String? _sessionTimeoutNotice;
+  StreamSubscription? _mouseSub;
+  StreamSubscription? _keySub;
+
   @override
   void initState() {
     super.initState();
+    _registerActivity();
+    try {
+      _mouseSub = html.window.onMouseMove.listen((_) => _registerActivity());
+      _keySub = html.window.onKeyDown.listen((_) => _registerActivity());
+    } catch (_) {}
     _checkAuth();
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _mouseSub?.cancel();
+    _keySub?.cancel();
+    super.dispose();
+  }
+
+  void _registerActivity() {
+    _lastActivity = DateTime.now();
+  }
+
+  Future<void> _fetchSecurityConfig() async {
+    try {
+      final cfg = await ApiService.fetchSIEMConfig();
+      if (cfg != null && cfg.sessionTimeoutMinutes > 0) {
+        if (mounted) {
+          setState(() {
+            _sessionTimeoutMinutes = cfg.sessionTimeoutMinutes;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (_currentUser == null) {
+        timer.cancel();
+        return;
+      }
+      final elapsedMinutes = DateTime.now().difference(_lastActivity).inMinutes;
+      if (elapsedMinutes >= _sessionTimeoutMinutes) {
+        _handleInactivityTimeout();
+      }
+    });
+  }
+
+  void _handleInactivityTimeout() async {
+    _inactivityTimer?.cancel();
+    final timeout = _sessionTimeoutMinutes;
+    await ApiService.logout(reason: 'INACTIVITY_TIMEOUT');
+    if (mounted) {
+      setState(() {
+        _currentUser = null;
+        _sessionTimeoutNotice =
+            'Sesión cerrada por inactividad ($timeout minutos) en cumplimiento con ENS op.acc.2.';
+      });
+    }
   }
 
   Future<void> _checkAuth() async {
@@ -140,9 +206,14 @@ class _GubernatorAppState extends State<GubernatorApp> {
           _currentUser = user;
           if (user != null) {
             _displayName = user.displayName;
+            _registerActivity();
           }
           _checkingAuth = false;
         });
+        if (user != null) {
+          _fetchSecurityConfig();
+          _startInactivityTimer();
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -152,10 +223,12 @@ class _GubernatorAppState extends State<GubernatorApp> {
   }
 
   void _handleLogout() async {
+    _inactivityTimer?.cancel();
     await ApiService.logout();
     if (mounted) {
       setState(() {
         _currentUser = null;
+        _sessionTimeoutNotice = null;
       });
     }
   }
@@ -183,20 +256,32 @@ class _GubernatorAppState extends State<GubernatorApp> {
             )
           : _currentUser == null
               ? LoginScreen(
+                  timeoutMessage: _sessionTimeoutNotice,
                   onLoginSuccess: (user) {
                     setState(() {
                       _currentUser = user;
                       _displayName = user.displayName;
+                      _sessionTimeoutNotice = null;
+                      _registerActivity();
                     });
+                    _fetchSecurityConfig();
+                    _startInactivityTimer();
                   },
                 )
-              : AppShell(
-                  isDark: _isDark,
-                  onThemeChanged: (dark) => setState(() => _isDark = dark),
-                  displayName: _displayName,
-                  onNameChanged: (name) => setState(() => _displayName = name),
-                  currentUser: _currentUser,
-                  onLogout: _handleLogout,
+              : Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (_) => _registerActivity(),
+                  onPointerMove: (_) => _registerActivity(),
+                  onPointerHover: (_) => _registerActivity(),
+                  onPointerSignal: (_) => _registerActivity(),
+                  child: AppShell(
+                    isDark: _isDark,
+                    onThemeChanged: (dark) => setState(() => _isDark = dark),
+                    displayName: _displayName,
+                    onNameChanged: (name) => setState(() => _displayName = name),
+                    currentUser: _currentUser,
+                    onLogout: _handleLogout,
+                  ),
                 ),
     );
   }

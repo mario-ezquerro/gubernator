@@ -5737,8 +5737,31 @@ func authMeHandler(c *gin.Context) {
 }
 
 func authLogoutHandler(c *gin.Context) {
+	sess := auth.ExtractUserSession(c)
+	username := "anonymous"
+	provider := "LOCAL"
+	if sess != nil {
+		username = sess.Username
+		if sess.Provider != "" {
+			provider = sess.Provider
+		}
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	action := "LOGOUT"
+	details := fmt.Sprintf("User '%s' logged out", username)
+	if strings.ToUpper(strings.TrimSpace(req.Reason)) == "INACTIVITY_TIMEOUT" {
+		action = "SESSION_TIMEOUT"
+		details = fmt.Sprintf("User '%s' session terminated due to inactivity (ENS op.acc.2)", username)
+	}
+
+	logAudit(c, username, provider, action, "SUCCESS", details)
 	c.SetCookie("gbnt_session", "", -1, "/", "", false, true)
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully", "action": action, "details": details})
 }
 
 func authListLDAPHandler(c *gin.Context) {
@@ -6392,6 +6415,7 @@ func getSIEMConfigHandler(c *gin.Context) {
 			LockoutDurationMinutes:    15,
 			PasswordMinLength:         12,
 			PasswordRequireComplexity: true,
+			SessionTimeoutMinutes:     15,
 			SIEMEnabled:               false,
 			SIEMHost:                  "",
 			SIEMPort:                  514,
@@ -6411,6 +6435,9 @@ func getSIEMConfigHandler(c *gin.Context) {
 		if cfg.PasswordMinLength == 0 {
 			cfg.PasswordMinLength = 12
 		}
+		if cfg.SessionTimeoutMinutes == 0 {
+			cfg.SessionTimeoutMinutes = 15
+		}
 	}
 	c.JSON(http.StatusOK, cfg)
 }
@@ -6421,6 +6448,7 @@ type updateSIEMConfigRequest struct {
 	LockoutDurationMinutes    int    `json:"lockout_duration_minutes"`
 	PasswordMinLength         int    `json:"password_min_length"`
 	PasswordRequireComplexity bool   `json:"password_require_complexity"`
+	SessionTimeoutMinutes     int    `json:"session_timeout_minutes"`
 	SIEMEnabled               bool   `json:"siem_enabled"`
 	SIEMHost                  string `json:"siem_host"`
 	SIEMPort                  int    `json:"siem_port"`
@@ -6471,6 +6499,11 @@ func updateSIEMConfigHandler(c *gin.Context) {
 		cfg.PasswordMinLength = 12
 	}
 	cfg.PasswordRequireComplexity = req.PasswordRequireComplexity
+	if req.SessionTimeoutMinutes > 0 {
+		cfg.SessionTimeoutMinutes = req.SessionTimeoutMinutes
+	} else if cfg.SessionTimeoutMinutes == 0 {
+		cfg.SessionTimeoutMinutes = 15
+	}
 
 	cfg.SIEMEnabled = req.SIEMEnabled
 	cfg.SIEMHost = strings.TrimSpace(req.SIEMHost)
@@ -6489,8 +6522,8 @@ func updateSIEMConfigHandler(c *gin.Context) {
 		actor = session.Username
 	}
 	logAudit(c, actor, "LOCAL", "SECURITY_CONFIG_UPDATE", "SUCCESS",
-		fmt.Sprintf("Updated ENS op.acc.2 & op.mon.1 settings: mfa_enforced=%v, max_failed_logins=%d, lockout_min=%d, pwd_min_len=%d, siem_enabled=%v, siem_host=%s:%d",
-			cfg.MFAEnforced, cfg.MaxFailedLogins, cfg.LockoutDurationMinutes, cfg.PasswordMinLength, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
+		fmt.Sprintf("Updated ENS op.acc.2 & op.mon.1 settings: mfa_enforced=%v, max_failed_logins=%d, lockout_min=%d, pwd_min_len=%d, session_timeout_min=%d, siem_enabled=%v, siem_host=%s:%d",
+			cfg.MFAEnforced, cfg.MaxFailedLogins, cfg.LockoutDurationMinutes, cfg.PasswordMinLength, cfg.SessionTimeoutMinutes, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
 
 	c.JSON(http.StatusOK, cfg)
 }

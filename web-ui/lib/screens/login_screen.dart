@@ -5,8 +5,9 @@ import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final ValueChanged<UserSession> onLoginSuccess;
+  final String? timeoutMessage;
 
-  const LoginScreen({super.key, required this.onLoginSuccess});
+  const LoginScreen({super.key, required this.onLoginSuccess, this.timeoutMessage});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _oidcLoading = false;
   String? _errorMessage;
+  String? _timeoutNotice;
 
   // MFA Challenge State (ENS op.acc.2)
   bool _mfaRequired = false;
@@ -40,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _timeoutNotice = widget.timeoutMessage;
     _loadProviders();
     _checkOIDCCallback();
   }
@@ -123,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = true;
       _errorMessage = null;
+      _timeoutNotice = null;
     });
 
     final res = await ApiService.login(username, password, provider: _selectedProvider);
@@ -492,6 +496,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       onSubmitted: (_) => _handleLogin(),
                     ),
                     const SizedBox(height: 16),
+
+                    // Timeout notice banner (ENS op.acc.2)
+                    if (_timeoutNotice != null && _errorMessage == null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.timer_outlined, color: Colors.amber, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _timeoutNotice!,
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // Error banner
                     if (_errorMessage != null) ...[

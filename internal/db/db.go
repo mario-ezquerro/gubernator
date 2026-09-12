@@ -443,6 +443,7 @@ func seedInitialSecurityConfig() {
 			LockoutDurationMinutes:    15,
 			PasswordMinLength:         12,
 			PasswordRequireComplexity: true,
+			SessionTimeoutMinutes:     15,
 			SIEMEnabled:               false,
 			SIEMHost:                  "",
 			SIEMPort:                  514,
@@ -470,6 +471,10 @@ func seedInitialSecurityConfig() {
 			}
 			if existing.PasswordMinLength == 0 {
 				existing.PasswordMinLength = 12
+				updated = true
+			}
+			if existing.SessionTimeoutMinutes == 0 {
+				existing.SessionTimeoutMinutes = 15
 				updated = true
 			}
 			if updated {

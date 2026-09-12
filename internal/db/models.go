@@ -274,6 +274,7 @@ type SecurityConfig struct {
 	LockoutDurationMinutes    int       `gorm:"default:15" json:"lockout_duration_minutes"`
 	PasswordMinLength         int       `gorm:"default:12" json:"password_min_length"`
 	PasswordRequireComplexity bool      `gorm:"default:true" json:"password_require_complexity"`
+	SessionTimeoutMinutes     int       `gorm:"default:15" json:"session_timeout_minutes"`
 	SIEMEnabled               bool      `gorm:"default:false" json:"siem_enabled"`
 	SIEMHost                  string    `gorm:"type:varchar(255)" json:"siem_host"`
 	SIEMPort                  int       `gorm:"default:514" json:"siem_port"`
