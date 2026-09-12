@@ -1,0 +1,2497 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API Server for Gubernator orchestration.",
+        "title": "Gubernator API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:4002",
+    "basePath": "/",
+    "paths": {
+        "/v1/cluster/info": {
+            "get": {
+                "description": "Returns join token, API token, and ready-to-use CLI commands. Localhost only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legion"
+                ],
+                "summary": "Get Cluster Bootstrap Info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/cluster/token": {
+            "get": {
+                "description": "Retrieve the current global join token (requires local access)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legion"
+                ],
+                "summary": "Get Cluster Join Token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/coredns/config": {
+            "get": {
+                "description": "Returns the raw text of the Corefile",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "CoreDNS"
+                ],
+                "summary": "Get CoreDNS Configuration",
+                "responses": {
+                    "200": {
+                        "description": "CoreDNS configuration content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Overwrites the Corefile and restarts the CoreDNS container",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CoreDNS"
+                ],
+                "summary": "Update CoreDNS Configuration",
+                "parameters": [
+                    {
+                        "description": "New configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/flows": {
+            "get": {
+                "description": "Returns recent captured L4/L7 network flows with filtering by protocol, status, query, and limit",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get recent eBPF captured network flows",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of flows to return (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Protocol filter (e.g. HTTP, gRPC, DNS, TCP, REDIS, POSTGRES)",
+                        "name": "protocol",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter (healthy, warning, error, or ERRORS)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query matching source, dest, method, or path",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ebpf.Flow"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/simulate": {
+            "post": {
+                "description": "Injects traffic flows (burst, normal, errors) for testing and UI live visualization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Trigger on-demand eBPF traffic simulation",
+                "parameters": [
+                    {
+                        "description": "Simulation Profile configuration",
+                        "name": "profile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.SimulationProfile"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/stats": {
+            "get": {
+                "description": "Returns kernel eBPF capabilities, active probes, flow rate, throughput, and packet statistics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get eBPF kernel network telemetry and probe stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.EBPFStats"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ebpf/stream": {
+            "get": {
+                "description": "Real-time stream of captured network packets and flows",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Stream live eBPF network flows via Server-Sent Events (SSE)",
+                "responses": {}
+            }
+        },
+        "/v1/ebpf/topology": {
+            "get": {
+                "description": "Returns interconnected topology graph with service nodes and active communication edges",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ebpf"
+                ],
+                "summary": "Get live eBPF service mesh topology graph",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ebpf.EBPFTopology"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/monitor/scope/disable": {
+            "post": {
+                "description": "Stop and remove the Weave Scope container",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Disable Weave Scope Network Topology",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/monitor/scope/enable": {
+            "post": {
+                "description": "Deploy and start the Weave Scope container for interactive container network topology",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Enable Weave Scope Network Topology",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/monitor/scope/status": {
+            "get": {
+                "description": "Get current running status and URL of Weave Scope network topology superpower",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "monitor"
+                ],
+                "summary": "Get Weave Scope Network Topology Status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitor.ScopeStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/add": {
+            "post": {
+                "description": "Provision a new worker node via SSH",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Add Node via SSH",
+                "parameters": [
+                    {
+                        "description": "Node Credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AddNodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/heartbeat": {
+            "post": {
+                "description": "Nodes call this to let the manager know they are alive",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legion"
+                ],
+                "summary": "Node Heartbeat",
+                "parameters": [
+                    {
+                        "description": "Heartbeat Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HeartbeatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/join": {
+            "post": {
+                "description": "Register a new worker node in the Gubernator cluster using a Join Token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legion"
+                ],
+                "summary": "Join the cluster",
+                "parameters": [
+                    {
+                        "description": "Join Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.JoinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/ls": {
+            "get": {
+                "description": "Get a list of all nodes currently registered in the Gubernator cluster from SQLite",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List all nodes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/tasks/{node_id}": {
+            "get": {
+                "description": "Fetches active tasks for the worker to execute and proxy",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Get assigned tasks for a node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.TaskResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/tasks/{task_id}/status": {
+            "post": {
+                "description": "Worker reports back whether the task is running or failed",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Update task status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.TaskStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}": {
+            "get": {
+                "description": "Fetch full details of a specific node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Inspect Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/db.Node"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/availability": {
+            "post": {
+                "description": "Pause or drain a node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Update Node Availability",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Availability Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeAvailabilityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/labels": {
+            "post": {
+                "description": "Add, update, or remove node labels",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Update Node Labels",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Labels Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeLabelsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/leave": {
+            "post": {
+                "description": "Mark node as left",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Leave Legion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/reboot": {
+            "post": {
+                "description": "Drain tasks and initiate host reboot",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Reboot Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/node/{id}/role": {
+            "post": {
+                "description": "Change the role of a node",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Promote/Demote Node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/ls": {
+            "get": {
+                "description": "List all services",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "List Services",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}": {
+            "delete": {
+                "description": "Delete a service and its tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "Remove Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}/scale": {
+            "post": {
+                "description": "Update the replicas of a service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "Scale Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Replicas Update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ScaleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/service/{id}/tasks": {
+            "get": {
+                "description": "List tasks belonging to a service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "services"
+                ],
+                "summary": "List Service Tasks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Task"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/correlation": {
+            "get": {
+                "description": "Cross-reference burn rate spikes with stack deployment timestamps",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get SLO Deployment Correlations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOCorrelationEvent"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/edit": {
+            "post": {
+                "description": "Updates service constraints in DB and triggers Prometheus / Grafana rule sync",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Create or Edit SLO for a Service",
+                "parameters": [
+                    {
+                        "description": "SLO Edit Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOEditRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/history": {
+            "get": {
+                "description": "Fetch Prometheus range time-series points for an SLO",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get SLO Historical Trend Data Points",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Range duration (1h, 6h, 24h, 7d, 30d)",
+                        "name": "range",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOHistoryPoint"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/journeys": {
+            "get": {
+                "description": "Aggregate service SLOs by user journey name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get Composite User Journeys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.UserJourney"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/ls": {
+            "get": {
+                "description": "Fetch all active SLOs across services and query Prometheus for error budget metrics",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "List Service Level Objectives (SLOs)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/red": {
+            "get": {
+                "description": "Query Prometheus for RPS, Error RPS, and P99 Duration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Get Service RED Metrics (Rate, Errors, Duration)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOREDMetrics"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/sync": {
+            "post": {
+                "description": "Force generation and synchronization of Prometheus SLO rules",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Sync SLO Rules to Prometheus",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/validate": {
+            "post": {
+                "description": "Dry-run validation \u0026 PromQL metric backtesting for Compose YAML",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Validate and Backtest SLOs in Compose YAML",
+                "parameters": [
+                    {
+                        "description": "SLO Validation Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SLOValidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.SLOValidationItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/slo/{service_id}": {
+            "delete": {
+                "description": "Removes SLO constraints from a service and syncs Prometheus / Grafana rules",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slo"
+                ],
+                "summary": "Delete/Disable SLO for a Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "service_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/deploy": {
+            "post": {
+                "description": "Parse a docker-compose yaml and schedule tasks to nodes",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stack"
+                ],
+                "summary": "Deploy a Stack",
+                "parameters": [
+                    {
+                        "description": "Stack Deploy Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.StackDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/ls": {
+            "get": {
+                "description": "List all deployed stacks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "List Stacks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Stack"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/save": {
+            "post": {
+                "description": "Save or update stack compose definition in database and server files without deploying containers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Save Stack Definition (Draft / Without Deploying)",
+                "parameters": [
+                    {
+                        "description": "Stack Save Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.StackDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}": {
+            "delete": {
+                "description": "Delete a stack, stop its containers, and remove all related records",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Remove Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID or Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/reconcile": {
+            "post": {
+                "description": "Reconcile a stack against desired replicas, repairing degraded services and purging dead/stale containers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Reconcile Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID or Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/services": {
+            "get": {
+                "description": "List services belonging to a stack",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "List Stack Services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/start": {
+            "post": {
+                "description": "Start all containers in a stopped stack",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Start Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID or Name",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/stack/{id}/stop": {
+            "post": {
+                "description": "Stop all running containers in a stack without deleting it",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "stacks"
+                ],
+                "summary": "Stop Stack",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Stack ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/task/ls": {
+            "get": {
+                "description": "Get a list of all tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "List all tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/db.Task"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/task/{id}": {
+            "delete": {
+                "description": "Delete a task by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Remove a task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tasks/prune": {
+            "post": {
+                "description": "Prune all dead, duplicate, and orphan containers across the cluster",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Prune Tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AddNodeRequest": {
+            "type": "object",
+            "required": [
+                "host",
+                "password",
+                "user"
+            ],
+            "properties": {
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HeartbeatRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.JoinRequest": {
+            "type": "object",
+            "required": [
+                "id",
+                "ip",
+                "token"
+            ],
+            "properties": {
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.NodeAvailabilityRequest": {
+            "type": "object",
+            "required": [
+                "availability"
+            ],
+            "properties": {
+                "availability": {
+                    "description": "\"active\", \"pause\", \"drain\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.NodeLabelsRequest": {
+            "type": "object",
+            "required": [
+                "labels"
+            ],
+            "properties": {
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.NodeListResponse": {
+            "type": "object",
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/db.Node"
+                    }
+                }
+            }
+        },
+        "api.NodeRoleRequest": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "description": "\"worker\" or \"manager\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOCorrelationEvent": {
+            "type": "object",
+            "properties": {
+                "burn_rate": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "stack_name": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"deployment\", \"scaling\", \"restart\"",
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOEditRequest": {
+            "type": "object",
+            "required": [
+                "service_id"
+            ],
+            "properties": {
+                "enable": {
+                    "type": "boolean"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "indicator": {
+                    "type": "string"
+                },
+                "journey": {
+                    "type": "string"
+                },
+                "latency_threshold": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "window": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOHistoryPoint": {
+            "type": "object",
+            "properties": {
+                "budget_remaining": {
+                    "type": "number"
+                },
+                "burn_rate": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOItem": {
+            "type": "object",
+            "properties": {
+                "burn_rate": {
+                    "type": "number"
+                },
+                "error_budget_remaining": {
+                    "type": "number"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "indicator": {
+                    "type": "string"
+                },
+                "journey": {
+                    "type": "string"
+                },
+                "latency_threshold": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "stack_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"healthy\", \"warning\", \"exhausted\", \"no_data\"",
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "window": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOREDMetrics": {
+            "type": "object",
+            "properties": {
+                "error_rps": {
+                    "type": "number"
+                },
+                "p99_latency_ms": {
+                    "type": "number"
+                },
+                "rps": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.SLOValidateRequest": {
+            "type": "object",
+            "required": [
+                "compose_raw"
+            ],
+            "properties": {
+                "compose_raw": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SLOValidationItem": {
+            "type": "object",
+            "properties": {
+                "backtest_details": {
+                    "type": "string"
+                },
+                "backtest_status": {
+                    "description": "\"passed\", \"warning\", \"no_data\"",
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "error_query": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "total_query": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                },
+                "window": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ScaleRequest": {
+            "type": "object",
+            "required": [
+                "replicas"
+            ],
+            "properties": {
+                "replicas": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.StackDeployRequest": {
+            "type": "object",
+            "required": [
+                "compose_raw"
+            ],
+            "properties": {
+                "auto_remap_ports": {
+                    "description": "Automatically remap conflicting host ports to suggested free ports",
+                    "type": "boolean"
+                },
+                "compose_raw": {
+                    "type": "string"
+                },
+                "force": {
+                    "description": "Bypass port conflict verification",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "Optional if provided in compose file",
+                    "type": "string"
+                },
+                "target_node": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TaskResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TaskWithImage"
+                    }
+                }
+            }
+        },
+        "api.TaskStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "container_ip": {
+                    "type": "string"
+                },
+                "container_name": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TaskWithImage": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "image": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "task": {
+                    "$ref": "#/definitions/db.Task"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.UpdateConfigRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UserJourney": {
+            "type": "object",
+            "properties": {
+                "avg_error_budget": {
+                    "type": "number"
+                },
+                "bottleneck_budget": {
+                    "type": "number"
+                },
+                "bottleneck_service": {
+                    "type": "string"
+                },
+                "composite_target": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SLOItem"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.Node": {
+            "type": "object",
+            "properties": {
+                "auth_mismatch": {
+                    "type": "boolean"
+                },
+                "caddy_status": {
+                    "type": "string"
+                },
+                "caddyfile": {
+                    "type": "string"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "disk_free_bytes": {
+                    "type": "integer"
+                },
+                "disk_percent": {
+                    "type": "number"
+                },
+                "disk_total_bytes": {
+                    "type": "integer"
+                },
+                "disk_used_bytes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "labels": {
+                    "description": "Parsed labels for the application",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "mem_percent": {
+                    "type": "number"
+                },
+                "mem_total_bytes": {
+                    "type": "integer"
+                },
+                "mem_used_bytes": {
+                    "type": "integer"
+                },
+                "net_bps": {
+                    "type": "number"
+                },
+                "role": {
+                    "description": "e.g., \"manager\", \"worker\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "e.g., \"active\", \"down\", \"drain\"",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.Service": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cpu_limit": {
+                    "type": "string"
+                },
+                "cpu_reservation": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "desired_replicas": {
+                    "type": "integer"
+                },
+                "env": {
+                    "description": "e.g. [\"FOO=bar\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "memory_limit": {
+                    "type": "string"
+                },
+                "memory_reservation": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ports": {
+                    "description": "e.g. [\"8080:80\", \"443:443\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "stack_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "volumes": {
+                    "description": "e.g. [\"/host:/container\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "db.Stack": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "description": "Host/Centurion where this stack is deployed",
+                    "type": "string"
+                },
+                "raw_compose_file": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.Task": {
+            "type": "object",
+            "properties": {
+                "container_ip": {
+                    "type": "string"
+                },
+                "container_name": {
+                    "type": "string"
+                },
+                "cpu_limit": {
+                    "type": "string"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "cpu_reservation": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mem_used_bytes": {
+                    "type": "integer"
+                },
+                "memory_limit": {
+                    "type": "string"
+                },
+                "memory_reservation": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "service_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"pending\", \"running\", \"dead\"",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ebpf.EBPFStats": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "active_probes": {
+                    "type": "integer"
+                },
+                "bytes_per_sec": {
+                    "type": "number"
+                },
+                "dropped_packets": {
+                    "type": "integer"
+                },
+                "ebpf_supported": {
+                    "type": "boolean"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.InterfaceStats"
+                    }
+                },
+                "kernel_version": {
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "\"kernel\" or \"emulation\"",
+                    "type": "string"
+                },
+                "packets_per_sec": {
+                    "type": "number"
+                },
+                "probes_list": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "protocol_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "status_counts": {
+                    "description": "\"2xx\", \"4xx\", \"5xx\", \"tcp_ok\", \"tcp_err\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_flows": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.EBPFTopology": {
+            "type": "object",
+            "properties": {
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.TopologyEdge"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ebpf.TopologyNode"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ebpf.Flow": {
+            "type": "object",
+            "properties": {
+                "bytes_received": {
+                    "type": "integer"
+                },
+                "bytes_sent": {
+                    "type": "integer"
+                },
+                "dest_id": {
+                    "type": "string"
+                },
+                "dest_ip": {
+                    "type": "string"
+                },
+                "dest_name": {
+                    "type": "string"
+                },
+                "dest_port": {
+                    "type": "integer"
+                },
+                "drops": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latency_ms": {
+                    "type": "number"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "description": "\"HTTP\", \"gRPC\", \"DNS\", \"TCP\", \"UDP\", \"REDIS\", \"POSTGRES\"",
+                    "type": "string"
+                },
+                "retransmits": {
+                    "type": "integer"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "source_ip": {
+                    "type": "string"
+                },
+                "source_name": {
+                    "type": "string"
+                },
+                "source_port": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/ebpf.FlowStatus"
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "throughput_bps": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "ebpf.FlowStatus": {
+            "type": "string",
+            "enum": [
+                "healthy",
+                "warning",
+                "error"
+            ],
+            "x-enum-comments": {
+                "FlowStatusError": "5xx HTTP, TCP drops, resets",
+                "FlowStatusHealthy": "2xx HTTP, TCP established, no drops",
+                "FlowStatusWarning": "4xx HTTP, high RTT (\u003e200ms)"
+            },
+            "x-enum-descriptions": [
+                "2xx HTTP, TCP established, no drops",
+                "4xx HTTP, high RTT (\u003e200ms)",
+                "5xx HTTP, TCP drops, resets"
+            ],
+            "x-enum-varnames": [
+                "FlowStatusHealthy",
+                "FlowStatusWarning",
+                "FlowStatusError"
+            ]
+        },
+        "ebpf.InterfaceStats": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "rx_bytes": {
+                    "type": "integer"
+                },
+                "rx_drops": {
+                    "type": "integer"
+                },
+                "rx_errors": {
+                    "type": "integer"
+                },
+                "rx_packets": {
+                    "type": "integer"
+                },
+                "tx_bytes": {
+                    "type": "integer"
+                },
+                "tx_drops": {
+                    "type": "integer"
+                },
+                "tx_errors": {
+                    "type": "integer"
+                },
+                "tx_packets": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.SimulationProfile": {
+            "type": "object",
+            "properties": {
+                "duration_s": {
+                    "description": "duration in seconds",
+                    "type": "integer"
+                },
+                "error_pct": {
+                    "description": "percentage of error flows (0-100)",
+                    "type": "number"
+                },
+                "pattern": {
+                    "description": "\"normal\", \"burst\", \"errors\", \"mixed\"",
+                    "type": "string"
+                },
+                "rate": {
+                    "description": "events per second",
+                    "type": "integer"
+                }
+            }
+        },
+        "ebpf.TopologyEdge": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "error_rate": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_seen": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "rtt_ms": {
+                    "type": "number"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/ebpf.FlowStatus"
+                },
+                "target_id": {
+                    "type": "string"
+                },
+                "throughput_bps": {
+                    "type": "number"
+                }
+            }
+        },
+        "ebpf.TopologyNode": {
+            "type": "object",
+            "properties": {
+                "active_flows": {
+                    "type": "integer"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "error_rate": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inbound_bps": {
+                    "type": "number"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mem_percent": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_host": {
+                    "type": "string"
+                },
+                "outbound_bps": {
+                    "type": "number"
+                },
+                "stack": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"running\", \"unhealthy\", \"stopped\"",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"container\", \"ingress\", \"database\", \"dns\", \"external\", \"host\"",
+                    "type": "string"
+                }
+            }
+        },
+        "monitor.ScopeStatusResponse": {
+            "type": "object",
+            "properties": {
+                "container": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

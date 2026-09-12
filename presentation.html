@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GUBERNATOR // Presentation - Cyberpunk Orchestrator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --card-bg: rgba(13, 17, 23, 0.85);
+      --accent-green: #00ff66;
+      --accent-cyan: #00e5ff;
+      --accent-pink: #ff0055;
+      --accent-yellow: #ffb703;
+      --text-main: #e6edf3;
+      --text-muted: #8b949e;
+      --border-glow: rgba(0, 255, 102, 0.3);
+      --font-mono: 'Fira Code', monospace;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    /* Cyber Matrix Canvas Background */
+    #bg-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    /* CRT Overlay Effect */
+    .crt-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+
+    /* Main Slides Container */
+    .deck {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      width: 85%;
+      max-width: 1280px;
+      height: 82%;
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 255, 102, 0.2);
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 255, 102, 0.1);
+      backdrop-filter: blur(12px);
+      padding: 40px 50px;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: scale(0.95) translateY(20px);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: all;
+    }
+
+    /* Header & Badges */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+    }
+
+    .slide-tag {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--accent-green);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: rgba(0, 255, 102, 0.1);
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 255, 102, 0.3);
+    }
+
+    .slide-number {
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+
+    .green-glow {
+      color: var(--accent-green);
+      text-shadow: 0 0 10px rgba(0, 255, 102, 0.5);
+    }
+
+    .cyan-glow {
+      color: var(--accent-cyan);
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+    }
+
+    .pink-glow {
+      color: var(--accent-pink);
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+    }
+
+    p.lead {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    /* Content Layout Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      flex: 1;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+    }
+
+    /* Hacker Cards & terminal boxes */
+    .hacker-card {
+      background: rgba(18, 24, 38, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 20px;
+      transition: border 0.3s;
+    }
+
+    .hacker-card:hover {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.1);
+    }
+
+    .card-title {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body {
+      font-size: 0.95rem;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    /* Code block styling */
+    pre, code {
+      font-family: var(--font-mono);
+    }
+
+    pre.code-block {
+      background: #040609;
+      border: 1px solid rgba(0, 255, 102, 0.2);
+      border-radius: 6px;
+      padding: 16px;
+      color: var(--accent-green);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .cmd-prompt::before {
+      content: "$ ";
+      color: var(--accent-pink);
+    }
+
+    /* Bullet Lists */
+    ul.tech-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    ul.tech-list li {
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 12px;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    ul.tech-list li::before {
+      content: "❯";
+      position: absolute;
+      left: 0;
+      color: var(--accent-green);
+      font-family: var(--font-mono);
+    }
+
+    /* Controls Bar */
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      right: 40px;
+      z-index: 100;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: rgba(13, 17, 23, 0.9);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid rgba(0, 255, 102, 0.3);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: var(--accent-green);
+      color: #000;
+      box-shadow: 0 0 10px var(--accent-green);
+    }
+
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+      transition: width 0.3s ease;
+      z-index: 101;
+    }
+
+    /* Speaker Notes Popup */
+    .speaker-notes-box {
+      position: absolute;
+      bottom: 25px;
+      left: 40px;
+      z-index: 100;
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Cyber Matrix Canvas -->
+  <canvas id="bg-canvas"></canvas>
+  <div class="crt-overlay"></div>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar" id="progress"></div>
+
+  <!-- Slide Deck Container -->
+  <div class="deck">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active">
+      <div class="slide-header">
+        <span class="slide-tag">[SYSTEM_INIT // ARCHITECTURE_OVERVIEW]</span>
+        <span class="slide-number">01 / 08</span>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+        <p style="font-family: var(--font-mono); color: var(--accent-green); font-size: 1.1rem; margin-bottom: 10px;">
+          > EXECUTE ./gbnt --mode=orchestration
+        </p>
+        <h1>GUBERNATOR <span class="green-glow">(gbnt)</span></h1>
+        <p class="lead">
+          El Orquestador Híbrido "Goldilocks": La sencillez de <strong>Docker Swarm</strong> con la potencia y flexibilidad de <strong>Nomad</strong>.
+        </p>
+        
+        <div class="grid-3" style="margin-top: 20px;">
+          <div class="hacker-card">
+            <div class="card-title">⚡ Zero Complexity</div>
+            <div class="card-body">Sin Kubernetes, sin etcd, sin configuraciones de miles de líneas. Un único binario en Go.</div>
+          </div>
+          <div class="hacker-card">
+            <div class="card-title">📦 Compose Native</div>
+            <div class="card-body">Despliegue directo de archivos <code>docker-compose.yml</code> estándar con soporte de placement constraints.</div>
+          </div>
+          <div class="hacker-card">
+            <div class="card-title">🛡️ High Resilience</div>
+            <div class="card-body">Estado en SQLite centralizado con cache local en workers para tolerancia a desconexiones de red.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Problem Statement -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[PARADIGM // WHY GUBERNATOR?]</span>
+        <span class="slide-number">02 / 08</span>
+      </div>
+      <h2>El Dilema de la Orquestación Modern</h2>
+      <p class="lead">¿Por qué crear un nuevo orquestador de contenedores?</p>
+
+      <div class="grid-3" style="margin-top: 15px;">
+        <div class="hacker-card" style="border-color: rgba(255, 0, 85, 0.4);">
+          <div class="card-title pink-glow">❌ Kubernetes (k8s)</div>
+          <div class="card-body">
+            • Excesiva complejidad cognitiva y de mantenimiento.<br>
+            • Consumo masivo de RAM en idle (>1.5 GB por nodo).<br>
+            • Requiere equipos dedicados de DevOps/SRE.
+          </div>
+        </div>
+
+        <div class="hacker-card" style="border-color: rgba(255, 183, 3, 0.4);">
+          <div class="card-title" style="color: var(--accent-yellow);">⚠️ Docker Swarm</div>
+          <div class="card-body">
+            • Sencillo pero limitado en targeting hardware avanzado.<br>
+            • Falta de abstracciones finas para cargas mixtas/AI.<br>
+            • Proyectos de comunidad estancados.
+          </div>
+        </div>
+
+        <div class="hacker-card" style="border-color: rgba(0, 255, 102, 0.5);">
+          <div class="card-title green-glow">✅ Gubernator (The Goldilocks Solution)</div>
+          <div class="card-body">
+            • <strong>Sencillez de Swarm:</strong> `docker-compose.yml` nativo.<br>
+            • <strong>Flexibilidad de Nomad:</strong> Target por hardware (`gpu=nvidia`, `arch=arm64`).<br>
+            • <strong>Ligero:</strong> Consumo &lt; 20 MB RAM en Go.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: System Architecture -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[ROMAN_LEGION // ARCHITECTURE]</span>
+        <span class="slide-number">03 / 08</span>
+      </div>
+      <h2>Arquitectura: Manager & Centurions</h2>
+      <div class="grid-2">
+        <div>
+          <ul class="tech-list">
+            <li><strong>Single Binary Architecture:</strong> El mismo binario <code>gbnt</code> actúa como Central Manager o Worker Agent.</li>
+            <li><strong>Manager Node (Imperium):</strong>
+              <br>• REST API (:4000) protegida por Bearer Tokens (`GBNT_API_TOKEN`).
+              <br>• Dashboard Web (:4001) en Flutter con Material 3 y autenticación SSO.
+              <br>• Telemetría y Swagger (:4002) aislado para observabilidad.
+            </li>
+            <li><strong>Worker Nodes (Centurions):</strong>
+              <br>• Registro mediante Handshake JWT / Secret Token.
+              <br>• Heartbeats periódicos con estado de salud (Active / Pause / Drain).
+              <br>• Caché SQLite local en modo "Draft" para seguir operando si se pierde el enlace con el Manager.
+            </li>
+          </ul>
+        </div>
+        <div>
+          <pre class="code-block">
++-------------------------------------------------------+
+|                 GUBERNATOR MANAGER                    |
+|  [REST API :4000] [Web UI :4001] [Telemetry :4002]     |
+|              Central SQLite Database                  |
++-------------------------------------------------------+
+                           |
+             +-------------+-------------+
+             |                           |
+             v                           v
++------------------------+  +------------------------+
+|  CENTURION (WORKER 1)  |  |  CENTURION (WORKER 2)  |
+| IP: 192.168.252.12     |  | IP: 192.168.252.13     |
+| Docker Engine API      |  | Docker Engine API      |
+| Local SQLite Cache     |  | Local SQLite Cache     |
++------------------------+  +------------------------+
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Hardware Placement & Compose -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[SCHEDULER // HARDWARE_TARGETING]</span>
+        <span class="slide-number">04 / 08</span>
+      </div>
+      <h2>Deployment Engine & Label Matching</h2>
+      <p class="lead">Despliegue de pilas de servicios con selección inteligente de hardware.</p>
+      
+      <div class="grid-2">
+        <div>
+          <h3 style="color: var(--accent-cyan); font-family: var(--font-mono); margin-bottom: 10px;">docker-compose.yml</h3>
+          <pre class="code-block">
+version: '3.8'
+services:
+  ai-inference-service:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.gpu == nvidia
+          - node.labels.zone == europe-1
+          - stack.name == ai-cluster
+          </pre>
+        </div>
+        <div>
+          <h3 style="color: var(--accent-green); font-family: var(--font-mono); margin-bottom: 10px;">Motor de Coincidencia de Etiquetas</h3>
+          <ul class="tech-list">
+            <li>Convención de etiquetas con prefijo temático romano / gubernator:
+              <br><code>gbnt.node.role=worker</code>
+              <br><code>gbnt.node.gpu=nvidia</code>
+              <br><code>gbnt.node.zone=europe-1</code>
+            </li>
+            <li>El Scheduler evalúa las restricciones de ubicación (`deploy.placement.constraints`) y distribuye las tareas únicamente en los nodos calificados.</li>
+            <li>Algoritmo de balanceo <em>Least Loaded / Spread</em> integrado.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Networking & Aqueducts -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[AQUEDUCTS // SERVICE_DISCOVERY]</span>
+        <span class="slide-number">05 / 08</span>
+      </div>
+      <h2>Los Acueductos: CoreDNS + Caddy Ingress</h2>
+      
+      <div class="grid-2">
+        <div class="hacker-card">
+          <div class="card-title cyan-glow">🌐 CoreDNS Centralizado (*.gbnt)</div>
+          <div class="card-body">
+            • Instancia centralizada <code>gbnt-coredns</code> ejecutándose en el nodo Manager.<br>
+            • Gubernator actualiza de forma dinámica las entradas de resolución interna DNS conforme los contenedores se despliegan o se reinician.<br>
+            • Todos los nodos y contenedores resuelven nombres internos como <code>web.my-stack.gbnt</code>.
+          </div>
+        </div>
+
+        <div class="hacker-card">
+          <div class="card-title green-glow">⚡ Ingress con Caddy Proxy</div>
+          <div class="card-body">
+            • Detección automática de etiquetas de enrutamiento exterior.<br>
+            • Generación y recarga en caliente del <code>Caddyfile</code>.<br>
+            • Certificados TLS automáticos y proxy inverso a los contenedores desplegados en el cluster.
+          </div>
+        </div>
+      </div>
+
+      <pre class="code-block" style="margin-top: 20px;">
+[Container Request] ---> [CoreDNS :53 (Manager)] ---> Resolve internal IP (192.168.252.12)
+[External Web Client] -> [Caddy Ingress :80/:443] --> Reverse Proxy to container port
+      </pre>
+    </div>
+
+    <!-- SLIDE 6: Observability -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[SRE_MONITOR // OBSERVABILITY]</span>
+        <span class="slide-number">06 / 08</span>
+      </div>
+      <h2>Observabilidad en Un Solo Comando</h2>
+      <p class="lead">Instalación automatizada de la pila SRE con <code>gbnt monitor init</code>.</p>
+
+      <div class="grid-3">
+        <div class="hacker-card">
+          <div class="card-title">📊 Prometheus (:9090)</div>
+          <div class="card-body">Recolecta métricas del sistema y de los contenedores expuestas en el puerto 4002.</div>
+        </div>
+        <div class="hacker-card">
+          <div class="card-title">📈 Grafana (:3000)</div>
+          <div class="card-body">Dashboards preconfigurados con fuentes de datos automáticas de Prometheus y Loki.</div>
+        </div>
+        <div class="hacker-card">
+          <div class="card-title">📝 Loki & Promtail (:3100)</div>
+          <div class="card-body">Agregación y transmisión centralizada de logs de todos los contenedores y workers.</div>
+        </div>
+      </div>
+
+      <div class="hacker-card" style="margin-top: 20px; border-color: var(--accent-green);">
+        <div class="card-title green-glow">🔗 Chips de Puertos Interactivos en el Dashboard</div>
+        <div class="card-body">
+          La interfaz web en Flutter incluye chips interactivos <code>ActionChip</code> para cada puerto mapeado. Un solo clic abre <code>http://&lt;nodeIP&gt;:&lt;hostPort&gt;</code> directamente en el navegador.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Web Terminal & Shell Features -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[TERMINAL_SHELL // WEB_INTERFACE]</span>
+        <span class="slide-number">07 / 08</span>
+      </div>
+      <h2>Consola Shell Integrada y Resiliencia HTTP</h2>
+      
+      <div class="grid-2">
+        <div>
+          <ul class="tech-list">
+            <li><strong>Acceso Web PTY WebSocket:</strong> Shell en vivo tanto del sistema operativo del host como de cualquier contenedor individual.</li>
+            <li><strong>Auto-Enfoque Inmediato:</strong> Foco automático de teclado al abrir la ventana modal para interacción instantánea.</li>
+            <li><strong>Copia Síncrona (`copySync`):</strong> Solución con `document.execCommand('copy')` para garantizar copia instantánea del texto en entornos HTTP no seguros.</li>
+            <li><strong>Barra de Entrada Rápida de Comandos:</strong> Cuadro de texto directo al pie de la terminal donde se puede hacer <code>Ctrl+V</code>, <code>Cmd+V</code> o pegar scripts multilínea.</li>
+          </ul>
+        </div>
+
+        <div>
+          <pre class="code-block">
++-------------------------------------------------------+
+| Shell: gbnt-worker1                                 x |
++-------------------------------------------------------+
+| [Copiar] [Pegar] [📝 Script]                          |
+|                                                       |
+| root@gbnt-worker1:~# docker ps                        |
+| CONTAINER ID   IMAGE                 STATUS           |
+| a1b2c3d4e5f6   promtail:latest       Up 2 hours       |
+| 7890abcdef12   cadvisor:latest       Up 2 hours       |
+|                                                       |
+| [>_] Comando rápido: pega aquí y Enter...     [Enviar]|
++-------------------------------------------------------+
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Roadmap & Future -->
+    <div class="slide">
+      <div class="slide-header">
+        <span class="slide-tag">[FUTURE_HORIZONS // ROADMAP]</span>
+        <span class="slide-number">08 / 08</span>
+      </div>
+      <h2>La Expansión del Senado (Roadmap Futuro)</h2>
+
+      <div class="grid-2">
+        <div class="hacker-card">
+          <div class="card-title cyan-glow">🏛️ High Availability (rqlite / dqlite)</div>
+          <div class="card-body">Evolución hacia SQLite distribuido sobre el protocolo Raft. Permite clusters de 3 a 5 Managers sin punto único de fallo (SPOF).</div>
+        </div>
+
+        <div class="hacker-card">
+          <div class="card-title green-glow">🛡️ Vault de Secretos Integrado</div>
+          <div class="card-body">Inyección segura de contraseñas y certificados cifrados dentro de los contenedores sin revelar contraseñas en texto plano.</div>
+        </div>
+
+        <div class="hacker-card">
+          <div class="card-title pink-glow">🔄 Rolling Updates Zero-Downtime</div>
+          <div class="card-body">Despliegue secuencial de contenedores verificando healthchecks antes de dar de baja versiones anteriores.</div>
+        </div>
+
+        <div class="hacker-card">
+          <div class="card-title" style="color: var(--accent-yellow);">💾 Storage & Volume Affinity</div>
+          <div class="card-body">El Scheduler conoce la ubicación física de los volúmenes de datos y reprograma contenedores en el mismo nodo físico.</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 30px; font-family: var(--font-mono); color: var(--accent-green); font-size: 1.2rem;">
+        > GUBERNATOR // ORCHESTRATION FOR THE MODERN ERA
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Controls Footer -->
+  <div class="speaker-notes-box" id="notes">
+    💡 Presiona <strong>[←] [→]</strong> o <strong>[Espacio]</strong> para cambiar de diapositiva.
+  </div>
+
+  <div class="controls">
+    <button class="nav-btn" id="btn-prev">← Anterior</button>
+    <span id="slide-counter" style="font-family: var(--font-mono); font-size: 0.9rem; color: var(--accent-green);">1 / 8</span>
+    <button class="nav-btn" id="btn-next">Siguiente →</button>
+  </div>
+
+  <!-- JavaScript Navigation Logic & Matrix Canvas -->
+  <script>
+    // Navigation logic
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('slide-counter');
+    const progress = document.getElementById('progress');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    let currentIndex = 0;
+
+    function updateDeck() {
+      slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === currentIndex);
+      });
+      counter.textContent = `${currentIndex + 1} / ${slides.length}`;
+      progress.style.width = `${((currentIndex + 1) / slides.length) * 100}%`;
+    }
+
+    btnPrev.addEventListener('click', () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateDeck();
+      }
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (currentIndex < slides.length - 1) {
+        currentIndex++;
+        updateDeck();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        if (currentIndex < slides.length - 1) {
+          currentIndex++;
+          updateDeck();
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (currentIndex > 0) {
+          currentIndex--;
+          updateDeck();
+        }
+      }
+    });
+
+    // Matrix Rain Effect
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*GUBERNATOR';
+    const fontSize = 16;
+    const columns = Math.floor(canvas.width / fontSize);
+    const rainDrops = Array(columns).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(7, 9, 14, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff66';
+      ctx.font = fontSize + 'px monospace';
+
+      for (let i = 0; i < rainDrops.length; i++) {
+        const text = latin.charAt(Math.floor(Math.random() * latin.length));
+        ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+        if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          rainDrops[i] = 0;
+        }
+        rainDrops[i]++;
+      }
+    }
+
+    setInterval(drawMatrix, 40);
+  </script>
+</body>
+</html>
