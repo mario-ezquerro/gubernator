@@ -107,3 +107,49 @@ Commands for deploying and managing a production-grade SRE monitoring stack.
 
 - **`gbnt monitor stop`**
   Stops and removes all monitoring containers and the `gbnt-monitor-net` Docker network.
+
+---
+
+## 🔒 Security & ENS Compliance (RD 311/2022)
+
+Commands for security governance, automated compliance auditing against the Spanish National Security Framework (ENS), software supply-chain security, and cryptographic signing.
+
+- **`gbnt security ens`**
+  Executes an automated technical compliance evaluation across 11 controls of Annex II RD 311/2022 and prints an ANSI-formatted status scorecard for BÁSICO, MEDIO, and ALTO tiers.
+
+- **`gbnt security ens --report`**
+  Generates and exports the complete technical compliance evidence report in CommonMark Markdown format ready for official CCN-STIC auditor submissions.
+
+- **`gbnt scan [image]`**
+  Scans container images for CVE vulnerabilities and displays CVSS severity metrics.
+
+- **`gbnt sbom [image]`**
+  Generates Software Bill of Materials in CycloneDX JSON or SPDX JSON.
+
+- **`gbnt image sign [image] --key [key_file]`**
+  Cryptographically signs a container image digest using ECDSA P-256 (Cosign compatible).
+
+- **`gbnt security policy [audit|enforce]`**
+  Configures the Gatekeeper admission controller mode for verifying image signatures before container scheduling.
+
+---
+
+## 💾 Persistent Storage & Encrypted Backups
+
+Commands for managing multi-node storage pools, Docker volumes, and encrypted backups.
+
+- **`gbnt volume ls`**
+  Lists all discovered volumes across Centurion nodes with their physical host residency, mountpoints, and disk usage.
+
+- **`gbnt backup create [volume_or_stack] [--name NAME] [--encrypt] [--password PASS] [--pause]`**
+  Creates a point-in-time compressed backup. When `--encrypt` is passed, encrypts the payload using AES-256-GCM authenticated streaming with PBKDF2 key derivation (ENS `mp.si.2`).
+
+- **`gbnt backup ls`**
+  Displays catalog of all backups, sizes, SHA-256 digests, and encryption status (`🔒 AES-256` or `Plain`).
+
+- **`gbnt backup restore [backup_id] --target [path] [--password PASS]`**
+  Restores a backup into the target directory. If the archive is encrypted, validates the password and checks AEAD block integrity before decompressing.
+
+- **`gbnt backup schedule ls`**
+  Lists automated recurring backup cron policies and retention rotations.
+

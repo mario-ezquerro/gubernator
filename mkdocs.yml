@@ -53,6 +53,7 @@ nav:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md
     - Active Directory, LDAP & RBAC: auth-rbac.md
+    - Esquema Nacional de Seguridad (ENS): ens.md
     - Storage & Backups (The Granaries): storage-backups.md
     - GlusterFS Multi-Node Storage: glusterfs.md
     - Image Security & SBOM (The Imperial Seal): image-security.md

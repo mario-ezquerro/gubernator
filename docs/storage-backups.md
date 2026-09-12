@@ -51,12 +51,14 @@ Access **Storage & Backups** in the Web Dashboard (Port 4001) to interact with 4
 * **Metadata & Disk Usage**: Displays associated Stack (Legion), Service, source and target paths, and exact size on disk.
 * **1-Click Snapshot**: Instantly trigger a point-in-time backup for any discovered volume.
 
-### 2. 💾 Backups & Snapshots
-* **Compressed Archives (`.tar.gz`)**: Full catalog of all backups with file size, creation timestamp, and cryptographic SHA-256 integrity hash.
+### 2. 💾 Backups, Snapshots & Encrypted Archives (ENS mp.si.2)
+* **Compressed Archives (`.tar.gz` / `.tar.gz.enc`)**: Full catalog of all backups with file size, creation timestamp, and cryptographic SHA-256 integrity hash.
+* **Cifrado en Reposo AES-256-GCM (ENS `mp.si.2`)**: Cifrado autenticado en streaming con derivación de claves PBKDF2-HMAC-SHA256 ($\ge 100.000$ iteraciones) y salt criptográfico por archivo.
+* **Restauración Autenticada**: Detección automática de copias cifradas y solicitud obligatoria de contraseña antes de la descompresión.
 * **Container Consistency Toggle**: Supports freezing write operations (`docker pause` ➔ archive ➔ `docker unpause`) to guarantee 100% database consistency.
 * **1-Click Restore**: Restore backups in-place over the original volume or clone into a custom target path.
-* **Direct Download**: Download `.tar.gz` archives straight to your browser.
-* **External Upload**: Upload external `.tar.gz` backup files directly into the cluster storage repository.
+* **Direct Download**: Download archives straight to your browser.
+* **External Upload**: Upload external `.tar.gz` or `.tar.gz.enc` backup files directly into the cluster storage repository.
 
 ### 3. ⏰ Schedules & Policies
 * **Automated Cron Routines**: Schedule periodic backups (Daily at 03:00 AM, Weekly on Sunday, or custom Cron expressions).
@@ -138,19 +140,28 @@ services:
 gbnt volume ls
 ```
 
-### Create Backup
+### Create Backup (Standard or Encrypted AES-256-GCM)
 ```bash
+# Standard compressed backup
 gbnt backup create myapp --name "pre-upgrade-backup" --pause
+
+# Encrypted backup in repose (ENS mp.si.2 / CCN-STIC)
+gbnt backup create myapp --name "backup-cifrado" --encrypt --password "TuContraseñaRobusta123!#"
 ```
 
 ### List Backups
 ```bash
 gbnt backup ls
+# Outputs: ID, NAME, STACK, SIZE, CREATED, SHA256, ENCRYPTION (🔒 AES-256 / Plain)
 ```
 
 ### Restore Backup
 ```bash
+# Standard restore
 gbnt backup restore <BACKUP_ID> --target /var/contenedores/myapp/postgres
+
+# Encrypted restore with passphrase validation
+gbnt backup restore <BACKUP_ID> --target /var/contenedores/myapp/postgres --password "TuContraseñaRobusta123!#"
 ```
 
 ### List Backup Schedules

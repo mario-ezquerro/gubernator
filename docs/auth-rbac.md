@@ -44,19 +44,23 @@ Gubernator provides enterprise-grade identity federation and Role-Based Access C
 
 ## 👥 Role-Based Access Control (RBAC) Matrix
 
-| Capability | 👑 Admin | ⚡ Operator | 👁️ Read-Only |
-| :--- | :---: | :---: | :---: |
-| **Overview Dashboard & Telemetry** | ✅ Full | ✅ Full | ✅ Full |
-| **Deploy Stacks (`docker-compose.yml`)** | ✅ Full | ✅ Full | ❌ Restricted |
-| **Redeploy & Duplicate Stacks** | ✅ Full | ✅ Full | ❌ Restricted |
-| **Delete Stacks** | ✅ Full | ❌ Restricted | ❌ Restricted |
-| **Task Lifecycle (Start / Stop / Restart)** | ✅ Full | ✅ Full | ❌ Restricted |
-| **Container & Node Terminal Shell** | ✅ Full | ✅ Full | ❌ Restricted |
-| **Centurions Management (Drain / Activate / Leave)** | ✅ Full | ❌ Restricted | ❌ Restricted |
-| **Caddy TLS Lifecycle & Certificate Upload** | ✅ Full | ❌ Restricted | ❌ Restricted |
-| **CoreDNS Forwarders & Custom Records** | ✅ Full | ❌ Restricted | ❌ Restricted |
-| **Active Directory & LDAP Directory Settings** | ✅ Full | ❌ Restricted | ❌ Restricted |
-| **Grafana, Jaeger & Weave Scope Dashboards** | ✅ Full | ✅ Full | ✅ Full |
+Gubernator implementa una matriz RBAC de 4 niveles que garantiza la **segregación de funciones y responsabilidades diferenciadas** exigida por el **Esquema Nacional de Seguridad (ENS `org.2`)**:
+
+| Capability | 👑 Admin | ⚡ Operator | 🛡️ Auditor (ENS `org.2`) | 👁️ Read-Only |
+| :--- | :---: | :---: | :---: | :---: |
+| **Overview Dashboard & Telemetry** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
+| **Deploy Stacks (`docker-compose.yml`)** | ✅ Full | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Redeploy & Duplicate Stacks** | ✅ Full | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Delete Stacks** | ✅ Full | ❌ Restricted | ❌ Restricted | ❌ Restricted |
+| **Task Lifecycle (Start / Stop / Restart)** | ✅ Full | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Container & Node Terminal Shell** | ✅ Full | ✅ Full | ❌ Restricted | ❌ Restricted |
+| **Centurions Management (Drain / Activate / Leave)** | ✅ Full | ❌ Restricted | ❌ Restricted | ❌ Restricted |
+| **Caddy TLS Lifecycle & Certificate Upload** | ✅ Full | ❌ Restricted | ❌ Restricted | ❌ Restricted |
+| **CoreDNS Forwarders & Custom Records** | ✅ Full | ❌ Restricted | ❌ Restricted | ❌ Restricted |
+| **Active Directory & LDAP Directory Settings** | ✅ Full | ❌ Restricted | ❌ Restricted | ❌ Restricted |
+| **Forensic Audit & SIEM Logs (`op.mon.1`)** | ✅ Full | ❌ Restricted | ✅ Full (Read & Verify) | ❌ Restricted |
+| **ENS Compliance Dashboard (`RD 311/2022`)** | ✅ Full | ❌ Restricted | ✅ Full (Audit & Export) | ❌ Restricted |
+| **Grafana, Jaeger & Weave Scope Dashboards** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
 
 ---
 
