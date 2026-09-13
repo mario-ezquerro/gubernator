@@ -266,6 +266,28 @@
   
   
   
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../compliance/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compliance & Security
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
     
   
   
@@ -472,12 +494,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
     
     
     
@@ -506,6 +522,73 @@
     
   
     Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../compliance/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & Security
   
 
     
@@ -559,10 +642,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -580,8 +663,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -770,6 +853,67 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-gatekeeper-ens-compliance-subsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Security, Gatekeeper &amp; ENS Compliance Subsystem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛡️ Security, Gatekeeper &amp; ENS Compliance Subsystem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#admission-policies-gatekeeper-mpsw2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admission Policies &amp; Gatekeeper (mp.sw.2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cryptographic-keys-management-cosign-ecdsa-p-256" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cryptographic Keys Management (Cosign ECDSA P-256)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-signing-verification-sbom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image Signing, Verification &amp; SBOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ens-compliance-audit-siem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ENS Compliance Audit &amp; SIEM
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1119,6 +1263,22 @@
   Generates and exports the complete technical compliance evidence report in CommonMark Markdown format ready for official CCN-STIC auditor submissions.</p>
 </li>
 <li>
+<p><strong><code>gbnt security siem status</code></strong>
+  Displays live SIEM delivery metrics, transmission success/failure counters, intrusion detection statistics, and ENS <code>op.mon.2</code> compliance status.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem test [--host H] [--port P] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]</code></strong>
+  Dispatches a diagnostic test probe to verify SIEM ingestion and measures exact network roundtrip latency in milliseconds.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem enable --host &lt;IP&gt; [--port &lt;port&gt;] [--proto &lt;proto&gt;] [--format &lt;format&gt;]</code></strong>
+  Enables real-time SIEM event forwarding and elevates the ENS measure <code>op.mon.2</code> to 100% COMPLIANT.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem disable</code></strong>
+  Disables real-time SIEM event forwarding.</p>
+</li>
+<li>
 <p><strong><code>gbnt scan [image]</code></strong>
   Scans container images for CVE vulnerabilities and displays CVSS severity metrics.</p>
 </li>
@@ -1157,7 +1317,90 @@
 </li>
 <li>
 <p><strong><code>gbnt backup schedule ls</code></strong>
-  Lists automated recurring backup cron policies and retention rotations.</p>
+  Lists automated recurring backup cron policies and retention rotations with encryption status.</p>
+</li>
+<li>
+<p><strong><code>gbnt backup schedule add --name &lt;name&gt; --cron &lt;cron&gt; [--type stack|volume|path] [--target &lt;t&gt;] [--dest &lt;d&gt;] [--retention &lt;n&gt;] [--encrypt] [--password &lt;p&gt;] [--pause]</code></strong>
+  Registers an automated periodic backup schedule. Supports <code>--encrypt</code> with <code>--password</code> for AES-256-GCM encryption in repose (ENS <code>op.exp.10</code> / <code>mp.si.2</code>).</p>
+</li>
+<li>
+<p><strong><code>gbnt backup schedule rm &lt;schedule_id&gt;</code></strong>
+  Deletes an automated backup schedule and stops its periodic execution.</p>
+</li>
+</ul>
+<hr />
+<h2 id="security-gatekeeper-ens-compliance-subsystem">🛡️ Security, Gatekeeper &amp; ENS Compliance Subsystem</h2>
+<p>Complete CLI suite for software supply chain security, admission control, SIEM forwarding, and Esquema Nacional de Seguridad (ENS RD 311/2022) compliance auditing.</p>
+<h3 id="admission-policies-gatekeeper-mpsw2">Admission Policies &amp; Gatekeeper (<code>mp.sw.2</code>)</h3>
+<ul>
+<li>
+<p><strong><code>gbnt security policy</code></strong>
+  Displays current cluster admission security policy (enforce signatures, block CVE severity, allow unfixed CVEs, trusted registries).</p>
+</li>
+<li>
+<p><strong><code>gbnt security policy set [--signatures enforce|audit|disabled] [--block-cve critical|high|none] [--allow-unfixed] [--registries &lt;list&gt;]</code></strong>
+  Configures admission gatekeeper policy. Mode <code>enforce</code> blocks unsigned images or images with critical/high CVEs.</p>
+</li>
+</ul>
+<h3 id="cryptographic-keys-management-cosign-ecdsa-p-256">Cryptographic Keys Management (Cosign ECDSA P-256)</h3>
+<ul>
+<li>
+<p><strong><code>gbnt security key ls</code></strong>
+  Lists trusted public signing keys configured in the cluster.</p>
+</li>
+<li>
+<p><strong><code>gbnt security key generate [--name &lt;name&gt;] [--default]</code></strong>
+  Generates a new ECDSA P-256 keypair in the cluster and prints its public key PEM.</p>
+</li>
+<li>
+<p><strong><code>gbnt security key rm &lt;key_id&gt;</code></strong>
+  Removes a trusted signing key from the cluster.</p>
+</li>
+</ul>
+<h3 id="image-signing-verification-sbom">Image Signing, Verification &amp; SBOM</h3>
+<ul>
+<li>
+<p><strong><code>gbnt image sign &lt;image&gt; [--key &lt;key.pem&gt;] [--signer &lt;name&gt;]</code></strong>
+  Cryptographically signs a container image digest using an in-cluster or external ECDSA key.</p>
+</li>
+<li>
+<p><strong><code>gbnt image verify &lt;image&gt;</code></strong>
+  Verifies the cryptographic signature of an image against trusted keys and policy.</p>
+</li>
+<li>
+<p><strong><code>gbnt image unsign &lt;image&gt;</code></strong>
+  Revokes/removes the cryptographic signature from an image.</p>
+</li>
+<li>
+<p><strong><code>gbnt sbom &lt;image&gt; [--format cyclonedx-json|spdx-json]</code></strong>
+  Generates a Software Bill of Materials in CycloneDX or SPDX format.</p>
+</li>
+<li>
+<p><strong><code>gbnt scan &lt;image&gt;</code></strong>
+  Triggers vulnerability scanning and CVE inspection for a container image.</p>
+</li>
+</ul>
+<h3 id="ens-compliance-audit-siem">ENS Compliance Audit &amp; SIEM</h3>
+<ul>
+<li>
+<p><strong><code>gbnt security ens [--report] [--format table|json|markdown]</code></strong>
+  Audits the cluster against the 11 technical measures of ENS RD 311/2022 (BÁSICO, MEDIO, ALTO). Pass <code>--report</code> for full Markdown export.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem status</code></strong>
+  Displays real-time SIEM event forwarding metrics, intrusion alerts, and collector link state.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem test [--host &lt;h&gt;] [--port &lt;p&gt;] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]</code></strong>
+  Dispatches an active probe to the SIEM receiver and measures roundtrip network latency in milliseconds.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem enable --host &lt;h&gt; [--port &lt;p&gt;] [--proto UDP|TCP|TLS] [--format RFC5424|CEF|JSON]</code></strong>
+  Activates real-time SIEM forwarding, elevating measure <code>op.mon.2</code> to 100% COMPLIANT.</p>
+</li>
+<li>
+<p><strong><code>gbnt security siem disable</code></strong>
+  Disables real-time SIEM forwarding.</p>
 </li>
 </ul>
 

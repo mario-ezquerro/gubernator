@@ -17,6 +17,8 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings |
 | **Universal Worker Onboarding** | 3-tab onboarding suite (`AddNodeDialog`): Quick Join (1-liner), Remote SSH Provision with multi-auth & Live Terminal Console, and Cloud-Init YAML |
 | **Enterprise AD / LDAP & RBAC** | Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (`admin`, `operator`, `readonly`) |
+| **Compliance & Hardening Suite** | Continuous automated auditing for **CIS Docker Benchmark v1.6.0**, **European NIS 2 Directive**, and **Spanish ENS (100% ALTO)** |
+| **Image Security & Gatekeeper** | Automated CVE scanning, CycloneDX/SPDX SBOMs, Cosign digital signatures, and pre-deployment admission control |
 | **Autoscaling & GPU Affinity** | Declarative horizontal autoscaling on GPU (NVIDIA DCGM) & CPU metrics with hardware affinity and single-host vs multi-host containment |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
 | **Secure API** | Bearer token auth on port 4000, JWT / Session Auth on Web UI |
@@ -125,6 +127,20 @@ The Web UI at `:4001` provides full lifecycle management:
 
 ---
 
+## 🛡️ Compliance & Security Governance
+
+Gubernator features a continuous multi-standard compliance engine accessible via Web UI (`Security & Directory` ➔ `Compliance & Regulatory Suite`) and CLI (`gbnt cis`, `gbnt nis2`, `gbnt security ens`):
+
+* **[CIS Docker Benchmark v1.6.0](cis-docker.md):** 35 prescriptive hardening recommendations across Host, Daemon, Files, Images, Runtime, and Ops with Level 1 & 2 profiles and Posture Grade (`A`).
+* **[European NIS 2 Directive (EU 2022/2555)](nis2.md):** Automated risk-management assessment across all 10 Article 21(2) mandatory domains with CSIRT reporting (`HIGH` Readiness).
+* **[Esquema Nacional de Seguridad (ENS RD 311/2022)](ens.md):** 100% ALTO certification with tamper-evident SHA-256 chained audit logs, real-time SIEM event forwarding, mandatory TOTP MFA, and AES-256-GCM encrypted backup schedules.
+* **[Active Directory, LDAP & RBAC](auth-rbac.md):** Enterprise directory integration with 4-tier RBAC (`admin`, `operator`, `auditor`, `readonly`) and emergency local access.
+* **[Image Security, SBOM & Gatekeeper](image-security.md):** Pre-deployment admission control, CycloneDX/SPDX SBOM analysis, and Cosign cryptographic container signing.
+
+*(See the [Compliance Hub Overview](compliance.md) for the complete multi-framework matrix).*
+
+---
+
 ## SRE Monitoring Stack
 
 Deploy a full observability stack with one command:
@@ -159,6 +175,7 @@ While `./gbnt serve` is running, access:
 
 ## Documentation
 
+### Core Guides
 - [Installation Guide](install.md) — Download pre-built binaries or compile from source
 - [Screenshots Gallery (v2.13.0)](screens.md) — Visual showcase of Dashboard, Caddy, CoreDNS, SLO & Topology
 - [CLI Reference](cli.md) — All `gbnt` commands explained
@@ -166,10 +183,18 @@ While `./gbnt serve` is running, access:
 - [Web UI](web-ui.md) — Dashboard features and usage
 - [Examples](examples.md) — Step-by-step tutorials from basic to SRE-grade
 
+### Compliance & Security Suite
+- [Compliance Hub Overview](compliance.md) — Executive matrix and regulatory posture across standards
+- [CIS Docker Benchmark v1.6.0](cis-docker.md) — 35 host, daemon, runtime and container checks with automated remediation
+- [European NIS 2 Directive (EU 2022/2555)](nis2.md) — Article 21(2) risk-management measures and CSIRT incident reporting
+- [Esquema Nacional de Seguridad (ENS)](ens.md) — Spanish Royal Decree 311/2022 certification with SHA-256 audit chaining, SIEM & MFA
+- [Active Directory, LDAP & RBAC](auth-rbac.md) — Multi-server directory sync, LDAPS/StartTLS, and role-based permissions
+- [Image Security, SBOM & Gatekeeper](image-security.md) — Vulnerability scanning, CycloneDX/SPDX SBOMs, and Cosign image signing
+
 ---
 
 ## Current Development State
 
-> Gubernator **v1.5.0** — Phases 1–11 complete including Flutter Web UI, clickable port links, and built-in SRE Monitoring Stack.
+> Gubernator **v2.92.2** — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.
 
 **[View the complete Roadmap](roadmap.md)**

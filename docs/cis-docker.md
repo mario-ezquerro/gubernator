@@ -92,7 +92,7 @@ $$\text{Compliance Score (\%)} = \left( \frac{\text{PASS Count} + 0.5 \times \te
 
 Located under **Security & Directory** ➔ **Compliance & Regulatory Suite** ➔ **🔒 CIS Docker Benchmark v1.6.0**:
 
-![CIS Docker Benchmark Dashboard](docs/images/v2.13.0/dashboard_main.png)
+![CIS Docker Benchmark Dashboard](images/v2.13.0/dashboard_main.png)
 
 ### Key UI Features
 1. **Header Banner:** Shows active hardening standard, with **"Re-Audit"** and **"Export Audit Report"** buttons.

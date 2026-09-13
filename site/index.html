@@ -270,6 +270,28 @@
     
     
       <li class="md-tabs__item">
+        <a href="compliance/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compliance & Security
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
         <a href="cli/" class="md-tabs__link">
           
   
@@ -632,12 +654,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
     
     
     
@@ -666,6 +682,73 @@
     
   
     Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="compliance/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & Security
   
 
     
@@ -951,6 +1034,14 @@
 <td>Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (<code>admin</code>, <code>operator</code>, <code>readonly</code>)</td>
 </tr>
 <tr>
+<td><strong>Compliance &amp; Hardening Suite</strong></td>
+<td>Continuous automated auditing for <strong>CIS Docker Benchmark v1.6.0</strong>, <strong>European NIS 2 Directive</strong>, and <strong>Spanish ENS (100% ALTO)</strong></td>
+</tr>
+<tr>
+<td><strong>Image Security &amp; Gatekeeper</strong></td>
+<td>Automated CVE scanning, CycloneDX/SPDX SBOMs, Cosign digital signatures, and pre-deployment admission control</td>
+</tr>
+<tr>
 <td><strong>Autoscaling &amp; GPU Affinity</strong></td>
 <td>Declarative horizontal autoscaling on GPU (NVIDIA DCGM) &amp; CPU metrics with hardware affinity and single-host vs multi-host containment</td>
 </tr>
@@ -1077,6 +1168,17 @@
 <li><strong>Delete</strong> stacks with automatic container cleanup</li>
 </ul>
 <hr />
+<h2 id="compliance-security-governance">🛡️ Compliance &amp; Security Governance</h2>
+<p>Gubernator features a continuous multi-standard compliance engine accessible via Web UI (<code>Security &amp; Directory</code> ➔ <code>Compliance &amp; Regulatory Suite</code>) and CLI (<code>gbnt cis</code>, <code>gbnt nis2</code>, <code>gbnt security ens</code>):</p>
+<ul>
+<li><strong><a href="cis-docker/">CIS Docker Benchmark v1.6.0</a>:</strong> 35 prescriptive hardening recommendations across Host, Daemon, Files, Images, Runtime, and Ops with Level 1 &amp; 2 profiles and Posture Grade (<code>A</code>).</li>
+<li><strong><a href="nis2/">European NIS 2 Directive (EU 2022/2555)</a>:</strong> Automated risk-management assessment across all 10 Article 21(2) mandatory domains with CSIRT reporting (<code>HIGH</code> Readiness).</li>
+<li><strong><a href="ens/">Esquema Nacional de Seguridad (ENS RD 311/2022)</a>:</strong> 100% ALTO certification with tamper-evident SHA-256 chained audit logs, real-time SIEM event forwarding, mandatory TOTP MFA, and AES-256-GCM encrypted backup schedules.</li>
+<li><strong><a href="auth-rbac/">Active Directory, LDAP &amp; RBAC</a>:</strong> Enterprise directory integration with 4-tier RBAC (<code>admin</code>, <code>operator</code>, <code>auditor</code>, <code>readonly</code>) and emergency local access.</li>
+<li><strong><a href="image-security/">Image Security, SBOM &amp; Gatekeeper</a>:</strong> Pre-deployment admission control, CycloneDX/SPDX SBOM analysis, and Cosign cryptographic container signing.</li>
+</ul>
+<p><em>(See the <a href="compliance/">Compliance Hub Overview</a> for the complete multi-framework matrix).</em></p>
+<hr />
 <h2 id="sre-monitoring-stack">SRE Monitoring Stack</h2>
 <p>Deploy a full observability stack with one command:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./gbnt<span class="w"> </span>monitor<span class="w"> </span>init<span class="w">      </span><span class="c1"># Deploy Prometheus, Grafana, Loki, cAdvisor, Promtail, Node Exporter, Jaeger</span>
@@ -1139,6 +1241,7 @@
 </ul>
 <hr />
 <h2 id="documentation">Documentation</h2>
+<h3 id="core-guides">Core Guides</h3>
 <ul>
 <li><a href="install/">Installation Guide</a> — Download pre-built binaries or compile from source</li>
 <li><a href="screens/">Screenshots Gallery (v2.13.0)</a> — Visual showcase of Dashboard, Caddy, CoreDNS, SLO &amp; Topology</li>
@@ -1147,10 +1250,19 @@
 <li><a href="web-ui/">Web UI</a> — Dashboard features and usage</li>
 <li><a href="examples/">Examples</a> — Step-by-step tutorials from basic to SRE-grade</li>
 </ul>
+<h3 id="compliance-security-suite">Compliance &amp; Security Suite</h3>
+<ul>
+<li><a href="compliance/">Compliance Hub Overview</a> — Executive matrix and regulatory posture across standards</li>
+<li><a href="cis-docker/">CIS Docker Benchmark v1.6.0</a> — 35 host, daemon, runtime and container checks with automated remediation</li>
+<li><a href="nis2/">European NIS 2 Directive (EU 2022/2555)</a> — Article 21(2) risk-management measures and CSIRT incident reporting</li>
+<li><a href="ens/">Esquema Nacional de Seguridad (ENS)</a> — Spanish Royal Decree 311/2022 certification with SHA-256 audit chaining, SIEM &amp; MFA</li>
+<li><a href="auth-rbac/">Active Directory, LDAP &amp; RBAC</a> — Multi-server directory sync, LDAPS/StartTLS, and role-based permissions</li>
+<li><a href="image-security/">Image Security, SBOM &amp; Gatekeeper</a> — Vulnerability scanning, CycloneDX/SPDX SBOMs, and Cosign image signing</li>
+</ul>
 <hr />
 <h2 id="current-development-state">Current Development State</h2>
 <blockquote>
-<p>Gubernator <strong>v1.5.0</strong> — Phases 1–11 complete including Flutter Web UI, clickable port links, and built-in SRE Monitoring Stack.</p>
+<p>Gubernator <strong>v2.92.2</strong> — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.</p>
 </blockquote>
 <p><strong><a href="roadmap/">View the complete Roadmap</a></strong></p>
 

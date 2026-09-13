@@ -52,18 +52,20 @@ nav:
   - Architecture & UI:
     - Architecture: architecture.md
     - Web UI Dashboard: web-ui.md
-    - Active Directory, LDAP & RBAC: auth-rbac.md
-    - Esquema Nacional de Seguridad (ENS): ens.md
-    - European NIS 2 Directive: nis2.md
-    - CIS Docker Benchmark (v1.6.0): cis-docker.md
     - Storage & Backups (The Granaries): storage-backups.md
     - GlusterFS Multi-Node Storage: glusterfs.md
-    - Image Security & SBOM (The Imperial Seal): image-security.md
     - Screenshots (v2.13.0): screens.md
     - Caddy Ingress Suite: caddy.md
     - CoreDNS Suite: coredns.md
     - Autoscaling & GPU Affinity: autoscaling.md
     - REST API & SDK: api.md
+  - Compliance & Security:
+    - Compliance Hub Overview: compliance.md
+    - CIS Docker Benchmark (v1.6.0): cis-docker.md
+    - European NIS 2 Directive: nis2.md
+    - Esquema Nacional de Seguridad (ENS): ens.md
+    - Active Directory, LDAP & RBAC: auth-rbac.md
+    - Image Security, SBOM & Gatekeeper: image-security.md
   - Reference:
     - CLI Overview: cli.md
     - Full CLI Reference: cli-full.md

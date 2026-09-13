@@ -2313,6 +2313,9 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "string"
+                },
+                "trace_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2424,6 +2427,9 @@ const docTemplate = `{
                 },
                 "throughput_bps": {
                     "type": "number"
+                },
+                "trace_id": {
+                    "type": "string"
                 }
             }
         },
