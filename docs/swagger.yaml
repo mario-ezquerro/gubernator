@@ -533,6 +533,8 @@ definitions:
         type: number
       timestamp:
         type: string
+      trace_id:
+        type: string
     type: object
   ebpf.FlowStatus:
     enum:
@@ -610,6 +612,8 @@ definitions:
         type: string
       throughput_bps:
         type: number
+      trace_id:
+        type: string
     type: object
   ebpf.TopologyNode:
     properties:

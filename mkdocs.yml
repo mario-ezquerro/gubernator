@@ -54,6 +54,8 @@ nav:
     - Web UI Dashboard: web-ui.md
     - Active Directory, LDAP & RBAC: auth-rbac.md
     - Esquema Nacional de Seguridad (ENS): ens.md
+    - European NIS 2 Directive: nis2.md
+    - CIS Docker Benchmark (v1.6.0): cis-docker.md
     - Storage & Backups (The Granaries): storage-backups.md
     - GlusterFS Multi-Node Storage: glusterfs.md
     - Image Security & SBOM (The Imperial Seal): image-security.md

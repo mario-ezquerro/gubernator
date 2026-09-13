@@ -2307,6 +2307,9 @@
                 },
                 "timestamp": {
                     "type": "string"
+                },
+                "trace_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2418,6 +2421,9 @@
                 },
                 "throughput_bps": {
                     "type": "number"
+                },
+                "trace_id": {
+                    "type": "string"
                 }
             }
         },
