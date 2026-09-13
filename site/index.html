@@ -721,6 +721,8 @@
       
         
       
+        
+      
     
     
     
@@ -1035,7 +1037,7 @@
 </tr>
 <tr>
 <td><strong>Compliance &amp; Hardening Suite</strong></td>
-<td>Continuous automated auditing for <strong>CIS Docker Benchmark v1.6.0</strong>, <strong>European NIS 2 Directive</strong>, and <strong>Spanish ENS (100% ALTO)</strong></td>
+<td>Continuous automated auditing for <strong>CIS Docker Benchmark v1.6.0</strong>, <strong>ISO/IEC 27001:2022</strong>, <strong>European NIS 2 Directive</strong>, and <strong>Spanish ENS (100% ALTO)</strong></td>
 </tr>
 <tr>
 <td><strong>Image Security &amp; Gatekeeper</strong></td>
@@ -1169,8 +1171,9 @@
 </ul>
 <hr />
 <h2 id="compliance-security-governance">🛡️ Compliance &amp; Security Governance</h2>
-<p>Gubernator features a continuous multi-standard compliance engine accessible via Web UI (<code>Security &amp; Directory</code> ➔ <code>Compliance &amp; Regulatory Suite</code>) and CLI (<code>gbnt cis</code>, <code>gbnt nis2</code>, <code>gbnt security ens</code>):</p>
+<p>Gubernator features a continuous multi-standard compliance engine accessible via Web UI (<code>Security &amp; Directory</code> ➔ <code>Compliance &amp; Regulatory Suite</code>) and CLI (<code>gbnt cis</code>, <code>gbnt nis2</code>, <code>gbnt iso27001</code>, <code>gbnt security ens</code>):</p>
 <ul>
+<li><strong><a href="iso27001/">ISO/IEC 27001:2022 (Annex A)</a>:</strong> 24 Technological and Organizational container &amp; DevOps controls across Theme A.5 and A.8 with Posture Grade (<code>A+</code> to <code>D</code>) and Statement of Applicability (SoA) audit export.</li>
 <li><strong><a href="cis-docker/">CIS Docker Benchmark v1.6.0</a>:</strong> 35 prescriptive hardening recommendations across Host, Daemon, Files, Images, Runtime, and Ops with Level 1 &amp; 2 profiles and Posture Grade (<code>A</code>).</li>
 <li><strong><a href="nis2/">European NIS 2 Directive (EU 2022/2555)</a>:</strong> Automated risk-management assessment across all 10 Article 21(2) mandatory domains with CSIRT reporting (<code>HIGH</code> Readiness).</li>
 <li><strong><a href="ens/">Esquema Nacional de Seguridad (ENS RD 311/2022)</a>:</strong> 100% ALTO certification with tamper-evident SHA-256 chained audit logs, real-time SIEM event forwarding, mandatory TOTP MFA, and AES-256-GCM encrypted backup schedules.</li>
@@ -1253,6 +1256,7 @@
 <h3 id="compliance-security-suite">Compliance &amp; Security Suite</h3>
 <ul>
 <li><a href="compliance/">Compliance Hub Overview</a> — Executive matrix and regulatory posture across standards</li>
+<li><a href="iso27001/">ISO/IEC 27001:2022 (Annex A)</a> — 24 Technological &amp; Organizational controls, Posture Grade (<code>A+</code> to <code>D</code>), and SoA export</li>
 <li><a href="cis-docker/">CIS Docker Benchmark v1.6.0</a> — 35 host, daemon, runtime and container checks with automated remediation</li>
 <li><a href="nis2/">European NIS 2 Directive (EU 2022/2555)</a> — Article 21(2) risk-management measures and CSIRT incident reporting</li>
 <li><a href="ens/">Esquema Nacional de Seguridad (ENS)</a> — Spanish Royal Decree 311/2022 certification with SHA-256 audit chaining, SIEM &amp; MFA</li>
@@ -1262,7 +1266,7 @@
 <hr />
 <h2 id="current-development-state">Current Development State</h2>
 <blockquote>
-<p>Gubernator <strong>v2.92.2</strong> — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.</p>
+<p>Gubernator <strong>v2.93.0</strong> — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.</p>
 </blockquote>
 <p><strong><a href="roadmap/">View the complete Roadmap</a></strong></p>
 

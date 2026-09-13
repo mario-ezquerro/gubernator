@@ -867,6 +867,119 @@ var cisCmd = &cobra.Command{
 }
 
 var (
+	isoFormatFlag string
+	isoReportFlag bool
+	isoThemeFlag  string
+	isoStatusFlag string
+)
+
+var iso27001Cmd = &cobra.Command{
+	Use:     "iso27001",
+	Aliases: []string{"iso"},
+	Short:   "Audit cluster compliance against ISO/IEC 27001:2022 Annex A controls",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/iso27001/status", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to evaluate ISO/IEC 27001: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var s security.ISO27001Summary
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			os.Exit(1)
+		}
+
+		if isoReportFlag || isoFormatFlag == "text" || isoFormatFlag == "report" {
+			reportResp, err := DoAPIRequest("GET", "/v1/security/iso27001/report", nil)
+			if err == nil && reportResp.StatusCode == http.StatusOK {
+				defer reportResp.Body.Close()
+				body, _ := io.ReadAll(reportResp.Body)
+				fmt.Println(string(body))
+				return
+			}
+		}
+
+		if isoFormatFlag == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(s)
+			return
+		}
+
+		// Formatted terminal summary
+		fmt.Println("=========================================================================================")
+		fmt.Printf("🌐  %s | ANNEX A COMPLIANCE AUDIT\n", s.StandardVersion)
+		fmt.Println("=========================================================================================")
+		fmt.Printf("  Posture Grade:         %s\n", s.PostureGrade)
+		fmt.Printf("  Overall Readiness:     %.1f%%\n", s.OverallScore)
+		fmt.Printf("  Theme A.5 (Org):       %.1f%%\n", s.ThemeA5Score)
+		fmt.Printf("  Theme A.8 (Tech):      %.1f%%\n", s.ThemeA8Score)
+		fmt.Printf("  Controls Evaluated:    %d (%d Compliant, %d Partial, %d Non-Compliant)\n",
+			s.TotalControls, s.CompliantCount, s.PartialCount, s.NonCompliantCount)
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("%-10s %-20s %-12s %-26s %-26s\n", "CONTROL", "THEME", "STATUS", "TITLE", "EVIDENCE")
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		for _, c := range s.Controls {
+			// Theme filter
+			if isoThemeFlag != "" && isoThemeFlag != "all" {
+				if (isoThemeFlag == "a5" || strings.EqualFold(isoThemeFlag, "organizational")) && c.Theme != security.ThemeA5Organizational {
+					continue
+				}
+				if (isoThemeFlag == "a8" || strings.EqualFold(isoThemeFlag, "technological") || strings.EqualFold(isoThemeFlag, "tech")) && c.Theme != security.ThemeA8Technological {
+					continue
+				}
+			}
+			// Status filter
+			if isoStatusFlag != "" && isoStatusFlag != "all" {
+				if strings.EqualFold(isoStatusFlag, "compliant") && c.Status != security.ISOStatusCompliant {
+					continue
+				}
+				if strings.EqualFold(isoStatusFlag, "partial") && c.Status != security.ISOStatusPartial {
+					continue
+				}
+				if (strings.EqualFold(isoStatusFlag, "non_compliant") || strings.EqualFold(isoStatusFlag, "fail")) && c.Status != security.ISOStatusNonCompliant {
+					continue
+				}
+			}
+
+			statusStr := "❌ FAIL"
+			if c.Status == security.ISOStatusCompliant {
+				statusStr = "✅ COMPLIANT"
+			} else if c.Status == security.ISOStatusPartial {
+				statusStr = "⚠️ PARTIAL"
+			}
+
+			themeStr := "A.5 Organizational"
+			if c.Theme == security.ThemeA8Technological {
+				themeStr = "A.8 Technological"
+			}
+
+			title := c.Title
+			if len(title) > 24 {
+				title = title[:21] + "..."
+			}
+			evid := c.Evidence
+			if len(evid) > 24 {
+				evid = evid[:21] + "..."
+			}
+
+			fmt.Printf("%-10s %-20s %-12s %-26s %-26s\n", c.ID, themeStr, statusStr, title, evid)
+		}
+		fmt.Println("=========================================================================================")
+		fmt.Println("Tip: Run 'gbnt iso27001 --report' to display the formal Statement of Applicability (SoA).")
+		fmt.Println("Tip: Run 'gbnt iso27001 --theme a8' or 'gbnt iso27001 --status partial' to filter.")
+	},
+}
+
+var (
 	siemHostFlag   string
 	siemPortFlag   int
 	siemProtoFlag  string
@@ -1104,6 +1217,11 @@ func init() {
 	cisCmd.Flags().StringVarP(&cisLevelFlag, "level", "l", "all", "Filter checks by profile level (1, 2, all)")
 	cisCmd.Flags().StringVarP(&cisSectionFlag, "section", "s", "all", "Filter checks by section (1-6, all)")
 
+	iso27001Cmd.Flags().StringVarP(&isoFormatFlag, "format", "f", "table", "Output format (table, json, report)")
+	iso27001Cmd.Flags().BoolVarP(&isoReportFlag, "report", "r", false, "Display formal Statement of Applicability audit report")
+	iso27001Cmd.Flags().StringVarP(&isoThemeFlag, "theme", "t", "all", "Filter controls by Annex A theme (a5, a8, all)")
+	iso27001Cmd.Flags().StringVarP(&isoStatusFlag, "status", "s", "all", "Filter controls by status (compliant, partial, non_compliant, all)")
+
 	securitySiemTestCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
 	securitySiemTestCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
 	securitySiemTestCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
@@ -1153,6 +1271,7 @@ func init() {
 	securityCmd.AddCommand(ensCmd)
 	securityCmd.AddCommand(nis2Cmd)
 	securityCmd.AddCommand(cisCmd)
+	securityCmd.AddCommand(iso27001Cmd)
 
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(sbomCmd)
@@ -1161,6 +1280,7 @@ func init() {
 	rootCmd.AddCommand(ensCmd)
 	rootCmd.AddCommand(nis2Cmd)
 	rootCmd.AddCommand(cisCmd)
+	rootCmd.AddCommand(iso27001Cmd)
 }
 
 

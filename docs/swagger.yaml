@@ -663,6 +663,89 @@ definitions:
       url:
         type: string
     type: object
+  security.ISO27001Control:
+    properties:
+      audit:
+        description: Auditor verification procedure
+        type: string
+      description:
+        description: Control description
+        type: string
+      evidence:
+        description: Real-time discovered cluster configuration
+        type: string
+      id:
+        description: e.g. "A.5.15", "A.8.9", "A.8.24"
+        type: string
+      remediation:
+        description: Prescriptive guidance to attain 100% compliance
+        type: string
+      score:
+        description: 0.0 - 100.0
+        type: number
+      status:
+        allOf:
+        - $ref: '#/definitions/security.ISOStatus'
+        description: COMPLIANT, PARTIAL, NON_COMPLIANT
+      theme:
+        allOf:
+        - $ref: '#/definitions/security.ISOTheme'
+        description: ThemeA5Organizational or ThemeA8Technological
+      title:
+        description: Formal ISO 27001:2022 title
+        type: string
+      weight:
+        description: Relative ponderation weight
+        type: number
+    type: object
+  security.ISO27001Summary:
+    properties:
+      compliant_count:
+        type: integer
+      controls:
+        items:
+          $ref: '#/definitions/security.ISO27001Control'
+        type: array
+      evaluated_at:
+        type: string
+      non_compliant_count:
+        type: integer
+      overall_score:
+        type: number
+      partial_count:
+        type: integer
+      posture_grade:
+        description: A+, A, B, C, D
+        type: string
+      standard_version:
+        type: string
+      statement_of_applicability:
+        type: string
+      theme_a5_score:
+        type: number
+      theme_a8_score:
+        type: number
+      total_controls:
+        type: integer
+    type: object
+  security.ISOStatus:
+    enum:
+    - COMPLIANT
+    - PARTIAL
+    - NON_COMPLIANT
+    type: string
+    x-enum-varnames:
+    - ISOStatusCompliant
+    - ISOStatusPartial
+    - ISOStatusNonCompliant
+  security.ISOTheme:
+    enum:
+    - A.5 Organizational
+    - A.8 Technological
+    type: string
+    x-enum-varnames:
+    - ThemeA5Organizational
+    - ThemeA8Technological
 host: localhost:4002
 info:
   contact: {}
@@ -1174,6 +1257,42 @@ paths:
       summary: Update task status
       tags:
       - tasks
+  /v1/security/iso27001/report:
+    get:
+      description: Exports formal Statement of Applicability audit document in formatted
+        text or JSON
+      parameters:
+      - default: text
+        description: Report format (text, json)
+        in: query
+        name: format
+        type: string
+      produces:
+      - text/plain
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Export ISO/IEC 27001 Statement of Applicability (SoA) audit report
+      tags:
+      - Security
+  /v1/security/iso27001/status:
+    get:
+      description: Evaluates 24 controls across Theme A.5 (Organizational) and Theme
+        A.8 (Technological), returning posture grade, themes readiness and control
+        breakdown
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/security.ISO27001Summary'
+      summary: Get ISO/IEC 27001:2022 Annex A compliance status
+      tags:
+      - Security
   /v1/service/{id}:
     delete:
       description: Delete a service and its tasks

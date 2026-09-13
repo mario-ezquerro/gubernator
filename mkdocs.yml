@@ -62,6 +62,7 @@ nav:
   - Compliance & Security:
     - Compliance Hub Overview: compliance.md
     - CIS Docker Benchmark (v1.6.0): cis-docker.md
+    - ISO/IEC 27001:2022 (Annex A): iso27001.md
     - European NIS 2 Directive: nis2.md
     - Esquema Nacional de Seguridad (ENS): ens.md
     - Active Directory, LDAP & RBAC: auth-rbac.md

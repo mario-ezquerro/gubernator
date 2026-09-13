@@ -17,7 +17,7 @@ Themed around the **Roman Empire**, Gubernator manages containers across a fleet
 | **Flutter Web UI** | Live Material Design 3 dashboard with compose editor, clickable port links, dark/light themes, and user settings |
 | **Universal Worker Onboarding** | 3-tab onboarding suite (`AddNodeDialog`): Quick Join (1-liner), Remote SSH Provision with multi-auth & Live Terminal Console, and Cloud-Init YAML |
 | **Enterprise AD / LDAP & RBAC** | Single Sign-On with Active Directory, OpenLDAP, JWT HMAC-SHA256 sessions, and 3-tier RBAC (`admin`, `operator`, `readonly`) |
-| **Compliance & Hardening Suite** | Continuous automated auditing for **CIS Docker Benchmark v1.6.0**, **European NIS 2 Directive**, and **Spanish ENS (100% ALTO)** |
+| **Compliance & Hardening Suite** | Continuous automated auditing for **CIS Docker Benchmark v1.6.0**, **ISO/IEC 27001:2022**, **European NIS 2 Directive**, and **Spanish ENS (100% ALTO)** |
 | **Image Security & Gatekeeper** | Automated CVE scanning, CycloneDX/SPDX SBOMs, Cosign digital signatures, and pre-deployment admission control |
 | **Autoscaling & GPU Affinity** | Declarative horizontal autoscaling on GPU (NVIDIA DCGM) & CPU metrics with hardware affinity and single-host vs multi-host containment |
 | **Ingress + DNS** | Auto-configures CoreDNS and Caddy as containers start |
@@ -129,8 +129,9 @@ The Web UI at `:4001` provides full lifecycle management:
 
 ## 🛡️ Compliance & Security Governance
 
-Gubernator features a continuous multi-standard compliance engine accessible via Web UI (`Security & Directory` ➔ `Compliance & Regulatory Suite`) and CLI (`gbnt cis`, `gbnt nis2`, `gbnt security ens`):
+Gubernator features a continuous multi-standard compliance engine accessible via Web UI (`Security & Directory` ➔ `Compliance & Regulatory Suite`) and CLI (`gbnt cis`, `gbnt nis2`, `gbnt iso27001`, `gbnt security ens`):
 
+* **[ISO/IEC 27001:2022 (Annex A)](iso27001.md):** 24 Technological and Organizational container & DevOps controls across Theme A.5 and A.8 with Posture Grade (`A+` to `D`) and Statement of Applicability (SoA) audit export.
 * **[CIS Docker Benchmark v1.6.0](cis-docker.md):** 35 prescriptive hardening recommendations across Host, Daemon, Files, Images, Runtime, and Ops with Level 1 & 2 profiles and Posture Grade (`A`).
 * **[European NIS 2 Directive (EU 2022/2555)](nis2.md):** Automated risk-management assessment across all 10 Article 21(2) mandatory domains with CSIRT reporting (`HIGH` Readiness).
 * **[Esquema Nacional de Seguridad (ENS RD 311/2022)](ens.md):** 100% ALTO certification with tamper-evident SHA-256 chained audit logs, real-time SIEM event forwarding, mandatory TOTP MFA, and AES-256-GCM encrypted backup schedules.
@@ -185,6 +186,7 @@ While `./gbnt serve` is running, access:
 
 ### Compliance & Security Suite
 - [Compliance Hub Overview](compliance.md) — Executive matrix and regulatory posture across standards
+- [ISO/IEC 27001:2022 (Annex A)](iso27001.md) — 24 Technological & Organizational controls, Posture Grade (`A+` to `D`), and SoA export
 - [CIS Docker Benchmark v1.6.0](cis-docker.md) — 35 host, daemon, runtime and container checks with automated remediation
 - [European NIS 2 Directive (EU 2022/2555)](nis2.md) — Article 21(2) risk-management measures and CSIRT incident reporting
 - [Esquema Nacional de Seguridad (ENS)](ens.md) — Spanish Royal Decree 311/2022 certification with SHA-256 audit chaining, SIEM & MFA
@@ -195,6 +197,6 @@ While `./gbnt serve` is running, access:
 
 ## Current Development State
 
-> Gubernator **v2.92.2** — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.
+> Gubernator **v2.93.0** — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.
 
 **[View the complete Roadmap](roadmap.md)**

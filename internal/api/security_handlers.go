@@ -505,6 +505,44 @@ func SecurityCISDockerReportHandler(c *gin.Context) {
 	c.String(http.StatusOK, report)
 }
 
+// SecurityISO27001StatusHandler returns the ISO/IEC 27001:2022 Annex A compliance evaluation.
+// @Summary      Get ISO/IEC 27001:2022 Annex A compliance status
+// @Description  Evaluates 24 controls across Theme A.5 (Organizational) and Theme A.8 (Technological), returning posture grade, themes readiness and control breakdown
+// @Tags         Security
+// @Produce      json
+// @Success      200  {object}  security.ISO27001Summary
+// @Router       /v1/security/iso27001/status [get]
+func SecurityISO27001StatusHandler(c *gin.Context) {
+	summary := security.EvaluateISO27001Compliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+// SecurityISO27001ReportHandler generates and exports the formal ISO/IEC 27001 Statement of Applicability audit report.
+// @Summary      Export ISO/IEC 27001 Statement of Applicability (SoA) audit report
+// @Description  Exports formal Statement of Applicability audit document in formatted text or JSON
+// @Tags         Security
+// @Produce      plain,json
+// @Param        format  query     string  false  "Report format (text, json)"  default(text)
+// @Success      200     {string}  string
+// @Router       /v1/security/iso27001/report [get]
+func SecurityISO27001ReportHandler(c *gin.Context) {
+	summary := security.EvaluateISO27001Compliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "text"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-audit-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateISO27001Report(summary)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-soa-report-%s.txt", timestamp))
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
 // SecuritySIEMConfigHandler returns the active SIEM & ENS configuration.
 func SecuritySIEMConfigHandler(c *gin.Context) {
 	var cfg db.SecurityConfig

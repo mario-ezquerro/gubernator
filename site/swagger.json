@@ -765,6 +765,56 @@
                 }
             }
         },
+        "/v1/security/iso27001/report": {
+            "get": {
+                "description": "Exports formal Statement of Applicability audit document in formatted text or JSON",
+                "produces": [
+                    "text/plain",
+                    "application/json"
+                ],
+                "tags": [
+                    "Security"
+                ],
+                "summary": "Export ISO/IEC 27001 Statement of Applicability (SoA) audit report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "text",
+                        "description": "Report format (text, json)",
+                        "name": "format",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/security/iso27001/status": {
+            "get": {
+                "description": "Evaluates 24 controls across Theme A.5 (Organizational) and Theme A.8 (Technological), returning posture grade, themes readiness and control breakdown",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Security"
+                ],
+                "summary": "Get ISO/IEC 27001:2022 Annex A compliance status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/security.ISO27001Summary"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/service/ls": {
             "get": {
                 "description": "List all services",
@@ -2498,6 +2548,128 @@
                     "type": "string"
                 }
             }
+        },
+        "security.ISO27001Control": {
+            "type": "object",
+            "properties": {
+                "audit": {
+                    "description": "Auditor verification procedure",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Control description",
+                    "type": "string"
+                },
+                "evidence": {
+                    "description": "Real-time discovered cluster configuration",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "e.g. \"A.5.15\", \"A.8.9\", \"A.8.24\"",
+                    "type": "string"
+                },
+                "remediation": {
+                    "description": "Prescriptive guidance to attain 100% compliance",
+                    "type": "string"
+                },
+                "score": {
+                    "description": "0.0 - 100.0",
+                    "type": "number"
+                },
+                "status": {
+                    "description": "COMPLIANT, PARTIAL, NON_COMPLIANT",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/security.ISOStatus"
+                        }
+                    ]
+                },
+                "theme": {
+                    "description": "ThemeA5Organizational or ThemeA8Technological",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/security.ISOTheme"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Formal ISO 27001:2022 title",
+                    "type": "string"
+                },
+                "weight": {
+                    "description": "Relative ponderation weight",
+                    "type": "number"
+                }
+            }
+        },
+        "security.ISO27001Summary": {
+            "type": "object",
+            "properties": {
+                "compliant_count": {
+                    "type": "integer"
+                },
+                "controls": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/security.ISO27001Control"
+                    }
+                },
+                "evaluated_at": {
+                    "type": "string"
+                },
+                "non_compliant_count": {
+                    "type": "integer"
+                },
+                "overall_score": {
+                    "type": "number"
+                },
+                "partial_count": {
+                    "type": "integer"
+                },
+                "posture_grade": {
+                    "description": "A+, A, B, C, D",
+                    "type": "string"
+                },
+                "standard_version": {
+                    "type": "string"
+                },
+                "statement_of_applicability": {
+                    "type": "string"
+                },
+                "theme_a5_score": {
+                    "type": "number"
+                },
+                "theme_a8_score": {
+                    "type": "number"
+                },
+                "total_controls": {
+                    "type": "integer"
+                }
+            }
+        },
+        "security.ISOStatus": {
+            "type": "string",
+            "enum": [
+                "COMPLIANT",
+                "PARTIAL",
+                "NON_COMPLIANT"
+            ],
+            "x-enum-varnames": [
+                "ISOStatusCompliant",
+                "ISOStatusPartial",
+                "ISOStatusNonCompliant"
+            ]
+        },
+        "security.ISOTheme": {
+            "type": "string",
+            "enum": [
+                "A.5 Organizational",
+                "A.8 Technological"
+            ],
+            "x-enum-varnames": [
+                "ThemeA5Organizational",
+                "ThemeA8Technological"
+            ]
         }
     }
 }

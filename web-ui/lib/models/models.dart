@@ -3734,3 +3734,109 @@ class CISDockerSummaryModel {
   }
 }
 
+// -----------------------------------------------------------------------------
+// ISO/IEC 27001:2022 ANNEX A COMPLIANCE MODELS
+// -----------------------------------------------------------------------------
+
+class ISO27001ControlModel {
+  final String id;
+  final String theme; // "A.5 Organizational" or "A.8 Technological"
+  final String title;
+  final String description;
+  final String status; // "COMPLIANT", "PARTIAL", "NON_COMPLIANT"
+  final double score;
+  final double weight;
+  final String evidence;
+  final String remediation;
+  final String audit;
+
+  ISO27001ControlModel({
+    required this.id,
+    required this.theme,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.score,
+    required this.weight,
+    required this.evidence,
+    required this.remediation,
+    required this.audit,
+  });
+
+  bool get isCompliant => status == 'COMPLIANT';
+  bool get isPartial => status == 'PARTIAL';
+  bool get isNonCompliant => status == 'NON_COMPLIANT';
+  bool get isThemeA5 => theme.contains('A.5');
+  bool get isThemeA8 => theme.contains('A.8');
+
+  factory ISO27001ControlModel.fromJson(Map<String, dynamic> json) {
+    return ISO27001ControlModel(
+      id: json['id'] ?? '',
+      theme: json['theme'] ?? 'A.8 Technological',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      status: json['status'] ?? 'NON_COMPLIANT',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      weight: (json['weight'] as num?)?.toDouble() ?? 1.0,
+      evidence: json['evidence'] ?? '',
+      remediation: json['remediation'] ?? '',
+      audit: json['audit'] ?? '',
+    );
+  }
+}
+
+class ISO27001SummaryModel {
+  final String evaluatedAt;
+  final String standardVersion;
+  final int totalControls;
+  final int compliantCount;
+  final int partialCount;
+  final int nonCompliantCount;
+  final double overallScore;
+  final double themeA5Score;
+  final double themeA8Score;
+  final String postureGrade;
+  final String statementOfApplicability;
+  final List<ISO27001ControlModel> controls;
+
+  ISO27001SummaryModel({
+    required this.evaluatedAt,
+    required this.standardVersion,
+    required this.totalControls,
+    required this.compliantCount,
+    required this.partialCount,
+    required this.nonCompliantCount,
+    required this.overallScore,
+    required this.themeA5Score,
+    required this.themeA8Score,
+    required this.postureGrade,
+    required this.statementOfApplicability,
+    required this.controls,
+  });
+
+  factory ISO27001SummaryModel.fromJson(Map<String, dynamic> json) {
+    final cList = <ISO27001ControlModel>[];
+    if (json['controls'] != null && json['controls'] is List) {
+      for (final c in json['controls']) {
+        if (c is Map<String, dynamic>) {
+          cList.add(ISO27001ControlModel.fromJson(c));
+        }
+      }
+    }
+    return ISO27001SummaryModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      standardVersion: json['standard_version'] ?? 'ISO/IEC 27001:2022',
+      totalControls: (json['total_controls'] as num?)?.toInt() ?? 0,
+      compliantCount: (json['compliant_count'] as num?)?.toInt() ?? 0,
+      partialCount: (json['partial_count'] as num?)?.toInt() ?? 0,
+      nonCompliantCount: (json['non_compliant_count'] as num?)?.toInt() ?? 0,
+      overallScore: (json['overall_score'] as num?)?.toDouble() ?? 0.0,
+      themeA5Score: (json['theme_a5_score'] as num?)?.toDouble() ?? 0.0,
+      themeA8Score: (json['theme_a8_score'] as num?)?.toDouble() ?? 0.0,
+      postureGrade: json['posture_grade'] ?? 'B',
+      statementOfApplicability: json['statement_of_applicability'] ?? '',
+      controls: cList,
+    );
+  }
+}
+

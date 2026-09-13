@@ -2897,6 +2897,38 @@ class ApiService {
       return null;
     }
   }
+
+  /// Fetches ISO/IEC 27001:2022 Annex A compliance evaluation.
+  static Future<ISO27001SummaryModel?> fetchISO27001Status() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/iso27001/status'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return ISO27001SummaryModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads the formal ISO/IEC 27001 Statement of Applicability audit report.
+  static Future<String?> fetchISO27001Report({String format = 'text'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/iso27001/report?format=$format'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

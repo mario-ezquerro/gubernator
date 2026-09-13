@@ -497,6 +497,10 @@ func StartDashboard() {
 		api.GET("/security/cis-docker/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), cisDockerStatusHandler)
 		api.GET("/security/cis-docker/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), cisDockerReportHandler)
 
+		// ISO/IEC 27001:2022 Annex A Compliance Suite
+		api.GET("/security/iso27001/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001StatusHandler)
+		api.GET("/security/iso27001/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001ReportHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -6935,6 +6939,33 @@ func cisDockerReportHandler(c *gin.Context) {
 	report := security.GenerateCISDockerReportMarkdown(summary, GetVersion())
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=cis-docker-benchmark-report-%s.md", timestamp))
 	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
+// ---------------------------------------------------------------------------
+// ISO/IEC 27001:2022 ANNEX A HANDLERS
+// ---------------------------------------------------------------------------
+
+func iso27001StatusHandler(c *gin.Context) {
+	summary := security.EvaluateISO27001Compliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+func iso27001ReportHandler(c *gin.Context) {
+	summary := security.EvaluateISO27001Compliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "text"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-audit-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateISO27001Report(summary)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-soa-report-%s.txt", timestamp))
+	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.String(http.StatusOK, report)
 }
 

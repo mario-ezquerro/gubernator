@@ -563,6 +563,8 @@
       
         
       
+        
+      
     
     
     
@@ -714,6 +716,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#isoiec-270012022-annex-a-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 ISO/IEC 27001:2022 (Annex A Controls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#european-nis-2-directive-eu-20222555" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -797,6 +810,34 @@
     
   
     CIS Docker Benchmark (v1.6.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../iso27001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ISO/IEC 27001:2022 (Annex A)
   
 
     
@@ -1158,7 +1199,7 @@
 <p>Gubernator features a comprehensive, multi-standard security and compliance engine built directly into the orchestrator. It bridges low-level kernel isolation (cgroups, Seccomp, AppArmor), supply-chain provenance, cryptographic identity, and audit logging with international cybersecurity frameworks.</p>
 <hr />
 <h2 id="1-unified-compliance-matrix">🏛 1. Unified Compliance Matrix</h2>
-<p>Gubernator evaluates the cluster against three tier-1 regulatory and hardening frameworks:</p>
+<p>Gubernator evaluates the cluster against four tier-1 regulatory and hardening frameworks:</p>
 <table>
 <thead>
 <tr>
@@ -1174,6 +1215,12 @@
 <td style="text-align: left;">Global consensus hardening baseline (Center for Internet Security)</td>
 <td style="text-align: left;">35 prescriptive checks across 6 sections (Host, Daemon, Files, Images, Runtime, Ops)</td>
 <td style="text-align: center;"><strong>Posture Grade <code>A</code> (87.5%)</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ISO/IEC 27001:2022 (Annex A)</strong></td>
+<td style="text-align: left;">International Information Security Management System (ISMS) standard</td>
+<td style="text-align: left;">24 controls across Theme A.5 (Organizational) and Theme A.8 (Technological)</td>
+<td style="text-align: center;"><strong>Posture Grade <code>A</code> (92.4%)</strong></td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>European NIS 2 Directive (EU 2022/2555)</strong></td>
@@ -1196,6 +1243,11 @@
 * <strong>Level 1 Profile (Baseline):</strong> Practical baseline controls preventing container breakouts, daemon exposure, and unauthenticated registries.
 * <strong>Level 2 Profile (Defense-in-Depth):</strong> Advanced hardening including read-only root filesystems, Seccomp filtering, Content Trust, and systemd cgroups.
 * <strong>Continuous Auditing:</strong> Live posture grade calculation (<code>A+</code> to <code>D</code>), audit procedures, and prescriptive remediation commands with one-click copying.</p>
+<h3 id="isoiec-270012022-annex-a-controls">🌐 <a href="../iso27001/">ISO/IEC 27001:2022 (Annex A Controls)</a></h3>
+<p>International standard for enterprise cloud Information Security Management Systems (ISMS).
+* <strong>Theme A.5 (Organizational Controls):</strong> Access control policies, cloud service security, ICT continuity readiness, and multi-node redundancy.
+* <strong>Theme A.8 (Technological Controls):</strong> Secure authentication &amp; MFA, least privilege RBAC, malware defense &amp; CVE gating, declarative configuration drift detection, AES-256-GCM backups, SHA-256 audit chaining, network ingress/segregation, Cosign ECDSA cryptography, and CycloneDX/SPDX SBOMs.
+* <strong>Statement of Applicability (SoA):</strong> Instant generation and export of formal SoA audit reports in Plain Text and JSON.</p>
 <h3 id="european-nis-2-directive-eu-20222555">🇪🇺 <a href="../nis2/">European NIS 2 Directive (EU 2022/2555)</a></h3>
 <p>Mandatory risk management obligations for Essential Entities (EE) and Important Entities (IE) across the European Union.
 * <strong>10 Article 21(2) Controls:</strong> Covers risk governance, incident handling, disaster recovery &amp; backups, supply chain security, continuous vulnerability scanning, audit trail integrity, cyber hygiene, cryptographic controls, RBAC, and multi-factor authentication.
@@ -1212,11 +1264,11 @@
 <h2 id="3-web-ui-compliance-regulatory-hub">🖥️ 3. Web UI Compliance &amp; Regulatory Hub</h2>
 <p>Located in the Flutter Web Dashboard under <strong>Security &amp; Directory</strong> ➔ <strong>Compliance &amp; Regulatory Suite</strong>:</p>
 <ul>
-<li><strong>3-Way Segmented Pill Switcher:</strong> Instantly toggle between <strong>🇪🇺 NIS 2</strong>, <strong>🔒 CIS Docker Benchmark</strong>, and <strong>🇪🇸 Spanish ENS</strong>.</li>
+<li><strong>4-Way Segmented Switcher:</strong> Instantly toggle between <strong>🇪🇺 NIS 2</strong>, <strong>🔒 CIS Docker Benchmark</strong>, <strong>🇪🇸 Spanish ENS</strong>, and <strong>🌐 ISO/IEC 27001:2022</strong>.</li>
 <li><strong>Executive KPI Banners:</strong> Live Posture Grades, overall compliance percentages, and tier breakdowns.</li>
-<li><strong>Drill-Down Filtering:</strong> Filter controls by section, domain, profile level, or actionable issues.</li>
+<li><strong>Drill-Down Filtering:</strong> Filter controls by section, theme, domain, profile level, or actionable issues.</li>
 <li><strong>Remediation &amp; Audit Modals:</strong> Inspect discovered technical evidence, step-by-step verification commands, and copyable remediation snippets.</li>
-<li><strong>Auditor Export:</strong> One-click generation and download of CommonMark (<code>.md</code>) reports and structured JSON (<code>.json</code>).</li>
+<li><strong>Auditor Export:</strong> One-click generation and download of CommonMark (<code>.md</code>), Plain Text SoA (<code>.txt</code>), and structured JSON (<code>.json</code>).</li>
 </ul>
 <hr />
 <h2 id="4-cli-parity">💻 4. CLI Parity</h2>
@@ -1239,6 +1291,18 @@
 <tr>
 <td style="text-align: left;"><strong>Export CIS Audit Report</strong></td>
 <td style="text-align: left;"><code>gbnt cis --report</code> or <code>gbnt cis --format json</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Audit ISO/IEC 27001:2022</strong></td>
+<td style="text-align: left;"><code>gbnt iso27001</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Filter ISO 27001 by Theme</strong></td>
+<td style="text-align: left;"><code>gbnt iso27001 --theme a8</code> / <code>gbnt iso27001 --theme a5</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Export ISO 27001 SoA Report</strong></td>
+<td style="text-align: left;"><code>gbnt iso27001 --report</code> or <code>gbnt iso27001 --format json</code></td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Audit NIS 2 Directive</strong></td>
@@ -1274,7 +1338,6 @@
 <h2 id="5-whats-next-on-the-compliance-roadmap">🗺️ 5. What's Next on the Compliance Roadmap?</h2>
 <p>To reach the absolute pinnacle of enterprise cybersecurity compliance, the following frameworks are planned:</p>
 <ol>
-<li><strong>ISO/IEC 27001:2022 (Annex A Controls):</strong> Information security management system controls specifically mapped to container lifecycle and DevOps pipelines.</li>
 <li><strong>PCI-DSS v4.0 (Payment Card Industry):</strong> Cardholder Data Environment (CDE) container network micro-segmentation and strict cryptographic key rotation.</li>
 <li><strong>SOC 2 Type II (Trust Services Criteria):</strong> Automated continuous evidence collection across Security, Availability, Processing Integrity, Confidentiality, and Privacy.</li>
 <li><strong>1-Click Self-Healing Remediator:</strong> Automated in-cluster remediation of detected misconfigurations (e.g. adding resource limits, dropping root capabilities, enforcing healthchecks).</li>

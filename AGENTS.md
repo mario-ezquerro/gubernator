@@ -1193,5 +1193,25 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Interactive deep inspection modal with audit verification procedure and one-click copy of remediation commands.
   - Modal report inspector with clipboard copying, Markdown (`.md`) download, and JSON (`.json`) export.
 
+### 116. ISO/IEC 27001:2022 Annex A Compliance Engine & Statement of Applicability (`v2.93.0`)
+* **ISO/IEC 27001:2022 Annex A Evaluation Engine (`internal/security/iso27001.go`):**
+  - Evaluates 24 prescriptive Technological (`Theme A.8`) and Organizational (`Theme A.5`) controls tailored for containerized environments and DevOps pipelines:
+    1. `Theme A.5 Organizational Controls`: Policies for information security (A.5.1), roles & responsibilities (A.5.2), segregation of duties / RBAC (A.5.3), asset inventory (A.5.9), acceptable use (A.5.10), access control policies (A.5.15), supplier security & SBOMs (A.5.19), incident management (A.5.24), and ICT readiness for business continuity & backups (A.5.29 / A.5.30).
+    2. `Theme A.8 Technological Controls`: User endpoint devices (A.8.1), privileged access rights (A.8.2), information access restriction (A.8.3), source code access (A.8.4), secure authentication & MFA (A.8.5), capacity management (A.8.6), protection against malware (A.8.7), vulnerability management (A.8.8), configuration management & hardening (A.8.9), information deletion (A.8.10), data masking & secrets (A.8.11), data leakage prevention (A.8.12), information backup & encryption (A.8.13), redundancy & HA (A.8.14), logging & event monitoring (A.8.15), monitoring activities & SRE observability (A.8.16), clock synchronization & NTP (A.8.17), privileged utility programs (A.8.18), installation of software on operational systems & admission control (A.8.19), networks security & segmentation (A.8.20), security of network services & TLS (A.8.21), segregations in networks (A.8.22), web filtering (A.8.23), use of cryptography & Cosign signatures (A.8.24), secure development lifecycle (A.8.25), application security requirements (A.8.26), secure system architecture (A.8.27), secure coding (A.8.28), security testing (A.8.29), outsourced development (A.8.30), separation of environments (A.8.31), and change management (A.8.32).
+  - Calculates real-time Posture Grade (`A+`, `A`, `B`, `C`, `D`), overall compliance percentage, Theme A.5 percentage, and Theme A.8 percentage.
+  - Automatic **Statement of Applicability (SoA)** export in CommonMark text and structured JSON with implementation rationale, discovered technical evidence, and specific remediation guidelines.
+* **REST API Endpoints (`internal/web/server.go`, `internal/api/server.go`, `internal/api/security_handlers.go`):**
+  - Exposed `GET /v1/security/iso27001/status` & `GET /api/security/iso27001/status` returning complete compliance status, theme scores, and control evaluations.
+  - Exposed `GET /v1/security/iso27001/report` & `GET /api/security/iso27001/report` providing download/export of the Statement of Applicability in text or JSON.
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - Added `gbnt iso27001` and `gbnt security iso27001` (aliases: `gbnt iso`) with interactive summary table, theme filtering (`--theme A.5|A.8`), status filtering (`--status PASS|FAIL|WARN`), and report generation (`--report`, `--format table|json|text`).
+* **Flutter Web UI Dashboard Integration (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Added 4th segmented pill **🌐 ISO/IEC 27001:2022 (Annex A)** in Compliance & Regulatory Suite.
+  - 4 real-time KPI cards: Posture Grade badge, Overall Annex A Score %, Theme A.5 Organizational %, and Theme A.8 Technological %.
+  - Control theme, status, and search filters with clear visual indicators.
+  - Interactive deep inspection modal with audit verification procedure, technical evidence, and actionable remediation steps.
+  - Statement of Applicability (SoA) audit export dialog with instant download of `.txt` and `.json` audit documents.
+
+
 
 
