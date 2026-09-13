@@ -759,6 +759,114 @@ var nis2Cmd = &cobra.Command{
 }
 
 var (
+	cisFormatFlag  string
+	cisReportFlag  bool
+	cisLevelFlag   string
+	cisSectionFlag string
+)
+
+var cisCmd = &cobra.Command{
+	Use:   "cis",
+	Short: "Audit cluster compliance against CIS Docker Benchmark v1.6.0",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/cis-docker/status", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to evaluate CIS Docker Benchmark: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var s security.CISDockerSummary
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			os.Exit(1)
+		}
+
+		if cisReportFlag || cisFormatFlag == "markdown" || cisFormatFlag == "md" {
+			reportResp, err := DoAPIRequest("GET", "/v1/security/cis-docker/report", nil)
+			if err == nil && reportResp.StatusCode == http.StatusOK {
+				defer reportResp.Body.Close()
+				body, _ := io.ReadAll(reportResp.Body)
+				fmt.Println(string(body))
+				return
+			}
+		}
+
+		if cisFormatFlag == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(s)
+			return
+		}
+
+		// Formatted terminal summary
+		fmt.Println("=========================================================================================")
+		fmt.Printf("🔒  CIS DOCKER BENCHMARK %s | SECURITY COMPLIANCE AUDIT\n", s.BenchmarkVersion)
+		fmt.Println("=========================================================================================")
+		fmt.Printf("  Posture Grade:         %s\n", s.PostureGrade)
+		fmt.Printf("  Compliance Score:      %.1f%%\n", s.ScorePercent)
+		fmt.Printf("  Level 1 (Baseline):    %.1f%%\n", s.Level1Score)
+		fmt.Printf("  Level 2 (Defense):     %.1f%%\n", s.Level2Score)
+		fmt.Printf("  Recommendations:       %d (%d PASS, %d WARN, %d FAIL, %d INFO)\n", s.TotalChecks, s.PassCount, s.WarnCount, s.FailCount, s.InfoCount)
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("%-8s %-8s %-10s %-32s %-30s\n", "CHECK", "LEVEL", "STATUS", "TITLE", "EVIDENCE")
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		for _, c := range s.Checks {
+			// Level filter
+			if cisLevelFlag != "" && cisLevelFlag != "all" {
+				if (cisLevelFlag == "1" || strings.EqualFold(cisLevelFlag, "level 1") || strings.EqualFold(cisLevelFlag, "l1")) && c.Level != security.CISLevel1 {
+					continue
+				}
+				if (cisLevelFlag == "2" || strings.EqualFold(cisLevelFlag, "level 2") || strings.EqualFold(cisLevelFlag, "l2")) && c.Level != security.CISLevel2 {
+					continue
+				}
+			}
+			// Section filter
+			if cisSectionFlag != "" && cisSectionFlag != "all" {
+				secPrefix := strings.TrimPrefix(cisSectionFlag, "section ")
+				secPrefix = strings.TrimPrefix(secPrefix, "s")
+				if !strings.HasPrefix(c.ID, secPrefix+".") && !strings.HasPrefix(c.Section, secPrefix) {
+					continue
+				}
+			}
+
+			statusStr := "❌ FAIL"
+			if c.Status == security.CISStatusPass {
+				statusStr = "✅ PASS"
+			} else if c.Status == security.CISStatusWarn {
+				statusStr = "⚠️ WARN"
+			} else if c.Status == security.CISStatusInfo {
+				statusStr = "ℹ️ INFO"
+			}
+
+			title := c.Title
+			if len(title) > 30 {
+				title = title[:27] + "..."
+			}
+			evid := c.Evidence
+			if len(evid) > 32 {
+				evid = evid[:29] + "..."
+			}
+			levelStr := "L1"
+			if c.Level == security.CISLevel2 {
+				levelStr = "L2"
+			}
+
+			fmt.Printf("%-8s %-8s %-10s %-32s %-30s\n", c.ID, levelStr, statusStr, title, evid)
+		}
+		fmt.Println("=========================================================================================")
+		fmt.Println("Tip: Run 'gbnt cis --report' to display the full official technical audit report.")
+		fmt.Println("Tip: Run 'gbnt cis --level 1' or 'gbnt cis --section 5' to filter specific checks.")
+	},
+}
+
+var (
 	siemHostFlag   string
 	siemPortFlag   int
 	siemProtoFlag  string
@@ -991,6 +1099,11 @@ func init() {
 	nis2Cmd.Flags().StringVarP(&nis2FormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
 	nis2Cmd.Flags().BoolVarP(&nis2ReportFlag, "report", "r", false, "Display full technical compliance audit report")
 
+	cisCmd.Flags().StringVarP(&cisFormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
+	cisCmd.Flags().BoolVarP(&cisReportFlag, "report", "r", false, "Display full technical compliance audit report")
+	cisCmd.Flags().StringVarP(&cisLevelFlag, "level", "l", "all", "Filter checks by profile level (1, 2, all)")
+	cisCmd.Flags().StringVarP(&cisSectionFlag, "section", "s", "all", "Filter checks by section (1-6, all)")
+
 	securitySiemTestCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
 	securitySiemTestCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
 	securitySiemTestCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
@@ -1039,6 +1152,7 @@ func init() {
 	securityCmd.AddCommand(securitySiemCmd)
 	securityCmd.AddCommand(ensCmd)
 	securityCmd.AddCommand(nis2Cmd)
+	securityCmd.AddCommand(cisCmd)
 
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(sbomCmd)
@@ -1046,6 +1160,7 @@ func init() {
 	rootCmd.AddCommand(securityCmd)
 	rootCmd.AddCommand(ensCmd)
 	rootCmd.AddCommand(nis2Cmd)
+	rootCmd.AddCommand(cisCmd)
 }
 
 

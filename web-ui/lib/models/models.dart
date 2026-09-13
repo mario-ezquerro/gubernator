@@ -3630,3 +3630,107 @@ class NIS2SummaryModel {
   }
 }
 
+// -----------------------------------------------------------------------------
+// CIS Docker Benchmark v1.6.0 Compliance Models
+// -----------------------------------------------------------------------------
+
+class CISDockerCheckModel {
+  final String id;
+  final String section;
+  final String title;
+  final String level; // "Level 1" or "Level 2"
+  final bool scored;
+  final String status; // "PASS", "WARN", "FAIL", "INFO"
+  final String evidence;
+  final String remediation;
+  final String audit;
+
+  CISDockerCheckModel({
+    required this.id,
+    required this.section,
+    required this.title,
+    required this.level,
+    required this.scored,
+    required this.status,
+    required this.evidence,
+    required this.remediation,
+    required this.audit,
+  });
+
+  bool get isPass => status == 'PASS';
+  bool get isWarn => status == 'WARN';
+  bool get isFail => status == 'FAIL';
+  bool get isInfo => status == 'INFO';
+  bool get isLevel1 => level == 'Level 1';
+  bool get isLevel2 => level == 'Level 2';
+
+  factory CISDockerCheckModel.fromJson(Map<String, dynamic> json) {
+    return CISDockerCheckModel(
+      id: json['id'] ?? '',
+      section: json['section'] ?? '',
+      title: json['title'] ?? '',
+      level: json['level'] ?? 'Level 1',
+      scored: json['scored'] ?? true,
+      status: json['status'] ?? 'FAIL',
+      evidence: json['evidence'] ?? '',
+      remediation: json['remediation'] ?? '',
+      audit: json['audit'] ?? '',
+    );
+  }
+}
+
+class CISDockerSummaryModel {
+  final String evaluatedAt;
+  final String benchmarkVersion;
+  final int totalChecks;
+  final int passCount;
+  final int warnCount;
+  final int failCount;
+  final int infoCount;
+  final double scorePercent;
+  final double level1Score;
+  final double level2Score;
+  final String postureGrade;
+  final List<CISDockerCheckModel> checks;
+
+  CISDockerSummaryModel({
+    required this.evaluatedAt,
+    required this.benchmarkVersion,
+    required this.totalChecks,
+    required this.passCount,
+    required this.warnCount,
+    required this.failCount,
+    required this.infoCount,
+    required this.scorePercent,
+    required this.level1Score,
+    required this.level2Score,
+    required this.postureGrade,
+    required this.checks,
+  });
+
+  factory CISDockerSummaryModel.fromJson(Map<String, dynamic> json) {
+    final cList = <CISDockerCheckModel>[];
+    if (json['checks'] != null && json['checks'] is List) {
+      for (final c in json['checks']) {
+        if (c is Map<String, dynamic>) {
+          cList.add(CISDockerCheckModel.fromJson(c));
+        }
+      }
+    }
+    return CISDockerSummaryModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      benchmarkVersion: json['benchmark_version'] ?? 'v1.6.0',
+      totalChecks: (json['total_checks'] as num?)?.toInt() ?? 0,
+      passCount: (json['pass_count'] as num?)?.toInt() ?? 0,
+      warnCount: (json['warn_count'] as num?)?.toInt() ?? 0,
+      failCount: (json['fail_count'] as num?)?.toInt() ?? 0,
+      infoCount: (json['info_count'] as num?)?.toInt() ?? 0,
+      scorePercent: (json['score_percent'] as num?)?.toDouble() ?? 0.0,
+      level1Score: (json['level1_score'] as num?)?.toDouble() ?? 0.0,
+      level2Score: (json['level2_score'] as num?)?.toDouble() ?? 0.0,
+      postureGrade: json['posture_grade'] ?? 'B',
+      checks: cList,
+    );
+  }
+}
+

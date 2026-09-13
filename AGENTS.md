@@ -1169,5 +1169,29 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Interactive Article 21 measure cards with discovered technical evidence and actionable remediation steps.
   - Modal report inspector with one-click clipboard copying, Markdown (`.md`) download, and JSON (`.json`) export.
 
+### 115. CIS Docker Benchmark (v1.6.0) Compliance Suite & Hardening Engine (`v2.92.0`)
+* **CIS Docker Benchmark v1.6.0 Evaluation Engine (`internal/security/cis_docker.go`):**
+  - Evaluates all 6 prescriptive benchmark sections established by the Center for Internet Security:
+    1. `Section 1 - Host Configuration`: Hardened kernel security profiles, `/var/lib/docker` dedicated mounts, container audit logging, and Docker daemon audits.
+    2. `Section 2 - Docker Daemon Configuration`: Restrict network bridge traffic, default logging driver rotation, iptables rules integration, storage drivers, live restore, userland proxy, and TLS mutual authentication.
+    3. `Section 3 - Docker Daemon Configuration Files`: Ownership and permissions (`0644` / `0600`) for `daemon.json`, `/etc/docker`, TLS certs, and systemd socket services.
+    4. `Section 4 - Container Images and Build Files`: Non-root users (`USER`), healthcheck declarations (`HEALTHCHECK`), content trust, SBOM vulnerability thresholds, and Cosign digital signatures.
+    5. `Section 5 - Container Runtime Configuration`: AppArmor/SELinux profiles, SELinux options, no privileged mode, restricted capabilities (`CAP_SYS_ADMIN`, `NET_ADMIN`), read-only root filesystems, PID limits, restart limits, memory & CPU limits, and host network isolation.
+    6. `Section 6 - Docker Security Operations`: Cluster-wide image sprawling audits, stale containers, dangling volumes, and forensic audit integrity.
+  - Multi-tier scoring calculating **Posture Grade** (`A+`, `A`, `B`, `C`, `D`), **Level 1 (Baseline)** %, **Level 2 (Defense-in-Depth)** %, and individual check audit verification procedures with actionable remediation guidance.
+  - CommonMark technical compliance report generator (`GenerateCISDockerReportMarkdown`) formatted for security audits.
+* **REST API Endpoints (`internal/web/server.go`, `internal/api/server.go`, `internal/api/security_handlers.go`):**
+  - Exposed `GET /v1/security/cis-docker/status` & `GET /api/security/cis-docker/status` returning complete CIS Docker summary and check results.
+  - Exposed `GET /v1/security/cis-docker/report` & `GET /api/security/cis-docker/report` exporting technical audit reports in CommonMark (`.md`) or structured JSON (`.json`).
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - Added `gbnt cis` and `gbnt security cis` commands with formatted terminal summary table, posture grade, Level 1 & Level 2 scores, and flags `--format` (`table`, `json`, `markdown`), `--report` (`-r`), `--level` (`1`, `2`, `all`), and `--section` (`1-6`, `all`).
+* **Flutter Web UI Hardening & Compliance Dashboard (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Expanded Tab 5 Compliance Suite with 3-way segmented pill switcher: **🇪🇺 NIS 2**, **🔒 CIS Docker Benchmark v1.6.0**, and **🇪🇸 Spanish ENS**.
+  - 4 real-time KPI cards: Posture Grade badge, Overall Compliance Score %, Level 1 Baseline %, and Level 2 Defense-in-Depth %.
+  - Section, profile level, and status filters for granular inspection.
+  - Individual recommendation cards with discovered technical evidence and actionable remediation steps.
+  - Interactive deep inspection modal with audit verification procedure and one-click copy of remediation commands.
+  - Modal report inspector with clipboard copying, Markdown (`.md`) download, and JSON (`.json`) export.
+
 
 

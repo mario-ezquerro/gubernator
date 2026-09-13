@@ -469,6 +469,42 @@ func SecurityNIS2ReportHandler(c *gin.Context) {
 	c.String(http.StatusOK, report)
 }
 
+// SecurityCISDockerStatusHandler returns the CIS Docker Benchmark v1.6.0 compliance assessment.
+func SecurityCISDockerStatusHandler(c *gin.Context) {
+	summary := security.EvaluateCISDockerBenchmark(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+// SecurityCISDockerReportHandler generates and exports the technical CIS Docker Benchmark audit report in Markdown or JSON.
+func SecurityCISDockerReportHandler(c *gin.Context) {
+	summary := security.EvaluateCISDockerBenchmark(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=cis-docker-benchmark-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	version := "v2.92.0"
+	for _, p := range []string{"VERSION", "/home/ubuntu/VERSION", "/data/VERSION", "/app/VERSION", "../VERSION"} {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			v := strings.TrimSpace(string(b))
+			if v != "" && strings.HasPrefix(v, "v") {
+				version = v
+				break
+			}
+		}
+	}
+
+	report := security.GenerateCISDockerReportMarkdown(summary, version)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=cis-docker-benchmark-report-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
 // SecuritySIEMConfigHandler returns the active SIEM & ENS configuration.
 func SecuritySIEMConfigHandler(c *gin.Context) {
 	var cfg db.SecurityConfig

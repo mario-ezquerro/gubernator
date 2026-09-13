@@ -493,6 +493,10 @@ func StartDashboard() {
 		api.GET("/security/nis2/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), nis2StatusHandler)
 		api.GET("/security/nis2/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), nis2ReportHandler)
 
+		// CIS Docker Benchmark v1.6.0 Compliance Suite
+		api.GET("/security/cis-docker/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), cisDockerStatusHandler)
+		api.GET("/security/cis-docker/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), cisDockerReportHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -6903,6 +6907,33 @@ func nis2ReportHandler(c *gin.Context) {
 
 	report := security.GenerateNIS2ReportMarkdown(summary, GetVersion())
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=nis2-compliance-report-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
+// ---------------------------------------------------------------------------
+// CIS DOCKER BENCHMARK V1.6.0 HANDLERS
+// ---------------------------------------------------------------------------
+
+func cisDockerStatusHandler(c *gin.Context) {
+	summary := security.EvaluateCISDockerBenchmark(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+func cisDockerReportHandler(c *gin.Context) {
+	summary := security.EvaluateCISDockerBenchmark(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=cis-docker-benchmark-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateCISDockerReportMarkdown(summary, GetVersion())
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=cis-docker-benchmark-report-%s.md", timestamp))
 	c.Header("Content-Type", "text/markdown; charset=utf-8")
 	c.String(http.StatusOK, report)
 }

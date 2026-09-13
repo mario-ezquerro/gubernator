@@ -2865,6 +2865,38 @@ class ApiService {
       return null;
     }
   }
+
+  /// Fetches CIS Docker Benchmark v1.6.0 compliance assessment summary.
+  static Future<CISDockerSummaryModel?> fetchCISDockerStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/cis-docker/status'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return CISDockerSummaryModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads the technical CIS Docker Benchmark compliance report in Markdown or JSON.
+  static Future<String?> fetchCISDockerReport({String format = 'markdown'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/cis-docker/report?format=$format'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
