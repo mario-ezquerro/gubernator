@@ -3201,7 +3201,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       _loadSIEMConfig();
                       _loadENSStatus();
                     } else {
-                      _showSnackBar("Error al guardar configuración: ${res['error']}", isError: true);
+                      _showSnackBar("Error al guardar configuración: ${res['error'] ?? 'No se pudo guardar la configuración'}", isError: true);
                     }
                   }
                 },

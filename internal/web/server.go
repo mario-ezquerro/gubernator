@@ -6747,7 +6747,25 @@ func updateSIEMConfigHandler(c *gin.Context) {
 		fmt.Sprintf("Updated ENS op.acc.2 & op.mon.1 settings: mfa_enforced=%v, max_failed_logins=%d, lockout_min=%d, pwd_min_len=%d, session_timeout_min=%d, siem_enabled=%v, siem_host=%s:%d",
 			cfg.MFAEnforced, cfg.MaxFailedLogins, cfg.LockoutDurationMinutes, cfg.PasswordMinLength, cfg.SessionTimeoutMinutes, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
 
-	c.JSON(http.StatusOK, cfg)
+	c.JSON(http.StatusOK, gin.H{
+		"success":                     true,
+		"message":                     "Configuración de seguridad y SIEM guardada correctamente",
+		"config":                      cfg,
+		"id":                          cfg.ID,
+		"mfa_enforced":                cfg.MFAEnforced,
+		"mfa_enforce_privileged":      cfg.MFAEnforcePrivileged,
+		"max_failed_logins":           cfg.MaxFailedLogins,
+		"lockout_duration_minutes":    cfg.LockoutDurationMinutes,
+		"password_min_length":         cfg.PasswordMinLength,
+		"password_require_complexity": cfg.PasswordRequireComplexity,
+		"session_timeout_minutes":     cfg.SessionTimeoutMinutes,
+		"siem_enabled":                cfg.SIEMEnabled,
+		"siem_host":                   cfg.SIEMHost,
+		"siem_port":                   cfg.SIEMPort,
+		"siem_protocol":               cfg.SIEMProtocol,
+		"siem_format":                 cfg.SIEMFormat,
+		"updated_at":                  cfg.UpdatedAt,
+	})
 }
 
 func getSIEMStatusHandler(c *gin.Context) {

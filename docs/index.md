@@ -197,6 +197,6 @@ While `./gbnt serve` is running, access:
 
 ## Current Development State
 
-> Gubernator **v2.93.0** — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.
+> Gubernator **v2.93.1** — Production-grade multi-host container orchestration with built-in SRE Observability Stack, Enterprise Directory, and Multi-Standard Compliance Suite.
 
 **[View the complete Roadmap](roadmap.md)**

@@ -628,7 +628,11 @@ func SecuritySIEMUpdateHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, cfg)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Security and SIEM configuration updated successfully",
+		"config":  cfg,
+	})
 }
 
 // SecuritySIEMTestHandler dispatches a test probe event to verify SIEM connectivity.

@@ -1489,22 +1489,68 @@ class ApiService {
 
   /// Saves cluster SIEM and ENS security configuration.
   static Future<Map<String, dynamic>> saveSIEMConfig(SIEMConfig config) async {
-    final response = await http.post(
-      Uri.parse('/api/security/siem'),
-      headers: authHeaders,
-      body: jsonEncode(config.toJson()),
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await http.post(
+        Uri.parse('/api/security/siem'),
+        headers: authHeaders,
+        body: jsonEncode(config.toJson()),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          if (!data.containsKey('success')) {
+            data['success'] = true;
+          }
+          return data;
+        }
+        return {'success': true};
+      }
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map<String, dynamic>) {
+          return {
+            'success': false,
+            'error': err['error'] ?? err['message'] ?? 'Error HTTP ${response.statusCode}',
+          };
+        }
+      } catch (_) {}
+      return {'success': false, 'error': 'Error HTTP ${response.statusCode}'};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   /// Sends a live SIEM test syslog/CEF probe.
   static Future<Map<String, dynamic>> testSIEMConnection(SIEMConfig config) async {
-    final response = await http.post(
-      Uri.parse('/api/security/siem/test'),
-      headers: authHeaders,
-      body: jsonEncode(config.toJson()),
-    );
-    return jsonDecode(response.body);
+    try {
+      final response = await http.post(
+        Uri.parse('/api/security/siem/test'),
+        headers: authHeaders,
+        body: jsonEncode(config.toJson()),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic>) {
+          if (!data.containsKey('success')) {
+            data['success'] = true;
+          }
+          return data;
+        }
+        return {'success': true};
+      }
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map<String, dynamic>) {
+          return {
+            'success': false,
+            'error': err['error'] ?? err['message'] ?? 'Error HTTP ${response.statusCode}',
+          };
+        }
+      } catch (_) {}
+      return {'success': false, 'error': 'Error HTTP ${response.statusCode}'};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   /// Verifies cryptographic SHA-256 integrity of the audit trail (ENS op.mon.1).
