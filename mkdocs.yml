@@ -67,6 +67,7 @@ nav:
     - Esquema Nacional de Seguridad (ENS): ens.md
     - Active Directory, LDAP & RBAC: auth-rbac.md
     - Image Security, SBOM & Gatekeeper: image-security.md
+    - Caddy WAF & Threat Shield: caddy-waf.md
   - Reference:
     - CLI Overview: cli.md
     - Full CLI Reference: cli-full.md

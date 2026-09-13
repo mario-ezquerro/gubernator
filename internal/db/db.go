@@ -49,6 +49,7 @@ func Init(dbPath string) error {
 		&CustomDNSRecord{}, &SLONotificationConfig{}, &LDAPConfig{}, &OIDCConfig{}, &LocalUser{}, &AuditLog{},
 		&StorageVolume{}, &Backup{}, &BackupSchedule{}, &StoragePool{}, &StorageMount{}, &ManagedGlusterVolume{},
 		&SecurityPolicy{}, &TrustedSigningKey{}, &ImageScan{}, &ImageVulnerability{}, &ImageSBOM{}, &SecurityConfig{},
+		&ManagedWAFConfig{}, &ManagedRouteWAF{}, &WAFSecurityEvent{},
 	)
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
@@ -57,6 +58,7 @@ func Init(dbPath string) error {
 	seedInitialData()
 	seedInitialSecurityPolicy()
 	seedInitialSecurityConfig()
+	seedInitialWAFConfig()
 	return ensureClusterConfig()
 }
 
@@ -481,6 +483,36 @@ func seedInitialSecurityConfig() {
 			if updated {
 				DB.Save(&existing)
 			}
+		}
+	}
+}
+
+func seedInitialWAFConfig() {
+	var count int64
+	DB.Model(&ManagedWAFConfig{}).Count(&count)
+	if count == 0 {
+		defaultWAF := ManagedWAFConfig{
+			ID:                     "default",
+			Enabled:                false, // Inactive by default until enabled manually or via Compose
+			Mode:                   "enforce",
+			ParanoiaLevel:          1,
+			BlockSQLi:              true,
+			BlockXSS:               true,
+			BlockRCE:               true,
+			BlockLFI:               true,
+			BlockScanners:          true,
+			RateLimitEnabled:       false,
+			RateLimitRPS:           50,
+			WhitelistedIPs:         "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+			BlacklistedIPs:         "",
+			TotalRequestsEvaluated: 0,
+			TotalBlockedAttacks:    0,
+			UpdatedAt:              time.Now(),
+		}
+		if err := DB.Create(&defaultWAF).Error; err != nil {
+			slog.Error("failed to seed initial WAF config", "err", err)
+		} else {
+			slog.Info("initial Caddy WAF config seeded")
 		}
 	}
 }

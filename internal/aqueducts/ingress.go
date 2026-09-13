@@ -12,6 +12,12 @@ import (
 )
 
 
+func init() {
+	caddy.OnWAFConfigUpdatedHook = func() {
+		GenerateCaddyfile()
+	}
+}
+
 // GenerateCaddyfile creates a Caddyfile based on Service constraints/labels.
 // It groups all upstreams by ingress hostname to avoid duplicate site definitions.
 // It automatically detects public domains (e.g. demo.fiware.app) and lets Caddy obtain
@@ -36,6 +42,9 @@ func GenerateCaddyfile() {
 	hostHealthURI := make(map[string]string)
 	hostHealthInterval := make(map[string]string)
 	hostHealthTimeout := make(map[string]string)
+	// hostWAFCompose tracks Compose-declared WAF policies per hostname
+	hostWAFComposeEnabled := make(map[string]bool)
+	hostWAFComposeMode := make(map[string]string)
 	// Preserve insertion order for deterministic output.
 	var hostOrder []string
 
@@ -82,6 +91,10 @@ func GenerateCaddyfile() {
 				healthInterval = strings.TrimSpace(val)
 			case "gbnt.caddy.health_timeout", "ingress.health_timeout":
 				healthTimeout = strings.TrimSpace(val)
+			case "gbnt.waf.enabled", "ingress.waf.enabled", "node.labels.gbnt.waf.enabled":
+				hostWAFComposeEnabled[ingressHost] = strings.ToLower(val) == "true"
+			case "gbnt.waf.mode", "ingress.waf.mode", "node.labels.gbnt.waf.mode":
+				hostWAFComposeMode[ingressHost] = strings.ToLower(val)
 			}
 		}
 
@@ -189,6 +202,7 @@ func GenerateCaddyfile() {
 	}
 
 	content := "# Gubernator Auto-Generated Caddyfile\n\n"
+	wafConfig, _ := caddy.GetWAFConfig()
 
 	for _, host := range hostOrder {
 		upstreams := hostUpstreams[host]
@@ -208,6 +222,24 @@ func GenerateCaddyfile() {
 			tlsDirective = fmt.Sprintf("\ttls %s\n", tlsOpt)
 		} else if tlsOpt != "" && tlsOpt != "letsencrypt" && tlsOpt != "auto" {
 			tlsDirective = fmt.Sprintf("\ttls %s\n", tlsOpt)
+		}
+
+		// Determine WAF snippet for this route
+		var routeOverride *db.ManagedRouteWAF
+		if existingOverride, err := caddy.GetRouteWAF(host); err == nil && existingOverride != nil {
+			routeOverride = existingOverride
+		} else if composeEnabled, ok := hostWAFComposeEnabled[host]; ok {
+			routeOverride = &db.ManagedRouteWAF{
+				Host:         host,
+				Enabled:      composeEnabled,
+				Mode:         hostWAFComposeMode[host],
+				OverriddenBy: "compose",
+			}
+		}
+
+		wafSnippet := ""
+		if wafConfig != nil {
+			wafSnippet = caddy.BuildWAFSnippet(host, *wafConfig, routeOverride)
 		}
 
 		lbPolicy := hostLBPolicy[host]
@@ -245,8 +277,8 @@ func GenerateCaddyfile() {
 		}
 
 		content += fmt.Sprintf(
-			"%s {\n%s%s}\n\n",
-			host, tlsDirective, proxyBlock,
+			"%s {\n%s%s%s}\n\n",
+			host, tlsDirective, wafSnippet, proxyBlock,
 		)
 	}
 

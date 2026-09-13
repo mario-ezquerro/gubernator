@@ -278,6 +278,20 @@ func Start(ctx context.Context) error {
 			dockerDaemonRoute.POST("", DockerDaemonSaveHandler)
 		}
 
+		caddyWAFRoute := v1.Group("/caddy/waf", authMiddleware)
+		{
+			caddyWAFRoute.GET("/config", CaddyWAFGetConfigHandler)
+			caddyWAFRoute.POST("/config", CaddyWAFUpdateConfigHandler)
+			caddyWAFRoute.GET("/routes", CaddyWAFListRoutesHandler)
+			caddyWAFRoute.POST("/routes/toggle", CaddyWAFRouteToggleHandler)
+			caddyWAFRoute.DELETE("/routes/:host", CaddyWAFRouteDeleteHandler)
+			caddyWAFRoute.GET("/events", CaddyWAFListEventsHandler)
+			caddyWAFRoute.GET("/stats", CaddyWAFGetStatsHandler)
+			caddyWAFRoute.POST("/ip/block", CaddyWAFIPBlockHandler)
+			caddyWAFRoute.POST("/ip/unblock", CaddyWAFIPUnblockHandler)
+			caddyWAFRoute.POST("/test", CaddyWAFSimulateTestHandler)
+		}
+
 		backupRoute := v1.Group("/backup", authMiddleware)
 		{
 			backupRoute.GET("/ls", BackupListHandler)

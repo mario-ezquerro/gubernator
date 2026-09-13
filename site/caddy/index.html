@@ -881,6 +881,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#caddy-ingress-threat-shield-waf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Caddy Ingress Threat Shield &amp; WAF
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rest-api-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -999,6 +1010,8 @@
   
     
     
+      
+        
       
         
       
@@ -1361,6 +1374,17 @@
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">Import-Certificate</span> <span class="n">-FilePath</span> <span class="s2">&quot;.\root.crt&quot;</span> <span class="n">-CertStoreLocation</span> <span class="n">Cert</span><span class="p">:\</span><span class="n">LocalMachine</span><span class="p">\</span><span class="n">Root</span>
 </span></code></pre></div>
 <hr />
+<h2 id="caddy-ingress-threat-shield-waf">🛡️ Caddy Ingress Threat Shield &amp; WAF</h2>
+<p>Gubernator features a built-in <strong>Web Application Firewall (WAF) &amp; Threat Shield</strong> integrated natively into Caddy Ingress. It defends against:
+* <strong>SQL Injection (SQLi)</strong>
+* <strong>Cross-Site Scripting (XSS)</strong>
+* <strong>Remote Code Execution (RCE &amp; Log4j)</strong>
+* <strong>Path Traversal &amp; LFI / RFI</strong>
+* <strong>Malicious Scanners &amp; Bot Probes (sqlmap, nikto, w3af, masscan, nmap, etc.)</strong>
+* <strong>IP Blacklisting &amp; Whitelisting</strong></p>
+<p>Threat Shield can be controlled <strong>declaratively via Compose labels</strong> (<code>gbnt.waf.enabled=true</code>, <code>gbnt.waf.mode=enforce|detection</code>) or <strong>manually ("a mano")</strong> via the Flutter Web UI (Tab 8 &amp; Tab 2 per-route toggles) and CLI (<code>gbnt caddy waf</code>).</p>
+<p>For full details, architecture, CLI, and API reference, see <a href="../caddy-waf/">Caddy Ingress Threat Shield &amp; WAF Documentation</a>.</p>
+<hr />
 <h2 id="rest-api-reference">📡 REST API Reference</h2>
 <table>
 <thead>
@@ -1431,9 +1455,49 @@
 <td><code>POST</code></td>
 <td>Format Caddyfile via <code>caddy fmt</code></td>
 </tr>
+<tr>
+<td><code>/v1/caddy/waf/config</code></td>
+<td><code>GET / POST</code></td>
+<td>Get or update global Threat Shield &amp; WAF configuration</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/routes</code></td>
+<td><code>GET</code></td>
+<td>List per-route WAF rules and manual overrides</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/routes/toggle</code></td>
+<td><code>POST</code></td>
+<td>Toggle WAF state and mode for a route ("a mano")</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/events</code></td>
+<td><code>GET</code></td>
+<td>List intercepted threat events and attack logs</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/stats</code></td>
+<td><code>GET</code></td>
+<td>Get aggregate security evaluation and attack statistics</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/ip/block</code></td>
+<td><code>POST</code></td>
+<td>Add IP or CIDR to Threat Shield blacklist</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/ip/unblock</code></td>
+<td><code>POST</code></td>
+<td>Remove IP from Threat Shield blacklist</td>
+</tr>
+<tr>
+<td><code>/v1/caddy/waf/test</code></td>
+<td><code>POST</code></td>
+<td>Simulate attack probe and evaluate WAF interception</td>
+</tr>
 </tbody>
 </table>
-<p>For full specification, refer to <a href="https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md"><code>SPEC-caddy.md</code></a>.</p>
+<p>For full specification, refer to <a href="https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md"><code>SPEC-caddy.md</code></a> and <a href="../caddy-waf/"><code>caddy-waf.md</code></a>.</p>
 
 
 

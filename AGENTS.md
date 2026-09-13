@@ -1212,6 +1212,37 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Interactive deep inspection modal with audit verification procedure, technical evidence, and actionable remediation steps.
   - Statement of Applicability (SoA) audit export dialog with instant download of `.txt` and `.json` audit documents.
 
-
-
-
+### 117. Caddy Ingress Threat Shield & Web Application Firewall (WAF) Subsystem (`v2.94.0`)
+* **Layer 7 Threat Shield Engine (`internal/caddy/waf.go`, `internal/aqueducts/ingress.go`):**
+  - Native, air-gapped web application firewall embedded directly into Caddy reverse proxy without external heavyweight dependencies.
+  - Generates zero-downtime hot-reloaded Caddyfile matchers (`vars_regexp`, `header_regexp`, `path_regexp`, `remote_ip`) with immediate `403 Forbidden` response and detailed security banner.
+  - 6 core OWASP Top 10 protection vectors:
+    1. `WAF001`: Malicious Scanners & Automated Attack Tools (`sqlmap`, `nikto`, `w3af`, `masscan`, `nmap`, `gobuster`, `dirbuster`, `wpscan`).
+    2. `WAF002`: Directory Traversal & Local File Inclusion / LFI (`../`, `..\`, `/etc/passwd`, `/proc/self`, `win.ini`, `boot.ini`).
+    3. `WAF003`: SQL Injection / SQLi (`UNION SELECT`, `information_schema`, `sleep()`, `benchmark()`, SQL comment probes `--`, `/* */`).
+    4. `WAF004`: Cross-Site Scripting / XSS (`<script>`, `javascript:`, `onerror=`, `onload=`, `document.cookie`).
+    5. `WAF005`: Remote Code Execution & Zero-Day Exploit Probes (`${jndi:ldap}`, `/bin/sh`, `/bin/bash`, `powershell`, `cmd.exe`, `wget|curl` pipes).
+    6. `WAF006`: Threat Shield Dynamic IP Blacklist & Whitelist (instant CIDR & single IP blocking/allowlisting).
+* **Dual Declarative & Manual ("A Mano") Operation Modes:**
+  - **Declarative via Compose Labels:** `gbnt.waf.enabled=true|false`, `gbnt.waf.mode=enforce|detection`.
+  - **Manual "A Mano" Web UI & CLI Overrides:** Instant 1-click enable/disable and mode switching per ingress route or globally across the entire cluster, taking immediate precedence over Compose defaults.
+* **REST & Web APIs (`/v1/caddy/waf/...` & `/api/caddy/waf/...`):**
+  - Global config inspection & update (`GET|POST /api/caddy/waf/config`).
+  - Route override management (`GET /api/caddy/waf/routes`, `POST /api/caddy/waf/routes/toggle`, `DELETE /api/caddy/waf/routes/:host`).
+  - Live security events audit stream (`GET /api/caddy/waf/events`).
+  - IP Blacklist & Whitelist (`POST /api/caddy/waf/ip/block`, `POST /api/caddy/waf/ip/unblock`).
+  - Attack simulation & verification probe endpoint (`POST /api/caddy/waf/test`).
+* **Full CLI Parity (`gbnt caddy waf`):**
+  - `gbnt caddy waf status`: Formatted terminal summary with operational mode, paranoia level, stats, and per-route overrides table.
+  - `gbnt caddy waf enable` / `disable`: Master switch toggle for the cluster.
+  - `gbnt caddy waf mode [enforce|detection]`: Global enforcement mode switch.
+  - `gbnt caddy waf route <host> [--enable|--disable] [--mode=enforce|detection] [--reset]`: Granular manual route control.
+  - `gbnt caddy waf ip block <ip>` / `unblock <ip>`: Dynamic IP blacklisting.
+  - `gbnt caddy waf events [--limit=N] [--type=VECTOR]`: Live forensic audit stream.
+  - `gbnt caddy waf test <host> [--vector=SQLI|XSS|RCE|LFI|SCANNER]`: Real-time attack probe test.
+* **Flutter Web UI Threat Shield & Ingress Integration (`web-ui/lib/screens/pages/caddy_page.dart`):**
+  - **Tab 8 ("WAF & Threat Shield"):** Master switch, 4 KPI cards (Requests Evaluated, Attacks Intercepted, Protected Routes, Blacklisted IPs), Operating Mode & Paranoia Level selectors, OWASP vector switches, interactive Attack Simulator with live probes, IP Blacklist manager, and Intercepted Threat Events audit log stream.
+  - **Tab 2 ("Routes"):** Enhanced routes table with dedicated `THREAT SHIELD (WAF)` column displaying real-time enforcement status chips (`ENFORCE`, `DETECTION`, `OFF`) and instant 1-click power toggle button.
+* **Comprehensive Documentation & Guide:**
+  - Dedicated architecture and operational guide in `docs/caddy-waf.md` and integration in `docs/caddy.md`.
+  - Rebuilt static documentation site (`mkdocs.yml` -> `site/caddy-waf/`).

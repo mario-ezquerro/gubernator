@@ -100,6 +100,22 @@ Import-Certificate -FilePath ".\root.crt" -CertStoreLocation Cert:\LocalMachine\
 
 ---
 
+## 🛡️ Caddy Ingress Threat Shield & WAF
+
+Gubernator features a built-in **Web Application Firewall (WAF) & Threat Shield** integrated natively into Caddy Ingress. It defends against:
+* **SQL Injection (SQLi)**
+* **Cross-Site Scripting (XSS)**
+* **Remote Code Execution (RCE & Log4j)**
+* **Path Traversal & LFI / RFI**
+* **Malicious Scanners & Bot Probes (sqlmap, nikto, w3af, masscan, nmap, etc.)**
+* **IP Blacklisting & Whitelisting**
+
+Threat Shield can be controlled **declaratively via Compose labels** (`gbnt.waf.enabled=true`, `gbnt.waf.mode=enforce|detection`) or **manually ("a mano")** via the Flutter Web UI (Tab 8 & Tab 2 per-route toggles) and CLI (`gbnt caddy waf`).
+
+For full details, architecture, CLI, and API reference, see [Caddy Ingress Threat Shield & WAF Documentation](caddy-waf.md).
+
+---
+
 ## 📡 REST API Reference
 
 | Endpoint | Method | Description |
@@ -116,5 +132,13 @@ Import-Certificate -FilePath ".\root.crt" -CertStoreLocation Cert:\LocalMachine\
 | `/v1/caddy/logs` | `GET` | Get container access log stream lines |
 | `/v1/caddy/metrics` | `GET` | Get Prometheus request counts, RPS, and percentiles |
 | `/v1/caddy/fmt` | `POST` | Format Caddyfile via `caddy fmt` |
+| `/v1/caddy/waf/config` | `GET / POST` | Get or update global Threat Shield & WAF configuration |
+| `/v1/caddy/waf/routes` | `GET` | List per-route WAF rules and manual overrides |
+| `/v1/caddy/waf/routes/toggle` | `POST` | Toggle WAF state and mode for a route ("a mano") |
+| `/v1/caddy/waf/events` | `GET` | List intercepted threat events and attack logs |
+| `/v1/caddy/waf/stats` | `GET` | Get aggregate security evaluation and attack statistics |
+| `/v1/caddy/waf/ip/block` | `POST` | Add IP or CIDR to Threat Shield blacklist |
+| `/v1/caddy/waf/ip/unblock` | `POST` | Remove IP from Threat Shield blacklist |
+| `/v1/caddy/waf/test` | `POST` | Simulate attack probe and evaluate WAF interception |
 
-For full specification, refer to [`SPEC-caddy.md`](https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md).
+For full specification, refer to [`SPEC-caddy.md`](https://github.com/mario-ezquerro/gubernator/blob/main/SPEC-caddy.md) and [`caddy-waf.md`](caddy-waf.md).

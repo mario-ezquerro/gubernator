@@ -505,4 +505,49 @@ type ImageSBOM struct {
 	GeneratedAt  time.Time `json:"generated_at"`
 }
 
+// ManagedWAFConfig stores global Web Application Firewall settings, rule toggles, and IP lists.
+type ManagedWAFConfig struct {
+	ID                     string    `gorm:"primaryKey;type:varchar(50)" json:"id"` // "default"
+	Enabled                bool      `gorm:"default:false" json:"enabled"`          // Master Switch
+	Mode                   string    `gorm:"type:varchar(20);default:'enforce'" json:"mode"` // "enforce" or "detection"
+	ParanoiaLevel          int       `gorm:"default:1" json:"paranoia_level"`       // 1 to 4
+	BlockSQLi              bool      `gorm:"default:true" json:"block_sqli"`        // SQL Injection
+	BlockXSS               bool      `gorm:"default:true" json:"block_xss"`         // Cross-Site Scripting
+	BlockRCE               bool      `gorm:"default:true" json:"block_rce"`         // Remote Code Execution & Log4j
+	BlockLFI               bool      `gorm:"default:true" json:"block_lfi"`         // Path Traversal / LFI
+	BlockScanners          bool      `gorm:"default:true" json:"block_scanners"`    // Malicious Scanners & Bots
+	RateLimitEnabled       bool      `gorm:"default:false" json:"rate_limit_enabled"`
+	RateLimitRPS           int       `gorm:"default:50" json:"rate_limit_rps"`
+	WhitelistedIPs         string    `gorm:"type:text" json:"whitelisted_ips"`
+	BlacklistedIPs         string    `gorm:"type:text" json:"blacklisted_ips"`
+	TotalRequestsEvaluated int64     `gorm:"default:0" json:"total_requests_evaluated"`
+	TotalBlockedAttacks    int64     `gorm:"default:0" json:"total_blocked_attacks"`
+	UpdatedAt              time.Time `json:"updated_at"`
+}
+
+// ManagedRouteWAF stores route-level WAF enable/disable overrides ("a mano" or from Compose labels).
+type ManagedRouteWAF struct {
+	Host         string    `gorm:"primaryKey;type:varchar(255)" json:"host"` // e.g. "app.gbnt.local"
+	Enabled      bool      `gorm:"default:true" json:"enabled"`              // Route-specific active state
+	Mode         string    `gorm:"type:varchar(20);default:'enforce'" json:"mode"` // "enforce" or "detection"
+	OverriddenBy string    `gorm:"type:varchar(50);default:'manual'" json:"overridden_by"` // "manual" or "compose_label"
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// WAFSecurityEvent logs individual intercepted attacks with attack vector and rule information.
+type WAFSecurityEvent struct {
+	ID         string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Timestamp  time.Time `gorm:"index" json:"timestamp"`
+	ClientIP   string    `gorm:"type:varchar(100)" json:"client_ip"`
+	Host       string    `gorm:"type:varchar(255);index" json:"host"`
+	URI        string    `gorm:"type:text" json:"uri"`
+	Method     string    `gorm:"type:varchar(20)" json:"method"`
+	UserAgent  string    `gorm:"type:text" json:"user_agent"`
+	AttackType string    `gorm:"type:varchar(50);index" json:"attack_type"` // "SQLI", "XSS", "RCE", "LFI", "SCANNER", "IP_BLOCK"
+	RuleID     string    `gorm:"type:varchar(50)" json:"rule_id"`
+	Severity   string    `gorm:"type:varchar(20)" json:"severity"` // "CRITICAL", "HIGH", "MEDIUM", "LOW"
+	Action     string    `gorm:"type:varchar(20)" json:"action"`   // "BLOCKED", "AUDITED"
+	Details    string    `gorm:"type:text" json:"details"`
+}
+
 

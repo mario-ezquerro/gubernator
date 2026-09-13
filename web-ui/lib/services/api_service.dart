@@ -1025,6 +1025,126 @@ class ApiService {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // Caddy Ingress WAF & Threat Shield APIs (v2.94.0)
+  // ─────────────────────────────────────────────────────────────
+
+  /// WAF: Fetches global Threat Shield configuration.
+  static Future<Map<String, dynamic>> fetchWAFConfig() async {
+    final response = await http.get(Uri.parse('/api/caddy/waf/config'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
+  /// WAF: Updates global Threat Shield configuration.
+  static Future<Map<String, dynamic>> updateWAFConfig(Map<String, dynamic> config) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/waf/config'),
+      headers: authHeaders,
+      body: jsonEncode(config),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// WAF: Fetches cluster-wide Threat Shield aggregate statistics.
+  static Future<Map<String, dynamic>> fetchWAFStats() async {
+    final response = await http.get(Uri.parse('/api/caddy/waf/stats'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return {};
+  }
+
+  /// WAF: Fetches per-route WAF rules and overrides.
+  static Future<List<dynamic>> fetchWAFRoutes() async {
+    final response = await http.get(Uri.parse('/api/caddy/waf/routes'), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['routes'] ?? [];
+    }
+    return [];
+  }
+
+  /// WAF: Toggles WAF state and mode for a specific ingress route ("A Mano").
+  static Future<Map<String, dynamic>> toggleRouteWAF(String host, bool enabled, String mode) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/waf/routes/toggle'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'host': host,
+        'enabled': enabled,
+        'mode': mode,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// WAF: Clears manual route override, restoring cluster default.
+  static Future<Map<String, dynamic>> deleteRouteWAF(String host) async {
+    final response = await http.delete(
+      Uri.parse('/api/caddy/waf/routes/${Uri.encodeComponent(host)}'),
+      headers: authHeaders,
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// WAF: Fetches intercepted security threat events.
+  static Future<List<dynamic>> fetchWAFEvents({int limit = 50, String? type, String? host}) async {
+    var url = '/api/caddy/waf/events?limit=$limit';
+    if (type != null && type.isNotEmpty && type != 'ALL') {
+      url += '&type=${Uri.encodeComponent(type)}';
+    }
+    if (host != null && host.isNotEmpty && host != 'ALL') {
+      url += '&host=${Uri.encodeComponent(host)}';
+    }
+    final response = await http.get(Uri.parse(url), headers: authHeaders);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['events'] ?? [];
+    }
+    return [];
+  }
+
+  /// WAF: Adds an IP or CIDR to the Threat Shield blacklist.
+  static Future<Map<String, dynamic>> blockWAFIP(String ip, String reason) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/waf/ip/block'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'ip': ip,
+        'reason': reason,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// WAF: Removes an IP or CIDR from the Threat Shield blacklist.
+  static Future<Map<String, dynamic>> unblockWAFIP(String ip) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/waf/ip/unblock'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'ip': ip,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  /// WAF: Simulates a penetration test probe through Threat Shield.
+  static Future<Map<String, dynamic>> simulateWAFThreat(String host, String vector) async {
+    final response = await http.post(
+      Uri.parse('/api/caddy/waf/test'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'host': host,
+        'vector': vector,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // Enterprise Authentication & Active Directory / LDAP APIs
   // ─────────────────────────────────────────────────────────────
 

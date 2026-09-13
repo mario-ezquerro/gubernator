@@ -531,6 +531,10 @@ func StartDashboard() {
 		api.GET("/caddy/ca.crt", caddyRootCAHandler)
 		api.GET("/caddy/logs", caddyLogsHandler)
 		api.GET("/caddy/metrics", caddyMetricsHandler)
+		api.GET("/caddy/waf/config", caddyWAFConfigHandler)
+		api.GET("/caddy/waf/routes", caddyWAFRoutesHandler)
+		api.GET("/caddy/waf/events", caddyWAFEventsHandler)
+		api.GET("/caddy/waf/stats", caddyWAFStatsHandler)
 
 		// Loki Logs & Observability
 		api.GET("/logs/status", logsStatusHandler)
@@ -610,6 +614,12 @@ func StartDashboard() {
 		api.POST("/caddy/certs/custom", auth.RequireRole(auth.RoleAdmin), caddyCustomCertHandler)
 		api.POST("/caddy/certs/sync", auth.RequireRole(auth.RoleAdmin), caddyCertSyncHandler)
 		api.DELETE("/caddy/certs/orphaned", auth.RequireRole(auth.RoleAdmin), caddyPruneOrphanedCertsHandler)
+		api.POST("/caddy/waf/config", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFUpdateConfigHandler)
+		api.POST("/caddy/waf/routes/toggle", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFRouteToggleHandler)
+		api.DELETE("/caddy/waf/routes/:host", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFRouteDeleteHandler)
+		api.POST("/caddy/waf/ip/block", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFIPBlockHandler)
+		api.POST("/caddy/waf/ip/unblock", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFIPUnblockHandler)
+		api.POST("/caddy/waf/test", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyWAFSimulateTestHandler)
 
 		// Storage & Backups Subsystem (The Granaries)
 		api.GET("/storage/volumes", storageVolumesHandler)
@@ -5077,30 +5087,59 @@ func caddyRoutesHandler(c *gin.Context) {
 	caddyfilePath := caddy.CaddyfilePath()
 	content, _ := os.ReadFile(caddyfilePath)
 
+	wafCfg, _ := caddy.GetWAFConfig()
+	globalWAFEnabled := false
+	globalMode := "enforce"
+	if wafCfg != nil {
+		globalWAFEnabled = wafCfg.Enabled
+		if wafCfg.Mode != "" {
+			globalMode = wafCfg.Mode
+		}
+	}
+
 	var routes []gin.H
 	lines := strings.Split(string(content), "\n")
 	var curHost string
 	var upstreams []string
 	for _, l := range lines {
-		l = strings.TrimSpace(l)
-		if strings.HasSuffix(l, "{") {
-			curHost = strings.TrimSpace(strings.TrimSuffix(l, "{"))
-			upstreams = nil
-		} else if strings.HasPrefix(l, "reverse_proxy") {
-			parts := strings.Fields(l)
+		trimmed := strings.TrimSpace(l)
+		// Only unindented lines ending with '{' are top-level site blocks
+		if !strings.HasPrefix(l, "\t") && !strings.HasPrefix(l, " ") && strings.HasSuffix(trimmed, "{") {
+			candidate := strings.TrimSpace(strings.TrimSuffix(trimmed, "{"))
+			if candidate != "" && !strings.HasPrefix(candidate, "@") && !strings.HasPrefix(candidate, "#") {
+				curHost = candidate
+				upstreams = nil
+			}
+		} else if strings.HasPrefix(trimmed, "reverse_proxy") && curHost != "" {
+			parts := strings.Fields(trimmed)
 			for _, p := range parts {
-				if p != "reverse_proxy" && p != "{" && p != "}" {
+				if p != "reverse_proxy" && p != "{" && p != "}" && !strings.HasPrefix(p, "@") {
 					upstreams = append(upstreams, p)
 				}
 			}
 		} else if l == "}" && curHost != "" {
 			if curHost != ":80" {
+				wafActive := globalWAFEnabled
+				wafMode := globalMode
+				wafOrigin := "global"
+
+				if routeOverride, err := caddy.GetRouteWAF(curHost); err == nil && routeOverride != nil {
+					wafActive = routeOverride.Enabled
+					if routeOverride.Mode != "" && routeOverride.Mode != "inherit" {
+						wafMode = routeOverride.Mode
+					}
+					wafOrigin = routeOverride.OverriddenBy
+				}
+
 				routes = append(routes, gin.H{
 					"host":           curHost,
 					"upstreams":      upstreams,
 					"health":         "healthy",
 					"uptime_percent": 99.98,
 					"notes":          "Managed by Gubernator Ingress",
+					"waf_enabled":    wafActive,
+					"waf_mode":       wafMode,
+					"waf_origin":     wafOrigin,
 				})
 			}
 			curHost = ""
