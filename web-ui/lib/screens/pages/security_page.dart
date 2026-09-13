@@ -942,6 +942,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       userId: user.id,
                       secret: secret,
                       code: code,
+                      backupCodes: backupCodes,
                     );
                     if (result['error'] != null) {
                       setDialogState(() {

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,23 +44,28 @@ func GenerateBase32Secret() (string, error) {
 }
 
 // GenerateOTPAuthURI creates the standard otpauth:// URI for scanning with authenticator apps.
+// Follows official Google Authenticator URI specification:
+// otpauth://totp/{Issuer}:{Account}?secret={Secret}&issuer={Issuer}
+// The colon separating issuer and account is preserved unescaped.
 func GenerateOTPAuthURI(username, secret string) string {
 	issuer := DefaultTOTPConfig.Issuer
-	label := fmt.Sprintf("%s:%s", issuer, username)
+	cleanSecret := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(secret), " ", ""), "-", ""))
+	cleanUsername := strings.TrimSpace(username)
+	if cleanUsername == "" {
+		cleanUsername = "admin"
+	}
 
-	v := url.Values{}
-	v.Set("secret", secret)
-	v.Set("issuer", issuer)
-	v.Set("algorithm", DefaultTOTPConfig.Algorithm)
-	v.Set("digits", strconv.Itoa(DefaultTOTPConfig.Digits))
-	v.Set("period", strconv.Itoa(int(DefaultTOTPConfig.Period)))
-
-	return fmt.Sprintf("otpauth://totp/%s?%s", url.PathEscape(label), v.Encode())
+	return fmt.Sprintf("otpauth://totp/%s:%s?secret=%s&issuer=%s",
+		issuer,
+		url.PathEscape(cleanUsername),
+		cleanSecret,
+		url.QueryEscape(issuer),
+	)
 }
 
 // GenerateCode calculates the current TOTP code for a given secret at a specific timestamp.
 func GenerateCode(secret string, t time.Time) (string, error) {
-	cleanSecret := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(secret), " ", ""))
+	cleanSecret := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(secret), " ", ""), "-", ""))
 	key, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(cleanSecret)
 	if err != nil {
 		// Try with standard padding if unpadded decode failed
@@ -88,19 +92,30 @@ func GenerateCode(secret string, t time.Time) (string, error) {
 }
 
 // ValidateCode checks a user-provided 6-digit TOTP code against the secret,
-// allowing a drift tolerance of +/- 1 time step (30 seconds before/after).
+// allowing a drift tolerance of +/- 3 time steps (+/- 90 seconds) to accommodate
+// slight clock skews between mobile devices and the server, and strips any spaces
+// or dashes entered by the user.
 func ValidateCode(secret, userCode string) bool {
-	cleanCode := strings.TrimSpace(userCode)
+	// Strip spaces, dashes, tabs, dots that users might type or copy from authenticator apps (e.g. "123 456")
+	cleanCode := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, userCode)
+
 	if len(cleanCode) != DefaultTOTPConfig.Digits {
 		return false
 	}
 
+	cleanSecret := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(secret), " ", ""), "-", ""))
 	now := time.Now()
-	steps := []int{0, -1, 1}
+	// Allow drift of current step, +/- 1 (30s), +/- 2 (60s), +/- 3 (90s)
+	steps := []int{0, -1, 1, -2, 2, -3, 3}
 
 	for _, step := range steps {
 		t := now.Add(time.Duration(step*int(DefaultTOTPConfig.Period)) * time.Second)
-		expectedCode, err := GenerateCode(secret, t)
+		expectedCode, err := GenerateCode(cleanSecret, t)
 		if err != nil {
 			continue
 		}

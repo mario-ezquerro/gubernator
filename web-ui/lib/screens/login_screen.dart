@@ -168,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── MFA Verification (ENS op.acc.2) ──────────────────────────────────────
   Future<void> _handleMFAVerify() async {
-    final code = _mfaCodeController.text.trim();
+    final code = _mfaCodeController.text.trim().replaceAll(' ', '').replaceAll('-', '');
     if (code.isEmpty) {
       setState(() => _errorMessage = 'Please enter the 6-digit TOTP or backup recovery code');
       return;
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── MFA Mandatory Initial Setup (ENS op.acc.6) ───────────────────────────
   Future<void> _handleEnforcedMFASetup() async {
-    final code = _mfaCodeController.text.trim();
+    final code = _mfaCodeController.text.trim().replaceAll(' ', '').replaceAll('-', '');
     if (code.isEmpty) {
       setState(() => _errorMessage = 'Introduzca el código TOTP de 6 dígitos generado en su app autenticadora');
       return;

@@ -6284,7 +6284,7 @@ func authMFAVerifyHandler(c *gin.Context) {
 		return
 	}
 
-	cleanCode := strings.ToUpper(strings.TrimSpace(req.Code))
+	cleanCode := strings.TrimSpace(req.Code)
 	verified := false
 
 	// 1. Check TOTP Code
@@ -6296,8 +6296,10 @@ func authMFAVerifyHandler(c *gin.Context) {
 	if !verified && localUser.MFABackupCodes != "" {
 		var backupCodes []string
 		_ = json.Unmarshal([]byte(localUser.MFABackupCodes), &backupCodes)
+		cleanNormalized := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(cleanCode, " ", ""), "-", ""))
 		for i, bc := range backupCodes {
-			if strings.EqualFold(bc, cleanCode) {
+			bcNormalized := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(bc), " ", ""), "-", ""))
+			if bcNormalized == cleanNormalized || strings.EqualFold(strings.TrimSpace(bc), cleanCode) {
 				verified = true
 				// Consume single-use backup code
 				backupCodes = append(backupCodes[:i], backupCodes[i+1:]...)
@@ -6311,7 +6313,7 @@ func authMFAVerifyHandler(c *gin.Context) {
 
 	if !verified {
 		logAudit(c, localUser.Username, "LOCAL", "MFA_FAILED", "FAILURE", "Invalid TOTP code or recovery code submitted")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid 6-digit TOTP code or recovery code"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid 6-digit TOTP code or recovery code. Ensure your device time is synchronized."})
 		return
 	}
 
@@ -6353,6 +6355,10 @@ func authMFASetupCompleteHandler(c *gin.Context) {
 		logAudit(c, userSession.Username, "LOCAL", "MFA_FAILED", "FAILURE", "Invalid TOTP code provided during enforced MFA enrollment (ENS op.acc.6)")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid TOTP verification code. Ensure your device time is synchronized."})
 		return
+	}
+
+	if len(req.BackupCodes) == 0 {
+		req.BackupCodes, _ = auth.GenerateBackupCodes(8)
 	}
 
 	var localUser db.LocalUser
@@ -6487,7 +6493,7 @@ type authMFAEnableRequest struct {
 	UserID      interface{} `json:"user_id"`
 	Secret      string      `json:"secret" binding:"required"`
 	Code        string      `json:"code" binding:"required"`
-	BackupCodes []string    `json:"backup_codes" binding:"required"`
+	BackupCodes []string    `json:"backup_codes"`
 }
 
 func authMFAEnableHandler(c *gin.Context) {
@@ -6499,13 +6505,18 @@ func authMFAEnableHandler(c *gin.Context) {
 
 	var req authMFAEnableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Secret, code, and backup codes are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Secret and verification code are required"})
 		return
 	}
 
-	if !auth.ValidateCode(req.Secret, req.Code) {
+	cleanCode := strings.TrimSpace(req.Code)
+	if !auth.ValidateCode(req.Secret, cleanCode) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code. Ensure your device time is synchronized."})
 		return
+	}
+
+	if len(req.BackupCodes) == 0 {
+		req.BackupCodes, _ = auth.GenerateBackupCodes(8)
 	}
 
 	var localUser db.LocalUser

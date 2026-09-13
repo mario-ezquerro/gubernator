@@ -1084,12 +1084,13 @@ class ApiService {
     required String mfaToken,
     required String code,
   }) async {
+    final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
     final response = await http.post(
       Uri.parse('/api/auth/mfa/verify'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mfa_token': mfaToken,
-        'code': code.trim(),
+        'code': cleanCode,
       }),
     );
 
@@ -1108,13 +1109,14 @@ class ApiService {
     required String code,
     List<String>? backupCodes,
   }) async {
+    final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
     final response = await http.post(
       Uri.parse('/api/auth/mfa/setup-complete'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mfa_token': mfaToken,
-        'secret': secret,
-        'code': code.trim(),
+        'secret': secret.trim().replaceAll(' ', '').replaceAll('-', ''),
+        'code': cleanCode,
         'backup_codes': backupCodes ?? [],
       }),
     );
@@ -1148,14 +1150,17 @@ class ApiService {
     String? userId,
     required String secret,
     required String code,
+    List<String>? backupCodes,
   }) async {
+    final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
     final response = await http.post(
       Uri.parse('/api/auth/mfa/enable'),
       headers: authHeaders,
       body: jsonEncode({
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
-        'secret': secret,
-        'code': code.trim(),
+        'secret': secret.trim().replaceAll(' ', '').replaceAll('-', ''),
+        'code': cleanCode,
+        'backup_codes': backupCodes ?? [],
       }),
     );
     final data = jsonDecode(response.body);

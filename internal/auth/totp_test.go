@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"encoding/base32"
+	"strings"
 	"testing"
 	"time"
 )
@@ -33,17 +35,50 @@ func TestTOTPGenerationAndValidation(t *testing.T) {
 		t.Errorf("expected code %s to be valid", code)
 	}
 
-	// Validate code generated 25s ago (within 30s drift)
-	pastCode, err := GenerateCode(secret, now.Add(-25*time.Second))
+	// Validate code with spaces (as formatted in Google Authenticator "123 456")
+	formattedCode := code[:3] + " " + code[3:]
+	if !ValidateCode(secret, formattedCode) {
+		t.Errorf("expected formatted code with space %s to be valid", formattedCode)
+	}
+
+	// Validate code with dash "123-456"
+	dashCode := code[:3] + "-" + code[3:]
+	if !ValidateCode(secret, dashCode) {
+		t.Errorf("expected dash code %s to be valid", dashCode)
+	}
+
+	// Validate code generated 70s ago (within 90s drift)
+	driftCode, err := GenerateCode(secret, now.Add(-70*time.Second))
 	if err == nil {
-		if !ValidateCode(secret, pastCode) {
-			t.Errorf("expected past drift code %s to be valid", pastCode)
+		if !ValidateCode(secret, driftCode) {
+			t.Errorf("expected past drift code %s to be valid", driftCode)
 		}
 	}
 
 	// Validate incorrect code
-	if ValidateCode(secret, "000000") && code != "000000" {
-		t.Error("expected 000000 to be invalid")
+	// Validate RFC 6238 standard test vectors with key "12345678901234567890"
+	// Base32 encoding of "12345678901234567890" is "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+	rfcKey := "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+	testVectors := []struct {
+		timestamp int64
+		expected  string
+	}{
+		{59, "287082"},
+		{1111111109, "081804"},
+		{1111111111, "050471"},
+		{1234567890, "005924"},
+		{2000000000, "279037"},
+	}
+
+	for _, tv := range testVectors {
+		tVal := time.Unix(tv.timestamp, 0)
+		c, err := GenerateCode(rfcKey, tVal)
+		if err != nil {
+			t.Fatalf("RFC test vector at %d failed: %v", tv.timestamp, err)
+		}
+		if c != tv.expected {
+			t.Errorf("RFC test vector at %d: got %s, want %s", tv.timestamp, c, tv.expected)
+		}
 	}
 }
 
@@ -58,6 +93,40 @@ func TestBackupCodes(t *testing.T) {
 	for _, c := range codes {
 		if len(c) != 9 || c[4] != '-' {
 			t.Errorf("unexpected backup code format: %s", c)
+		}
+	}
+}
+
+func TestDecodeSecret(t *testing.T) {
+	lengths := []int{10, 16, 20, 32}
+	for _, l := range lengths {
+		bytes := make([]byte, l)
+		for i := 0; i < l; i++ {
+			bytes[i] = byte(i + 1)
+		}
+		// Unpadded
+		secNoPad := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(bytes)
+		code1, err := GenerateCode(secNoPad, time.Now())
+		if err != nil {
+			t.Fatalf("GenerateCode failed for len %d unpadded: %v", l, err)
+		}
+		// Padded
+		secPad := base32.StdEncoding.EncodeToString(bytes)
+		code2, err := GenerateCode(secPad, time.Now())
+		if err != nil {
+			t.Fatalf("GenerateCode failed for len %d padded: %v", l, err)
+		}
+		if code1 != code2 {
+			t.Errorf("len %d: code1 %s != code2 %s", l, code1, code2)
+		}
+		// Lowercase with spaces
+		secMessy := "  " + strings.ToLower(secNoPad) + "  "
+		code3, err := GenerateCode(secMessy, time.Now())
+		if err != nil {
+			t.Fatalf("GenerateCode failed for len %d messy: %v", l, err)
+		}
+		if code1 != code3 {
+			t.Errorf("len %d: code1 %s != code3 %s", l, code1, code3)
 		}
 	}
 }
