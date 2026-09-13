@@ -57,6 +57,20 @@ class ComposeAutocomplete {
       icon: Icons.lock,
       snippet: '        - "gbnt.caddy.tls=internal"\n',
     ),
+    ComposeSnippet(
+      label: 'gbnt.waf.enabled',
+      category: 'Security',
+      description: 'Activate Layer 7 Threat Shield WAF for this ingress route',
+      icon: Icons.shield,
+      snippet: '        - "gbnt.waf.enabled=true"\n        - "gbnt.waf.mode=enforce"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.waf.mode',
+      category: 'Security',
+      description: 'WAF enforcement mode: enforce (block with 403) or detection (log only)',
+      icon: Icons.policy_outlined,
+      snippet: '        - "gbnt.waf.mode=enforce"\n',
+    ),
 
     // SLO Engine (Sloth)
     ComposeSnippet(

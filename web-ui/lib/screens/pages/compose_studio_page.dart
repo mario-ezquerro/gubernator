@@ -188,6 +188,26 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 self.wfile.write(body.encode('utf-8'))
         HTTPServer(('0.0.0.0', 8080), H).serve_forever()
 ''',
+    'Protected Web Ingress (WAF)': '''services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    labels:
+      - "ingress.host=secure-web.gbnt.local"
+      - "gbnt.caddy.port=80"
+      - "gbnt.waf.enabled=true"
+      - "gbnt.waf.mode=enforce"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+''',
     'Web Ingress': '''services:
   web:
     image: nginx:alpine
@@ -253,6 +273,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   secure-app:
     image: redis:alpine
     labels:
+      - "ingress.host=hardened.gbnt.local"
+      - "gbnt.caddy.port=6379"
+      - "gbnt.waf.enabled=true"
+      - "gbnt.waf.mode=enforce"
       - "gbnt.security.require-signature=true"
       - "gbnt.security.max-cve-severity=critical"
     deploy:
@@ -1513,7 +1537,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       _buildAdaptiveTabPill('Autoscale', 'autoscale', Icons.bolt, const Color(0xFFA855F7), blocksMap['autoscale']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Caddy', 'caddy', Icons.public, const Color(0xFF8B5CF6), blocksMap['caddy']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('SLO', 'slo', Icons.show_chart, const Color(0xFFF59E0B), blocksMap['slo']?.isPresent ?? false, theme, isDark),
-                      _buildAdaptiveTabPill('Security', 'security', Icons.security, const Color(0xFFEC4899), blocksMap['security']?.isPresent ?? false, theme, isDark),
+                      _buildAdaptiveTabPill('Security & WAF', 'security', Icons.security, const Color(0xFFEC4899), blocksMap['security']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Placement & LB', 'nodes', Icons.alt_route, const Color(0xFF06B6D4), blocksMap['nodes']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Storage', 'storage', Icons.storage, const Color(0xFFF97316), blocksMap['storage']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Templates', 'templates', Icons.dashboard_customize, const Color(0xFFEAB308), false, theme, isDark),
@@ -1928,9 +1952,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ],
 
                 if (_activeCopilotTab == 'caddy') ...[
-                  const Text('Caddy Ingress Suite', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Caddy Ingress Suite & WAF', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  const Text('Expose your service via Caddy proxy with CoreDNS automatic resolution.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Expose your service via Caddy proxy with CoreDNS automatic resolution and Layer 7 Threat Shield.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 16),
                   _buildSnippetCard(
                     title: 'Standard HTTP Ingress',
@@ -1945,6 +1969,40 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.caddy.port', '80'),
                         ],
                         categoryTitle: 'Caddy HTTP Ingress',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Ingress + Threat Shield WAF (Enforce)',
+                    subtitle: 'Expose host with active L7 WAF blocking OWASP attacks (403)',
+                    icon: Icons.shield,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('ingress.host', 'app.gbnt.local'),
+                          MapEntry('gbnt.caddy.port', '80'),
+                          MapEntry('gbnt.waf.enabled', 'true'),
+                          MapEntry('gbnt.waf.mode', 'enforce'),
+                        ],
+                        categoryTitle: 'Caddy WAF Ingress',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Threat Shield WAF (Detection / Audit)',
+                    subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Log & inspect only)',
+                    icon: Icons.remove_red_eye_outlined,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.waf.enabled', 'true'),
+                          MapEntry('gbnt.waf.mode', 'detection'),
+                        ],
+                        categoryTitle: 'WAF Detection Mode',
                       ));
                     },
                   ),
@@ -2010,10 +2068,42 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                 ],
 
                 if (_activeCopilotTab == 'security') ...[
-                  const Text('Security Gatekeeper & Cosign', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Security Gatekeeper, Cosign & Threat Shield WAF', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  const Text('Enforce cryptographic signatures and CVE vulnerability policies.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Enforce cryptographic signatures, CVE policies and Layer 7 Threat Shield WAF.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 16),
+                  _buildSnippetCard(
+                    title: 'Threat Shield WAF (Enforce Mode)',
+                    subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=enforce (Blocks SQLi, XSS, RCE with 403)',
+                    icon: Icons.shield,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.waf.enabled', 'true'),
+                          MapEntry('gbnt.waf.mode', 'enforce'),
+                        ],
+                        categoryTitle: 'Threat Shield WAF',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Threat Shield WAF (Detection / Audit)',
+                    subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Non-blocking SIEM logs)',
+                    icon: Icons.policy_outlined,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          MapEntry('gbnt.waf.enabled', 'true'),
+                          MapEntry('gbnt.waf.mode', 'detection'),
+                        ],
+                        categoryTitle: 'WAF Audit Mode',
+                      ));
+                    },
+                  ),
                   _buildSnippetCard(
                     title: 'Enforce Cryptographic Signatures',
                     subtitle: 'Blocks deployment if image is not Cosign-signed (Zero-Trust)',
@@ -2060,8 +2150,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     },
                   ),
                   _buildSnippetCard(
-                    title: 'Full Zero-Trust Security Suite',
-                    subtitle: 'Signature check + critical CVE block + reject unfixed CVEs',
+                    title: 'Full Zero-Trust & WAF Shield Suite',
+                    subtitle: 'Signature check + critical CVE block + Threat Shield WAF enforce',
                     icon: Icons.verified,
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.mergeLabels(
@@ -2071,8 +2161,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.security.require-signature', 'true'),
                           MapEntry('gbnt.security.max-cve-severity', 'critical'),
                           MapEntry('gbnt.security.allow-unfixed-cve', 'false'),
+                          MapEntry('gbnt.waf.enabled', 'true'),
+                          MapEntry('gbnt.waf.mode', 'enforce'),
                         ],
-                        categoryTitle: 'Zero-Trust Suite',
+                        categoryTitle: 'Zero-Trust & WAF Suite',
                       ));
                     },
                   ),
@@ -2451,6 +2543,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       // Caddy Ingress
       if (trimmed.contains('ingress.host') ||
           trimmed.contains('gbnt.caddy') ||
+          trimmed.contains('gbnt.waf') ||
           trimmed.contains('caddy.port') ||
           trimmed.contains('caddy_route') ||
           trimmed.contains('caddy_tls') ||
@@ -2461,6 +2554,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           if (parts.length > 1) {
             summaries['caddy'] = parts[1].replaceAll('"', '').replaceAll("'", "").trim();
           }
+        } else if (trimmed.contains('gbnt.waf') && summaries['caddy']!.isEmpty) {
+          summaries['caddy'] = trimmed.contains('detection') ? 'WAF Detection' : 'WAF Shield';
         }
       }
 
@@ -2475,12 +2570,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         }
       }
 
-      // Security
+      // Security & WAF
       if (trimmed.contains('gbnt.security') ||
+          trimmed.contains('gbnt.waf') ||
           trimmed.contains('cosign') ||
           trimmed.contains('max_severity')) {
         blockLines['security']!.add(lineNum);
-        if (trimmed.contains('gbnt.security.signed=') && summaries['security']!.isEmpty) {
+        if (trimmed.contains('gbnt.waf.enabled=true') && summaries['security']!.isEmpty) {
+          summaries['security'] = 'WAF Shield';
+        } else if (trimmed.contains('gbnt.security.signed=') && summaries['security']!.isEmpty) {
           summaries['security'] = 'Signed';
         }
       }
@@ -2517,7 +2615,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       ('autoscale', 'Autoscale', Icons.bolt, const Color(0xFFA855F7)),
       ('caddy', 'Caddy Ingress', Icons.public, const Color(0xFF8B5CF6)),
       ('slo', 'Sloth SLO', Icons.show_chart, const Color(0xFFF59E0B)),
-      ('security', 'Security', Icons.security, const Color(0xFFEC4899)),
+      ('security', 'Security & WAF', Icons.security, const Color(0xFFEC4899)),
       ('nodes', 'Placement & LB', Icons.alt_route, const Color(0xFF06B6D4)),
       ('storage', 'Storage', Icons.storage, const Color(0xFFF97316)),
     ];

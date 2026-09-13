@@ -1246,3 +1246,18 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Comprehensive Documentation & Guide:**
   - Dedicated architecture and operational guide in `docs/caddy-waf.md` and integration in `docs/caddy.md`.
   - Rebuilt static documentation site (`mkdocs.yml` -> `site/caddy-waf/`).
+
+### 118. Compose Studio WAF Threat Shield Integration & Multipass Time Sync Daemon (`v2.94.1`)
+* **Compose Studio WAF Labels & Autocompletion (`web-ui/lib/widgets/compose_autocomplete.dart`):**
+  - Added `gbnt.waf.enabled` (`true|false`) and `gbnt.waf.mode` (`enforce|detection`) keyword chips to `ComposeAutocomplete.snippets`.
+  - Each chip features category icons (`security`), inline descriptions, and one-click indented YAML snippet insertion into the Compose editor.
+* **Compose Studio Templates & Adaptive Copilot Wizard (`web-ui/lib/screens/pages/compose_studio_page.dart`):**
+  - **Starter Templates:** Added `'Protected Web Ingress (WAF)'` blueprint with Caddy Ingress, automated TLS, and Threat Shield WAF labels. Updated `'Gatekeeper Signed App'` blueprint to include WAF enforcement labels by default.
+  - **Adaptive Category Tabs:** Renamed `Security` tab to **`Security & WAF`** across the adaptive tab selector and copilot panels.
+  - **Architecture Blocks Detector:** Enhanced `_detectComposeBlocks` to inspect `gbnt.waf` labels within both Caddy and Security blocks, displaying dedicated `WAF Shield` (enforce) or `WAF Detection` (detection) visual badge chips in the top architecture bar.
+  - **Caddy Ingress Copilot Tab:** Added 1-click insertion cards for *Ingress + Threat Shield WAF (Enforce)* and *Threat Shield WAF (Detection / Audit)*.
+  - **Security & WAF Copilot Tab:** Added dedicated cards for *Threat Shield WAF (Enforce Mode)*, *Threat Shield WAF (Detection / Audit)*, and an updated *Full Zero-Trust & WAF Shield Suite*.
+* **Persistent Multipass Time-Sync Daemon (`gbnt-timesync`):**
+  - Solved macOS Multipass VM clock drift (>3h 15m) when host sleeps, which caused TOTP MFA QR authentication codes to fail.
+  - Sourced time from HTTP response `Date` headers over HTTPS (`date -u -s "$HTTP_DATE"`), bypassing macOS NAT UDP port 123 (NTP) blocks.
+  - Deployed systemd service and timer (`gbnt-timesync.service` and `gbnt-timesync.timer`) running every 60s across all cluster VMs (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
