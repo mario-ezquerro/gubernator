@@ -433,6 +433,42 @@ func SecurityENSReportHandler(c *gin.Context) {
 	c.String(http.StatusOK, report)
 }
 
+// SecurityNIS2StatusHandler returns the European NIS 2 Directive (EU 2022/2555) compliance assessment.
+func SecurityNIS2StatusHandler(c *gin.Context) {
+	summary := security.EvaluateNIS2Compliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+// SecurityNIS2ReportHandler generates and exports the technical NIS 2 compliance report in Markdown or JSON.
+func SecurityNIS2ReportHandler(c *gin.Context) {
+	summary := security.EvaluateNIS2Compliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=nis2-compliance-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	version := "v2.91.0"
+	for _, p := range []string{"VERSION", "/home/ubuntu/VERSION", "/data/VERSION", "/app/VERSION", "../VERSION"} {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			v := strings.TrimSpace(string(b))
+			if v != "" && strings.HasPrefix(v, "v") {
+				version = v
+				break
+			}
+		}
+	}
+
+	report := security.GenerateNIS2ReportMarkdown(summary, version)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=nis2-compliance-report-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
 // SecuritySIEMConfigHandler returns the active SIEM & ENS configuration.
 func SecuritySIEMConfigHandler(c *gin.Context) {
 	var cfg db.SecurityConfig

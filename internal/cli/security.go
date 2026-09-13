@@ -681,6 +681,84 @@ var ensCmd = &cobra.Command{
 }
 
 var (
+	nis2FormatFlag string
+	nis2ReportFlag bool
+)
+
+var nis2Cmd = &cobra.Command{
+	Use:   "nis2",
+	Short: "Audit cluster compliance with European NIS 2 Directive (EU 2022/2555)",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/nis2/status", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Fprintf(os.Stderr, "Failed to evaluate NIS 2 compliance: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var s security.NIS2Summary
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			os.Exit(1)
+		}
+
+		if nis2ReportFlag || nis2FormatFlag == "markdown" || nis2FormatFlag == "md" {
+			reportResp, err := DoAPIRequest("GET", "/v1/security/nis2/report", nil)
+			if err == nil && reportResp.StatusCode == http.StatusOK {
+				defer reportResp.Body.Close()
+				body, _ := io.ReadAll(reportResp.Body)
+				fmt.Println(string(body))
+				return
+			}
+		}
+
+		if nis2FormatFlag == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(s)
+			return
+		}
+
+		// Formatted terminal summary
+		fmt.Println("=========================================================================================")
+		fmt.Printf("🇪🇺  DIRECTIVE (EU) 2022/2555 (NIS 2) | CYBERSECURITY READINESS AUDIT\n")
+		fmt.Println("=========================================================================================")
+		fmt.Printf("  Overall Readiness:     %s\n", s.OverallReadiness)
+		fmt.Printf("  Essential Entities:    %.1f%%\n", s.EssentialScore)
+		fmt.Printf("  Important Entities:    %.1f%%\n", s.ImportantScore)
+		fmt.Printf("  Measures Evaluated:    %d (%d Compliant, %d Partial, %d Non-Compliant)\n", s.TotalMeasures, s.CompliantCount, s.PartialCount, s.NonCompliantCount)
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("%-15s %-32s %-14s %-8s %-30s\n", "ARTICLE", "MEASURE", "STATUS", "SCORE", "TECHNICAL EVIDENCE")
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		for _, m := range s.Measures {
+			statusStr := "❌ Non-Compliant"
+			if m.Status == security.NIS2StatusCompliant {
+				statusStr = "✅ Compliant"
+			} else if m.Status == security.NIS2StatusPartial {
+				statusStr = "⚠️ Partial"
+			}
+			evid := m.Evidence
+			if len(evid) > 35 {
+				evid = evid[:32] + "..."
+			}
+			name := m.Name
+			if len(name) > 30 {
+				name = name[:27] + "..."
+			}
+			fmt.Printf("%-15s %-32s %-14s %-8.0f%% %-30s\n", m.Article, name, statusStr, m.Score, evid)
+		}
+		fmt.Println("=========================================================================================")
+		fmt.Println("Tip: Run 'gbnt nis2 --report' to display the full official technical audit report.")
+	},
+}
+
+var (
 	siemHostFlag   string
 	siemPortFlag   int
 	siemProtoFlag  string
@@ -910,6 +988,9 @@ func init() {
 	ensCmd.Flags().StringVarP(&ensFormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
 	ensCmd.Flags().BoolVarP(&ensReportFlag, "report", "r", false, "Display full technical compliance audit report")
 
+	nis2Cmd.Flags().StringVarP(&nis2FormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
+	nis2Cmd.Flags().BoolVarP(&nis2ReportFlag, "report", "r", false, "Display full technical compliance audit report")
+
 	securitySiemTestCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
 	securitySiemTestCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
 	securitySiemTestCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
@@ -957,12 +1038,14 @@ func init() {
 	securityCmd.AddCommand(securityKeyCmd)
 	securityCmd.AddCommand(securitySiemCmd)
 	securityCmd.AddCommand(ensCmd)
+	securityCmd.AddCommand(nis2Cmd)
 
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(sbomCmd)
 	rootCmd.AddCommand(imageCmd)
 	rootCmd.AddCommand(securityCmd)
 	rootCmd.AddCommand(ensCmd)
+	rootCmd.AddCommand(nis2Cmd)
 }
 
 

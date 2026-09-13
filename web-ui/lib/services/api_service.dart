@@ -2828,6 +2828,38 @@ class ApiService {
       return null;
     }
   }
+
+  /// Fetches European NIS 2 Directive (EU 2022/2555) compliance evaluation summary.
+  static Future<NIS2SummaryModel?> fetchNIS2Status() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/nis2/status'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return NIS2SummaryModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads the technical NIS 2 compliance and evidence report in Markdown or JSON.
+  static Future<String?> fetchNIS2Report({String format = 'markdown'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/nis2/report?format=$format'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

@@ -489,6 +489,10 @@ func StartDashboard() {
 		api.GET("/security/ens/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), ensStatusHandler)
 		api.GET("/security/ens/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), ensReportHandler)
 
+		// NIS 2 Directive (EU 2022/2555) Compliance & Risk Management Suite
+		api.GET("/security/nis2/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), nis2StatusHandler)
+		api.GET("/security/nis2/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), nis2ReportHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -6861,6 +6865,33 @@ func ensReportHandler(c *gin.Context) {
 
 	report := security.GenerateENSReportMarkdown(summary, GetVersion())
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=informe-cumplimiento-ens-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
+// ---------------------------------------------------------------------------
+// DIRECTIVE (EU) 2022/2555 (NIS 2) HANDLERS
+// ---------------------------------------------------------------------------
+
+func nis2StatusHandler(c *gin.Context) {
+	summary := security.EvaluateNIS2Compliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+func nis2ReportHandler(c *gin.Context) {
+	summary := security.EvaluateNIS2Compliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=nis2-compliance-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateNIS2ReportMarkdown(summary, GetVersion())
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=nis2-compliance-report-%s.md", timestamp))
 	c.Header("Content-Type", "text/markdown; charset=utf-8")
 	c.String(http.StatusOK, report)
 }

@@ -311,6 +311,8 @@ func Start(ctx context.Context) error {
 			securityRoute.POST("/remediate", SecurityRemediateExecuteHandler)
 			securityRoute.GET("/ens/status", SecurityENSStatusHandler)
 			securityRoute.GET("/ens/report", SecurityENSReportHandler)
+			securityRoute.GET("/nis2/status", SecurityNIS2StatusHandler)
+			securityRoute.GET("/nis2/report", SecurityNIS2ReportHandler)
 			securityRoute.GET("/siem", SecuritySIEMConfigHandler)
 			securityRoute.GET("/siem/status", SecuritySIEMStatusHandler)
 			securityRoute.POST("/siem", SecuritySIEMUpdateHandler)

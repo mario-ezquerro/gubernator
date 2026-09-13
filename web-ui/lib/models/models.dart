@@ -3526,3 +3526,107 @@ class ENSSummaryModel {
   }
 }
 
+// -----------------------------------------------------------------------------
+// NIS 2 Directive (EU 2022/2555) Compliance Models
+// -----------------------------------------------------------------------------
+
+class NIS2MeasureModel {
+  final String id;
+  final String article;
+  final String name;
+  final String domain;
+  final List<String> applicableEntities;
+  final String status; // COMPLIANT, PARTIAL, NON_COMPLIANT
+  final double score;
+  final double weight;
+  final String evidence;
+  final String remediation;
+
+  NIS2MeasureModel({
+    required this.id,
+    required this.article,
+    required this.name,
+    required this.domain,
+    required this.applicableEntities,
+    required this.status,
+    required this.score,
+    required this.weight,
+    required this.evidence,
+    required this.remediation,
+  });
+
+  bool get isCompliant => status == 'COMPLIANT';
+  bool get isPartial => status == 'PARTIAL';
+  bool get isNonCompliant => status == 'NON_COMPLIANT';
+
+  factory NIS2MeasureModel.fromJson(Map<String, dynamic> json) {
+    final entities = <String>[];
+    if (json['applicable_entities'] != null && json['applicable_entities'] is List) {
+      for (final e in json['applicable_entities']) {
+        entities.add(e.toString());
+      }
+    }
+    return NIS2MeasureModel(
+      id: json['id'] ?? '',
+      article: json['article'] ?? '',
+      name: json['name'] ?? '',
+      domain: json['domain'] ?? '',
+      applicableEntities: entities,
+      status: json['status'] ?? 'NON_COMPLIANT',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      weight: (json['weight'] as num?)?.toDouble() ?? 1.0,
+      evidence: json['evidence'] ?? '',
+      remediation: json['remediation'] ?? '',
+    );
+  }
+}
+
+class NIS2SummaryModel {
+  final String evaluatedAt;
+  final String clusterStatus;
+  final double essentialScore;
+  final double importantScore;
+  final String overallReadiness; // HIGH, MEDIUM, BASIC, INSUFFICIENT
+  final int compliantCount;
+  final int partialCount;
+  final int nonCompliantCount;
+  final int totalMeasures;
+  final List<NIS2MeasureModel> measures;
+
+  NIS2SummaryModel({
+    required this.evaluatedAt,
+    required this.clusterStatus,
+    required this.essentialScore,
+    required this.importantScore,
+    required this.overallReadiness,
+    required this.compliantCount,
+    required this.partialCount,
+    required this.nonCompliantCount,
+    required this.totalMeasures,
+    required this.measures,
+  });
+
+  factory NIS2SummaryModel.fromJson(Map<String, dynamic> json) {
+    final mList = <NIS2MeasureModel>[];
+    if (json['measures'] != null && json['measures'] is List) {
+      for (final m in json['measures']) {
+        if (m is Map<String, dynamic>) {
+          mList.add(NIS2MeasureModel.fromJson(m));
+        }
+      }
+    }
+    return NIS2SummaryModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      clusterStatus: json['cluster_status'] ?? 'ACTIVE',
+      essentialScore: (json['essential_score'] as num?)?.toDouble() ?? 0.0,
+      importantScore: (json['important_score'] as num?)?.toDouble() ?? 0.0,
+      overallReadiness: json['overall_readiness'] ?? 'INSUFFICIENT',
+      compliantCount: (json['compliant_count'] as num?)?.toInt() ?? 0,
+      partialCount: (json['partial_count'] as num?)?.toInt() ?? 0,
+      nonCompliantCount: (json['non_compliant_count'] as num?)?.toInt() ?? 0,
+      totalMeasures: (json['total_measures'] as num?)?.toInt() ?? 0,
+      measures: mList,
+    );
+  }
+}
+

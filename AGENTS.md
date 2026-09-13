@@ -1142,10 +1142,32 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Elevated ENS Compliance Evaluation to 100% ALTO (`internal/security/ens.go`):**
   - Evaluates verified encrypted backups and active recurring policies, elevating `op.exp.10` (*Copias de seguridad periódicas*) and `mp.si.2` (*Cifrado en reposo*) to **100% COMPLIANT**.
   - **Global Cluster Classification reaches 100.0% ALTO:**
-    - Cumplimiento BÁSICO: **100.0%**
-    - Cumplimiento MEDIO: **100.0%**
-    - Cumplimiento ALTO: **100.0%**
-    - Medidas Evaluadas: **11 de 11 Conformes (0 Parciales, 0 No Conformes)**.
+### 114. European NIS 2 Directive (EU 2022/2555) Compliance & Unified Regulatory Suite (`v2.91.0`)
+* **European NIS 2 Compliance Engine (`internal/security/nis2.go`):**
+  - Evaluates all 10 mandatory risk-management controls under Article 21(2) of Directive (EU) 2022/2555:
+    1. `nis2.art21.2a`: Policies on risk analysis and information system security (Admission Gatekeeper, signature policies, CVE severity thresholds).
+    2. `nis2.art21.2b`: Incident handling, intrusion detection, and live SIEM event streaming (Syslog RFC 5424, OpenSearch/Elasticsearch).
+    3. `nis2.art21.2c`: Business continuity, backup management, disaster recovery & crisis management (Automated periodic backups, AES-256-GCM encryption, point-in-time recovery, multi-node HA cluster).
+    4. `nis2.art21.2d`: Supply chain security: SBOM & container provenance (CycloneDX/SPDX dependency tracking, Cosign ECDSA image signing, admission verification).
+    5. `nis2.art21.2e`: Security in acquisition, development & maintenance (Continuous CVE vulnerability scanning, CVSS scoring, patch/upgrade remediation).
+    6. `nis2.art21.2f`: Cybersecurity effectiveness assessment & audit integrity (Tamper-evident SHA-256 chained audit logs, no-repudiation verification).
+    7. `nis2.art21.2g`: Basic cyber hygiene practices & credentials (Automatic account lockouts, strong password complexity, session inactivity timeouts).
+    8. `nis2.art21.2h`: Cryptographic controls: TLS 1.3 in-transit edge ingress (Caddy) & AES-256-GCM data-at-rest encryption.
+    9. `nis2.art21.2i`: Access control governance, RBAC & identity federation (4-tier RBAC with dedicated Auditor accounts, Enterprise LDAP & SSO OIDC federation).
+    10. `nis2.art21.2j`: Multi-factor authentication (MFA / TOTP RFC 6238) & secured communications for privileged accounts (`admin`, `operator`).
+  - Calculates dedicated readiness scores for **Essential Entities (EE)** and **Important Entities (IE)**, classifying overall readiness into `HIGH`, `MEDIUM`, `BASIC`, or `INSUFFICIENT`.
+  - CommonMark technical compliance report generator (`GenerateNIS2ReportMarkdown`) formatted for EU CSIRT and regulatory authorities.
+* **REST API Endpoints (`internal/web/server.go`, `internal/api/server.go`, `internal/api/security_handlers.go`):**
+  - Exposed `GET /v1/security/nis2/status` & `GET /api/security/nis2/status` returning complete compliance assessment summaries and measure details.
+  - Exposed `GET /v1/security/nis2/report` & `GET /api/security/nis2/report` exporting technical audit reports in CommonMark (`.md`) or structured JSON (`.json`).
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - Added `gbnt nis2` and `gbnt security nis2` commands with formatted terminal summary table, readiness KPIs, and flags `--format` (`table`, `json`, `markdown`) and `--report` (`-r`).
+* **Flutter Web UI Unified Compliance Hub (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Upgraded Tab 5 into **"Compliance & Regulatory Suite"** with top segmented pill switcher between **🇪🇺 NIS 2 Directive (EU 2022/2555)** and **🇪🇸 Spanish ENS (RD 311/2022)**.
+  - 4 real-time KPI cards: Overall Readiness Badge, Essential Entities (EE) Score %, Important Entities (IE) Score %, and Article 21 Controls breakdown (Compliant, Partial, Non-compliant).
+  - Domain filter chips for instant filtering by Article 21 domain or issues needing remediation.
+  - Interactive Article 21 measure cards with discovered technical evidence and actionable remediation steps.
+  - Modal report inspector with one-click clipboard copying, Markdown (`.md`) download, and JSON (`.json`) export.
 
 
 
