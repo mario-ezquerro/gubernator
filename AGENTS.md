@@ -1261,3 +1261,27 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Solved macOS Multipass VM clock drift (>3h 15m) when host sleeps, which caused TOTP MFA QR authentication codes to fail.
   - Sourced time from HTTP response `Date` headers over HTTPS (`date -u -s "$HTTP_DATE"`), bypassing macOS NAT UDP port 123 (NTP) blocks.
   - Deployed systemd service and timer (`gbnt-timesync.service` and `gbnt-timesync.timer`) running every 60s across all cluster VMs (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
+
+### 119. Multi-Theme Palette Engine & Appearance Customization Suite (`v2.94.2`)
+* **13 Curated Developer & Production Themes (`web-ui/lib/theme/theme.dart`):**
+  - **Gubernator Dark (Default):** Classic slate canvas (`#0F172A`), card surface (`#1E293B`), and Imperial Orange accent (`#F97316`).
+  - **Gubernator Light:** Clean crisp white canvas (`#F8FAFC`), card surface (`#FFFFFF`), and dark orange accent (`#EA580C`).
+  - **Quiet Light:** Low-contrast soft pastel light theme inspired by VS Code Quiet Light (`#F5F5F7`), soft lilac/purple accent (`#7C3AED`), and teal secondary (`#0D9488`).
+  - **Dark Dimmed:** Muted charcoal canvas (`#1C2128`), surface (`#22272E`), and soft azure accent (`#539BF5`).
+  - **Solarized Dark:** Authentic Ethan Schoonover palette with deep teal base (`#002B36`), base02 surface (`#073642`), solar yellow (`#B58900`), and cyan (`#2AA198`).
+  - **Solarized Light:** Warm creamy parchment base (`#FDF6E3`), base2 surface (`#EEE8D5`), and solar blue accent (`#268BD2`).
+  - **Monokai Pro:** Iconic dark olive charcoal canvas (`#1E1F1C`), surface (`#272822`), vivid neon magenta (`#F92672`), and green (`#A6E22E`).
+  - **Imperial Roman Red:** Signature Roman Legionary crimson burgundy palette (`#17090C`), surface (`#241014`), ruby red (`#E11D48`), and Roman gold (`#F59E0B`).
+  - **Cyberpunk / Synthwave '84:** High-contrast midnight violet canvas (`#120A24`), surface (`#1C1236`), neon hot pink (`#FF2A85`), and electric cyan (`#00F0FF`).
+  - **Nord:** Arctic polar night canvas (`#242933`), surface (`#2E3440`), frost cyan (`#88C0D0`), and frost blue (`#81A1C1`).
+  - **Dracula:** Legendary gothic dark palette (`#1E1F29`), surface (`#282A36`), vibrant purple (`#BD93F9`), and vampire pink (`#FF79C6`).
+  - **Tokyo Night:** Neo-Tokyo deep indigo canvas (`#16161E`), surface (`#1A1B26`), electric blue (`#7AA2F7`), and lavender (`#BB9AF7`).
+  - **Gruvbox Dark:** Warm retro earthy brown canvas (`#1D2021`), surface (`#282828`), warm orange (`#FE8019`), and olive green (`#B8BB26`).
+* **Interactive Theme Gallery in Settings -> Appearance (`web-ui/lib/widgets/settings_dialog.dart`):**
+  - Category filter pills: `All (13)`, `Dark Themes (10)`, and `Light Themes (3)`.
+  - Rich `_ThemeCard`s rendering custom icons, theme names, style descriptions, 4-swatch color dot palettes (Canvas, Surface, Primary, Secondary), and active selection badges.
+* **Persistent Browser Local Storage (`html.window.localStorage['gbnt_theme']`):**
+  - Automatically loads and persists chosen theme across sessions, reboots, and page refreshes.
+* **Adaptive Sidebar & Component Styling (`web-ui/lib/widgets/sidebar.dart`, `web-ui/lib/screens/app_shell.dart`):**
+  - Sidebar background, surface, border, and active indicator colors dynamically adapt to the active theme palette.
+  - Quick bottom toggle button allows switching between dark and light palettes.

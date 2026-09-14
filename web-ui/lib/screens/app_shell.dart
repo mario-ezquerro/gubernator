@@ -3,6 +3,7 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../theme/theme.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/update_dialog.dart';
@@ -30,16 +31,18 @@ import 'pages/sre_feature_adaptive_page.dart';
 
 /// Main application shell with sidebar navigation + content area.
 class AppShell extends StatefulWidget {
-  final bool isDark;
-  final ValueChanged<bool> onThemeChanged;
+  final String currentThemeId;
+  final ValueChanged<String> onThemeChanged;
   final String displayName;
   final ValueChanged<String> onNameChanged;
   final UserSession? currentUser;
   final VoidCallback? onLogout;
 
+  bool get isDark => GubernatorTheme.getThemeDef(currentThemeId).isDark;
+
   const AppShell({
     super.key,
-    required this.isDark,
+    required this.currentThemeId,
     required this.onThemeChanged,
     required this.displayName,
     required this.onNameChanged,
@@ -106,7 +109,7 @@ class _AppShellState extends State<AppShell> {
     showDialog(
       context: context,
       builder: (_) => SettingsDialog(
-        isDark: widget.isDark,
+        currentThemeId: widget.currentThemeId,
         onThemeChanged: widget.onThemeChanged,
         displayName: widget.displayName,
         onNameChanged: widget.onNameChanged,
@@ -435,7 +438,7 @@ class _AppShellState extends State<AppShell> {
                 _selectedIndex = index;
               });
             },
-            isDark: widget.isDark,
+            currentThemeId: widget.currentThemeId,
             onThemeChanged: widget.onThemeChanged,
             version: _state.version,
             updateAvailable: _state.updateAvailable,

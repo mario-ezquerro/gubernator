@@ -122,7 +122,7 @@ class GubernatorApp extends StatefulWidget {
 }
 
 class _GubernatorAppState extends State<GubernatorApp> {
-  bool _isDark = true;
+  String _currentThemeId = 'dark';
   String _displayName = 'Admin';
   UserSession? _currentUser;
   bool _checkingAuth = true;
@@ -138,6 +138,12 @@ class _GubernatorAppState extends State<GubernatorApp> {
   @override
   void initState() {
     super.initState();
+    try {
+      final savedTheme = html.window.localStorage['gbnt_theme'];
+      if (savedTheme != null && savedTheme.isNotEmpty) {
+        _currentThemeId = savedTheme;
+      }
+    } catch (_) {}
     _registerActivity();
     try {
       _mouseSub = html.window.onMouseMove.listen((_) => _registerActivity());
@@ -235,12 +241,14 @@ class _GubernatorAppState extends State<GubernatorApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeDef = GubernatorTheme.getThemeDef(_currentThemeId);
+    final activeThemeData = GubernatorTheme.getThemeData(_currentThemeId);
+
     return MaterialApp(
       title: 'Gubernator Dashboard',
       debugShowCheckedModeBanner: false,
-      theme: GubernatorTheme.light(),
-      darkTheme: GubernatorTheme.dark(),
-      themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
+      theme: activeThemeData,
+      themeMode: themeDef.isDark ? ThemeMode.dark : ThemeMode.light,
       home: _checkingAuth
           ? const Scaffold(
               body: Center(
@@ -275,8 +283,13 @@ class _GubernatorAppState extends State<GubernatorApp> {
                   onPointerHover: (_) => _registerActivity(),
                   onPointerSignal: (_) => _registerActivity(),
                   child: AppShell(
-                    isDark: _isDark,
-                    onThemeChanged: (dark) => setState(() => _isDark = dark),
+                    currentThemeId: _currentThemeId,
+                    onThemeChanged: (themeId) {
+                      setState(() => _currentThemeId = themeId);
+                      try {
+                        html.window.localStorage['gbnt_theme'] = themeId;
+                      } catch (_) {}
+                    },
                     displayName: _displayName,
                     onNameChanged: (name) => setState(() => _displayName = name),
                     currentUser: _currentUser,

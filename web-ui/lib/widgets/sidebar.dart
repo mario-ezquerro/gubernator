@@ -23,8 +23,8 @@ class SidebarItem {
 class GubernatorSidebar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
-  final bool isDark;
-  final ValueChanged<bool> onThemeChanged;
+  final String currentThemeId;
+  final ValueChanged<String> onThemeChanged;
   final String version;
   final bool updateAvailable;
   final String latestVersion;
@@ -36,11 +36,13 @@ class GubernatorSidebar extends StatefulWidget {
   final VoidCallback onToggleCollapse;
   final bool monitorRunning;
 
+  bool get isDark => GubernatorTheme.getThemeDef(currentThemeId).isDark;
+
   const GubernatorSidebar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
-    required this.isDark,
+    required this.currentThemeId,
     required this.onThemeChanged,
     required this.version,
     this.updateAvailable = false,
@@ -111,13 +113,12 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final bgColor = isDark ? sidebarDarkBg : sidebarLightBg;
-    final borderColor = isDark ? sidebarDarkBorder : sidebarLightBorder;
-    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final mutedColor = isDark
-        ? Colors.white.withValues(alpha: 0.4)
-        : const Color(0xFF94A3B8);
+    final themeDef = GubernatorTheme.getThemeDef(widget.currentThemeId);
+    final isDark = themeDef.isDark;
+    final bgColor = themeDef.sidebarBg;
+    final borderColor = themeDef.sidebarBorder;
+    final textColor = themeDef.textPrimary;
+    final mutedColor = themeDef.textSecondary;
 
     return AnimatedBuilder(
       animation: _widthAnimation,
@@ -377,11 +378,10 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
     required Color mutedColor,
   }) {
     final isSelected = widget.selectedIndex == index;
-    final isDark = theme.brightness == Brightness.dark;
+    final themeDef = GubernatorTheme.getThemeDef(widget.currentThemeId);
+    final isDark = themeDef.isDark;
 
-    final selectedBg = isDark
-        ? sidebarActiveIndicator.withValues(alpha: 0.12)
-        : sidebarActiveIndicator.withValues(alpha: 0.08);
+    final selectedBg = themeDef.sidebarActive.withValues(alpha: isDark ? 0.15 : 0.1);
     final hoverBg = isDark
         ? Colors.white.withValues(alpha: 0.05)
         : Colors.black.withValues(alpha: 0.04);
@@ -417,7 +417,7 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
                     height: 20,
                     margin: EdgeInsets.only(right: isExpanded ? 10 : 0),
                     decoration: BoxDecoration(
-                      color: sidebarActiveIndicator,
+                      color: themeDef.sidebarActive,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   )
@@ -542,10 +542,17 @@ class _GubernatorSidebarState extends State<GubernatorSidebar>
           // Theme toggle
           _buildBottomButton(
             icon: isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            label: isDark ? 'Light Mode' : 'Dark Mode',
+            label: isDark ? 'Light Theme' : 'Dark Theme',
             isExpanded: isExpanded,
             textColor: mutedColor,
-            onTap: () => widget.onThemeChanged(!widget.isDark),
+            onTap: () {
+              final def = GubernatorTheme.getThemeDef(widget.currentThemeId);
+              if (def.isDark) {
+                widget.onThemeChanged('light');
+              } else {
+                widget.onThemeChanged('dark');
+              }
+            },
           ),
 
           const SizedBox(height: 4),

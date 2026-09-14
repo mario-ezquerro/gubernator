@@ -2,11 +2,12 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../theme/theme.dart';
 
 /// Settings dialog with user profile, password change, appearance, and About with adoption metrics.
 class SettingsDialog extends StatefulWidget {
-  final bool isDark;
-  final ValueChanged<bool> onThemeChanged;
+  final String currentThemeId;
+  final ValueChanged<String> onThemeChanged;
   final String displayName;
   final ValueChanged<String> onNameChanged;
   final String version;
@@ -14,7 +15,7 @@ class SettingsDialog extends StatefulWidget {
 
   const SettingsDialog({
     super.key,
-    required this.isDark,
+    required this.currentThemeId,
     required this.onThemeChanged,
     required this.displayName,
     required this.onNameChanged,
@@ -41,6 +42,7 @@ class _SettingsDialogState extends State<SettingsDialog>
 
   AdoptionStatsModel? _adoptionStats;
   bool _loadingStats = false;
+  String _themeFilter = 'all';
 
   @override
   void initState() {
@@ -432,61 +434,142 @@ class _SettingsDialogState extends State<SettingsDialog>
 
   // ─── Appearance Tab ─────────────────────────────────────────────────
   Widget _buildAppearanceTab(ThemeData theme, bool isDark) {
+    final activeTheme = GubernatorTheme.getThemeDef(widget.currentThemeId);
+    final allThemes = GubernatorTheme.allThemes;
+    final filteredThemes = allThemes.where((t) {
+      if (_themeFilter == 'dark') return t.isDark;
+      if (_themeFilter == 'light') return !t.isDark;
+      return true;
+    }).toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Theme',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Text(
-            'Choose between light and dark mode for the dashboard.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Theme cards
           Row(
             children: [
               Expanded(
-                child: _ThemeCard(
-                  title: 'Light',
-                  icon: Icons.light_mode,
-                  isSelected: !isDark,
-                  color: const Color(0xFFF59E0B),
-                  onTap: () => widget.onThemeChanged(false),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Theme Palette',
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose from 13 curated developer and production color palettes.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ThemeCard(
-                  title: 'Dark',
-                  icon: Icons.dark_mode,
-                  isSelected: isDark,
-                  color: const Color(0xFF6366F1),
-                  onTap: () => widget.onThemeChanged(true),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: activeTheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: activeTheme.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(activeTheme.icon, size: 14, color: activeTheme.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      activeTheme.name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: activeTheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
 
-          // Quick toggle
-          Card(
-            child: SwitchListTile(
-              title: const Text('Dark Mode'),
-              subtitle: Text(isDark ? 'Currently using dark theme' : 'Currently using light theme'),
-              secondary: Icon(isDark ? Icons.dark_mode : Icons.light_mode,
-                  color: theme.colorScheme.primary),
-              value: isDark,
-              onChanged: (val) => widget.onThemeChanged(val),
-            ),
+          // Category Filter Chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildFilterChip('all', 'All (${allThemes.length})', Icons.palette_outlined),
+              _buildFilterChip('dark', 'Dark Themes (${allThemes.where((t) => t.isDark).length})', Icons.dark_mode_outlined),
+              _buildFilterChip('light', 'Light Themes (${allThemes.where((t) => !t.isDark).length})', Icons.light_mode_outlined),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Theme Cards Grid
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 480 ? 2 : 1;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filteredThemes.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  mainAxisExtent: 82,
+                ),
+                itemBuilder: (context, idx) {
+                  final t = filteredThemes[idx];
+                  final isSelected = t.id == widget.currentThemeId;
+                  return _ThemeCard(
+                    themeDef: t,
+                    isSelected: isSelected,
+                    onTap: () => widget.onThemeChanged(t.id),
+                  );
+                },
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String filterKey, String label, IconData icon) {
+    final isSelected = _themeFilter == filterKey;
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => setState(() => _themeFilter = filterKey),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
+              : theme.cardColor.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? theme.colorScheme.primary : theme.dividerColor,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: isSelected ? theme.colorScheme.primary : theme.hintColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -868,19 +951,15 @@ class _SettingsDialogState extends State<SettingsDialog>
   }
 }
 
-// ─── Theme Selection Card ─────────────────────────────────────────────────────
+// ─── Rich Theme Selection Card ─────────────────────────────────────────────────────
 class _ThemeCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
+  final GubernatorThemeDef themeDef;
   final bool isSelected;
-  final Color color;
   final VoidCallback onTap;
 
   const _ThemeCard({
-    required this.title,
-    required this.icon,
+    required this.themeDef,
     required this.isSelected,
-    required this.color,
     required this.onTap,
   });
 
@@ -891,35 +970,128 @@ class _ThemeCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? theme.colorScheme.primary : theme.dividerColor,
+            color: isSelected ? themeDef.primary : theme.dividerColor.withValues(alpha: 0.7),
             width: isSelected ? 2 : 1,
           ),
           color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.08)
+              ? themeDef.primary.withValues(alpha: 0.08)
               : theme.cardTheme.color,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: themeDef.primary.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-        child: Column(
+        child: Row(
           children: [
-            Icon(icon, size: 36, color: isSelected ? color : theme.hintColor),
-            const SizedBox(height: 8),
-            Text(title,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                )),
-            if (isSelected) ...[
-              const SizedBox(height: 4),
-              Icon(Icons.check_circle,
-                  size: 18, color: theme.colorScheme.primary),
-            ],
+            // Theme icon badge with canvas color
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: themeDef.canvas,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: themeDef.border),
+              ),
+              child: Center(
+                child: Icon(themeDef.icon, size: 18, color: themeDef.primary),
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // Title, Subtitle, and Swatches
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          themeDef.name,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color: isSelected ? themeDef.primary : theme.colorScheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (!themeDef.isDark) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'LIGHT',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.amber),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    themeDef.subtitle,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 5),
+
+                  // Swatch dots
+                  Row(
+                    children: [
+                      _buildSwatchDot(themeDef.canvas, 'Canvas: ${themeDef.name}'),
+                      const SizedBox(width: 4),
+                      _buildSwatchDot(themeDef.surface, 'Surface Card'),
+                      const SizedBox(width: 4),
+                      _buildSwatchDot(themeDef.primary, 'Primary Accent'),
+                      const SizedBox(width: 4),
+                      _buildSwatchDot(themeDef.secondary, 'Secondary Accent'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Checkmark / selection indicator
+            if (isSelected)
+              Icon(Icons.check_circle, size: 20, color: themeDef.primary)
+            else
+              Icon(Icons.circle_outlined, size: 18, color: theme.dividerColor),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwatchDot(Color color, String tooltip) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 0.75),
         ),
       ),
     );
