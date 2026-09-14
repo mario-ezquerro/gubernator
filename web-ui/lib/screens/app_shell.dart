@@ -68,6 +68,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    ApiService.sendTimeBeacon();
     _fetchData();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchData());
     // Auto-collapse on narrow screens

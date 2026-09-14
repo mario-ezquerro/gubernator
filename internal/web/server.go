@@ -44,6 +44,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/storage"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
+	"github.com/mario-ezquerro/gubernator/internal/timesync"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -441,6 +442,7 @@ func StartDashboard() {
 	r.POST("/api/auth/mfa/verify", authMFAVerifyHandler)
 	r.POST("/api/auth/mfa/setup-complete", authMFASetupCompleteHandler)
 	r.POST("/api/auth/logout", authLogoutHandler)
+	r.POST("/api/system/time-beacon", timeBeaconHandler)
 
 	// OIDC / OAuth2 — Public SSO flow (no auth required: browser redirects)
 	r.GET("/api/auth/oidc/:id/authorize", oidcAuthorizeHandler)
@@ -6290,8 +6292,9 @@ func listSecurityAuditLogsHandler(c *gin.Context) {
 // ---------------------------------------------------------------------------
 
 type authMFAVerifyRequest struct {
-	MFAToken string `json:"mfa_token" binding:"required"`
-	Code     string `json:"code" binding:"required"`
+	MFAToken        string `json:"mfa_token" binding:"required"`
+	Code            string `json:"code" binding:"required"`
+	ClientTimestamp int64  `json:"client_timestamp"`
 }
 
 func authMFAVerifyHandler(c *gin.Context) {
@@ -6334,9 +6337,19 @@ func authMFAVerifyHandler(c *gin.Context) {
 	cleanCode := strings.TrimSpace(req.Code)
 	verified := false
 
-	// 1. Check TOTP Code
+	// 1. Check TOTP Code against server local time
 	if localUser.MFASecret != "" && auth.ValidateCode(localUser.MFASecret, cleanCode) {
 		verified = true
+	}
+
+	// 1b. Check TOTP Code against client-provided timestamp (Laptop sleep drift compensation)
+	if !verified && localUser.MFASecret != "" && req.ClientTimestamp > 1704067200 {
+		clientTime := time.Unix(req.ClientTimestamp, 0)
+		if auth.ValidateCodeAtTime(localUser.MFASecret, cleanCode, clientTime) {
+			verified = true
+			// Synchronize host system clock so that subsequent token generation and logs reflect real time
+			_ = timesync.SyncFromClientTimestamp(req.ClientTimestamp)
+		}
 	}
 
 	// 2. Check Backup Recovery Codes
@@ -6378,10 +6391,11 @@ func authMFAVerifyHandler(c *gin.Context) {
 }
 
 type authMFASetupCompleteRequest struct {
-	MFAToken    string   `json:"mfa_token" binding:"required"`
-	Secret      string   `json:"secret" binding:"required"`
-	Code        string   `json:"code" binding:"required"`
-	BackupCodes []string `json:"backup_codes"`
+	MFAToken        string   `json:"mfa_token" binding:"required"`
+	Secret          string   `json:"secret" binding:"required"`
+	Code            string   `json:"code" binding:"required"`
+	BackupCodes     []string `json:"backup_codes"`
+	ClientTimestamp int64    `json:"client_timestamp"`
 }
 
 func authMFASetupCompleteHandler(c *gin.Context) {
@@ -6398,7 +6412,15 @@ func authMFASetupCompleteHandler(c *gin.Context) {
 	}
 
 	cleanCode := strings.TrimSpace(req.Code)
-	if !auth.ValidateCode(req.Secret, cleanCode) {
+	setupVerified := auth.ValidateCode(req.Secret, cleanCode)
+	if !setupVerified && req.ClientTimestamp > 1704067200 {
+		clientTime := time.Unix(req.ClientTimestamp, 0)
+		if auth.ValidateCodeAtTime(req.Secret, cleanCode, clientTime) {
+			setupVerified = true
+			_ = timesync.SyncFromClientTimestamp(req.ClientTimestamp)
+		}
+	}
+	if !setupVerified {
 		logAudit(c, userSession.Username, "LOCAL", "MFA_FAILED", "FAILURE", "Invalid TOTP code provided during enforced MFA enrollment (ENS op.acc.6)")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid TOTP verification code. Ensure your device time is synchronized."})
 		return
@@ -6537,10 +6559,11 @@ func authMFAQRCodeHandler(c *gin.Context) {
 }
 
 type authMFAEnableRequest struct {
-	UserID      interface{} `json:"user_id"`
-	Secret      string      `json:"secret" binding:"required"`
-	Code        string      `json:"code" binding:"required"`
-	BackupCodes []string    `json:"backup_codes"`
+	UserID          interface{} `json:"user_id"`
+	Secret          string      `json:"secret" binding:"required"`
+	Code            string      `json:"code" binding:"required"`
+	BackupCodes     []string    `json:"backup_codes"`
+	ClientTimestamp int64       `json:"client_timestamp"`
 }
 
 func authMFAEnableHandler(c *gin.Context) {
@@ -6557,7 +6580,15 @@ func authMFAEnableHandler(c *gin.Context) {
 	}
 
 	cleanCode := strings.TrimSpace(req.Code)
-	if !auth.ValidateCode(req.Secret, cleanCode) {
+	enableVerified := auth.ValidateCode(req.Secret, cleanCode)
+	if !enableVerified && req.ClientTimestamp > 1704067200 {
+		clientTime := time.Unix(req.ClientTimestamp, 0)
+		if auth.ValidateCodeAtTime(req.Secret, cleanCode, clientTime) {
+			enableVerified = true
+			_ = timesync.SyncFromClientTimestamp(req.ClientTimestamp)
+		}
+	}
+	if !enableVerified {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code. Ensure your device time is synchronized."})
 		return
 	}
@@ -6657,6 +6688,44 @@ func authMFADisableHandler(c *gin.Context) {
 
 	logAudit(c, session.Username, "LOCAL", "MFA_DISABLED", "SUCCESS", fmt.Sprintf("MFA deactivated for user '%s'", localUser.Username))
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
+}
+
+// ---------------------------------------------------------------------------
+// TIME BEACON / CLOCK SKEW DRIFT RECOVERY HANDLER
+// ---------------------------------------------------------------------------
+
+type timeBeaconRequest struct {
+	ClientTimestamp int64 `json:"client_timestamp" binding:"required"`
+}
+
+func timeBeaconHandler(c *gin.Context) {
+	var req timeBeaconRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "client_timestamp is required"})
+		return
+	}
+
+	serverNow := time.Now().Unix()
+	drift := req.ClientTimestamp - serverNow
+	adjusted := false
+
+	// Validate sanity (years 2024 to 2038)
+	if req.ClientTimestamp > 1704067200 && req.ClientTimestamp < 2145916800 {
+		// If drift is 2 seconds or more, automatically align host VM clock
+		if drift >= 2 || drift <= -2 {
+			if err := timesync.SyncFromClientTimestamp(req.ClientTimestamp); err == nil {
+				adjusted = true
+				serverNow = time.Now().Unix()
+				drift = req.ClientTimestamp - serverNow
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"server_timestamp": serverNow,
+		"drift_seconds":    drift,
+		"adjusted":         adjusted,
+	})
 }
 
 // ---------------------------------------------------------------------------

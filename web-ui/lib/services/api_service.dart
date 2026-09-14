@@ -1199,18 +1199,36 @@ class ApiService {
     return {'success': false, 'error': data['error'] ?? 'Login failed (${response.statusCode})'};
   }
 
+  /// Sends a client time beacon to the server to detect and correct VM sleep clock drift.
+  static Future<Map<String, dynamic>?> sendTimeBeacon() async {
+    try {
+      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final response = await http.post(
+        Uri.parse('/api/system/time-beacon'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'client_timestamp': nowSec}),
+      ).timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Completes MFA login verification using TOTP 6-digit code or recovery code.
   static Future<Map<String, dynamic>> verifyMFA({
     required String mfaToken,
     required String code,
   }) async {
     final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final response = await http.post(
       Uri.parse('/api/auth/mfa/verify'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mfa_token': mfaToken,
         'code': cleanCode,
+        'client_timestamp': nowSec,
       }),
     );
 
@@ -1230,6 +1248,7 @@ class ApiService {
     List<String>? backupCodes,
   }) async {
     final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final response = await http.post(
       Uri.parse('/api/auth/mfa/setup-complete'),
       headers: {'Content-Type': 'application/json'},
@@ -1238,6 +1257,7 @@ class ApiService {
         'secret': secret.trim().replaceAll(' ', '').replaceAll('-', ''),
         'code': cleanCode,
         'backup_codes': backupCodes ?? [],
+        'client_timestamp': nowSec,
       }),
     );
 
@@ -1273,6 +1293,7 @@ class ApiService {
     List<String>? backupCodes,
   }) async {
     final cleanCode = code.trim().replaceAll(' ', '').replaceAll('-', '');
+    final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final response = await http.post(
       Uri.parse('/api/auth/mfa/enable'),
       headers: authHeaders,
@@ -1281,6 +1302,7 @@ class ApiService {
         'secret': secret.trim().replaceAll(' ', '').replaceAll('-', ''),
         'code': cleanCode,
         'backup_codes': backupCodes ?? [],
+        'client_timestamp': nowSec,
       }),
     );
     final data = jsonDecode(response.body);

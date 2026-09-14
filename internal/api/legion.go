@@ -142,7 +142,10 @@ func NodeHeartbeatHandler(c *gin.Context) {
 	nodemanager.ClearAuthMismatch(c.ClientIP())
 	nodemanager.ClearAuthMismatch(existingNode.IP)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Heartbeat received"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":          "Heartbeat received",
+		"server_timestamp": time.Now().Unix(),
+	})
 }
 
 // @Summary Get Cluster Join Token

@@ -91,11 +91,10 @@ func GenerateCode(secret string, t time.Time) (string, error) {
 	return fmt.Sprintf(format, codeNum), nil
 }
 
-// ValidateCode checks a user-provided 6-digit TOTP code against the secret,
-// allowing a drift tolerance of +/- 3 time steps (+/- 90 seconds) to accommodate
-// slight clock skews between mobile devices and the server, and strips any spaces
-// or dashes entered by the user.
-func ValidateCode(secret, userCode string) bool {
+// ValidateCodeAtTime checks a user-provided 6-digit TOTP code against the secret at a specific
+// reference time, allowing a drift tolerance of +/- 3 time steps (+/- 90 seconds) to accommodate
+// slight clock skews between mobile devices and the server, and strips any spaces or dashes.
+func ValidateCodeAtTime(secret, userCode string, refTime time.Time) bool {
 	// Strip spaces, dashes, tabs, dots that users might type or copy from authenticator apps (e.g. "123 456")
 	cleanCode := strings.Map(func(r rune) rune {
 		if r >= '0' && r <= '9' {
@@ -109,12 +108,11 @@ func ValidateCode(secret, userCode string) bool {
 	}
 
 	cleanSecret := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(secret), " ", ""), "-", ""))
-	now := time.Now()
 	// Allow drift of current step, +/- 1 (30s), +/- 2 (60s), +/- 3 (90s)
 	steps := []int{0, -1, 1, -2, 2, -3, 3}
 
 	for _, step := range steps {
-		t := now.Add(time.Duration(step*int(DefaultTOTPConfig.Period)) * time.Second)
+		t := refTime.Add(time.Duration(step*int(DefaultTOTPConfig.Period)) * time.Second)
 		expectedCode, err := GenerateCode(cleanSecret, t)
 		if err != nil {
 			continue
@@ -124,6 +122,11 @@ func ValidateCode(secret, userCode string) bool {
 		}
 	}
 	return false
+}
+
+// ValidateCode checks a user-provided 6-digit TOTP code against the secret using the current local time.
+func ValidateCode(secret, userCode string) bool {
+	return ValidateCodeAtTime(secret, userCode, time.Now())
 }
 
 // GenerateBackupCodes produces 8 cryptographically random alphanumeric backup recovery codes (e.g., "ABCD-1234").

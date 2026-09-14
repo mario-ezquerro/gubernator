@@ -220,3 +220,101 @@ func TestMFASetupQRCode(t *testing.T) {
 	}
 }
 
+func TestMFASleepClockDriftCompensation(t *testing.T) {
+	router := setupWebTestDB(t)
+	router.POST("/api/system/time-beacon", timeBeaconHandler)
+
+	// Create test user with MFA enabled
+	secret, _ := auth.GenerateBase32Secret()
+	hash, _ := bcrypt.GenerateFromPassword([]byte("StrongPass123!"), bcrypt.DefaultCost)
+	testUser := db.LocalUser{
+		ID:           "usr-drift-test",
+		Username:     "drifttest",
+		PasswordHash: string(hash),
+		DisplayName:  "Drift Test User",
+		Role:         "admin",
+		Enabled:      true,
+		MFAEnabled:   true,
+		MFASecret:    secret,
+	}
+	db.DB.Create(&testUser)
+
+	// Step 1: Login to obtain mfa_token
+	loginPayload := map[string]string{
+		"username": "drifttest",
+		"password": "StrongPass123!",
+	}
+	loginBody, _ := json.Marshal(loginPayload)
+	reqLogin, _ := http.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(loginBody))
+	reqLogin.Header.Set("Content-Type", "application/json")
+	wLogin := httptest.NewRecorder()
+	router.ServeHTTP(wLogin, reqLogin)
+
+	if wLogin.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK from login, got %d: %s", wLogin.Code, wLogin.Body.String())
+	}
+
+	var loginResp map[string]interface{}
+	_ = json.Unmarshal(wLogin.Body.Bytes(), &loginResp)
+	mfaToken := loginResp["mfa_token"].(string)
+
+	// Generate TOTP code 2 hours in the future (simulating host VM asleep for 2h)
+	clientTime := time.Now().Add(2 * time.Hour)
+	driftedCode, err := auth.GenerateCode(secret, clientTime)
+	if err != nil {
+		t.Fatalf("failed to generate code: %v", err)
+	}
+
+	// Step 2: Attempt verify WITHOUT client_timestamp -> MUST FAIL (server clock is 2h behind)
+	badPayload := map[string]interface{}{
+		"mfa_token": mfaToken,
+		"code":      driftedCode,
+	}
+	badBody, _ := json.Marshal(badPayload)
+	reqBad, _ := http.NewRequest("POST", "/api/auth/mfa/verify", bytes.NewBuffer(badBody))
+	reqBad.Header.Set("Content-Type", "application/json")
+	wBad := httptest.NewRecorder()
+	router.ServeHTTP(wBad, reqBad)
+
+	if wBad.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized for desynced code without client_timestamp, got %d", wBad.Code)
+	}
+
+	// Step 3: Attempt verify WITH client_timestamp -> MUST SUCCEED via drift compensation!
+	goodPayload := map[string]interface{}{
+		"mfa_token":        mfaToken,
+		"code":             driftedCode,
+		"client_timestamp": clientTime.Unix(),
+	}
+	goodBody, _ := json.Marshal(goodPayload)
+	reqGood, _ := http.NewRequest("POST", "/api/auth/mfa/verify", bytes.NewBuffer(goodBody))
+	reqGood.Header.Set("Content-Type", "application/json")
+	wGood := httptest.NewRecorder()
+	router.ServeHTTP(wGood, reqGood)
+
+	if wGood.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for drifted code with client_timestamp, got %d: %s", wGood.Code, wGood.Body.String())
+	}
+
+	var goodResp map[string]interface{}
+	_ = json.Unmarshal(wGood.Body.Bytes(), &goodResp)
+	if goodResp["token"] == nil || goodResp["token"] == "" {
+		t.Fatalf("expected valid session token, got %+v", goodResp)
+	}
+
+	// Step 4: Test time beacon endpoint
+	beaconPayload := map[string]interface{}{
+		"client_timestamp": clientTime.Unix(),
+	}
+	beaconBody, _ := json.Marshal(beaconPayload)
+	reqBeacon, _ := http.NewRequest("POST", "/api/system/time-beacon", bytes.NewBuffer(beaconBody))
+	reqBeacon.Header.Set("Content-Type", "application/json")
+	wBeacon := httptest.NewRecorder()
+	router.ServeHTTP(wBeacon, reqBeacon)
+
+	if wBeacon.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK from /api/system/time-beacon, got %d: %s", wBeacon.Code, wBeacon.Body.String())
+	}
+}
+
+

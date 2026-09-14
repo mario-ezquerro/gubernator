@@ -17,6 +17,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
+	"github.com/mario-ezquerro/gubernator/internal/timesync"
 	"github.com/spf13/cobra"
 )
 
@@ -240,6 +241,16 @@ var legionJoinCmd = &cobra.Command{
 			} else {
 				if resp.StatusCode != http.StatusOK {
 					fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
+				} else {
+					var hbResp struct {
+						ServerTimestamp int64 `json:"server_timestamp"`
+					}
+					if err := json.NewDecoder(resp.Body).Decode(&hbResp); err == nil && hbResp.ServerTimestamp > 1704067200 {
+						drift := hbResp.ServerTimestamp - time.Now().Unix()
+						if drift >= 2 || drift <= -2 {
+							_ = timesync.SyncSystemClock(time.Unix(hbResp.ServerTimestamp, 0))
+						}
+					}
 				}
 				resp.Body.Close()
 			}

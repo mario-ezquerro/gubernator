@@ -55,6 +55,20 @@ func TestTOTPGenerationAndValidation(t *testing.T) {
 		}
 	}
 
+	// Validate code generated 1 hour in the future (e.g. server clock is 1h behind due to VM sleep)
+	futureTime := now.Add(1 * time.Hour)
+	futureCode, err := GenerateCode(secret, futureTime)
+	if err == nil {
+		// Normal ValidateCode with server's time should FAIL
+		if ValidateCode(secret, futureCode) {
+			t.Errorf("expected 1-hour desynced code to fail against server time")
+		}
+		// ValidateCodeAtTime with client's reference time should SUCCEED
+		if !ValidateCodeAtTime(secret, futureCode, futureTime) {
+			t.Errorf("expected 1-hour desynced code to succeed when evaluated at client reference time")
+		}
+	}
+
 	// Validate incorrect code
 	// Validate RFC 6238 standard test vectors with key "12345678901234567890"
 	// Base32 encoding of "12345678901234567890" is "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"

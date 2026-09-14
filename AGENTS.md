@@ -1285,3 +1285,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Adaptive Sidebar & Component Styling (`web-ui/lib/widgets/sidebar.dart`, `web-ui/lib/screens/app_shell.dart`):**
   - Sidebar background, surface, border, and active indicator colors dynamically adapt to the active theme palette.
   - Quick bottom toggle button allows switching between dark and light palettes.
+
+### 120. Laptop Sleep Drift Recovery, Client Time Beacon & Resilient MFA Subsystem (`v2.94.3`)
+* **Laptop Sleep & VM Standby Clock Drift Solution:**
+  - Resolved the classic hypervisor/Multipass issue on macOS/Windows laptops where closing the lid freezes virtual machines, causing guest OS clocks to desynchronize and lag behind real time upon waking, which previously led to TOTP RFC 6238 MFA authentication failures.
+* **Client-Assisted Time Drift Compensation & Self-Healing:**
+  - Web UI sends `client_timestamp` (`DateTime.now().millisecondsSinceEpoch ~/ 1000`) with MFA authentication and setup calls (`verifyMFA`, `completeEnforcedMFASetup`, `enableMFA`).
+  - Backend evaluates TOTP against local server time first; if unaligned, it evaluates against the client reference timestamp via `auth.ValidateCodeAtTime`.
+  - When verified, Gubernator immediately self-heals and corrects the host VM's system clock (`date -u -s @<timestamp>`), synchronizing the OS without requiring external network connectivity (100% offline-ready on airplanes, trains, or offline environments).
+* **Automatic Web UI Time Beacon (`/api/system/time-beacon`):**
+  - Sends a proactive client time beacon on `login_screen.dart` and `app_shell.dart` initialization, instantly detecting and correcting clock skew before credentials or MFA codes are even entered.
+* **In-Engine Wakeup Watchdog (`internal/timesync/timesync.go`):**
+  - Monitors high-resolution monotonic tick intervals. When a sudden wall-clock/monotonic jump (`elapsed > 4s` on a 1s ticker) is detected, Gubernator immediately triggers active out-of-band network time synchronization across public HTTP endpoints (`Google`, `Cloudflare`, `1.1.1.1`).
+* **Cluster-Wide Worker Clock Synchronization:**
+  - Manager node returns its authoritative `server_timestamp` on worker heartbeats (`/v1/node/heartbeat`). Centurion worker agents (`internal/cli/legion.go`) automatically align their local system clocks within each 10-second heartbeat cycle.
+* **Systemd High-Frequency Timer Tuning:**
+  - Reduced `gbnt-timesync.timer` interval from 60s to 10s across all cluster nodes (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`) with multi-endpoint failover.
+

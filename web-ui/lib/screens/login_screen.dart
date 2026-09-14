@@ -49,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _timeoutNotice = widget.timeoutMessage;
+    ApiService.sendTimeBeacon();
     _loadProviders();
     _checkOIDCCallback();
   }
