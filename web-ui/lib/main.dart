@@ -23,8 +23,19 @@ html.IFrameElement getOrCreateIframe(String viewType, String Function() srcBuild
   });
 }
 
+/// Cleans up any stale Grafana session expiry cookies that cause infinite token-refresh reload loops.
+void clearGrafanaStaleCookies() {
+  try {
+    for (final path in ['/grafana', '/grafana/', '/']) {
+      html.document.cookie = 'grafana_session_expiry=; Path=$path; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+      html.document.cookie = 'grafana_session=; Path=$path; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    }
+  } catch (_) {}
+}
+
 /// Force reload an embedded iframe if needed by re-triggering its src.
 void reloadIframe(String viewType) {
+  clearGrafanaStaleCookies();
   final iframe = registeredIframes[viewType];
   if (iframe != null) {
     final currentSrc = iframe.src;
@@ -36,6 +47,7 @@ void reloadIframe(String viewType) {
 }
 
 void main() {
+  clearGrafanaStaleCookies();
   // Register the iframe view factory for Grafana (Cluster Overview)
   ui_web.platformViewRegistry.registerViewFactory(
     'grafana-iframe',

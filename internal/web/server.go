@@ -3794,6 +3794,20 @@ func nodeLabelsHandler(c *gin.Context) {
 }
 
 func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+	// Intercept Grafana auth-tokens rotate endpoint to prevent infinite reload loops
+	// caused by post-sleep stale session token expiration when using Auth Proxy.
+	if strings.HasSuffix(c.Request.URL.Path, "/api/user/auth-tokens/rotate") {
+		for _, p := range []string{"/grafana", "/grafana/", "/"} {
+			c.Writer.Header().Add("Set-Cookie", fmt.Sprintf("grafana_session_expiry=; Path=%s; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax", p))
+			c.Writer.Header().Add("Set-Cookie", fmt.Sprintf("grafana_session=; Path=%s; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax", p))
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Token refreshed",
+			"user":    "admin",
+		})
+		return
+	}
+
 	targetHost := "gbnt-monitor-grafana:3000"
 	_, err := net.LookupHost("gbnt-monitor-grafana")
 	if err != nil {
@@ -3853,6 +3867,13 @@ func grafanaProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPas
 		ModifyResponse: func(resp *http.Response) error {
 			resp.Header.Del("X-Frame-Options")
 			resp.Header.Del("Content-Security-Policy")
+			// If Grafana returns 401 on any sub-request, clear the expired cookies so the browser stops looping
+			if resp.StatusCode == http.StatusUnauthorized {
+				for _, p := range []string{"/grafana", "/grafana/", "/"} {
+					resp.Header.Add("Set-Cookie", fmt.Sprintf("grafana_session_expiry=; Path=%s; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax", p))
+					resp.Header.Add("Set-Cookie", fmt.Sprintf("grafana_session=; Path=%s; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax", p))
+				}
+			}
 			return nil
 		},
 	}

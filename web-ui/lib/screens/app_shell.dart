@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../theme/theme.dart';
 import '../widgets/sidebar.dart';
@@ -84,6 +85,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    clearGrafanaStaleCookies();
     ApiService.sendTimeBeacon();
     _fetchData();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchData());
@@ -455,6 +457,9 @@ class _AppShellState extends State<AppShell> {
               setState(() {
                 if (index == 3) {
                   _tasksFilterStack = null;
+                }
+                if (index == 9 || index == 11) {
+                  clearGrafanaStaleCookies();
                 }
                 _selectedIndex = index;
               });

@@ -15,6 +15,12 @@ class _NetworkPageState extends State<NetworkPage> with AutomaticKeepAliveClient
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    clearGrafanaStaleCookies();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
@@ -103,7 +109,7 @@ class _NetworkPageState extends State<NetworkPage> with AutomaticKeepAliveClient
             padding: EdgeInsets.all(16),
             child: Card(
               elevation: 0,
-              clipBehavior: Clip.antiAlias,
+              clipBehavior: Clip.none,
               child: RepaintBoundary(
                 key: ValueKey('grafana-network-repaint-boundary'),
                 child: HtmlElementView(
