@@ -8,45 +8,64 @@ import 'screens/login_screen.dart';
 import 'services/api_service.dart';
 import 'theme/theme.dart';
 
-void main() {
-  // Register the iframe view factory for Grafana
-  ui_web.platformViewRegistry.registerViewFactory(
-    'grafana-iframe',
-    (int viewId) => html.IFrameElement()
-      ..src = '/grafana/'
+/// Global registry of persistent iframe DOM elements to avoid tearing down and reloading
+/// iframes during Flutter Web widget tree updates or post-sleep wakeups.
+final Map<String, html.IFrameElement> registeredIframes = {};
+
+html.IFrameElement getOrCreateIframe(String viewType, String Function() srcBuilder) {
+  return registeredIframes.putIfAbsent(viewType, () {
+    return html.IFrameElement()
+      ..src = srcBuilder()
       ..style.border = 'none'
       ..style.width = '100%'
-      ..style.height = '100%',
+      ..style.height = '100%'
+      ..setAttribute('allow', 'fullscreen');
+  });
+}
+
+/// Force reload an embedded iframe if needed by re-triggering its src.
+void reloadIframe(String viewType) {
+  final iframe = registeredIframes[viewType];
+  if (iframe != null) {
+    final currentSrc = iframe.src;
+    iframe.src = '';
+    Future.microtask(() {
+      iframe.src = currentSrc;
+    });
+  }
+}
+
+void main() {
+  // Register the iframe view factory for Grafana (Cluster Overview)
+  ui_web.platformViewRegistry.registerViewFactory(
+    'grafana-iframe',
+    (int viewId) => getOrCreateIframe(
+      'grafana-iframe',
+      () => '/grafana/d/gubernator-overview/gubernator-e28094-cluster-overview?orgId=1&kiosk',
+    ),
   );
   // Register the iframe view factory for Grafana Network Monitor
   ui_web.platformViewRegistry.registerViewFactory(
     'grafana-network-iframe',
-    (int viewId) => html.IFrameElement()
-      ..src = '/grafana/d/gubernator-network/gubernator-network-monitor?orgId=1&kiosk'
-      ..style.border = 'none'
-      ..style.width = '100%'
-      ..style.height = '100%',
+    (int viewId) => getOrCreateIframe(
+      'grafana-network-iframe',
+      () => '/grafana/d/gubernator-network/gubernator-e28094-network-monitor?orgId=1&kiosk',
+    ),
   );
   // Register the iframe view factory for Jaeger
   ui_web.platformViewRegistry.registerViewFactory(
     'jaeger-iframe',
-    (int viewId) => html.IFrameElement()
-      ..src = '/jaeger/'
-      ..style.border = 'none'
-      ..style.width = '100%'
-      ..style.height = '100%',
+    (int viewId) => getOrCreateIframe(
+      'jaeger-iframe',
+      () => '/jaeger/',
+    ),
   );
   // Register the iframe view factory for Weave Scope Network Topology
   ui_web.platformViewRegistry.registerViewFactory(
     'scope-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:4040/'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe('scope-iframe', () => 'http://$host:4040/');
     },
   );
   // Register the iframe view factories for OpenSearch Dashboards
@@ -54,60 +73,50 @@ void main() {
     'opensearch-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:5601/app/dashboards#/view/gubernator-cluster-logs'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe(
+        'opensearch-iframe',
+        () => 'http://$host:5601/app/dashboards#/view/gubernator-cluster-logs',
+      );
     },
   );
   ui_web.platformViewRegistry.registerViewFactory(
     'opensearch-siem-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:5601/app/dashboards#/view/gubernator-siem-audit'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe(
+        'opensearch-siem-iframe',
+        () => 'http://$host:5601/app/dashboards#/view/gubernator-siem-audit',
+      );
     },
   );
   ui_web.platformViewRegistry.registerViewFactory(
     'opensearch-discover-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:5601/app/discover#/view/gubernator-all-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe(
+        'opensearch-discover-iframe',
+        () => 'http://$host:5601/app/discover#/view/gubernator-all-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))',
+      );
     },
   );
   ui_web.platformViewRegistry.registerViewFactory(
     'opensearch-discover-errors-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:5601/app/discover#/view/gubernator-error-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe(
+        'opensearch-discover-errors-iframe',
+        () => 'http://$host:5601/app/discover#/view/gubernator-error-logs?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))',
+      );
     },
   );
   ui_web.platformViewRegistry.registerViewFactory(
     'opensearch-traces-iframe',
     (int viewId) {
       final host = html.window.location.hostname ?? 'localhost';
-      return html.IFrameElement()
-        ..src = 'http://$host:5601/app/observability-dashboards#/trace_analytics/traces'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..setAttribute('allow', 'fullscreen');
+      return getOrCreateIframe(
+        'opensearch-traces-iframe',
+        () => 'http://$host:5601/app/observability-dashboards#/trace_analytics/traces',
+      );
     },
   );
   runApp(const GubernatorApp());

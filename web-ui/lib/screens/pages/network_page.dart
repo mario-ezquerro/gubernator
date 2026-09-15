@@ -1,12 +1,22 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import '../../main.dart';
 
-/// Network monitoring page — embeds the Grafana Network Monitor iframe with toolbar controls.
-class NetworkPage extends StatelessWidget {
+/// Network monitoring page — embeds the Grafana Network Monitor iframe with toolbar controls, keep-alive state, and reload.
+class NetworkPage extends StatefulWidget {
   const NetworkPage({super.key});
 
   @override
+  State<NetworkPage> createState() => _NetworkPageState();
+}
+
+class _NetworkPageState extends State<NetworkPage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final host = html.window.location.hostname ?? 'localhost';
 
@@ -62,9 +72,15 @@ class NetworkPage extends StatelessWidget {
                 ],
               ),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: 'Recargar Monitor de Red embebido',
+                onPressed: () => reloadIframe('grafana-network-iframe'),
+              ),
+              const SizedBox(width: 4),
               OutlinedButton.icon(
                 onPressed: () {
-                  html.window.open('/grafana/d/gubernator-network/gubernator-network-monitor?orgId=1', '_blank');
+                  html.window.open('/grafana/d/gubernator-network/gubernator-e28094-network-monitor?orgId=1', '_blank');
                 },
                 icon: const Icon(Icons.open_in_new, size: 16),
                 label: const Text('Open in Tab (Proxy)'),
@@ -72,7 +88,7 @@ class NetworkPage extends StatelessWidget {
               const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: () {
-                  html.window.open('http://$host:3000/grafana/d/gubernator-network/gubernator-network-monitor?orgId=1', '_blank');
+                  html.window.open('http://$host:3000/grafana/d/gubernator-network/gubernator-e28094-network-monitor?orgId=1', '_blank');
                 },
                 icon: const Icon(Icons.launch, size: 16),
                 label: const Text('Direct Port :3000'),
@@ -81,14 +97,20 @@ class NetworkPage extends StatelessWidget {
           ),
         ),
 
-        // IFrame View
+        // IFrame View — wrapped with RepaintBoundary and stable key to prevent detachment
         const Expanded(
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Card(
               elevation: 0,
               clipBehavior: Clip.antiAlias,
-              child: HtmlElementView(viewType: 'grafana-network-iframe'),
+              child: RepaintBoundary(
+                key: ValueKey('grafana-network-repaint-boundary'),
+                child: HtmlElementView(
+                  key: ValueKey('grafana-network-element-view'),
+                  viewType: 'grafana-network-iframe',
+                ),
+              ),
             ),
           ),
         ),

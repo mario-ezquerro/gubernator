@@ -1,13 +1,23 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import '../../main.dart';
 import '../../widgets/sre_profiles_dialog.dart';
 
-/// Grafana metrics page — embeds the Grafana dashboard with toolbar controls and direct links.
-class GrafanaPage extends StatelessWidget {
+/// Grafana metrics page — embeds the Grafana dashboard with toolbar controls, keep-alive state, and reload.
+class GrafanaPage extends StatefulWidget {
   const GrafanaPage({super.key});
 
   @override
+  State<GrafanaPage> createState() => _GrafanaPageState();
+}
+
+class _GrafanaPageState extends State<GrafanaPage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final host = html.window.location.hostname ?? 'localhost';
 
@@ -103,9 +113,15 @@ class GrafanaPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: 'Recargar Dashboard embebido',
+                onPressed: () => reloadIframe('grafana-iframe'),
+              ),
+              const SizedBox(width: 4),
               OutlinedButton.icon(
                 onPressed: () {
-                  html.window.open('/grafana/d/gubernator/gubernator-cluster-overview?orgId=1', '_blank');
+                  html.window.open('/grafana/d/gubernator-overview/gubernator-e28094-cluster-overview?orgId=1', '_blank');
                 },
                 icon: const Icon(Icons.open_in_new, size: 16),
                 label: const Text('Open Grafana (Proxy)'),
@@ -113,7 +129,7 @@ class GrafanaPage extends StatelessWidget {
               const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: () {
-                  html.window.open('http://$host:3000/grafana/', '_blank');
+                  html.window.open('http://$host:3000/grafana/d/gubernator-overview/gubernator-e28094-cluster-overview?orgId=1', '_blank');
                 },
                 icon: const Icon(Icons.launch, size: 16),
                 label: const Text('Direct Port :3000'),
@@ -122,14 +138,20 @@ class GrafanaPage extends StatelessWidget {
           ),
         ),
 
-        // IFrame View
+        // IFrame View — wrapped with RepaintBoundary and stable key to prevent detachment
         const Expanded(
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Card(
               elevation: 0,
               clipBehavior: Clip.antiAlias,
-              child: HtmlElementView(viewType: 'grafana-iframe'),
+              child: RepaintBoundary(
+                key: ValueKey('grafana-iframe-repaint-boundary'),
+                child: HtmlElementView(
+                  key: ValueKey('grafana-iframe-element-view'),
+                  viewType: 'grafana-iframe',
+                ),
+              ),
             ),
           ),
         ),

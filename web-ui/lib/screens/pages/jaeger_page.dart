@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Jaeger traces page — embeds the Jaeger iframe.
+/// Jaeger traces page — embeds the Jaeger iframe with stable RepaintBoundary.
 class JaegerPage extends StatelessWidget {
   const JaegerPage({super.key});
 
@@ -10,7 +10,13 @@ class JaegerPage extends StatelessWidget {
       padding: EdgeInsets.all(24),
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: HtmlElementView(viewType: 'jaeger-iframe'),
+        child: RepaintBoundary(
+          key: ValueKey('jaeger-iframe-repaint-boundary'),
+          child: HtmlElementView(
+            key: ValueKey('jaeger-iframe-element-view'),
+            viewType: 'jaeger-iframe',
+          ),
+        ),
       ),
     );
   }

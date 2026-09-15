@@ -64,6 +64,22 @@ class _AppShellState extends State<AppShell> {
   String? _lokiFilterContainer;
   String? _tasksFilterStack;
   bool _sidebarCollapsed = false;
+  bool _fetching = false;
+
+  // Cached singleton instances for platform-view / iframe pages to eliminate DOM re-creation
+  late final Widget _grafanaPage = const GrafanaPage(key: ValueKey('page-grafana-singleton'));
+  late final Widget _networkPage = const NetworkPage(key: ValueKey('page-network-singleton'));
+  late final Widget _jaegerPage = const JaegerPage(key: ValueKey('page-jaeger-singleton'));
+  late final Widget _scopePage = const ScopePage(key: ValueKey('page-scope-singleton'));
+  late final Widget _ebpfPage = const EbpfPage(key: ValueKey('page-ebpf-singleton'));
+
+  Duration get _pageTransitionDuration {
+    // If the active page embeds an iframe/platform view, skip cross-fade animation to eliminate GPU recomposition flicker
+    if (_selectedIndex == 9 || _selectedIndex == 11 || _selectedIndex == 12 || _selectedIndex == 13 || _selectedIndex == 14) {
+      return Duration.zero;
+    }
+    return const Duration(milliseconds: 150);
+  }
 
   @override
   void initState() {
@@ -86,6 +102,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _fetchData() async {
+    if (_fetching) return;
+    _fetching = true;
     try {
       final data = await ApiService.fetchState();
       if (mounted) {
@@ -103,6 +121,8 @@ class _AppShellState extends State<AppShell> {
           _error = e.toString();
         });
       }
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -372,7 +392,7 @@ class _AppShellState extends State<AppShell> {
         if (_state.activeSreProfile == 'enterprise-elk') {
           return const OpenSearchDashboardsPage();
         }
-        return const GrafanaPage();
+        return _grafanaPage;
       case 10:
         if (_state.activeSreProfile == 'enterprise-elk') {
           return OpenSearchDiscoverPage(
@@ -392,18 +412,18 @@ class _AppShellState extends State<AppShell> {
             onSwitchedProfile: _fetchData,
           );
         }
-        return const NetworkPage();
+        return _networkPage;
       case 12:
         if (_state.activeSreProfile == 'enterprise-elk') {
           return OpenSearchTracesPage(
             onSwitchedProfile: _fetchData,
           );
         }
-        return const JaegerPage();
+        return _jaegerPage;
       case 13:
-        return const ScopePage();
+        return _scopePage;
       case 14:
-        return const EbpfPage();
+        return _ebpfPage;
       case 15:
         return SecurityPage(state: _state, onRefresh: _fetchData);
       case 16:
@@ -636,7 +656,7 @@ class _AppShellState extends State<AppShell> {
                               ),
                             )
                           : AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
+                              duration: _pageTransitionDuration,
                               layoutBuilder: (currentChild, previousChildren) {
                                 return Stack(
                                   alignment: Alignment.topLeft,
