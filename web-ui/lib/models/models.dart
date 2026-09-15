@@ -3840,3 +3840,93 @@ class ISO27001SummaryModel {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Unified Continuous Compliance & Regulatory Suite Models
+// -----------------------------------------------------------------------------
+
+class StandardScoreModel {
+  final String name;
+  final String code; // "ENS", "NIS2", "CIS", "ISO27001"
+  final double score;
+  final String status;
+  final String category;
+  final int compliantCount;
+  final int totalMeasures;
+  final String evaluatedAt;
+
+  StandardScoreModel({
+    required this.name,
+    required this.code,
+    required this.score,
+    required this.status,
+    required this.category,
+    required this.compliantCount,
+    required this.totalMeasures,
+    required this.evaluatedAt,
+  });
+
+  factory StandardScoreModel.fromJson(Map<String, dynamic> json) {
+    return StandardScoreModel(
+      name: json['name'] ?? '',
+      code: json['code'] ?? '',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] ?? 'NON_COMPLIANT',
+      category: json['category'] ?? '',
+      compliantCount: (json['compliant_count'] as num?)?.toInt() ?? 0,
+      totalMeasures: (json['total_measures'] as num?)?.toInt() ?? 0,
+      evaluatedAt: json['evaluated_at'] ?? '',
+    );
+  }
+}
+
+class ComplianceOverviewModel {
+  final String evaluatedAt;
+  final String triggerSource;
+  final double overallScore;
+  final String overallStatus;
+  final List<StandardScoreModel> standards;
+  final List<String> degradedStandards;
+
+  ComplianceOverviewModel({
+    required this.evaluatedAt,
+    required this.triggerSource,
+    required this.overallScore,
+    required this.overallStatus,
+    required this.standards,
+    required this.degradedStandards,
+  });
+
+  factory ComplianceOverviewModel.fromJson(Map<String, dynamic> json) {
+    final stds = <StandardScoreModel>[];
+    if (json['standards'] != null && json['standards'] is List) {
+      for (final item in json['standards']) {
+        if (item is Map<String, dynamic>) {
+          stds.add(StandardScoreModel.fromJson(item));
+        }
+      }
+    }
+    final degraded = <String>[];
+    if (json['degraded_standards'] != null && json['degraded_standards'] is List) {
+      for (final d in json['degraded_standards']) {
+        degraded.add(d.toString());
+      }
+    }
+    return ComplianceOverviewModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      triggerSource: json['trigger_source'] ?? '',
+      overallScore: (json['overall_score'] as num?)?.toDouble() ?? 0.0,
+      overallStatus: json['overall_status'] ?? 'ACTION_REQUIRED',
+      standards: stds,
+      degradedStandards: degraded,
+    );
+  }
+
+  StandardScoreModel? getStandard(String code) {
+    for (final s in standards) {
+      if (s.code.toUpperCase() == code.toUpperCase()) return s;
+    }
+    return null;
+  }
+}
+
+

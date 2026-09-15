@@ -23,6 +23,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/nodemanager"
+	"github.com/mario-ezquerro/gubernator/internal/security"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
 	"github.com/mario-ezquerro/gubernator/internal/sshkeys"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
@@ -91,6 +92,7 @@ func Start(ctx context.Context) error {
 	go startLocalExecutor(ctx)
 	go StartSelfHealingWatchdog(ctx)
 	go timesync.StartWatchdog(ctx)
+	go security.StartComplianceWatchdog(ctx, db.GetDB())
 	ebpf.GetEngine()
 
 	// Auto-deploy SRE Monitoring Stack if GBNT_MONITOR=true

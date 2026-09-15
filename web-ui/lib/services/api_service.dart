@@ -3117,6 +3117,38 @@ class ApiService {
       return null;
     }
   }
+
+  /// Fetches the unified Continuous Compliance Overview across all 4 regulatory frameworks.
+  static Future<ComplianceOverviewModel?> fetchComplianceOverview() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/compliance/overview'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return ComplianceOverviewModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Triggers an immediate, cluster-wide re-evaluation across all 4 regulatory frameworks.
+  static Future<ComplianceOverviewModel?> evaluateAllCompliance() async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/security/compliance/evaluate-all'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return ComplianceOverviewModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

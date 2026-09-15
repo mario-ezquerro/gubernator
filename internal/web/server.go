@@ -503,6 +503,10 @@ func StartDashboard() {
 		api.GET("/security/iso27001/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001StatusHandler)
 		api.GET("/security/iso27001/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001ReportHandler)
 
+		// Unified Continuous Compliance & Regulatory Suite
+		api.GET("/security/compliance/overview", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), complianceOverviewHandler)
+		api.POST("/security/compliance/evaluate-all", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator), complianceEvaluateAllHandler)
+
 		// Read-only queries (Accessible to admin, operator, readonly)
 		api.GET("/state", stateHandler)
 		api.GET("/stack/:id/compose", getStackComposeHandler)
@@ -6485,6 +6489,8 @@ func authMFASetupCompleteHandler(c *gin.Context) {
 	logAudit(c, localUser.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", fmt.Sprintf("MFA/TOTP mandatory enrollment completed for '%s' (ENS op.acc.6)", localUser.Username))
 	logAudit(c, localUser.Username, "LOCAL", "LOGIN_SUCCESS", "SUCCESS", "MFA verification succeeded after initial mandatory enrollment (ENS op.acc.6)")
 
+	go security.TriggerComplianceAudit("MFA_SETUP_COMPLETE")
+
 	token, err := auth.GenerateToken(*userSession)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate session token"})
@@ -6648,6 +6654,7 @@ func authMFAEnableHandler(c *gin.Context) {
 	}
 
 	logAudit(c, session.Username, "LOCAL", "MFA_ENABLED", "SUCCESS", fmt.Sprintf("MFA activated for user '%s' (ENS op.acc.2)", localUser.Username))
+	go security.TriggerComplianceAudit("MFA_ENABLED")
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication enabled successfully"})
 }
 
@@ -6705,6 +6712,7 @@ func authMFADisableHandler(c *gin.Context) {
 	}
 
 	logAudit(c, session.Username, "LOCAL", "MFA_DISABLED", "SUCCESS", fmt.Sprintf("MFA deactivated for user '%s'", localUser.Username))
+	go security.TriggerComplianceAudit("MFA_DISABLED")
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
 }
 
@@ -6872,6 +6880,8 @@ func updateSIEMConfigHandler(c *gin.Context) {
 	logAudit(c, actor, "LOCAL", "SECURITY_CONFIG_UPDATE", "SUCCESS",
 		fmt.Sprintf("Updated ENS op.acc.2 & op.mon.1 settings: mfa_enforced=%v, max_failed_logins=%d, lockout_min=%d, pwd_min_len=%d, session_timeout_min=%d, siem_enabled=%v, siem_host=%s:%d",
 			cfg.MFAEnforced, cfg.MaxFailedLogins, cfg.LockoutDurationMinutes, cfg.PasswordMinLength, cfg.SessionTimeoutMinutes, cfg.SIEMEnabled, cfg.SIEMHost, cfg.SIEMPort))
+
+	go security.TriggerComplianceAudit("SECURITY_CONFIG_UPDATE")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":                     true,
@@ -7111,6 +7121,25 @@ func iso27001ReportHandler(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-soa-report-%s.txt", timestamp))
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.String(http.StatusOK, report)
+}
+
+// ---------------------------------------------------------------------------
+// UNIFIED COMPLIANCE OVERVIEW & CONTINUOUS AUDIT HANDLERS
+// ---------------------------------------------------------------------------
+
+func complianceOverviewHandler(c *gin.Context) {
+	overview := security.GetLatestOverview(db.DB)
+	c.JSON(http.StatusOK, overview)
+}
+
+func complianceEvaluateAllHandler(c *gin.Context) {
+	session := auth.ExtractUserSession(c)
+	source := "MANUAL"
+	if session != nil {
+		source = fmt.Sprintf("MANUAL_%s", session.Username)
+	}
+	overview := security.EvaluateAllCompliance(db.DB, source)
+	c.JSON(http.StatusOK, overview)
 }
 
 // ---------------------------------------------------------------------------

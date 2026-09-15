@@ -55,8 +55,13 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   AuditVerificationResult? _auditVerification;
   bool _verifyingAudit = false;
 
+  // Continuous Compliance Overview State
+  ComplianceOverviewModel? _complianceOverview;
+  bool _complianceOverviewLoading = true;
+  bool _evaluatingAllCompliance = false;
+
   // Compliance Suite State (NIS 2, CIS Docker & ENS)
-  String _selectedComplianceStandard = "NIS2"; // "NIS2", "CIS", or "ENS"
+  String _selectedComplianceStandard = "NIS2"; // "NIS2", "CIS", "ENS", "ISO27001"
 
   // NIS 2 Compliance State (Directive (EU) 2022/2555)
   NIS2SummaryModel? _nis2Summary;
@@ -105,10 +110,73 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     _loadOIDCConfigs();
     _loadSIEMConfig();
     _verifyAuditChain();
+    _loadComplianceOverview();
     _loadNIS2Status();
     _loadCISStatus();
     _loadENSStatus();
     _loadISO27001Status();
+  }
+
+  Future<void> _loadComplianceOverview() async {
+    setState(() => _complianceOverviewLoading = true);
+    try {
+      final overview = await ApiService.fetchComplianceOverview();
+      if (mounted) {
+        setState(() {
+          _complianceOverview = overview;
+          _complianceOverviewLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _complianceOverviewLoading = false);
+    }
+  }
+
+  Future<void> _evaluateAllCompliance() async {
+    setState(() => _evaluatingAllCompliance = true);
+    try {
+      final overview = await ApiService.evaluateAllCompliance();
+      if (mounted) {
+        setState(() {
+          _complianceOverview = overview;
+          _evaluatingAllCompliance = false;
+        });
+      }
+      // Concurrently reload all active standard summaries
+      await Future.wait([
+        _loadNIS2Status(),
+        _loadCISStatus(),
+        _loadENSStatus(),
+        _loadISO27001Status(),
+      ]);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text("Auditoría sincronizada: Todos los marcos regulatorios han sido re-evaluados."),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _evaluatingAllCompliance = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error durante la re-evaluación del clúster: $e"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadNIS2Status() async {
@@ -1056,6 +1124,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               } else {
                 _showSnackBar("MFA desactivado para '${user.username}'");
                 _loadLocalUsers();
+                _loadComplianceOverview();
+                _loadENSStatus();
               }
             },
             child: const Text("Desactivar"),
@@ -3200,6 +3270,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       _showSnackBar("Configuración de seguridad y SIEM guardada correctamente");
                       _loadSIEMConfig();
                       _loadENSStatus();
+                      _loadNIS2Status();
+                      _loadComplianceOverview();
                     } else {
                       _showSnackBar("Error al guardar configuración: ${res['error'] ?? 'No se pudo guardar la configuración'}", isError: true);
                     }
@@ -3497,13 +3569,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   }
 
   // ---------------------------------------------------------------------------
-  // TAB 5: UNIFIED COMPLIANCE & REGULATORY SUITE (NIS 2 & ENS)
+  // TAB 5: UNIFIED COMPLIANCE & REGULATORY SUITE (NIS 2, CIS, ENS & ISO 27001)
   // ---------------------------------------------------------------------------
 
   Widget _buildComplianceHubTab(bool isDark, Color primaryColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildContinuousComplianceExecutiveHeader(isDark, primaryColor),
+        const SizedBox(height: 16),
         // Top Segmented Pill Selector between Standards
         Container(
           padding: const EdgeInsets.all(4),
@@ -3629,6 +3703,358 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 color: isSelected
                     ? (isDark ? Colors.white : primaryColor)
                     : (isDark ? Colors.white70 : Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinuousComplianceExecutiveHeader(bool isDark, Color primaryColor) {
+    final overview = _complianceOverview;
+    final avgScore = overview?.overallScore ?? 0.0;
+    final source = overview?.triggerSource ?? "AUTO";
+    
+    // Posture colors & text
+    Color postureColor;
+    String postureLabel;
+    IconData postureIcon;
+    if (avgScore >= 90.0) {
+      postureColor = const Color(0xFF10B981); // emerald green
+      postureLabel = "EJEMPLAR (NIVEL ALTO)";
+      postureIcon = Icons.verified_rounded;
+    } else if (avgScore >= 75.0) {
+      postureColor = const Color(0xFF3B82F6); // blue
+      postureLabel = "CONFORME (BUEN ESTADO)";
+      postureIcon = Icons.shield_rounded;
+    } else if (avgScore >= 60.0) {
+      postureColor = const Color(0xFFF59E0B); // amber
+      postureLabel = "ACEPTABLE (MEJORABLE)";
+      postureIcon = Icons.warning_amber_rounded;
+    } else {
+      postureColor = const Color(0xFFEF4444); // red
+      postureLabel = "RIESGO / DEGRADADO";
+      postureIcon = Icons.error_outline_rounded;
+    }
+
+    String sourceLabel = "Watchdog Continuo (15m)";
+    if (source.contains("MFA")) {
+      sourceLabel = "Mutación de MFA en caliente";
+    } else if (source.contains("SECURITY_CONFIG")) {
+      sourceLabel = "Ajuste de Política de Seguridad";
+    } else if (source.contains("MANUAL")) {
+      sourceLabel = "Auditoría Forzada Manual";
+    } else if (source == "BOOT_AUDIT" || source == "INIT") {
+      sourceLabel = "Arranque de Clúster";
+    }
+
+    String lastTimeStr = "Evaluando...";
+    if (overview != null && overview.evaluatedAt.isNotEmpty) {
+      final dt = DateTime.tryParse(overview.evaluatedAt)?.toLocal();
+      if (dt != null) {
+        lastTimeStr = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+      }
+    }
+
+    final nis2Score = overview?.getStandard("NIS2")?.score ?? (_nis2Summary?.essentialScore ?? 0.0);
+    final cisScore = overview?.getStandard("CIS")?.score ?? (_cisSummary?.scorePercent ?? 0.0);
+    final ensScore = overview?.getStandard("ENS")?.score ?? (_ensSummary?.medioScore ?? 0.0);
+    final isoScore = overview?.getStandard("ISO27001")?.score ?? (_isoSummary?.overallScore ?? 0.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+              : [Colors.white, const Color(0xFFF8FAFC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Wrap(
+        spacing: 20,
+        runSpacing: 16,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        alignment: WrapAlignment.spaceBetween,
+        children: [
+          // Left: Watchdog Status & Posture
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      postureColor.withValues(alpha: 0.25),
+                      postureColor.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: postureColor.withValues(alpha: 0.5), width: 1.5),
+                ),
+                child: Icon(postureIcon, color: postureColor, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "${avgScore > 0 ? avgScore.toStringAsFixed(1) : '--'}%",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: postureColor,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: postureColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: postureColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          postureLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: postureColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              "WATCHDOG ACTIVO",
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF10B981),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            if (_complianceOverviewLoading) ...[
+                              const SizedBox(width: 6),
+                              const SizedBox(
+                                width: 8,
+                                height: 8,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.schedule_rounded, size: 13, color: isDark ? Colors.white54 : Colors.black45),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Última evaluación: $lastTimeStr",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "•  $sourceLabel",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white38 : Colors.black38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Center: 4 Interactive Mini-KPI Chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildComplianceMiniPill(
+                isDark: isDark,
+                standardKey: "NIS2",
+                title: "NIS 2",
+                score: nis2Score,
+                flagIcon: "🇪🇺",
+                accentColor: const Color(0xFF3B82F6),
+              ),
+              _buildComplianceMiniPill(
+                isDark: isDark,
+                standardKey: "CIS",
+                title: "CIS Docker",
+                score: cisScore,
+                flagIcon: "🔒",
+                accentColor: const Color(0xFF6366F1),
+              ),
+              _buildComplianceMiniPill(
+                isDark: isDark,
+                standardKey: "ENS",
+                title: "ENS España",
+                score: ensScore,
+                flagIcon: "🇪🇸",
+                accentColor: const Color(0xFF14B8A6),
+              ),
+              _buildComplianceMiniPill(
+                isDark: isDark,
+                standardKey: "ISO27001",
+                title: "ISO 27001",
+                score: isoScore,
+                flagIcon: "🌐",
+                accentColor: const Color(0xFF8B5CF6),
+              ),
+            ],
+          ),
+
+          // Right: Master Re-evaluation Button
+          ElevatedButton.icon(
+            onPressed: _evaluatingAllCompliance ? null : _evaluateAllCompliance,
+            icon: _evaluatingAllCompliance
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.shield_outlined, size: 18),
+            label: Text(
+              _evaluatingAllCompliance ? "Auditando Clúster..." : "Re-evaluar Todo el Clúster",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.6),
+              disabledForegroundColor: Colors.white70,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComplianceMiniPill({
+    required bool isDark,
+    required String standardKey,
+    required String title,
+    required double score,
+    required String flagIcon,
+    required Color accentColor,
+  }) {
+    final isSelected = _selectedComplianceStandard == standardKey;
+    Color scoreColor = score >= 85 ? const Color(0xFF10B981) : (score >= 65 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
+    
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedComplianceStandard = standardKey);
+        if (standardKey == "NIS2" && _nis2Summary == null && !_nis2Loading) _loadNIS2Status();
+        if (standardKey == "CIS" && _cisSummary == null && !_cisLoading) _loadCISStatus();
+        if (standardKey == "ENS" && _ensSummary == null && !_ensLoading) _loadENSStatus();
+        if (standardKey == "ISO27001" && _isoSummary == null && !_isoLoading) _loadISO27001Status();
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? accentColor.withValues(alpha: 0.22) : accentColor.withValues(alpha: 0.12))
+              : (isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : Colors.white),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? accentColor
+                : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.25)),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(flagIcon, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? (isDark ? Colors.white : accentColor)
+                    : (isDark ? Colors.white70 : Colors.black87),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: scoreColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                score > 0 ? "${score.toStringAsFixed(1)}%" : "--",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: scoreColor,
+                ),
               ),
             ),
           ],

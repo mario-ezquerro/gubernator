@@ -1302,3 +1302,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Systemd High-Frequency Timer Tuning:**
   - Reduced `gbnt-timesync.timer` interval from 60s to 10s across all cluster nodes (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`) with multi-endpoint failover.
 
+### 121. Continuous Compliance Watchdog, Executive Matrix & Multi-Standard Auditor (`v2.95.0`)
+* **Continuous Background Compliance Watchdog (`internal/security/compliance_watchdog.go`):**
+  - High-precision background auditing daemon running on a 15-minute scheduler and continuously re-evaluating all 4 regulatory frameworks (Esquema Nacional de Seguridad ENS RD 311/2022, EU NIS 2 Directive EU 2022/2555, CIS Docker Benchmark v1.6.0, and ISO/IEC 27001:2022 Annex A).
+  - Maintains persistent score history and detects score degradation in real-time.
+* **Tamper-Evident Degradation Audit Events:**
+  - When security policies are relaxed or compliance posture drops (>1.0%), the Watchdog automatically logs a cryptographic `COMPLIANCE_DEGRADED` audit event with status `WARNING` detailing previous vs current scores per framework.
+* **Real-Time Reactive Audit Triggers:**
+  - Security mutations (MFA enable/disable, SIEM/lockout/password policy changes, user additions/modifications) immediately trigger reactive out-of-band audit runs without waiting for the 15-minute cron cycle.
+* **Unified REST API & Prometheus Observability:**
+  - `GET /api/security/compliance/overview`: Returns unified compliance posture, global average score, breakdown for all 4 frameworks, and evaluation source/timestamp.
+  - `POST /api/security/compliance/evaluate-all`: Master endpoint executing immediate, synchronous cluster-wide multi-standard evaluation.
+  - Prometheus gauge `gbnt_compliance_score{framework="..."}` exported on `:4002/metrics` for Grafana alerting and automated SRE multi-burn rate error budgets.
+* **Executive Compliance Matrix & Master Audit Button (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Top-level Executive Header displaying cluster-wide compliance posture (`EJEMPLAR`, `CONFORME`, `ACEPTABLE`, `RIESGO`), real-time `WATCHDOG ACTIVO` pulse badge, and relative evaluation timestamps.
+  - 4 interactive Mini-KPI chips (NIS 2, CIS Docker, ENS España, ISO 27001) allowing instant standard inspection and seamless tab switching.
+  - Master `[ 🛡️ Re-evaluar Todo el Clúster ]` button with animated progress indicator and instant notification upon completion.
+
