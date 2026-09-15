@@ -377,7 +377,6 @@ func queryPrometheusScalar(query string) float64 {
 			}
 			continue
 		}
-		defer resp.Body.Close()
 
 		var result struct {
 			Data struct {
@@ -387,7 +386,10 @@ func queryPrometheusScalar(query string) float64 {
 			} `json:"data"`
 		}
 
-		if err := json.NewDecoder(resp.Body).Decode(&result); err == nil && len(result.Data.Result) > 0 {
+		decErr := json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+
+		if decErr == nil && len(result.Data.Result) > 0 {
 			valSlice := result.Data.Result[0].Value
 			if len(valSlice) >= 2 {
 				switch v := valSlice[1].(type) {

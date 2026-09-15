@@ -341,13 +341,19 @@ func TestEvaluateENSComplianceEncryptedBackupsAndSupplyChain(t *testing.T) {
 		}
 	}
 
-	if opexp10 == nil || opexp10.Status != ENSStatusCompliant || opexp10.Score != 100.0 {
+	if opexp10 == nil {
+		t.Fatalf("expected op.exp.10 to be present in measures")
+	} else if opexp10.Status != ENSStatusCompliant || opexp10.Score != 100.0 {
 		t.Fatalf("expected op.exp.10 to be 100.0 COMPLIANT, got score=%.1f status=%v", opexp10.Score, opexp10.Status)
 	}
-	if mpsi2 == nil || mpsi2.Status != ENSStatusCompliant || mpsi2.Score != 100.0 {
+	if mpsi2 == nil {
+		t.Fatalf("expected mp.si.2 to be present in measures")
+	} else if mpsi2.Status != ENSStatusCompliant || mpsi2.Score != 100.0 {
 		t.Fatalf("expected mp.si.2 to be 100.0 COMPLIANT, got score=%.1f status=%v", mpsi2.Score, mpsi2.Status)
 	}
-	if mpsw2 == nil || mpsw2.Status != ENSStatusCompliant || mpsw2.Score != 100.0 {
+	if mpsw2 == nil {
+		t.Fatalf("expected mp.sw.2 to be present in measures")
+	} else if mpsw2.Status != ENSStatusCompliant || mpsw2.Score != 100.0 {
 		t.Fatalf("expected mp.sw.2 to be 100.0 COMPLIANT, got score=%.1f status=%v", mpsw2.Score, mpsw2.Status)
 	}
 }

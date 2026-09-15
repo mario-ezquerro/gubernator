@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -24,7 +25,7 @@ func GetNotificationConfig(gormDB *gorm.DB) (*db.SLONotificationConfig, error) {
 	var cfg db.SLONotificationConfig
 	err := gormDB.First(&cfg, "id = ?", NotificationConfigID).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			cfg = db.SLONotificationConfig{
 				ID:                 NotificationConfigID,
 				EnableEmail:        false,
@@ -86,6 +87,7 @@ func SendEmailAlert(cfg *db.SLONotificationConfig, subject, body string) error {
 		}
 		client, clientErr := smtp.NewClient(conn, cfg.SMTPHost)
 		if clientErr != nil {
+			conn.Close()
 			return fmt.Errorf("SMTP client failed: %w", clientErr)
 		}
 		defer client.Quit()

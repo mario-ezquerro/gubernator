@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -76,7 +77,7 @@ func ensureClusterConfig() error {
 	firstBoot := false
 
 	if err := DB.First(&config, "id = ?", "global").Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("ensureClusterConfig: cannot read cluster config: %w", err)
 		}
 

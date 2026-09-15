@@ -885,8 +885,8 @@ func stateHandler(c *gin.Context) {
 			db.DB.Where("id = ?", existing.ID).Delete(&db.Stack{})
 			var oldSvcs []db.Service
 			db.DB.Where("stack_id = ?", existing.ID).Find(&oldSvcs)
-			for _, os := range oldSvcs {
-				db.DB.Where("service_id = ?", os.ID).Delete(&db.Task{})
+			for _, oldSvc := range oldSvcs {
+				db.DB.Where("service_id = ?", oldSvc.ID).Delete(&db.Task{})
 			}
 			db.DB.Where("stack_id = ?", existing.ID).Delete(&db.Service{})
 			cleanedStacks = true
@@ -3260,7 +3260,7 @@ func nodeAvailabilityHandler(c *gin.Context) {
 	// Trigger node task draining if status is maintenance, drain, pause or no_schedule
 	if status == "drain" || status == "maintenance" || status == "pause" || status == "no_schedule" {
 		go webDrainNodeTasks(id)
-	} else if status == "active" {
+	} else {
 		// When reactivating node, reschedule missing replicas and re-evaluate services
 		go webRescheduleUnassignedTasks()
 	}
@@ -6942,13 +6942,21 @@ func testSIEMHandler(c *gin.Context) {
 
 	result, err := audit.SendSIEMTestProbe(cfg)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success":       false,
-			"latency_ms":    result.LatencyMs,
-			"dispatched_at": result.DispatchedAt,
-			"error":         result.Error,
-			"message":       result.Message,
-		})
+		resp := gin.H{
+			"success": false,
+			"error":   err.Error(),
+		}
+		if result != nil {
+			resp["latency_ms"] = result.LatencyMs
+			resp["dispatched_at"] = result.DispatchedAt
+			if result.Error != "" {
+				resp["error"] = result.Error
+			}
+			resp["message"] = result.Message
+		} else {
+			resp["message"] = err.Error()
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 
@@ -7196,15 +7204,17 @@ func logsLabelsHandler(c *gin.Context) {
 	client := http.Client{Timeout: 3 * time.Second}
 	for _, labelKey := range []string{"container_name", "container"} {
 		resp, err := client.Get(fmt.Sprintf("%s/loki/api/v1/label/%s/values", baseURL, labelKey))
-		if err == nil && resp.StatusCode == http.StatusOK {
-			var lokiRes struct {
-				Data []string `json:"data"`
-			}
-			if json.NewDecoder(resp.Body).Decode(&lokiRes) == nil {
-				for _, val := range lokiRes.Data {
-					cleaned := strings.TrimPrefix(val, "/")
-					if cleaned != "" {
-						containerSet[cleaned] = true
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				var lokiRes struct {
+					Data []string `json:"data"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&lokiRes) == nil {
+					for _, val := range lokiRes.Data {
+						cleaned := strings.TrimPrefix(val, "/")
+						if cleaned != "" {
+							containerSet[cleaned] = true
+						}
 					}
 				}
 			}
@@ -7321,13 +7331,14 @@ func fetchLogsInternal(query, container, node, stack, stream, level, timeRange s
 		baseURL, url.QueryEscape(logql), limit, startNs, endNs)
 
 	resp, err := client.Get(reqURL)
-	if err == nil && resp.StatusCode == http.StatusOK {
+	if err == nil {
 		defer resp.Body.Close()
-		var lokiRes struct {
-			Status string `json:"status"`
-			Data   struct {
-				ResultType string `json:"resultType"`
-				Result     []struct {
+		if resp.StatusCode == http.StatusOK {
+			var lokiRes struct {
+				Status string `json:"status"`
+				Data   struct {
+					ResultType string `json:"resultType"`
+					Result     []struct {
 					Stream map[string]string `json:"stream"`
 					Values [][]string        `json:"values"`
 				} `json:"result"`
@@ -7410,6 +7421,7 @@ func fetchLogsInternal(query, container, node, stack, stream, level, timeRange s
 			return logs, "loki", nil
 		}
 	}
+}
 
 	// Graceful Docker CLI fallback
 	targetContainer := container

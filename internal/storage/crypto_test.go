@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,7 +63,7 @@ func TestCryptoWrongPassphrase(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected DecryptStream to fail with wrong password, but succeeded!")
 	}
-	if err != ErrInvalidPassphrase {
+	if !errors.Is(err, ErrInvalidPassphrase) {
 		t.Logf("got expected error on wrong password: %v", err)
 	}
 }

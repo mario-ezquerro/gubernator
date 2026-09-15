@@ -939,7 +939,11 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 			ScheduleServiceWithSpread(&service, serviceTargetNode, serviceSpread)
 		} else {
 			// Single-host atomic placement
-			ScheduleService(&service, selectedNode.ID)
+			if selectedNode != nil {
+				ScheduleService(&service, selectedNode.ID)
+			} else {
+				ScheduleService(&service, "")
+			}
 		}
 	}
 

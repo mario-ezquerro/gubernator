@@ -284,7 +284,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		return nil, fmt.Errorf("failed to close gzip writer: %w", closeGzErr)
 	}
 
-	if req.Encrypted {
+	if req.Encrypted && encPipeW != nil {
 		_ = encPipeW.Close()
 		if encErr := <-encErrCh; encErr != nil {
 			outFile.Close()

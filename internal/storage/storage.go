@@ -835,7 +835,7 @@ func CreateDockerVolume(req CreateDockerVolumeRequest) ([]string, error) {
 
 	var cmdArgs []string
 	cmdArgs = append(cmdArgs, "volume", "create", name)
-	if driver != "" && driver != "local" {
+	if driver != "local" {
 		cmdArgs = append(cmdArgs, "--driver", driver)
 	}
 	for k, v := range req.DriverOpts {

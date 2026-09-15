@@ -171,7 +171,7 @@ func GenerateCaddyfile() {
 				}
 			}
 
-			if targetIP == "" || targetIP == "invalid" || targetPort == "" {
+			if targetIP == "" || targetIP == "invalid" {
 				continue
 			}
 

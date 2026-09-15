@@ -2,6 +2,7 @@ package ebpf
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -310,13 +311,13 @@ func (e *Engine) SimulateTraffic(profile SimulationProfile) {
 
 func generateTraceID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, _ = crand.Read(b)
 	return fmt.Sprintf("%x", b)
 }
 
 func generateSpanID() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	_, _ = crand.Read(b)
 	return fmt.Sprintf("%x", b)
 }
 

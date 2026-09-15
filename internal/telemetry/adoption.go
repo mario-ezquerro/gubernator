@@ -122,42 +122,44 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 	if err == nil {
 		reqRel.Header.Set("User-Agent", "Gubernator-Adoption-Telemetry")
 		reqRel.Header.Set("Accept", "application/vnd.github.v3+json")
-		if resp, doErr := client.Do(reqRel); doErr == nil && resp.StatusCode == http.StatusOK {
+		if resp, doErr := client.Do(reqRel); doErr == nil {
 			defer resp.Body.Close()
-			var releases []ghReleaseItem
-			if decErr := json.NewDecoder(resp.Body).Decode(&releases); decErr == nil {
-				stats.TotalReleases = len(releases)
-				if len(releases) > 0 {
-					stats.LatestReleaseTag = releases[0].TagName
-					stats.LatestReleaseDate = releases[0].PublishedAt
-				}
+			if resp.StatusCode == http.StatusOK {
+				var releases []ghReleaseItem
+				if decErr := json.NewDecoder(resp.Body).Decode(&releases); decErr == nil {
+					stats.TotalReleases = len(releases)
+					if len(releases) > 0 {
+						stats.LatestReleaseTag = releases[0].TagName
+						stats.LatestReleaseDate = releases[0].PublishedAt
+					}
 
-				totalDl := 0
-				for idx, r := range releases {
-					relDl := 0
-					for _, a := range r.Assets {
-						dl := a.DownloadCount
-						relDl += dl
-						totalDl += dl
-						lowName := strings.ToLower(a.Name)
-						if strings.Contains(lowName, "linux") {
-							stats.DownloadsByOS["linux"] += dl
-						} else if strings.Contains(lowName, "darwin") || strings.Contains(lowName, "macos") {
-							stats.DownloadsByOS["darwin"] += dl
-						} else if strings.Contains(lowName, "windows") || strings.HasSuffix(lowName, ".exe") {
-							stats.DownloadsByOS["windows"] += dl
+					totalDl := 0
+					for idx, r := range releases {
+						relDl := 0
+						for _, a := range r.Assets {
+							dl := a.DownloadCount
+							relDl += dl
+							totalDl += dl
+							lowName := strings.ToLower(a.Name)
+							if strings.Contains(lowName, "linux") {
+								stats.DownloadsByOS["linux"] += dl
+							} else if strings.Contains(lowName, "darwin") || strings.Contains(lowName, "macos") {
+								stats.DownloadsByOS["darwin"] += dl
+							} else if strings.Contains(lowName, "windows") || strings.HasSuffix(lowName, ".exe") {
+								stats.DownloadsByOS["windows"] += dl
+							}
+						}
+						if idx < 10 {
+							stats.RecentReleases = append(stats.RecentReleases, ReleaseStats{
+								TagName:     r.TagName,
+								PublishedAt: r.PublishedAt,
+								Downloads:   relDl,
+								HTMLURL:     r.HTMLURL,
+							})
 						}
 					}
-					if idx < 10 {
-						stats.RecentReleases = append(stats.RecentReleases, ReleaseStats{
-							TagName:     r.TagName,
-							PublishedAt: r.PublishedAt,
-							Downloads:   relDl,
-							HTMLURL:     r.HTMLURL,
-						})
-					}
+					stats.TotalDownloads = totalDl
 				}
-				stats.TotalDownloads = totalDl
 			}
 		}
 	}
@@ -167,14 +169,16 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 	if err == nil {
 		reqRepo.Header.Set("User-Agent", "Gubernator-Adoption-Telemetry")
 		reqRepo.Header.Set("Accept", "application/vnd.github.v3+json")
-		if resp, err := client.Do(reqRepo); err == nil && resp.StatusCode == http.StatusOK {
+		if resp, err := client.Do(reqRepo); err == nil {
 			defer resp.Body.Close()
-			var repo ghRepoInfo
-			if err := json.NewDecoder(resp.Body).Decode(&repo); err == nil {
-				stats.GitHubStars = repo.StargazersCount
-				stats.GitHubForks = repo.ForksCount
-				stats.GitHubWatchers = repo.WatchersCount
-				stats.GitHubOpenIssues = repo.OpenIssuesCount
+			if resp.StatusCode == http.StatusOK {
+				var repo ghRepoInfo
+				if err := json.NewDecoder(resp.Body).Decode(&repo); err == nil {
+					stats.GitHubStars = repo.StargazersCount
+					stats.GitHubForks = repo.ForksCount
+					stats.GitHubWatchers = repo.WatchersCount
+					stats.GitHubOpenIssues = repo.OpenIssuesCount
+				}
 			}
 		}
 	}

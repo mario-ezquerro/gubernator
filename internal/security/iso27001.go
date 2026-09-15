@@ -731,9 +731,9 @@ func EvaluateISO27001Compliance(database *gorm.DB) ISO27001Summary {
 		status := ISOStatusCompliant
 		score := 100.0
 		privilegedContainers := 0
-		for _, t := range tasks {
-			if strings.Contains(strings.ToLower(t.Status), "running") {
-				// runtime inspection
+		for _, s := range stacks {
+			if strings.Contains(s.RawComposeFile, "privileged: true") {
+				privilegedContainers++
 			}
 		}
 

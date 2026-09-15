@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -379,7 +380,7 @@ func Start(ctx context.Context) error {
 	}()
 
 	slog.Info("starting Gubernator Manager API", "addr", ":4000")
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("API server: %w", err)
 	}
 	return nil
@@ -408,7 +409,7 @@ func startTelemetryServer(ctx context.Context) {
 	}()
 
 	slog.Info("starting telemetry, health & swagger server", "addr", ":4002")
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("telemetry server error", "err", err)
 	}
 }

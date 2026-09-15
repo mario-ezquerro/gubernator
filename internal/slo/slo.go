@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/slok/sloth/pkg/common/model"
 	slothlib "github.com/slok/sloth/pkg/lib"
 	prometheusv1 "github.com/slok/sloth/pkg/prometheus/api/v1"
@@ -52,7 +51,7 @@ func ensureWindowVariable(query string) string {
 	if strings.Contains(query, "{{.window}}") || strings.Contains(query, "{{ .window }}") {
 		return query
 	}
-	re := regexp.MustCompile(`\[\s*\d+[smhd]\s*\]`)
+	re := regexp.MustCompile(`\[\s*\d+[smhd]\s*]`)
 	if re.MatchString(query) {
 		return re.ReplaceAllString(query, "[{{.window}}]")
 	}
@@ -163,13 +162,18 @@ func GenerateRulesFromServices(gormDB *gorm.DB) (string, error) {
 		return "", fmt.Errorf("sloth rule generation failed: %w", err)
 	}
 
-	var ruleGroups []rulefmt.RuleGroup
+	type prometheusRuleGroup struct {
+		Name  string      `yaml:"name"`
+		Rules interface{} `yaml:"rules"`
+	}
+
+	var ruleGroups []prometheusRuleGroup
 	for _, res := range result.SLOResults {
 		for _, rg := range []model.PromRuleGroup{res.PrometheusRules.SLIErrorRecRules, res.PrometheusRules.MetadataRecRules, res.PrometheusRules.AlertRules} {
 			if len(rg.Rules) == 0 {
 				continue
 			}
-			ruleGroups = append(ruleGroups, rulefmt.RuleGroup{
+			ruleGroups = append(ruleGroups, prometheusRuleGroup{
 				Name:  rg.Name,
 				Rules: rg.Rules,
 			})
@@ -178,7 +182,7 @@ func GenerateRulesFromServices(gormDB *gorm.DB) (string, error) {
 			if len(extra.Rules) == 0 {
 				continue
 			}
-			ruleGroups = append(ruleGroups, rulefmt.RuleGroup{
+			ruleGroups = append(ruleGroups, prometheusRuleGroup{
 				Name:  extra.Name,
 				Rules: extra.Rules,
 			})
@@ -186,7 +190,7 @@ func GenerateRulesFromServices(gormDB *gorm.DB) (string, error) {
 	}
 
 	promRuleFile := struct {
-		Groups []rulefmt.RuleGroup `yaml:"groups"`
+		Groups []prometheusRuleGroup `yaml:"groups"`
 	}{
 		Groups: ruleGroups,
 	}

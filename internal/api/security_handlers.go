@@ -650,13 +650,21 @@ func SecuritySIEMTestHandler(c *gin.Context) {
 
 	result, err := audit.SendSIEMTestProbe(cfg)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success":       false,
-			"latency_ms":    result.LatencyMs,
-			"dispatched_at": result.DispatchedAt,
-			"error":         result.Error,
-			"message":       result.Message,
-		})
+		resp := gin.H{
+			"success": false,
+			"error":   err.Error(),
+		}
+		if result != nil {
+			resp["latency_ms"] = result.LatencyMs
+			resp["dispatched_at"] = result.DispatchedAt
+			if result.Error != "" {
+				resp["error"] = result.Error
+			}
+			resp["message"] = result.Message
+		} else {
+			resp["message"] = err.Error()
+		}
+		c.JSON(http.StatusBadRequest, resp)
 		return
 	}
 

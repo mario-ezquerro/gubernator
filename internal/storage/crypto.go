@@ -131,7 +131,7 @@ func EncryptStream(r io.Reader, w io.Writer, passphrase string) error {
 			chunkIndex++
 		}
 
-		if readErr == io.EOF || readErr == io.ErrUnexpectedEOF {
+		if errors.Is(readErr, io.EOF) || errors.Is(readErr, io.ErrUnexpectedEOF) {
 			break
 		}
 		if readErr != nil {
