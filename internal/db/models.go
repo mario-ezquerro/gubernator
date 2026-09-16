@@ -32,7 +32,7 @@ type Node struct {
 }
 
 // BeforeSave hook to marshal Labels into LabelsRaw before saving to DB
-func (n *Node) BeforeSave(tx *gorm.DB) (err error) {
+func (n *Node) BeforeSave(_ *gorm.DB) (err error) {
 	if n.Labels == nil {
 		n.LabelsRaw = []byte("{}")
 		return nil
@@ -45,7 +45,7 @@ func (n *Node) BeforeSave(tx *gorm.DB) (err error) {
 }
 
 // AfterFind hook to unmarshal LabelsRaw into Labels after reading from DB
-func (n *Node) AfterFind(tx *gorm.DB) (err error) {
+func (n *Node) AfterFind(_ *gorm.DB) (err error) {
 	if len(n.LabelsRaw) > 0 {
 		err = json.Unmarshal(n.LabelsRaw, &n.Labels)
 	} else {
@@ -144,7 +144,7 @@ type Task struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
-func (s *Service) BeforeSave(tx *gorm.DB) (err error) {
+func (s *Service) BeforeSave(_ *gorm.DB) (err error) {
 	marshalField := func(v interface{}, nilVal []byte) []byte {
 		if v == nil {
 			return nilVal
@@ -159,7 +159,7 @@ func (s *Service) BeforeSave(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (s *Service) AfterFind(tx *gorm.DB) (err error) {
+func (s *Service) AfterFind(_ *gorm.DB) (err error) {
 	unmarshal := func(raw []byte, out interface{}) {
 		if len(raw) > 0 {
 			json.Unmarshal(raw, out)
@@ -450,7 +450,7 @@ type ImageScan struct {
 	InUse           bool       `gorm:"-" json:"in_use"`
 }
 
-func (s *ImageScan) BeforeSave(tx *gorm.DB) (err error) {
+func (s *ImageScan) BeforeSave(_ *gorm.DB) (err error) {
 	marshalField := func(v interface{}, nilVal []byte) []byte {
 		if v == nil {
 			return nilVal
@@ -463,7 +463,7 @@ func (s *ImageScan) BeforeSave(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (s *ImageScan) AfterFind(tx *gorm.DB) (err error) {
+func (s *ImageScan) AfterFind(_ *gorm.DB) (err error) {
 	if len(s.HostsRaw) > 0 {
 		json.Unmarshal(s.HostsRaw, &s.Hosts)
 	}

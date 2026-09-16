@@ -188,8 +188,8 @@ var nodeLabelCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeID := args[0]
-		toAdd := []string{}
-		toRm := []string{}
+		var toAdd []string
+		var toRm []string
 
 		for _, arg := range args[1:] {
 			if strings.Contains(arg, "=") {

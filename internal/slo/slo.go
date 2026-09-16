@@ -58,7 +58,7 @@ func ensureWindowVariable(query string) string {
 	return query
 }
 
-func ExpandSLITemplate(tmpl, serviceName string) (errQuery, totalQuery string) {
+func ExpandSLITemplate(tmpl, _ string) (errQuery, totalQuery string) {
 	switch strings.ToLower(strings.TrimSpace(tmpl)) {
 	case "caddy-http":
 		return `sum(rate(caddy_http_response_status_code_total{status=~"5.."}[{{.window}}]))`,

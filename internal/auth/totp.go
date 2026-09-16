@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	qrcode "github.com/skip2/go-qrcode"
+	"github.com/skip2/go-qrcode"
 )
 
 // TOTPConfig holds configuration for RFC 6238 time-based one-time passwords.

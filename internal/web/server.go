@@ -828,7 +828,7 @@ type DNSRecord struct {
 }
 
 func getDNSRecords() []DNSRecord {
-	records := []DNSRecord{}
+	var records []DNSRecord
 	hostsPath := coredns.HostsFilePath()
 	content, err := os.ReadFile(hostsPath)
 	if err != nil {
@@ -2557,6 +2557,9 @@ func redeployCoreStack(c *gin.Context) {
 
 // serviceDefinitionChanged returns true if any field besides DesiredReplicas
 // differs between the existing DB service and the new compose definition.
+// TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
+//
+//nolint:unused
 func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 	if existing.Image != newDef.Image {
 		return true
@@ -3118,6 +3121,9 @@ func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
 }
 
 // scaleServiceUp schedules `count` new tasks for an existing service.
+// TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
+//
+//nolint:unused
 func scaleServiceUp(svc *db.Service, count int) {
 	for i := 0; i < count; i++ {
 		var allNodes []db.Node
@@ -3161,6 +3167,9 @@ func scaleServiceUp(svc *db.Service, count int) {
 
 // scaleServiceDown stops and removes the `count` newest tasks for a service.
 // Tasks are sorted by created_at DESC so the most recently created are removed first.
+// TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
+//
+//nolint:unused
 func scaleServiceDown(svc *db.Service, count int) {
 	var tasks []db.Task
 	db.DB.Where("service_id = ?", svc.ID).Find(&tasks)
@@ -3543,8 +3552,8 @@ func nodeAddHandler(c *gin.Context) {
 		hostname = strings.TrimSpace(lines[0])
 	}
 
-	var cpuCount int = 2
-	var ramMB int = 2048
+	var cpuCount = 2
+	var ramMB = 2048
 	if len(lines) >= 3 {
 		fmt.Sscanf(lines[2], "%d", &cpuCount)
 	}
@@ -4225,7 +4234,7 @@ func sanitizeScopeTopologies(data []byte) []byte {
 	return res
 }
 
-func scopeProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+func scopeProxyHandler(c *gin.Context, _, _, _ string) {
 	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
 		c.Redirect(http.StatusTemporaryRedirect, "/scope/api/topology/containers")
 		return
@@ -5701,6 +5710,7 @@ func authLoginHandler(c *gin.Context) {
 				})
 				return
 			} else {
+				// Local auth failed — enforce lockout policy (ENS op.acc.2)
 				maxAttempts := secCfg.MaxFailedLogins
 				if maxAttempts <= 0 {
 					maxAttempts = 5
@@ -7277,7 +7287,7 @@ func parseLogLevel(msg, stream string) string {
 	return "INFO"
 }
 
-func fetchLogsInternal(query, container, node, stack, stream, level, timeRange string, limit int) ([]LokiLogItem, string, error) {
+func fetchLogsInternal(query, container, node, _ /*stack*/, stream, level, timeRange string, limit int) ([]LokiLogItem, string, error) {
 	if limit <= 0 {
 		limit = 200
 	}

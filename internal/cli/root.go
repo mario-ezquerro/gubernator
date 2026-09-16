@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -15,7 +16,6 @@ import (
 )
 
 var (
-	cfgFile string
 	Version = "v2.81.2"
 )
 var rootCmd = &cobra.Command{
@@ -88,4 +88,9 @@ func Execute() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+// pf writes formatted output to w, explicitly discarding write errors.
+// This is idiomatic for CLI display output where terminal write failures are non-critical.
+func pf(w io.Writer, format string, a ...any) {
+	_, _ = fmt.Fprintf(w, format, a...)
 }
