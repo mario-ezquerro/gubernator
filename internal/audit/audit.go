@@ -153,9 +153,8 @@ var (
 func RecordSIEMSuccess() {
 	statsMu.Lock()
 	defer statsMu.Unlock()
-	now := time.Now().UTC()
 	siemStats.TotalDispatched++
-	siemStats.LastDispatchedAt = &now
+	siemStats.LastDispatchedAt = new(time.Now().UTC())
 	siemStats.LastError = ""
 }
 
@@ -163,9 +162,8 @@ func RecordSIEMSuccess() {
 func RecordSIEMFailure(err error) {
 	statsMu.Lock()
 	defer statsMu.Unlock()
-	now := time.Now().UTC()
 	siemStats.TotalFailed++
-	siemStats.LastFailedAt = &now
+	siemStats.LastFailedAt = new(time.Now().UTC())
 	if err != nil {
 		siemStats.LastError = err.Error()
 	}

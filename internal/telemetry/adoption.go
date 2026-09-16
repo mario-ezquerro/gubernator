@@ -88,9 +88,9 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 		if err == nil && time.Since(t) < statsTTL {
 			// Update local cluster counts dynamically
 			cachedStats.ClusterStats = getLocalClusterStats()
-			copyStats := *cachedStats
+			res := new(*cachedStats)
 			statsMutex.Unlock()
-			return &copyStats
+			return res
 		}
 	}
 	statsMutex.Unlock()

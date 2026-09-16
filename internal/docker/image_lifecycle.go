@@ -486,8 +486,7 @@ func DistributeHostImage(req ImageDistributeRequest) (*ImageDistributeResult, er
 		checkCmd := fmt.Sprintf("docker image inspect %s >/dev/null 2>&1 && echo 'FOUND'", req.Image)
 		out, err := storage.ExecuteRemoteScript(n.IP, checkCmd)
 		if err == nil && strings.Contains(out, "FOUND") {
-			nodeCopy := n
-			sourceNode = &nodeCopy
+			sourceNode = new(n)
 			break
 		}
 	}
@@ -496,8 +495,7 @@ func DistributeHostImage(req ImageDistributeRequest) (*ImageDistributeResult, er
 		// Default to manager
 		for _, n := range allNodes {
 			if n.Role == "manager" || n.IP == "127.0.0.1" {
-				nodeCopy := n
-				sourceNode = &nodeCopy
+				sourceNode = new(n)
 				break
 			}
 		}
