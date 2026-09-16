@@ -9,26 +9,26 @@ import (
 
 // Node represents a server (Centurion) in the Gubernator cluster.
 type Node struct {
-	ID        string            `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	IP        string            `gorm:"type:varchar(255);not null" json:"ip"`
-	Role      string            `gorm:"type:varchar(50);not null" json:"role"`   // e.g., "manager", "worker"
-	Status    string            `gorm:"type:varchar(50);not null" json:"status"` // e.g., "active", "down", "drain"
-	LabelsRaw   []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
-	Labels      map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
-	CpuPercent    float64            `gorm:"-" json:"cpu_percent"`
-	MemUsedBytes  uint64             `gorm:"-" json:"mem_used_bytes"`
-	MemTotalBytes uint64             `gorm:"-" json:"mem_total_bytes"`
-	MemPercent    float64            `gorm:"-" json:"mem_percent"`
-	DiskUsedBytes uint64             `gorm:"-" json:"disk_used_bytes"`
+	ID             string            `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	IP             string            `gorm:"type:varchar(255);not null" json:"ip"`
+	Role           string            `gorm:"type:varchar(50);not null" json:"role"`   // e.g., "manager", "worker"
+	Status         string            `gorm:"type:varchar(50);not null" json:"status"` // e.g., "active", "down", "drain"
+	LabelsRaw      []byte            `gorm:"type:json" json:"-"`                      // Raw JSON bytes for SQLite storage
+	Labels         map[string]string `gorm:"-" json:"labels"`                         // Parsed labels for the application
+	CpuPercent     float64           `gorm:"-" json:"cpu_percent"`
+	MemUsedBytes   uint64            `gorm:"-" json:"mem_used_bytes"`
+	MemTotalBytes  uint64            `gorm:"-" json:"mem_total_bytes"`
+	MemPercent     float64           `gorm:"-" json:"mem_percent"`
+	DiskUsedBytes  uint64            `gorm:"-" json:"disk_used_bytes"`
 	DiskTotalBytes uint64            `gorm:"-" json:"disk_total_bytes"`
-	DiskFreeBytes uint64             `gorm:"-" json:"disk_free_bytes"`
-	DiskPercent   float64            `gorm:"-" json:"disk_percent"`
-	NetBps        float64            `gorm:"-" json:"net_bps"`
-	CaddyStatus   string             `gorm:"type:text" json:"caddy_status"`
-	Caddyfile     string             `gorm:"type:text" json:"caddyfile"`
-	AuthMismatch  bool               `gorm:"-" json:"auth_mismatch"`
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
+	DiskFreeBytes  uint64            `gorm:"-" json:"disk_free_bytes"`
+	DiskPercent    float64           `gorm:"-" json:"disk_percent"`
+	NetBps         float64           `gorm:"-" json:"net_bps"`
+	CaddyStatus    string            `gorm:"type:text" json:"caddy_status"`
+	Caddyfile      string            `gorm:"type:text" json:"caddyfile"`
+	AuthMismatch   bool              `gorm:"-" json:"auth_mismatch"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 // BeforeSave hook to marshal Labels into LabelsRaw before saving to DB
@@ -69,8 +69,8 @@ func (n *Node) AfterFind(_ *gorm.DB) (err error) {
 type ClusterConfig struct {
 	ID            string `gorm:"primaryKey;type:varchar(50)" json:"id"`
 	JoinToken     string `gorm:"type:varchar(255);not null" json:"join_token"`
-	APIToken      string `gorm:"type:varchar(255)" json:"api_token"` // Bearer token for the REST API (port 4000)
-	TargetVersion string `gorm:"type:varchar(50)" json:"target_version"` // Target version for cluster auto-update
+	APIToken      string `gorm:"type:varchar(255)" json:"api_token"`                           // Bearer token for the REST API (port 4000)
+	TargetVersion string `gorm:"type:varchar(50)" json:"target_version"`                       // Target version for cluster auto-update
 	ClusterDomain string `gorm:"type:varchar(255);default:'gbnt.local'" json:"cluster_domain"` // Base internal DNS domain (default: "gbnt.local")
 }
 
@@ -86,19 +86,19 @@ type Stack struct {
 
 // Service represents a specific service defined inside a Stack.
 type Service struct {
-	ID              string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
-	StackID         string    `gorm:"type:varchar(255);index;not null" json:"stack_id"`
-	Name            string    `gorm:"type:varchar(255);not null" json:"name"`
-	Image           string    `gorm:"type:varchar(255);not null" json:"image"`
-	DesiredReplicas int       `json:"desired_replicas"`
-	ConstraintsRaw  []byte    `gorm:"type:json" json:"-"`
-	Constraints     []string  `gorm:"-" json:"constraints"`
-	PortsRaw        []byte    `gorm:"type:json" json:"-"`
-	Ports           []string  `gorm:"-" json:"ports"` // e.g. ["8080:80", "443:443"]
-	EnvRaw          []byte    `gorm:"type:json" json:"-"`
-	Env             []string  `gorm:"-" json:"env"` // e.g. ["FOO=bar"]
-	VolumesRaw      []byte    `gorm:"type:json" json:"-"`
-	Volumes         []string  `gorm:"-" json:"volumes"` // e.g. ["/host:/container"]
+	ID                string    `gorm:"primaryKey;type:varchar(255)" json:"id"`
+	StackID           string    `gorm:"type:varchar(255);index;not null" json:"stack_id"`
+	Name              string    `gorm:"type:varchar(255);not null" json:"name"`
+	Image             string    `gorm:"type:varchar(255);not null" json:"image"`
+	DesiredReplicas   int       `json:"desired_replicas"`
+	ConstraintsRaw    []byte    `gorm:"type:json" json:"-"`
+	Constraints       []string  `gorm:"-" json:"constraints"`
+	PortsRaw          []byte    `gorm:"type:json" json:"-"`
+	Ports             []string  `gorm:"-" json:"ports"` // e.g. ["8080:80", "443:443"]
+	EnvRaw            []byte    `gorm:"type:json" json:"-"`
+	Env               []string  `gorm:"-" json:"env"` // e.g. ["FOO=bar"]
+	VolumesRaw        []byte    `gorm:"type:json" json:"-"`
+	Volumes           []string  `gorm:"-" json:"volumes"` // e.g. ["/host:/container"]
 	Command           string    `gorm:"type:text" json:"command"`
 	CpuLimit          string    `gorm:"type:varchar(50)" json:"cpu_limit"`
 	MemoryLimit       string    `gorm:"type:varchar(50)" json:"memory_limit"`
@@ -162,7 +162,7 @@ func (s *Service) BeforeSave(_ *gorm.DB) (err error) {
 func (s *Service) AfterFind(_ *gorm.DB) (err error) {
 	unmarshal := func(raw []byte, out interface{}) {
 		if len(raw) > 0 {
-			json.Unmarshal(raw, out)
+			_ = json.Unmarshal(raw, out)
 		}
 	}
 	unmarshal(s.ConstraintsRaw, &s.Constraints)
@@ -213,22 +213,22 @@ type LDAPConfig struct {
 // OIDCConfig represents an OpenID Connect / OAuth2 Single Sign-On identity provider.
 // Supports Keycloak, Google, GitHub, Microsoft Entra ID, Okta, and any standard OIDC IdP.
 type OIDCConfig struct {
-	ID                 string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Name               string    `gorm:"type:varchar(255);not null" json:"name"`
-	ProviderType       string    `gorm:"type:varchar(50);default:'generic'" json:"provider_type"` // generic, keycloak, google, github, azure, okta
-	Enabled            bool      `gorm:"default:true" json:"enabled"`
-	IssuerURL          string    `gorm:"type:varchar(1000);not null" json:"issuer_url"`   // e.g. https://keycloak/realms/master
-	ClientID           string    `gorm:"type:varchar(500);not null" json:"client_id"`
-	ClientSecret       string    `gorm:"type:varchar(1000);not null" json:"client_secret"`
-	RedirectURI        string    `gorm:"type:varchar(1000)" json:"redirect_uri"`           // Auto-detected if empty
-	Scopes             string    `gorm:"type:varchar(500);default:'openid profile email'" json:"scopes"` // space-separated
+	ID           string `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name         string `gorm:"type:varchar(255);not null" json:"name"`
+	ProviderType string `gorm:"type:varchar(50);default:'generic'" json:"provider_type"` // generic, keycloak, google, github, azure, okta
+	Enabled      bool   `gorm:"default:true" json:"enabled"`
+	IssuerURL    string `gorm:"type:varchar(1000);not null" json:"issuer_url"` // e.g. https://keycloak/realms/master
+	ClientID     string `gorm:"type:varchar(500);not null" json:"client_id"`
+	ClientSecret string `gorm:"type:varchar(1000);not null" json:"client_secret"`
+	RedirectURI  string `gorm:"type:varchar(1000)" json:"redirect_uri"`                         // Auto-detected if empty
+	Scopes       string `gorm:"type:varchar(500);default:'openid profile email'" json:"scopes"` // space-separated
 	// RBAC Group-to-Role claim mapping
 	RoleClaimPath      string    `gorm:"type:varchar(255);default:'groups'" json:"role_claim_path"` // JWT claim containing groups: "groups", "roles", "realm_access.roles"
-	AdminClaim         string    `gorm:"type:varchar(500)" json:"admin_claim"`    // group/role value → admin
-	OperatorClaim      string    `gorm:"type:varchar(500)" json:"operator_claim"` // group/role value → operator
-	ReadOnlyClaim      string    `gorm:"type:varchar(500)" json:"readonly_claim"` // group/role value → readonly
-	DefaultRole        string    `gorm:"type:varchar(50);default:'readonly'" json:"default_role"` // fallback role if no group matched
-	InsecureSkipVerify bool      `gorm:"default:false" json:"insecure_skip_verify"` // Skip TLS cert verification (dev only)
+	AdminClaim         string    `gorm:"type:varchar(500)" json:"admin_claim"`                      // group/role value → admin
+	OperatorClaim      string    `gorm:"type:varchar(500)" json:"operator_claim"`                   // group/role value → operator
+	ReadOnlyClaim      string    `gorm:"type:varchar(500)" json:"readonly_claim"`                   // group/role value → readonly
+	DefaultRole        string    `gorm:"type:varchar(50);default:'readonly'" json:"default_role"`   // fallback role if no group matched
+	InsecureSkipVerify bool      `gorm:"default:false" json:"insecure_skip_verify"`                 // Skip TLS cert verification (dev only)
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
@@ -259,7 +259,7 @@ type AuditLog struct {
 	Username  string    `gorm:"type:varchar(100);index;not null" json:"username"`
 	Provider  string    `gorm:"type:varchar(50);default:'LOCAL'" json:"provider"` // LOCAL, ACTIVE_DIRECTORY, OIDC
 	IPAddress string    `gorm:"type:varchar(50)" json:"ip_address"`
-	Action    string    `gorm:"type:varchar(100);index;not null" json:"action"` // LOGIN_SUCCESS, LOGIN_FAILED, STACK_DEPLOY, etc.
+	Action    string    `gorm:"type:varchar(100);index;not null" json:"action"`   // LOGIN_SUCCESS, LOGIN_FAILED, STACK_DEPLOY, etc.
 	Status    string    `gorm:"type:varchar(50);default:'SUCCESS'" json:"status"` // SUCCESS, FAILURE
 	Details   string    `gorm:"type:text" json:"details"`
 	PrevHash  string    `gorm:"type:varchar(64)" json:"prev_hash"`
@@ -279,7 +279,7 @@ type SecurityConfig struct {
 	SIEMEnabled               bool      `gorm:"default:false" json:"siem_enabled"`
 	SIEMHost                  string    `gorm:"type:varchar(255)" json:"siem_host"`
 	SIEMPort                  int       `gorm:"default:514" json:"siem_port"`
-	SIEMProtocol              string    `gorm:"type:varchar(10);default:'UDP'" json:"siem_protocol"` // UDP, TCP, TLS
+	SIEMProtocol              string    `gorm:"type:varchar(10);default:'UDP'" json:"siem_protocol"`   // UDP, TCP, TLS
 	SIEMFormat                string    `gorm:"type:varchar(20);default:'RFC5424'" json:"siem_format"` // RFC5424, CEF, JSON
 	UpdatedAt                 time.Time `json:"updated_at"`
 }
@@ -309,36 +309,36 @@ type StorageVolume struct {
 
 // Backup represents a point-in-time compressed archive of a volume or stack.
 type Backup struct {
-	ID            string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Name          string     `gorm:"type:varchar(255);not null" json:"name"`
-	StackID       string     `gorm:"type:varchar(255);index" json:"stack_id"`
-	StackName     string     `gorm:"type:varchar(255)" json:"stack_name"`
-	VolumeName    string     `gorm:"type:varchar(255)" json:"volume_name"`
-	SourcePath    string     `gorm:"type:text" json:"source_path"`
-	FilePath      string     `gorm:"type:text;not null" json:"file_path"`
-	SizeBytes     int64      `json:"size_bytes"`
-	SizeFormatted string     `gorm:"-" json:"size_formatted"`
-	SHA256        string     `gorm:"type:varchar(64)" json:"sha256"`
-	Status        string     `gorm:"type:varchar(50);default:'completed'" json:"status"` // completed, failed, in_progress
-	IsEncrypted   bool       `gorm:"default:false" json:"is_encrypted"`
-	EncryptionAlgo string    `gorm:"type:varchar(50);default:''" json:"encryption_algo"`
-	IsScheduled   bool       `json:"is_scheduled"`
-	ScheduleID    string     `gorm:"type:varchar(50)" json:"schedule_id"`
-	ErrorMessage  string     `gorm:"type:text" json:"error_message,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	CompletedAt   *time.Time `json:"completed_at,omitempty"`
+	ID             string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name           string     `gorm:"type:varchar(255);not null" json:"name"`
+	StackID        string     `gorm:"type:varchar(255);index" json:"stack_id"`
+	StackName      string     `gorm:"type:varchar(255)" json:"stack_name"`
+	VolumeName     string     `gorm:"type:varchar(255)" json:"volume_name"`
+	SourcePath     string     `gorm:"type:text" json:"source_path"`
+	FilePath       string     `gorm:"type:text;not null" json:"file_path"`
+	SizeBytes      int64      `json:"size_bytes"`
+	SizeFormatted  string     `gorm:"-" json:"size_formatted"`
+	SHA256         string     `gorm:"type:varchar(64)" json:"sha256"`
+	Status         string     `gorm:"type:varchar(50);default:'completed'" json:"status"` // completed, failed, in_progress
+	IsEncrypted    bool       `gorm:"default:false" json:"is_encrypted"`
+	EncryptionAlgo string     `gorm:"type:varchar(50);default:''" json:"encryption_algo"`
+	IsScheduled    bool       `json:"is_scheduled"`
+	ScheduleID     string     `gorm:"type:varchar(50)" json:"schedule_id"`
+	ErrorMessage   string     `gorm:"type:text" json:"error_message,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
 }
 
 // BackupSchedule defines an automated periodic backup policy.
 type BackupSchedule struct {
-	ID              string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	Name            string     `gorm:"type:varchar(255);not null" json:"name"`
-	CronExpression  string     `gorm:"type:varchar(100);not null" json:"cron_expression"` // e.g. "0 3 * * *" (Daily 3 AM)
-	TargetType      string     `gorm:"type:varchar(50);default:'stack'" json:"target_type"` // "stack", "volume", "all"
-	TargetID        string     `gorm:"type:varchar(255)" json:"target_id"` // StackID, VolumeName, or "all"
-	TargetName      string     `gorm:"type:varchar(255)" json:"target_name"`
-	DestinationPath string     `gorm:"type:text" json:"destination_path"` // Destination directory for backup archives
-	RetentionCount  int        `gorm:"default:7" json:"retention_count"` // Keep last N backups
+	ID                   string     `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	Name                 string     `gorm:"type:varchar(255);not null" json:"name"`
+	CronExpression       string     `gorm:"type:varchar(100);not null" json:"cron_expression"`   // e.g. "0 3 * * *" (Daily 3 AM)
+	TargetType           string     `gorm:"type:varchar(50);default:'stack'" json:"target_type"` // "stack", "volume", "all"
+	TargetID             string     `gorm:"type:varchar(255)" json:"target_id"`                  // StackID, VolumeName, or "all"
+	TargetName           string     `gorm:"type:varchar(255)" json:"target_name"`
+	DestinationPath      string     `gorm:"type:text" json:"destination_path"` // Destination directory for backup archives
+	RetentionCount       int        `gorm:"default:7" json:"retention_count"`  // Keep last N backups
 	PauseContainers      bool       `gorm:"default:true" json:"pause_containers"`
 	Enabled              bool       `gorm:"default:true" json:"enabled"`
 	Encrypted            bool       `gorm:"default:false" json:"encrypted"`
@@ -353,7 +353,7 @@ type BackupSchedule struct {
 type StoragePool struct {
 	ID        string    `gorm:"primaryKey;type:varchar(50)" json:"id"`
 	Name      string    `gorm:"type:varchar(255);not null" json:"name"`
-	Path      string    `gorm:"type:text;not null" json:"path"` // e.g. "/var/contenedores"
+	Path      string    `gorm:"type:text;not null" json:"path"`  // e.g. "/var/contenedores"
 	FSType    string    `gorm:"type:varchar(50)" json:"fs_type"` // nfs, glusterfs, local, etc.
 	IsActive  bool      `gorm:"default:true" json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
@@ -465,13 +465,13 @@ func (s *ImageScan) BeforeSave(_ *gorm.DB) (err error) {
 
 func (s *ImageScan) AfterFind(_ *gorm.DB) (err error) {
 	if len(s.HostsRaw) > 0 {
-		json.Unmarshal(s.HostsRaw, &s.Hosts)
+		_ = json.Unmarshal(s.HostsRaw, &s.Hosts)
 	}
 	if s.Hosts == nil {
 		s.Hosts = make([]string, 0)
 	}
 	if len(s.ServicesRaw) > 0 {
-		json.Unmarshal(s.ServicesRaw, &s.Services)
+		_ = json.Unmarshal(s.ServicesRaw, &s.Services)
 	}
 	if s.Services == nil {
 		s.Services = make([]string, 0)
@@ -481,17 +481,17 @@ func (s *ImageScan) AfterFind(_ *gorm.DB) (err error) {
 
 // ImageVulnerability represents an individual CVE found during an image scan.
 type ImageVulnerability struct {
-	ID               string   `gorm:"primaryKey;type:varchar(50)" json:"id"`
-	ScanID           string   `gorm:"type:varchar(50);index;not null" json:"scan_id"`
-	CVEID            string   `gorm:"type:varchar(50);index;not null" json:"cve_id"`
-	PackageName      string   `gorm:"type:varchar(255);not null" json:"package_name"`
-	InstalledVersion string   `gorm:"type:varchar(100);not null" json:"installed_version"`
-	FixedVersion     string   `gorm:"type:varchar(100)" json:"fixed_version,omitempty"`
-	Severity         string   `gorm:"type:varchar(50);not null" json:"severity"` // 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
-	CVSSScore        float64  `json:"cvss_score"`
-	Title            string   `gorm:"type:varchar(255)" json:"title"`
-	Description      string   `gorm:"type:text" json:"description"`
-	PrimaryURL       string   `gorm:"type:varchar(1024)" json:"primary_url"`
+	ID               string  `gorm:"primaryKey;type:varchar(50)" json:"id"`
+	ScanID           string  `gorm:"type:varchar(50);index;not null" json:"scan_id"`
+	CVEID            string  `gorm:"type:varchar(50);index;not null" json:"cve_id"`
+	PackageName      string  `gorm:"type:varchar(255);not null" json:"package_name"`
+	InstalledVersion string  `gorm:"type:varchar(100);not null" json:"installed_version"`
+	FixedVersion     string  `gorm:"type:varchar(100)" json:"fixed_version,omitempty"`
+	Severity         string  `gorm:"type:varchar(50);not null" json:"severity"` // 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
+	CVSSScore        float64 `json:"cvss_score"`
+	Title            string  `gorm:"type:varchar(255)" json:"title"`
+	Description      string  `gorm:"type:text" json:"description"`
+	PrimaryURL       string  `gorm:"type:varchar(1024)" json:"primary_url"`
 }
 
 // ImageSBOM represents a Software Bill of Materials for a container image.
@@ -507,15 +507,15 @@ type ImageSBOM struct {
 
 // ManagedWAFConfig stores global Web Application Firewall settings, rule toggles, and IP lists.
 type ManagedWAFConfig struct {
-	ID                     string    `gorm:"primaryKey;type:varchar(50)" json:"id"` // "default"
-	Enabled                bool      `gorm:"default:false" json:"enabled"`          // Master Switch
+	ID                     string    `gorm:"primaryKey;type:varchar(50)" json:"id"`          // "default"
+	Enabled                bool      `gorm:"default:false" json:"enabled"`                   // Master Switch
 	Mode                   string    `gorm:"type:varchar(20);default:'enforce'" json:"mode"` // "enforce" or "detection"
-	ParanoiaLevel          int       `gorm:"default:1" json:"paranoia_level"`       // 1 to 4
-	BlockSQLi              bool      `gorm:"default:true" json:"block_sqli"`        // SQL Injection
-	BlockXSS               bool      `gorm:"default:true" json:"block_xss"`         // Cross-Site Scripting
-	BlockRCE               bool      `gorm:"default:true" json:"block_rce"`         // Remote Code Execution & Log4j
-	BlockLFI               bool      `gorm:"default:true" json:"block_lfi"`         // Path Traversal / LFI
-	BlockScanners          bool      `gorm:"default:true" json:"block_scanners"`    // Malicious Scanners & Bots
+	ParanoiaLevel          int       `gorm:"default:1" json:"paranoia_level"`                // 1 to 4
+	BlockSQLi              bool      `gorm:"default:true" json:"block_sqli"`                 // SQL Injection
+	BlockXSS               bool      `gorm:"default:true" json:"block_xss"`                  // Cross-Site Scripting
+	BlockRCE               bool      `gorm:"default:true" json:"block_rce"`                  // Remote Code Execution & Log4j
+	BlockLFI               bool      `gorm:"default:true" json:"block_lfi"`                  // Path Traversal / LFI
+	BlockScanners          bool      `gorm:"default:true" json:"block_scanners"`             // Malicious Scanners & Bots
 	RateLimitEnabled       bool      `gorm:"default:false" json:"rate_limit_enabled"`
 	RateLimitRPS           int       `gorm:"default:50" json:"rate_limit_rps"`
 	WhitelistedIPs         string    `gorm:"type:text" json:"whitelisted_ips"`
@@ -527,9 +527,9 @@ type ManagedWAFConfig struct {
 
 // ManagedRouteWAF stores route-level WAF enable/disable overrides ("a mano" or from Compose labels).
 type ManagedRouteWAF struct {
-	Host         string    `gorm:"primaryKey;type:varchar(255)" json:"host"` // e.g. "app.gbnt.local"
-	Enabled      bool      `gorm:"default:true" json:"enabled"`              // Route-specific active state
-	Mode         string    `gorm:"type:varchar(20);default:'enforce'" json:"mode"` // "enforce" or "detection"
+	Host         string    `gorm:"primaryKey;type:varchar(255)" json:"host"`               // e.g. "app.gbnt.local"
+	Enabled      bool      `gorm:"default:true" json:"enabled"`                            // Route-specific active state
+	Mode         string    `gorm:"type:varchar(20);default:'enforce'" json:"mode"`         // "enforce" or "detection"
 	OverriddenBy string    `gorm:"type:varchar(50);default:'manual'" json:"overridden_by"` // "manual" or "compose_label"
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -549,5 +549,3 @@ type WAFSecurityEvent struct {
 	Action     string    `gorm:"type:varchar(20)" json:"action"`   // "BLOCKED", "AUDITED"
 	Details    string    `gorm:"type:text" json:"details"`
 }
-
-

@@ -86,7 +86,7 @@ var scanCmd = &cobra.Command{
 			Scan            db.ImageScan            `json:"scan"`
 			Vulnerabilities []db.ImageVulnerability `json:"vulnerabilities"`
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 
 		fmt.Printf("🔍 Security Scan Report for: %s\n", imageName)
 		fmt.Printf("Status: Signature=%s | Critical=%d | High=%d | Medium=%d | Low=%d\n\n",
@@ -212,7 +212,7 @@ var imageVerifyCmd = &cobra.Command{
 		var result struct {
 			Decision security.AdmissionDecision `json:"decision"`
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 
 		if result.Decision.Allowed {
 			fmt.Printf("✅ Image '%s' passed admission verification: %s\n", imageName, result.Decision.Decision)
@@ -269,7 +269,7 @@ var securityPolicyCmd = &cobra.Command{
 		var result struct {
 			Policy db.SecurityPolicy `json:"policy"`
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 
 		p := result.Policy
 		fmt.Printf("📜 Cluster Admission Security Policy:\n")
@@ -380,7 +380,7 @@ var securityKeyLsCmd = &cobra.Command{
 		var result struct {
 			Keys []db.TrustedSigningKey `json:"keys"`
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 
 		if len(result.Keys) == 0 {
 			fmt.Println("No trusted signing keys found.")
@@ -427,7 +427,7 @@ var securityKeyGenerateCmd = &cobra.Command{
 			Key       db.TrustedSigningKey `json:"key"`
 			PublicPEM string               `json:"public_pem"`
 		}
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 
 		fmt.Printf("✅ ECDSA P-256 Signing Key generated successfully!\n")
 		fmt.Printf("  • ID:         %s\n", res.Key.ID)
@@ -543,7 +543,7 @@ var imageFixCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var result security.RemediationResult
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 
 		fmt.Println("🚀 Executing Image Remediation Workflow:")
 		for _, log := range result.Logs {
@@ -576,7 +576,7 @@ var scanPruneCmd = &cobra.Command{
 			Message string `json:"message"`
 			Purged  int    `json:"purged"`
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 		fmt.Printf("🧹 %s (Pruned %d stale scan records)\n", result.Message, result.Purged)
 	},
 }

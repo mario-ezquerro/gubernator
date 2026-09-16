@@ -189,7 +189,7 @@ func ListProfiles() []SREProfile {
 	copy(result, predefinedProfiles)
 
 	for i := range result {
-		result[i].IsActive = (result[i].ID == activeID)
+		result[i].IsActive = result[i].ID == activeID
 	}
 	return result
 }
@@ -198,7 +198,7 @@ func ListProfiles() []SREProfile {
 func GetProfileByID(id string) *SREProfile {
 	for _, p := range predefinedProfiles {
 		if p.ID == id {
-			p.IsActive = (p.ID == GetActiveProfile())
+			p.IsActive = p.ID == GetActiveProfile()
 			return &p
 		}
 	}

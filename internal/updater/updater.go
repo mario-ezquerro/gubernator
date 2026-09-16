@@ -105,7 +105,7 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 					}
 				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -129,7 +129,7 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 					}
 				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -149,7 +149,7 @@ func CheckLatestRelease(currentVersion string, forceRefresh bool) (*UpdateInfo, 
 					})
 				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -336,8 +336,8 @@ func ApplyClusterUpdate(targetVersion string) error {
 					out, createErr := os.Create(tmpPath)
 					if createErr == nil {
 						_, copyErr := io.Copy(out, resp.Body)
-						out.Close()
-						resp.Body.Close()
+						_ = out.Close()
+						_ = resp.Body.Close()
 						if copyErr == nil {
 							// Verify binary size > 1MB
 							if fi, sErr := os.Stat(tmpPath); sErr == nil && fi.Size() > 1000000 {
@@ -347,7 +347,7 @@ func ApplyClusterUpdate(targetVersion string) error {
 						}
 					}
 				} else {
-					resp.Body.Close()
+					_ = resp.Body.Close()
 					dlErr = fmt.Errorf("GitHub returned HTTP %s (release assets may still be uploading)", resp.Status)
 				}
 			} else {

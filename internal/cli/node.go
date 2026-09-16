@@ -45,17 +45,17 @@ var nodeLsCmd = &cobra.Command{
 		// Basic JSON parsing
 		var data struct {
 			Nodes []struct {
-				ID            string  `json:"id"`
-				IP            string  `json:"ip"`
-				Role          string  `json:"role"`
-				Status        string  `json:"status"`
-				CpuPercent    float64 `json:"cpu_percent"`
-				MemUsedBytes  uint64  `json:"mem_used_bytes"`
-				MemTotalBytes uint64  `json:"mem_total_bytes"`
-				MemPercent    float64 `json:"mem_percent"`
-				DiskUsedBytes uint64  `json:"disk_used_bytes"`
-				DiskTotalBytes uint64 `json:"disk_total_bytes"`
-				DiskPercent   float64 `json:"disk_percent"`
+				ID             string  `json:"id"`
+				IP             string  `json:"ip"`
+				Role           string  `json:"role"`
+				Status         string  `json:"status"`
+				CpuPercent     float64 `json:"cpu_percent"`
+				MemUsedBytes   uint64  `json:"mem_used_bytes"`
+				MemTotalBytes  uint64  `json:"mem_total_bytes"`
+				MemPercent     float64 `json:"mem_percent"`
+				DiskUsedBytes  uint64  `json:"disk_used_bytes"`
+				DiskTotalBytes uint64  `json:"disk_total_bytes"`
+				DiskPercent    float64 `json:"disk_percent"`
 			} `json:"nodes"`
 		}
 
@@ -117,7 +117,7 @@ var nodeInspectCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		io.Copy(os.Stdout, resp.Body)
+		_, _ = io.Copy(os.Stdout, resp.Body)
 		fmt.Println()
 	},
 }
@@ -201,7 +201,7 @@ var nodeLabelCmd = &cobra.Command{
 
 		if len(toAdd) == 0 && len(toRm) == 0 {
 			_, _ = fmt.Fprintln(os.Stderr, "Error: must specify at least one label to add (key=value) or remove (key)")
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(1)
 		}
 

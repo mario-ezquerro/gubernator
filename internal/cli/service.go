@@ -28,7 +28,7 @@ var serviceLsCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var services []db.Service
-		json.NewDecoder(resp.Body).Decode(&services)
+		_ = json.NewDecoder(resp.Body).Decode(&services)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS\tSTACK")
@@ -52,7 +52,7 @@ var servicePsCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var tasks []db.Task
-		json.NewDecoder(resp.Body).Decode(&tasks)
+		_ = json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tNODE\tSTATUS\tIP")
@@ -85,7 +85,7 @@ var serviceScaleCmd = &cobra.Command{
 		// Parse service=replicas
 		var serviceID string
 		var replicas int
-		fmt.Sscanf(args[0], "%s=%d", &serviceID, &replicas)
+		_, _ = fmt.Sscanf(args[0], "%s=%d", &serviceID, &replicas)
 
 		payload := fmt.Sprintf(`{"replicas":%d}`, replicas)
 		resp, err := DoAPIRequest("POST", "/v1/service/"+serviceID+"/scale", bytes.NewBufferString(payload))

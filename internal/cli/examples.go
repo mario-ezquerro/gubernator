@@ -94,7 +94,7 @@ var examplesDeployCmd = &cobra.Command{
 		}
 
 		var res map[string]interface{}
-		json.Unmarshal(bodyBytes, &res)
+		_ = json.Unmarshal(bodyBytes, &res)
 
 		if exampleID == "all" {
 			count := res["deployed_count"]

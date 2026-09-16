@@ -1,12 +1,10 @@
 package web
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"path/filepath"
-	"golang.org/x/crypto/bcrypt"
 	"bytes"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,16 +16,19 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/creack/pty"
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/auth"
@@ -71,7 +72,6 @@ func GetVersion() string {
 	}
 	return "v2.59.0"
 }
-
 
 // envSlice handles both sequence/list (e.g. ["FOO=bar"]) and map (e.g. FOO: bar) formats for environment variables in YAML.
 type envSlice []string
@@ -169,8 +169,8 @@ type composeService struct {
 	Command     commandVal `yaml:"command"`
 	Labels      labelsMap  `yaml:"labels"`
 	Deploy      struct {
-		Replicas int       `yaml:"replicas"`
-		Labels   labelsMap `yaml:"labels"`
+		Replicas  int       `yaml:"replicas"`
+		Labels    labelsMap `yaml:"labels"`
 		Placement struct {
 			Constraints []string `yaml:"constraints"`
 		} `yaml:"placement"`
@@ -799,7 +799,7 @@ func StartDashboard() {
 		if relPath != "" {
 			// Try to serve the exact file (e.g. flutter_bootstrap.js, main.dart.js, assets/...)
 			if f, err := flutterContent.Open(relPath); err == nil {
-				f.Close()
+				_ = f.Close()
 				c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 				c.Request.URL.Path = "/" + relPath
 				fileServer.ServeHTTP(c.Writer, c.Request)
@@ -1298,7 +1298,9 @@ func changePasswordHandler(c *gin.Context) {
 	}
 
 	// Update the environment variable for the current process
-	os.Setenv("GBNT_WEB_PASSWORD", req.NewPassword)
+	if err := os.Setenv("GBNT_WEB_PASSWORD", req.NewPassword); err != nil {
+		slog.Warn("failed to set GBNT_WEB_PASSWORD", "err", err)
+	}
 	c.JSON(http.StatusOK, gin.H{"status": "password_changed"})
 }
 
@@ -1333,7 +1335,7 @@ func deleteStackHandler(c *gin.Context) {
 			for _, task := range tasks {
 				if task.ContainerName != "" {
 					go func(name string) {
-						exec.Command("docker", "restart", name).Run()
+						_ = exec.Command("docker", "restart", name).Run()
 					}(task.ContainerName)
 				}
 			}
@@ -1633,7 +1635,7 @@ func taskShellHandler(c *gin.Context) {
 		slog.Error("failed to upgrade websocket", "err", err)
 		return
 	}
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	actor := "system"
 	if sess := auth.ExtractUserSession(c); sess != nil {
@@ -1652,7 +1654,7 @@ func taskShellHandler(c *gin.Context) {
 
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
-		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start shell: %v\r\n", err)))
+		_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start shell: %v\r\n", err)))
 		return
 	}
 	defer func() {
@@ -2674,8 +2676,8 @@ func stopStackHandler(c *gin.Context) {
 	go aqueducts.GenerateCaddyfile()
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":            "stopped",
-		"stack_id":          id,
+		"status":             "stopped",
+		"stack_id":           id,
 		"stopped_containers": stoppedCount,
 	})
 }
@@ -3376,7 +3378,7 @@ func nodeRebootHandler(c *gin.Context) {
 			}
 		}
 		sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", ip), "sudo", "reboot")
-		
+
 		// Try SSH reboot to worker/manager host
 		cmd := exec.Command("ssh", sshArgs...)
 		if err := cmd.Run(); err != nil {
@@ -3943,8 +3945,6 @@ func jaegerProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass
 	proxy.ServeHTTP(c.Writer, c.Request)
 }
 
-
-
 func nodeShellHandler(c *gin.Context) {
 	id := c.Param("id")
 	var node db.Node
@@ -3958,7 +3958,7 @@ func nodeShellHandler(c *gin.Context) {
 		slog.Error("failed to upgrade websocket", "err", err)
 		return
 	}
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	// Use nsenter inside a privileged container to get host shell
 	var cmd *exec.Cmd
@@ -5062,8 +5062,6 @@ func coreDNSDigHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-
-
 func queryPrometheusMetric(query string) (float64, error) {
 	resp, getErr := http.Get(fmt.Sprintf("http://localhost:9090/api/v1/query?query=%s", query))
 	if getErr != nil {
@@ -5970,8 +5968,6 @@ func authTestLDAPHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
 }
-
-
 
 func listSecurityUsersHandler(c *gin.Context) {
 	var users []db.LocalUser
@@ -7349,89 +7345,89 @@ func fetchLogsInternal(query, container, node, _ /*stack*/, stream, level, timeR
 				Data   struct {
 					ResultType string `json:"resultType"`
 					Result     []struct {
-					Stream map[string]string `json:"stream"`
-					Values [][]string        `json:"values"`
-				} `json:"result"`
-			} `json:"data"`
-		}
+						Stream map[string]string `json:"stream"`
+						Values [][]string        `json:"values"`
+					} `json:"result"`
+				} `json:"data"`
+			}
 
-		if decErr := json.NewDecoder(resp.Body).Decode(&lokiRes); decErr == nil && len(lokiRes.Data.Result) > 0 {
-			var logs []LokiLogItem
-			for _, streamItem := range lokiRes.Data.Result {
-				labels := streamItem.Stream
-				cName := labels["container_name"]
-				if cName == "" {
-					cName = labels["container"]
-				}
-				cName = strings.TrimPrefix(cName, "/")
-				if cName == "" {
-					cName = labels["service_name"]
-				}
-				if cName == "" {
-					cName = "system"
-				}
+			if decErr := json.NewDecoder(resp.Body).Decode(&lokiRes); decErr == nil && len(lokiRes.Data.Result) > 0 {
+				var logs []LokiLogItem
+				for _, streamItem := range lokiRes.Data.Result {
+					labels := streamItem.Stream
+					cName := labels["container_name"]
+					if cName == "" {
+						cName = labels["container"]
+					}
+					cName = strings.TrimPrefix(cName, "/")
+					if cName == "" {
+						cName = labels["service_name"]
+					}
+					if cName == "" {
+						cName = "system"
+					}
 
-				hostName := labels["host"]
-				if hostName == "" {
-					hostName = labels["node"]
-				}
-				if hostName == "" {
-					hostName = "manager"
-				}
+					hostName := labels["host"]
+					if hostName == "" {
+						hostName = labels["node"]
+					}
+					if hostName == "" {
+						hostName = "manager"
+					}
 
-				st := labels["stream"]
-				if st == "" {
-					st = "stdout"
-				}
+					st := labels["stream"]
+					if st == "" {
+						st = "stdout"
+					}
 
-				for _, val := range streamItem.Values {
-					if len(val) >= 2 {
-						tsNs := val[0]
-						rawMsg := strings.TrimRight(val[1], "\r\n")
+					for _, val := range streamItem.Values {
+						if len(val) >= 2 {
+							tsNs := val[0]
+							rawMsg := strings.TrimRight(val[1], "\r\n")
 
-						var tsFormatted string
-						if nsInt, parseErr := strconv.ParseInt(tsNs, 10, 64); parseErr == nil {
-							t := time.Unix(0, nsInt)
-							tsFormatted = t.Format("2006-01-02 15:04:05.000")
-						} else {
-							tsFormatted = time.Now().Format("2006-01-02 15:04:05.000")
+							var tsFormatted string
+							if nsInt, parseErr := strconv.ParseInt(tsNs, 10, 64); parseErr == nil {
+								t := time.Unix(0, nsInt)
+								tsFormatted = t.Format("2006-01-02 15:04:05.000")
+							} else {
+								tsFormatted = time.Now().Format("2006-01-02 15:04:05.000")
+							}
+
+							lvl := parseLogLevel(rawMsg, st)
+
+							if container != "" && !strings.Contains(strings.ToLower(cName), strings.ToLower(container)) {
+								continue
+							}
+							if node != "" && !strings.Contains(strings.ToLower(hostName), strings.ToLower(node)) {
+								continue
+							}
+
+							logs = append(logs, LokiLogItem{
+								Timestamp:   tsFormatted,
+								TimestampNs: tsNs,
+								Container:   cName,
+								Node:        hostName,
+								Stream:      st,
+								Level:       lvl,
+								Message:     rawMsg,
+								Labels:      labels,
+							})
 						}
-
-						lvl := parseLogLevel(rawMsg, st)
-
-						if container != "" && !strings.Contains(strings.ToLower(cName), strings.ToLower(container)) {
-							continue
-						}
-						if node != "" && !strings.Contains(strings.ToLower(hostName), strings.ToLower(node)) {
-							continue
-						}
-
-						logs = append(logs, LokiLogItem{
-							Timestamp:   tsFormatted,
-							TimestampNs: tsNs,
-							Container:   cName,
-							Node:        hostName,
-							Stream:      st,
-							Level:       lvl,
-							Message:     rawMsg,
-							Labels:      labels,
-						})
 					}
 				}
+
+				sort.Slice(logs, func(i, j int) bool {
+					return logs[i].TimestampNs > logs[j].TimestampNs
+				})
+
+				if len(logs) > limit {
+					logs = logs[:limit]
+				}
+
+				return logs, "loki", nil
 			}
-
-			sort.Slice(logs, func(i, j int) bool {
-				return logs[i].TimestampNs > logs[j].TimestampNs
-			})
-
-			if len(logs) > limit {
-				logs = logs[:limit]
-			}
-
-			return logs, "loki", nil
 		}
 	}
-}
 
 	// Graceful Docker CLI fallback
 	targetContainer := container
@@ -8461,11 +8457,11 @@ func glusterStatusHandler(c *gin.Context) {
 	vols, _ := storage.GetGlusterVolumes()
 
 	c.JSON(http.StatusOK, gin.H{
-		"installed":      installed,
-		"running":        running,
-		"version":        version,
-		"peers_count":    len(peers),
-		"volumes_count":  len(vols),
+		"installed":     installed,
+		"running":       running,
+		"version":       version,
+		"peers_count":   len(peers),
+		"volumes_count": len(vols),
 	})
 }
 

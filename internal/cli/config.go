@@ -107,7 +107,7 @@ Example:
 		name := args[0]
 		if contextServer == "" || contextToken == "" {
 			_, _ = fmt.Fprintln(os.Stderr, "Error: --server and --token are required.")
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(1)
 		}
 
@@ -159,7 +159,6 @@ var configCurrentContextCmd = &cobra.Command{
 	},
 }
 
-
 func configPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".gbntctl", "config")
@@ -169,15 +168,15 @@ func loadConfig() CLIConfig {
 	var cfg CLIConfig
 	data, err := os.ReadFile(configPath())
 	if err == nil {
-		yaml.Unmarshal(data, &cfg)
+		_ = yaml.Unmarshal(data, &cfg)
 	}
 	return cfg
 }
 
 func saveConfig(cfg CLIConfig) {
 	data, _ := yaml.Marshal(cfg)
-	os.MkdirAll(filepath.Dir(configPath()), 0755)
-	os.WriteFile(configPath(), data, 0600)
+	_ = os.MkdirAll(filepath.Dir(configPath()), 0755)
+	_ = os.WriteFile(configPath(), data, 0600)
 }
 
 // GetAPIEndpoint returns the server URL from the current context without a trailing slash.
@@ -232,4 +231,3 @@ func DoAPIRequestWithTimeout(method, path string, body io.Reader, timeout time.D
 	client := &http.Client{Timeout: timeout}
 	return client.Do(req)
 }
-

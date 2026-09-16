@@ -87,7 +87,7 @@ func SendEmailAlert(cfg *db.SLONotificationConfig, subject, body string) error {
 		}
 		client, clientErr := smtp.NewClient(conn, cfg.SMTPHost)
 		if clientErr != nil {
-			conn.Close()
+			_ = conn.Close()
 			return fmt.Errorf("SMTP client failed: %w", clientErr)
 		}
 		defer func() { _ = client.Close() }()

@@ -145,7 +145,7 @@ func NodeRebootHandler(c *gin.Context) {
 	go func() {
 		time.Sleep(1 * time.Second)
 		slog.Info("node reboot initiated", "id", id)
-		exec.Command("sudo", "reboot").Run()
+		_ = exec.Command("sudo", "reboot").Run()
 	}()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Node reboot initiated"})
@@ -311,4 +311,3 @@ func drainNodeTasks(nodeID string) {
 	// Regenerate configurations
 	aqueducts.GenerateAllAsync()
 }
-

@@ -29,7 +29,7 @@ var taskLsCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var tasks []db.Task
-		json.NewDecoder(resp.Body).Decode(&tasks)
+		_ = json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tCPU (LIVE/LIMIT)\tMEMORY (LIVE/LIMIT)\tIP\tERROR")
@@ -100,7 +100,7 @@ var taskPruneCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 		if msg, ok := res["message"]; ok {
 			fmt.Printf("✅ %v\n", msg)
 		} else {

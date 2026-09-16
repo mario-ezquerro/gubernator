@@ -102,7 +102,7 @@ func ParseAutoscalePolicy(constraints []string) *AutoscalePolicy {
 
 		switch key {
 		case LabelEnable:
-			policy.Enabled = (val == "true" || val == "1" || val == "yes")
+			policy.Enabled = val == "true" || val == "1" || val == "yes"
 		case LabelScope:
 			explicitScope = true
 			if val == "cluster" || val == "all" || val == "multi-host" {

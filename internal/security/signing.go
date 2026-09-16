@@ -147,7 +147,7 @@ func ListTrustedKeys() ([]db.TrustedSigningKey, error) {
 	var keys []db.TrustedSigningKey
 	err := db.DB.Order("created_at desc").Find(&keys).Error
 	for i := range keys {
-		keys[i].HasPrivateKey = (strings.TrimSpace(keys[i].PrivateKeyPEM) != "")
+		keys[i].HasPrivateKey = strings.TrimSpace(keys[i].PrivateKeyPEM) != ""
 	}
 	return keys, err
 }
@@ -158,7 +158,7 @@ func GetTrustedKeyByID(id string) (*db.TrustedSigningKey, error) {
 	if err := db.DB.First(&key, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	key.HasPrivateKey = (strings.TrimSpace(key.PrivateKeyPEM) != "")
+	key.HasPrivateKey = strings.TrimSpace(key.PrivateKeyPEM) != ""
 	return &key, nil
 }
 
@@ -170,7 +170,7 @@ func GetDefaultSigningKey() (*db.TrustedSigningKey, error) {
 			return nil, err
 		}
 	}
-	key.HasPrivateKey = (strings.TrimSpace(key.PrivateKeyPEM) != "")
+	key.HasPrivateKey = strings.TrimSpace(key.PrivateKeyPEM) != ""
 	return &key, nil
 }
 

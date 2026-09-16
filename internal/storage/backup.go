@@ -179,7 +179,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	hasher := sha256.New()
 	multiWriter := io.MultiWriter(outFile, hasher)
@@ -194,8 +194,8 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 
 	if req.Encrypted {
 		if strings.TrimSpace(req.EncryptionPassphrase) == "" {
-			outFile.Close()
-			os.Remove(destFilePath)
+			_ = outFile.Close()
+			_ = os.Remove(destFilePath)
 			return nil, errors.New("encryption passphrase is required for encrypted backup (ENS mp.si.2)")
 		}
 		encPipeR, encPipeW = io.Pipe()
@@ -246,7 +246,7 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 			if openErr != nil {
 				return openErr
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			if _, copyErr := io.Copy(tw, f); copyErr != nil {
 				return copyErr
@@ -257,13 +257,13 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 	})
 
 	if err != nil {
-		tw.Close()
-		gw.Close()
+		_ = tw.Close()
+		_ = gw.Close()
 		if encPipeW != nil {
 			_ = encPipeW.CloseWithError(err)
 		}
-		outFile.Close()
-		os.Remove(destFilePath)
+		_ = outFile.Close()
+		_ = os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed during tar compression: %w", err)
 	}
 
@@ -271,24 +271,24 @@ func CreateBackup(req CreateBackupRequest) (*db.Backup, error) {
 		if encPipeW != nil {
 			_ = encPipeW.CloseWithError(closeErr)
 		}
-		outFile.Close()
-		os.Remove(destFilePath)
+		_ = outFile.Close()
+		_ = os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed to close tar writer: %w", closeErr)
 	}
 	if closeGzErr := gw.Close(); closeGzErr != nil {
 		if encPipeW != nil {
 			_ = encPipeW.CloseWithError(closeGzErr)
 		}
-		outFile.Close()
-		os.Remove(destFilePath)
+		_ = outFile.Close()
+		_ = os.Remove(destFilePath)
 		return nil, fmt.Errorf("failed to close gzip writer: %w", closeGzErr)
 	}
 
 	if req.Encrypted && encPipeW != nil {
 		_ = encPipeW.Close()
 		if encErr := <-encErrCh; encErr != nil {
-			outFile.Close()
-			os.Remove(destFilePath)
+			_ = outFile.Close()
+			_ = os.Remove(destFilePath)
 			return nil, fmt.Errorf("failed during AES-256-GCM encryption: %w", encErr)
 		}
 	}
@@ -376,7 +376,7 @@ func RestoreBackup(req RestoreBackupRequest) error {
 	if err != nil {
 		return fmt.Errorf("failed to open backup archive: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var reader io.Reader = file
 	if isEncrypted {
@@ -399,7 +399,7 @@ func RestoreBackup(req RestoreBackupRequest) error {
 		}
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 
 	tr := tar.NewReader(gr)
 
@@ -437,10 +437,10 @@ func RestoreBackup(req RestoreBackupRequest) error {
 				return err
 			}
 			if _, err := io.Copy(outFile, tr); err != nil {
-				outFile.Close()
+				_ = outFile.Close()
 				return err
 			}
-			outFile.Close()
+			_ = outFile.Close()
 		}
 	}
 

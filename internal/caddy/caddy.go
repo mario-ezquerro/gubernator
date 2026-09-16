@@ -111,7 +111,7 @@ func EnsureRunning() error {
 			return nil
 		}
 		// Container exists but not running — remove it first
-		exec.Command("docker", "rm", "-f", ContainerName).Run()
+		_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
 	}
 
 	fmt.Println("🔒 Starting Caddy Ingress container (gbnt-caddy)...")
@@ -169,9 +169,9 @@ func ReloadConfig() error {
 // Stop stops and removes the Caddy container.
 func Stop() {
 	fmt.Printf("⏹  Stopping %s...\n", ContainerName)
-	exec.Command("docker", "stop", ContainerName).Run()
-	exec.Command("docker", "rm", "-f", ContainerName).Run()
-	exec.Command("docker", "volume", "rm", "-f", VolumeName).Run()
+	_ = exec.Command("docker", "stop", ContainerName).Run()
+	_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
+	_ = exec.Command("docker", "volume", "rm", "-f", VolumeName).Run()
 }
 
 // Status returns the current status of the Caddy container.
@@ -190,10 +190,10 @@ func populateConfigVolume() error {
 	dir := CaddyDir()
 
 	// Create volume
-	exec.Command("docker", "volume", "create", VolumeName).Run()
+	_ = exec.Command("docker", "volume", "create", VolumeName).Run()
 
 	helperName := "gbnt-caddy-vol-helper"
-	exec.Command("docker", "rm", "-f", helperName).Run()
+	_ = exec.Command("docker", "rm", "-f", helperName).Run()
 
 	if err := exec.Command("docker", "create",
 		"--name", helperName,
@@ -201,7 +201,7 @@ func populateConfigVolume() error {
 		"alpine:latest").Run(); err != nil {
 		return fmt.Errorf("failed to create volume helper: %w", err)
 	}
-	defer exec.Command("docker", "rm", "-f", helperName).Run()
+	defer func() { _ = exec.Command("docker", "rm", "-f", helperName).Run() }()
 
 	if err := exec.Command("docker", "cp", dir+"/.", helperName+":/data/").Run(); err != nil {
 		return fmt.Errorf("failed to copy configs into caddy volume: %w", err)
@@ -524,7 +524,7 @@ func EnsureRootCA() ([]byte, error) {
 	_ = os.WriteFile("caddy-root.crt", caPEM, 0644)
 
 	// Copy into Caddy container if running
-	exec.Command("docker", "exec", ContainerName, "mkdir", "-p", "/data/caddy/pki/authorities/local").Run()
+	_ = exec.Command("docker", "exec", ContainerName, "mkdir", "-p", "/data/caddy/pki/authorities/local").Run()
 	cmd := exec.Command("docker", "exec", "-i", ContainerName, "sh", "-c", "cat > /data/caddy/pki/authorities/local/root.crt")
 	cmd.Stdin = bytes.NewReader(caPEM)
 	_ = cmd.Run()
@@ -658,7 +658,7 @@ func SaveCustomCert(domain string, certPEM, keyPEM string) error {
 
 // RenewCertificate forces certificate renewal and triggers Caddy TLS reload.
 func RenewCertificate(domain string) error {
-	exec.Command("docker", "exec", ContainerName, "sh", "-c", fmt.Sprintf("rm -rf /data/caddy/certificates/*/*/%s*", domain)).Run()
+	_ = exec.Command("docker", "exec", ContainerName, "sh", "-c", fmt.Sprintf("rm -rf /data/caddy/certificates/*/*/%s*", domain)).Run()
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".crt"))
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".key"))
 	_, _ = EnsureDomainCertificate(domain)
@@ -792,8 +792,8 @@ func PruneOrphanedCerts() (int, error) {
 			if strings.HasSuffix(f.Name(), ".crt") {
 				domain := strings.TrimSuffix(f.Name(), ".crt")
 				if domain != "*.gbnt.local" && !strings.Contains(caddyfileStr, domain) {
-					os.Remove(filepath.Join(customDir, f.Name()))
-					os.Remove(filepath.Join(customDir, domain+".key"))
+					_ = os.Remove(filepath.Join(customDir, f.Name()))
+					_ = os.Remove(filepath.Join(customDir, domain+".key"))
 					prunedCount++
 				}
 			}

@@ -73,7 +73,7 @@ func (p *Probe) detectKernelEBPF() {
 		_, bpfErr := os.Stat("/sys/fs/bpf")
 		_, traceErr1 := os.Stat("/sys/kernel/tracing")
 		_, traceErr2 := os.Stat("/sys/kernel/debug/tracing")
-		hasTrace := (traceErr1 == nil || traceErr2 == nil)
+		hasTrace := traceErr1 == nil || traceErr2 == nil
 
 		if bpfErr == nil || hasTrace {
 			p.ebpfEnabled = true
@@ -511,7 +511,7 @@ func (p *Probe) InspectLinuxInterfaces() {
 	if err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var ifaces []InterfaceStats
 	scanner := bufio.NewScanner(file)
@@ -593,7 +593,7 @@ func (p *Probe) InspectLinuxSockets() {
 				}
 			}
 		}
-		file.Close()
+		_ = file.Close()
 	}
 }
 

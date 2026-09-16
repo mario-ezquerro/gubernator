@@ -65,7 +65,7 @@ var stackDeployCmd = &cobra.Command{
 
 			bodyBytes, _ := io.ReadAll(resp.Body)
 			var successResp map[string]interface{}
-			json.Unmarshal(bodyBytes, &successResp)
+			_ = json.Unmarshal(bodyBytes, &successResp)
 			resolvedName := name
 			if n, ok := successResp["name"].(string); ok && n != "" {
 				resolvedName = n
@@ -79,7 +79,7 @@ var stackDeployCmd = &cobra.Command{
 		// Option 2: Deploy from client local machine file
 		if composeFile == "" {
 			_, _ = fmt.Fprintln(os.Stderr, "Error: -c/--compose-file or -s/--from-server flag is required")
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(1)
 		}
 
@@ -161,7 +161,7 @@ var stackDeployCmd = &cobra.Command{
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		var successResp map[string]interface{}
-		json.Unmarshal(bodyBytes, &successResp)
+		_ = json.Unmarshal(bodyBytes, &successResp)
 		resolvedName := name
 		if n, ok := successResp["name"].(string); ok && n != "" {
 			resolvedName = n
@@ -244,7 +244,7 @@ var stackLsCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var stacks []db.Stack
-		json.NewDecoder(resp.Body).Decode(&stacks)
+		_ = json.NewDecoder(resp.Body).Decode(&stacks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tNAME\tDEPLOYED")
@@ -268,7 +268,7 @@ var stackServicesCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var services []db.Service
-		json.NewDecoder(resp.Body).Decode(&services)
+		_ = json.NewDecoder(resp.Body).Decode(&services)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		_, _ = fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS")
@@ -338,7 +338,7 @@ var stackReconcileCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 		if msg, ok := res["message"]; ok {
 			fmt.Printf("✅ %v\n", msg)
 		} else {

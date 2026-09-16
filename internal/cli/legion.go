@@ -46,7 +46,7 @@ var legionInitCmd = &cobra.Command{
 		var data struct {
 			Token string `json:"token"`
 		}
-		json.NewDecoder(resp.Body).Decode(&data)
+		_ = json.NewDecoder(resp.Body).Decode(&data)
 
 		fmt.Println("🏛 Gubernator Legion Initialized!")
 		_ = monitor.EnsureDockerDaemonMetrics()
@@ -60,7 +60,7 @@ var legionInitCmd = &cobra.Command{
 			respEx, errEx := DoAPIRequest("POST", "/v1/examples/deploy", bytes.NewBuffer(body))
 			if errEx == nil && respEx.StatusCode == http.StatusOK {
 				var resEx map[string]interface{}
-				json.NewDecoder(respEx.Body).Decode(&resEx)
+				_ = json.NewDecoder(respEx.Body).Decode(&resEx)
 				fmt.Printf("✅ Successfully deployed %v POC examples for testing and demonstration!\n", resEx["deployed_count"])
 			} else {
 				fmt.Println("ℹ️  POC examples deployment submitted. Check 'gbnt task ls' or dashboard.")
@@ -82,7 +82,7 @@ var legionJoinCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if joinToken == "" || managerAddr == "" {
 			_, _ = fmt.Fprintln(os.Stderr, "Error: --token and --manager flags are required.")
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(1)
 		}
 
@@ -190,8 +190,8 @@ var legionJoinCmd = &cobra.Command{
 						if !strings.Contains(string(existing), cleanKey) {
 							f, fErr := os.OpenFile(authKeysPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 							if fErr == nil {
-								f.WriteString(cleanKey + "\n")
-								f.Close()
+								_, _ = f.WriteString(cleanKey + "\n")
+								_ = f.Close()
 								fmt.Println("   ✅ Manager SSH public key installed in /home/ubuntu/.ssh/authorized_keys")
 							}
 						}
@@ -200,7 +200,7 @@ var legionJoinCmd = &cobra.Command{
 					}
 				}
 			}
-			sshResp.Body.Close()
+			_ = sshResp.Body.Close()
 		} else {
 			fmt.Println("   ⚠️  Could not fetch Manager SSH public key (Shell access may not work)")
 		}
@@ -214,7 +214,7 @@ var legionJoinCmd = &cobra.Command{
 			mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"status":"healthy","role":"worker"}`))
+				_, _ = w.Write([]byte(`{"status":"healthy","role":"worker"}`))
 			})
 			_ = http.ListenAndServe(":4002", mux)
 		}()
@@ -252,7 +252,7 @@ var legionJoinCmd = &cobra.Command{
 						}
 					}
 				}
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}
 
@@ -413,7 +413,7 @@ var legionJoinCmd = &cobra.Command{
 
 						if strings.Contains(t.Image, "scope") {
 							fmt.Printf("🕸️ Starting Weave Scope probe on worker node...\n")
-							exec.Command("docker", "rm", "-f", "gbnt-monitor-scope-probe").Run()
+							_ = exec.Command("docker", "rm", "-f", "gbnt-monitor-scope-probe").Run()
 
 							args := []string{
 								"run", "-d",
@@ -556,11 +556,11 @@ var legionJoinCmd = &cobra.Command{
 				currContent, _ := os.ReadFile(caddyfilePath)
 				if string(currContent) != caddyfileContent {
 					if err := os.WriteFile(caddyfilePath, []byte(caddyfileContent), 0644); err == nil {
-						caddy.ReloadConfig()
+						_ = caddy.ReloadConfig()
 					}
 				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	},
 }

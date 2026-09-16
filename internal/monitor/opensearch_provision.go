@@ -20,12 +20,12 @@ func ProvisionOpenSearchObjects() {
 	for i := 0; i < 30; i++ {
 		resp, err := client.Get(baseURL + "/api/status")
 		if err == nil && resp.StatusCode == http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			ready = true
 			break
 		}
 		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 		time.Sleep(3 * time.Second)
 	}
@@ -255,7 +255,7 @@ func postSavedObject(client *http.Client, baseURL, objType, id, jsonBody string)
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
 }
 
@@ -273,6 +273,6 @@ func postSetting(client *http.Client, baseURL, key, jsonBody string) error {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
 }

@@ -100,7 +100,7 @@ func StackRmHandler(c *gin.Context) {
 			for _, task := range tasks {
 				if task.ContainerName != "" {
 					go func(name string) {
-						exec.Command("docker", "restart", name).Run()
+						_ = exec.Command("docker", "restart", name).Run()
 					}(task.ContainerName)
 				}
 			}

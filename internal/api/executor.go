@@ -52,7 +52,7 @@ func startLocalExecutor(ctx context.Context) {
 			}
 
 			var targetNode db.Node
-			isLocal := (task.NodeID == localManagerNodeID || task.NodeID == "" || strings.Contains(strings.ToLower(task.NodeID), "manager"))
+			isLocal := task.NodeID == localManagerNodeID || task.NodeID == "" || strings.Contains(strings.ToLower(task.NodeID), "manager")
 			if !isLocal {
 				if err := db.DB.Where("id = ? OR ip = ?", task.NodeID, task.NodeID).First(&targetNode).Error; err == nil {
 					if strings.ToLower(targetNode.Role) == "manager" || targetNode.IP == "127.0.0.1" {

@@ -79,13 +79,13 @@ var imageHistoryCmd = &cobra.Command{
 
 		if resp.StatusCode != http.StatusOK {
 			var errData map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&errData)
+			_ = json.NewDecoder(resp.Body).Decode(&errData)
 			_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", errData["error"])
 			os.Exit(1)
 		}
 
 		var hist docker.ImageHistoryResponse
-		json.NewDecoder(resp.Body).Decode(&hist)
+		_ = json.NewDecoder(resp.Body).Decode(&hist)
 
 		fmt.Printf("📜 Construction History for %s (Total Size: %s, %d layers)\n\n", hist.Image, hist.TotalSize, len(hist.Layers))
 		fmt.Printf("%-5s %-12s %-10s %-12s %-50s\n", "LAYER", "INSTRUCTION", "SIZE", "LAYER ID", "COMMAND / ARGUMENTS")
@@ -124,7 +124,7 @@ var imageRmCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageRemoveResult
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 
 		fmt.Printf("🗑️ %s\n", res.Message)
 		for node, status := range res.Nodes {
@@ -150,7 +150,7 @@ var imagePruneCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImagePruneResult
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 
 		fmt.Printf("🧹 Prune Complete: Deleted %d images, Reclaimed %s\n\n", res.TotalImagesDeleted, res.TotalSpaceReclaimed)
 		for node, summary := range res.NodeResults {
@@ -202,7 +202,7 @@ var imageBuildCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageBuildResult
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 
 		for _, line := range res.Logs {
 			fmt.Println(line)
@@ -237,7 +237,7 @@ var imageDistributeCmd = &cobra.Command{
 		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageDistributeResult
-		json.NewDecoder(resp.Body).Decode(&res)
+		_ = json.NewDecoder(resp.Body).Decode(&res)
 
 		for node, status := range res.NodeResults {
 			fmt.Printf("  • %-20s : %s\n", node, status)
