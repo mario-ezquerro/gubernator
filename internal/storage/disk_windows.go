@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	kernel32            = syscall.NewLazyDLL("kernel32.dll")
+	kernel32             = syscall.NewLazyDLL("kernel32.dll")
 	procGetDiskFreeSpace = kernel32.NewProc("GetDiskFreeSpaceExW")
 )
 

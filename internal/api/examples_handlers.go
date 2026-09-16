@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 )
 
@@ -19,9 +20,9 @@ func StackServerFilesHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"files":      files,
-		"total":      len(files),
-		"stacks_dir": examples.DefaultServerStacksDir(),
+		"files":        files,
+		"total":        len(files),
+		"stacks_dir":   examples.DefaultServerStacksDir(),
 		"examples_dir": examples.DefaultServerExamplesDir(),
 	})
 }

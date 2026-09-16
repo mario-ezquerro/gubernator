@@ -5,8 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/coredns"
 )
 
 var dnsCmd = &cobra.Command{

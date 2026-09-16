@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // SREProfile represents an observability architecture profile / preset.

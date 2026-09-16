@@ -10,9 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupLockoutTestDB(t *testing.T) *gin.Engine {
@@ -223,4 +224,3 @@ func TestENSSessionTimeoutLogout(t *testing.T) {
 		t.Fatalf("expected status SUCCESS, got %s", timeoutLog.Status)
 	}
 }
-

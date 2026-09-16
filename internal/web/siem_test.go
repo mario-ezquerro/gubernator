@@ -11,9 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/gorm"
 )
 
 func setupSIEMTestServer(t *testing.T) *gin.Engine {

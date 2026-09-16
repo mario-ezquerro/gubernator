@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/audit"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/audit"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 var (

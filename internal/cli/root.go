@@ -10,9 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mario-ezquerro/gubernator/internal/api"
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -89,6 +90,7 @@ func Execute() {
 		os.Exit(1)
 	}
 }
+
 // pf writes formatted output to w, explicitly discarding write errors.
 // This is idiomatic for CLI display output where terminal write failures are non-critical.
 func pf(w io.Writer, format string, a ...any) {

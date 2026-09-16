@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 )
@@ -42,24 +43,24 @@ type AutoscalePolicy struct {
 
 // ScaleEventInfo holds details of the latest scaling activity.
 type ScaleEventInfo struct {
-	ServiceID    string    `json:"service_id"`
-	ServiceName  string    `json:"service_name"`
-	Metric       string    `json:"metric"`
-	CurrentVal   float64   `json:"current_val"`
-	TargetVal    float64   `json:"target_val"`
-	OldReplicas  int       `json:"old_replicas"`
-	NewReplicas  int       `json:"new_replicas"`
-	Scope        string    `json:"scope"`
-	Reason       string    `json:"reason"`
-	Timestamp    time.Time `json:"timestamp"`
+	ServiceID   string    `json:"service_id"`
+	ServiceName string    `json:"service_name"`
+	Metric      string    `json:"metric"`
+	CurrentVal  float64   `json:"current_val"`
+	TargetVal   float64   `json:"target_val"`
+	OldReplicas int       `json:"old_replicas"`
+	NewReplicas int       `json:"new_replicas"`
+	Scope       string    `json:"scope"`
+	Reason      string    `json:"reason"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 var (
 	cooldownMu      sync.RWMutex
 	lastScaleEvents = make(map[string]time.Time)
 
-	historyMu       sync.RWMutex
-	scalingHistory  = make([]ScaleEventInfo, 0, 50)
+	historyMu      sync.RWMutex
+	scalingHistory = make([]ScaleEventInfo, 0, 50)
 )
 
 // ParseAutoscalePolicy parses service placement/labels constraints into an AutoscalePolicy,

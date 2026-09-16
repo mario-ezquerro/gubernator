@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupBackupTestDB(t *testing.T) {

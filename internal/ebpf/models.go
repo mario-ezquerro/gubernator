@@ -110,8 +110,8 @@ type EBPFStats struct {
 
 // SimulationProfile defines the traffic pattern to inject during on-demand testing.
 type SimulationProfile struct {
-	Pattern   string  `json:"pattern"`   // "normal", "burst", "errors", "mixed"
-	Rate      int     `json:"rate"`      // events per second
+	Pattern   string  `json:"pattern"`    // "normal", "burst", "errors", "mixed"
+	Rate      int     `json:"rate"`       // events per second
 	DurationS int     `json:"duration_s"` // duration in seconds
-	ErrorPct  float64 `json:"error_pct"` // percentage of error flows (0-100)
+	ErrorPct  float64 `json:"error_pct"`  // percentage of error flows (0-100)
 }

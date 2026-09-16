@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gopkg.in/yaml.v3"
 )
 
 func TestIsMultiHostStack(t *testing.T) {

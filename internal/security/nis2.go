@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/gorm"
 )
 
 // NIS2ReadinessLevel represents the compliance readiness tier achieved under Directive (EU) 2022/2555.

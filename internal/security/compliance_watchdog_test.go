@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupComplianceTestDB(t *testing.T) *gorm.DB {

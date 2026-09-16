@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/docker"
 )
 
 var (

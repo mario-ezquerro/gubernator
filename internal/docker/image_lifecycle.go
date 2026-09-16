@@ -45,14 +45,14 @@ type ImageLayerInfo struct {
 
 // ImageHistoryResponse is the full breakdown of an image's layers and reverse-engineered Dockerfile.
 type ImageHistoryResponse struct {
-	Image                  string           `json:"image"`
-	ImageID                string           `json:"image_id"`
-	NodeID                 string           `json:"node_id"`
-	NodeName               string           `json:"node_name"`
-	Layers                 []ImageLayerInfo `json:"layers"`
+	Image                   string           `json:"image"`
+	ImageID                 string           `json:"image_id"`
+	NodeID                  string           `json:"node_id"`
+	NodeName                string           `json:"node_name"`
+	Layers                  []ImageLayerInfo `json:"layers"`
 	ReconstructedDockerfile string           `json:"reconstructed_dockerfile"`
-	TotalSizeBytes         int64            `json:"total_size_bytes"`
-	TotalSize              string           `json:"total_size"`
+	TotalSizeBytes          int64            `json:"total_size_bytes"`
+	TotalSize               string           `json:"total_size"`
 }
 
 // ImageRemoveResult represents the outcome of deleting an image from one or all cluster nodes.
@@ -65,32 +65,32 @@ type ImageRemoveResult struct {
 
 // ImagePruneResult represents the outcome of running docker image prune across cluster nodes.
 type ImagePruneResult struct {
-	TotalImagesDeleted     int               `json:"total_images_deleted"`
-	TotalSpaceReclaimed    string            `json:"total_space_reclaimed"`
-	TotalSpaceReclaimedB   int64             `json:"total_space_reclaimed_bytes"`
-	NodeResults            map[string]string `json:"node_results"` // NodeID -> summary
-	Logs                   []string          `json:"logs"`
+	TotalImagesDeleted   int               `json:"total_images_deleted"`
+	TotalSpaceReclaimed  string            `json:"total_space_reclaimed"`
+	TotalSpaceReclaimedB int64             `json:"total_space_reclaimed_bytes"`
+	NodeResults          map[string]string `json:"node_results"` // NodeID -> summary
+	Logs                 []string          `json:"logs"`
 }
 
 // ImageBuildRequest defines the parameters for building an image in The Imperial Forge.
 type ImageBuildRequest struct {
-	NodeID     string            `json:"node_id"`     // target host ID or "manager"
-	Tag        string            `json:"tag"`         // e.g. "my-app:v1.0" or "postgres:16-custom"
-	Dockerfile string            `json:"dockerfile"`  // raw Dockerfile string
-	BuildArgs  map[string]string `json:"build_args"`  // ARG KEY=VAL
+	NodeID     string            `json:"node_id"`    // target host ID or "manager"
+	Tag        string            `json:"tag"`        // e.g. "my-app:v1.0" or "postgres:16-custom"
+	Dockerfile string            `json:"dockerfile"` // raw Dockerfile string
+	BuildArgs  map[string]string `json:"build_args"` // ARG KEY=VAL
 	NoCache    bool              `json:"no_cache"`
 }
 
 // ImageBuildResult captures the build execution logs and status.
 type ImageBuildResult struct {
-	Success   bool     `json:"success"`
-	ImageTag  string   `json:"image_tag"`
-	ImageID   string   `json:"image_id"`
-	NodeID    string   `json:"node_id"`
-	NodeName  string   `json:"node_name"`
-	Duration  string   `json:"duration"`
-	Logs      []string `json:"logs"`
-	Error     string   `json:"error,omitempty"`
+	Success  bool     `json:"success"`
+	ImageTag string   `json:"image_tag"`
+	ImageID  string   `json:"image_id"`
+	NodeID   string   `json:"node_id"`
+	NodeName string   `json:"node_name"`
+	Duration string   `json:"duration"`
+	Logs     []string `json:"logs"`
+	Error    string   `json:"error,omitempty"`
 }
 
 // ListClusterHostImages queries physical Docker images on the specified node or across all cluster nodes.

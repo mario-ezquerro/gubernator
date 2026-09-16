@@ -7,8 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // GenerateGrafanaDashboardJSON generates a Grafana Dashboard JSON for all active SLOs
@@ -26,7 +27,6 @@ func GenerateGrafanaDashboardJSON(gormDB *gorm.DB) (string, error) {
 		if cmap["gbnt.slo.enable"] != "true" && cmap["gbnt.slo.enable"] != "1" {
 			continue
 		}
-
 
 		// Panel 1: Error Budget Gauge
 		panels = append(panels, map[string]interface{}{
@@ -88,12 +88,12 @@ func GenerateGrafanaDashboardJSON(gormDB *gorm.DB) (string, error) {
 	}
 
 	dashboard := map[string]interface{}{
-		"annotations": map[string]interface{}{"list": []interface{}{}},
-		"editable":    true,
-		"title":       "Gubernator — SLO & Error Budgets",
-		"tags":        []string{"gubernator", "slo", "sloth", "prometheus"},
-		"timezone":    "browser",
-		"panels":      panels,
+		"annotations":   map[string]interface{}{"list": []interface{}{}},
+		"editable":      true,
+		"title":         "Gubernator — SLO & Error Budgets",
+		"tags":          []string{"gubernator", "slo", "sloth", "prometheus"},
+		"timezone":      "browser",
+		"panels":        panels,
 		"schemaVersion": 38,
 		"version":       1,
 	}

@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // OnWAFConfigUpdatedHook is an optional callback triggered when WAF configuration changes.
@@ -304,32 +305,32 @@ func GetWAFStats() (map[string]interface{}, error) {
 	db.DB.Model(&db.ManagedRouteWAF{}).Count(&totalRoutesCount)
 
 	return map[string]interface{}{
-		"waf_enabled":               cfg.Enabled,
-		"waf_mode":                  cfg.Mode,
-		"paranoia_level":            cfg.ParanoiaLevel,
-		"total_requests_evaluated":  cfg.TotalRequestsEvaluated,
-		"total_blocked_attacks":     cfg.TotalBlockedAttacks,
-		"total_recorded_events":     totalEvents,
-		"sqli_attacks_count":        sqliCount,
-		"xss_attacks_count":         xssCount,
-		"rce_attacks_count":         rceCount,
-		"lfi_attacks_count":         lfiCount,
-		"scanner_attacks_count":     scannerCount,
-		"ip_blocked_count":          ipBlockCount,
-		"blacklisted_ips_count":     blacklistedIPsCount,
-		"active_waf_routes_count":   activeRoutesCount,
-		"total_managed_routes":      totalRoutesCount,
-		"block_sqli":                cfg.BlockSQLi,
-		"block_xss":                 cfg.BlockXSS,
-		"block_rce":                 cfg.BlockRCE,
-		"block_lfi":                 cfg.BlockLFI,
-		"block_scanners":            cfg.BlockScanners,
-		"updated_at":                cfg.UpdatedAt,
+		"waf_enabled":              cfg.Enabled,
+		"waf_mode":                 cfg.Mode,
+		"paranoia_level":           cfg.ParanoiaLevel,
+		"total_requests_evaluated": cfg.TotalRequestsEvaluated,
+		"total_blocked_attacks":    cfg.TotalBlockedAttacks,
+		"total_recorded_events":    totalEvents,
+		"sqli_attacks_count":       sqliCount,
+		"xss_attacks_count":        xssCount,
+		"rce_attacks_count":        rceCount,
+		"lfi_attacks_count":        lfiCount,
+		"scanner_attacks_count":    scannerCount,
+		"ip_blocked_count":         ipBlockCount,
+		"blacklisted_ips_count":    blacklistedIPsCount,
+		"active_waf_routes_count":  activeRoutesCount,
+		"total_managed_routes":     totalRoutesCount,
+		"block_sqli":               cfg.BlockSQLi,
+		"block_xss":                cfg.BlockXSS,
+		"block_rce":                cfg.BlockRCE,
+		"block_lfi":                cfg.BlockLFI,
+		"block_scanners":           cfg.BlockScanners,
+		"updated_at":               cfg.UpdatedAt,
 	}, nil
 }
 
 // BuildWAFSnippet generates the Caddyfile directive block for a host.
-func BuildWAFSnippet(host string, cfg db.ManagedWAFConfig, routeOverride *db.ManagedRouteWAF) string {
+func BuildWAFSnippet(_ string, cfg db.ManagedWAFConfig, routeOverride *db.ManagedRouteWAF) string {
 	// Determine if WAF is active for this route
 	enabled := cfg.Enabled
 	mode := cfg.Mode

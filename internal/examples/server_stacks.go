@@ -9,8 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gopkg.in/yaml.v3"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // ServerStackFile represents a Compose file discovered on the Master server host.

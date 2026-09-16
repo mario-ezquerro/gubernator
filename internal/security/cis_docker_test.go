@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestCISDB(t *testing.T) *gorm.DB {

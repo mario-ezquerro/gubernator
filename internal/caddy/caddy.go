@@ -662,7 +662,7 @@ func RenewCertificate(domain string) error {
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".crt"))
 	_ = os.Remove(filepath.Join(CertsDir(), domain+".key"))
 	_, _ = EnsureDomainCertificate(domain)
-	
+
 	// Automatically broadcast to all active cluster nodes in the background
 	go func() {
 		_, _, _ = SyncCertificatesToNodes()
@@ -847,5 +847,3 @@ func GetLogs(lines int) ([]string, error) {
 	}
 	return res, nil
 }
-
-

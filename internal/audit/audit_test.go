@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestDB(t *testing.T) {
@@ -223,6 +224,5 @@ func TestSIEMStatsAndIntrusionTracking(t *testing.T) {
 
 type testErr string
 
-func (e testErr) Error() string { return string(e) }
+func (e testErr) Error() string    { return string(e) }
 func assertError(msg string) error { return testErr(msg) }
-

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -27,12 +28,12 @@ type CycloneDXComponent struct {
 
 // CycloneDXDocument represents a standard CycloneDX 1.5 JSON SBOM document.
 type CycloneDXDocument struct {
-	BomFormat    string               `json:"bomFormat"`
-	SpecVersion  string               `json:"specVersion"`
-	SerialNumber string               `json:"serialNumber"`
-	Version      int                  `json:"version"`
+	BomFormat    string                 `json:"bomFormat"`
+	SpecVersion  string                 `json:"specVersion"`
+	SerialNumber string                 `json:"serialNumber"`
+	Version      int                    `json:"version"`
 	Metadata     map[string]interface{} `json:"metadata"`
-	Components   []CycloneDXComponent `json:"components"`
+	Components   []CycloneDXComponent   `json:"components"`
 }
 
 // GenerateAndSaveSBOM creates and stores a Software Bill of Materials for a container image.
@@ -103,8 +104,8 @@ func ExportSBOM(imageName, format string) ([]byte, error) {
 				"name":              imageName,
 				"documentNamespace": "https://gubernator.local/spdx/" + uuid.New().String(),
 				"creationInfo": map[string]interface{}{
-					"created":            time.Now().UTC().Format(time.RFC3339),
-					"creators":           []string{"Tool: Gubernator-SBOM-v2.24.0"},
+					"created":  time.Now().UTC().Format(time.RFC3339),
+					"creators": []string{"Tool: Gubernator-SBOM-v2.24.0"},
 				},
 				"packages": cdx.Components,
 			}

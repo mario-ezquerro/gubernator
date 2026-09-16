@@ -111,18 +111,18 @@ func GetDirectorySize(path string) (int64, error) {
 
 // NodeHealthStatus represents the health and mount state of a storage pool on a specific node.
 type NodeHealthStatus struct {
-	NodeID      string `json:"node_id"`
-	NodeIP      string `json:"node_ip"`
-	Role        string `json:"role"`
-	Status      string `json:"status"` // "online", "accessible", "inaccessible", "read_only"
-	Path        string `json:"path"`
-	IsMounted   bool   `json:"is_mounted"`
-	IsWritable  bool   `json:"is_writable"`
-	TotalBytes  uint64 `json:"total_bytes"`
-	UsedBytes   uint64 `json:"used_bytes"`
-	FreeBytes   uint64 `json:"free_bytes"`
+	NodeID       string  `json:"node_id"`
+	NodeIP       string  `json:"node_ip"`
+	Role         string  `json:"role"`
+	Status       string  `json:"status"` // "online", "accessible", "inaccessible", "read_only"
+	Path         string  `json:"path"`
+	IsMounted    bool    `json:"is_mounted"`
+	IsWritable   bool    `json:"is_writable"`
+	TotalBytes   uint64  `json:"total_bytes"`
+	UsedBytes    uint64  `json:"used_bytes"`
+	FreeBytes    uint64  `json:"free_bytes"`
 	UsagePercent float64 `json:"usage_percent"`
-	Error       string `json:"error,omitempty"`
+	Error        string  `json:"error,omitempty"`
 }
 
 // PoolHealthResponse represents the overall cluster storage pool health matrix.

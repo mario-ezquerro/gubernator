@@ -29,6 +29,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"golang.org/x/crypto/ssh"
+	"gopkg.in/yaml.v3"
+
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/auth"
@@ -47,8 +50,6 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/telemetry"
 	"github.com/mario-ezquerro/gubernator/internal/timesync"
 	"github.com/mario-ezquerro/gubernator/internal/updater"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v3"
 )
 
 //go:embed flutter/*
@@ -1199,7 +1200,7 @@ type updateApplyPayload struct {
 
 func updateApplyHandler(c *gin.Context) {
 	var payload updateApplyPayload
-	c.ShouldBindJSON(&payload)
+	_ = c.ShouldBindJSON(&payload)
 
 	target := payload.TargetVersion
 	if target == "" {
@@ -4271,7 +4272,7 @@ func scopeProxyHandler(c *gin.Context, _, _, _ string) {
 	proxy.ServeHTTP(c.Writer, c.Request)
 }
 
-func scopeDirectProxyHandler(c *gin.Context, sessionToken, expectedUser, expectedPass string) {
+func scopeDirectProxyHandler(c *gin.Context, _, _, _ string) {
 	if strings.HasSuffix(c.Request.URL.Path, "/api/topology/weave") {
 		c.Redirect(http.StatusTemporaryRedirect, "/api/topology/containers")
 		return

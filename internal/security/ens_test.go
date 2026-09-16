@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestENSDB(t *testing.T) *gorm.DB {
@@ -357,4 +358,3 @@ func TestEvaluateENSComplianceEncryptedBackupsAndSupplyChain(t *testing.T) {
 		t.Fatalf("expected mp.sw.2 to be 100.0 COMPLIANT, got score=%.1f status=%v", mpsw2.Score, mpsw2.Status)
 	}
 }
-

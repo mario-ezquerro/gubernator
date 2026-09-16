@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
-	"gorm.io/gorm"
 )
 
 const (
@@ -101,7 +102,7 @@ func RegisterInDB(database *gorm.DB) error {
 		} else {
 			database.Model(&existingTask).Updates(map[string]interface{}{
 				"status":       status,
-				"container_ip":  containerIP,
+				"container_ip": containerIP,
 				"updated_at":   now,
 			})
 		}
@@ -278,7 +279,7 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 	} else {
 		database.Model(&existingTask).Updates(map[string]interface{}{
 			"status":       status,
-			"container_ip":  getContainerIP(ScopeContainerName),
+			"container_ip": getContainerIP(ScopeContainerName),
 			"updated_at":   now,
 		})
 	}

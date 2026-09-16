@@ -7,8 +7,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 var serviceCmd = &cobra.Command{

@@ -9,8 +9,9 @@ import (
 	"strings"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 //go:embed gubernator_dashboard.json

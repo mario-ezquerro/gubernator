@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 type AddNodeRequest struct {

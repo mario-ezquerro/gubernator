@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestDB(t *testing.T) {
@@ -227,4 +228,3 @@ func TestRemediationPlanAndRollback(t *testing.T) {
 		t.Errorf("expected updated compose to have redis:7.4-alpine, got: %s", updatedStack.RawComposeFile)
 	}
 }
-

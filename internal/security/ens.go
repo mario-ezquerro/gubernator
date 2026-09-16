@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/gorm"
 )
 
 // ENSCategory represents the compliance tier achieved under Spanish RD 311/2022.

@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/storage"
-	"github.com/spf13/cobra"
 )
 
 // Volume command group

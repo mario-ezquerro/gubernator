@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gopkg.in/yaml.v3"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // RemediationStepLog represents a step in the automated remediation process.
@@ -21,11 +22,11 @@ type RemediationStepLog struct {
 
 // SuggestedVersion represents an upgrade candidate for a vulnerable image.
 type SuggestedVersion struct {
-	Version        string `json:"version"`
-	Type           string `json:"type"` // "patch", "alpine_stable", "latest"
-	Description    string `json:"description"`
-	RiskLevel      string `json:"risk_level"` // "low", "medium", "high"
-	IsRecommended  bool   `json:"is_recommended"`
+	Version       string `json:"version"`
+	Type          string `json:"type"` // "patch", "alpine_stable", "latest"
+	Description   string `json:"description"`
+	RiskLevel     string `json:"risk_level"` // "low", "medium", "high"
+	IsRecommended bool   `json:"is_recommended"`
 }
 
 // AffectedStackInfo details a stack and service running the target image.
@@ -60,13 +61,13 @@ type RemediationRequest struct {
 
 // RemediationResult is the response after remediation finishes (or rolls back).
 type RemediationResult struct {
-	Success      bool                 `json:"success"`
-	Message      string               `json:"message"`
-	RolledBack   bool                 `json:"rolled_back"`
-	StackID      string               `json:"stack_id"`
-	NewImage     string               `json:"new_image"`
-	OldImage     string               `json:"old_image"`
-	Logs         []RemediationStepLog `json:"logs"`
+	Success    bool                 `json:"success"`
+	Message    string               `json:"message"`
+	RolledBack bool                 `json:"rolled_back"`
+	StackID    string               `json:"stack_id"`
+	NewImage   string               `json:"new_image"`
+	OldImage   string               `json:"old_image"`
+	Logs       []RemediationStepLog `json:"logs"`
 }
 
 // SuggestVersions generates candidate upgrade tags based on the current image name.
@@ -496,7 +497,7 @@ func RemediateImageInStack(stackID, currentImage, targetImage string, autoRollba
 
 	// 5. Healthcheck / Task Status Verification Probe Loop
 	addLog("Health Probe", "Probing new container instances and verifying operational health...", "ok")
-	
+
 	// Wait brief interval for task scheduler loop to spin up new container
 	time.Sleep(2 * time.Second)
 

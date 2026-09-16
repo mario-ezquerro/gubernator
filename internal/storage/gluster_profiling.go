@@ -10,18 +10,18 @@ import (
 
 // GlusterVolumeProfileReport represents Cockpit-Storaged I/O profiling metrics.
 type GlusterVolumeProfileReport struct {
-	VolumeName       string                   `json:"volume_name"`
-	IsProfiling      bool                     `json:"is_profiling"`
-	BricksProfile    []BrickProfileStats      `json:"bricks_profile"`
-	TotalReadBytes   uint64                   `json:"total_read_bytes"`
-	TotalWriteBytes  uint64                   `json:"total_write_bytes"`
-	TotalReadMBs     float64                  `json:"total_read_mbs"`
-	TotalWriteMBs    float64                  `json:"total_write_mbs"`
-	TotalIOPS        uint64                   `json:"total_iops"`
-	AvgLatencyMs     float64                  `json:"avg_latency_ms"`
-	TopOperations    []ProfileFopStat         `json:"top_operations"`
-	BlockSizeProfile []BlockSizeDistribution  `json:"block_size_profile"`
-	SampleTimestamp  time.Time                `json:"sample_timestamp"`
+	VolumeName       string                  `json:"volume_name"`
+	IsProfiling      bool                    `json:"is_profiling"`
+	BricksProfile    []BrickProfileStats     `json:"bricks_profile"`
+	TotalReadBytes   uint64                  `json:"total_read_bytes"`
+	TotalWriteBytes  uint64                  `json:"total_write_bytes"`
+	TotalReadMBs     float64                 `json:"total_read_mbs"`
+	TotalWriteMBs    float64                 `json:"total_write_mbs"`
+	TotalIOPS        uint64                  `json:"total_iops"`
+	AvgLatencyMs     float64                 `json:"avg_latency_ms"`
+	TopOperations    []ProfileFopStat        `json:"top_operations"`
+	BlockSizeProfile []BlockSizeDistribution `json:"block_size_profile"`
+	SampleTimestamp  time.Time               `json:"sample_timestamp"`
 }
 
 // BrickProfileStats contains profiling counters for a single brick.

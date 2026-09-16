@@ -287,4 +287,3 @@ func QueryPrometheusMetric(query string) (float64, error) {
 	}
 	return -1, fmt.Errorf("no scalar metric value returned")
 }
-

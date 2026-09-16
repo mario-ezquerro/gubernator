@@ -11,13 +11,13 @@ import (
 
 // AdmissionDecision represents the result of an image security evaluation.
 type AdmissionDecision struct {
-	Allowed        bool     `json:"allowed"`
-	Decision       string   `json:"decision"` // "ALLOWED", "WARNING", "BLOCKED"
-	Reason         string   `json:"reason"`
-	Warnings       []string `json:"warnings"`
-	PolicyApplied  string   `json:"policy_applied"`
-	Image          string   `json:"image"`
-	ScanReport     *db.ImageScan `json:"scan_report,omitempty"`
+	Allowed       bool          `json:"allowed"`
+	Decision      string        `json:"decision"` // "ALLOWED", "WARNING", "BLOCKED"
+	Reason        string        `json:"reason"`
+	Warnings      []string      `json:"warnings"`
+	PolicyApplied string        `json:"policy_applied"`
+	Image         string        `json:"image"`
+	ScanReport    *db.ImageScan `json:"scan_report,omitempty"`
 }
 
 // GetClusterPolicy retrieves the active cluster admission security policy.

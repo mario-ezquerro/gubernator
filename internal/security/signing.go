@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -25,7 +26,7 @@ type ecdsaSignature struct {
 }
 
 // GenerateCosignKeypair generates a standard ECDSA P-256 public/private keypair.
-func GenerateCosignKeypair(name string) (pubPEM string, privPEM string, err error) {
+func GenerateCosignKeypair(_ string) (pubPEM string, privPEM string, err error) {
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return "", "", fmt.Errorf("generate ecdsa key: %w", err)

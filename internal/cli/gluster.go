@@ -7,8 +7,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/mario-ezquerro/gubernator/internal/storage"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/storage"
 )
 
 var glusterCmd = &cobra.Command{
@@ -53,8 +54,8 @@ var glusterStatusCmd = &cobra.Command{
 
 // gbnt gluster peer ls
 var glusterPeerLsCmd = &cobra.Command{
-	Use:   "peer-ls",
-	Short: "List all nodes in the GlusterFS trusted storage pool",
+	Use:     "peer-ls",
+	Short:   "List all nodes in the GlusterFS trusted storage pool",
 	Aliases: []string{"peers"},
 	Run: func(cmd *cobra.Command, args []string) {
 		peers, err := storage.GetGlusterPeers()
@@ -128,8 +129,8 @@ var (
 
 // gbnt gluster volume ls
 var glusterVolumeLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "List all GlusterFS distributed and replicated volumes",
+	Use:     "ls",
+	Short:   "List all GlusterFS distributed and replicated volumes",
 	Aliases: []string{"volume-ls", "vols"},
 	Run: func(cmd *cobra.Command, args []string) {
 		vols, err := storage.GetGlusterVolumes()

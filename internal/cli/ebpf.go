@@ -10,8 +10,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 )
 
 var ebpfCmd = &cobra.Command{
@@ -98,10 +99,10 @@ var ebpfStatusCmd = &cobra.Command{
 }
 
 var (
-	flowLimit    int
-	flowProto    string
-	flowErrors   bool
-	flowQuery    string
+	flowLimit  int
+	flowProto  string
+	flowErrors bool
+	flowQuery  string
 )
 
 var ebpfFlowsCmd = &cobra.Command{

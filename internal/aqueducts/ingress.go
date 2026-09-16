@@ -11,7 +11,6 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
-
 func init() {
 	caddy.OnWAFConfigUpdatedHook = func() {
 		GenerateCaddyfile()

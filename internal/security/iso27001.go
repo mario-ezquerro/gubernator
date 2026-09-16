@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/gorm"
 )
 
 // ISOStandardVersion identifies the targeted version of ISO/IEC 27001.

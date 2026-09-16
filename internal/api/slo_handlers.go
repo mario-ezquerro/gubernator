@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
-	"gopkg.in/yaml.v3"
 )
 
 type SLOItem struct {
@@ -33,13 +34,13 @@ type SLOItem struct {
 }
 
 type UserJourney struct {
-	Name                 string    `json:"name"`
-	Services             []SLOItem `json:"services"`
-	CompositeTarget      float64   `json:"composite_target"`
-	AvgErrorBudget       float64   `json:"avg_error_budget"`
-	BottleneckService    string    `json:"bottleneck_service"`
-	BottleneckBudget     float64   `json:"bottleneck_budget"`
-	Status               string    `json:"status"`
+	Name              string    `json:"name"`
+	Services          []SLOItem `json:"services"`
+	CompositeTarget   float64   `json:"composite_target"`
+	AvgErrorBudget    float64   `json:"avg_error_budget"`
+	BottleneckService string    `json:"bottleneck_service"`
+	BottleneckBudget  float64   `json:"bottleneck_budget"`
+	Status            string    `json:"status"`
 }
 
 type SLOCorrelationEvent struct {

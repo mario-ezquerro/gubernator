@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
-	"gorm.io/gorm"
 )
 
 func TestSanitizeDNSLabel(t *testing.T) {

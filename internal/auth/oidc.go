@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
@@ -329,11 +330,11 @@ func exchangeCodeForTokens(cfg db.OIDCConfig, disc *OIDCDiscovery, code, codeVer
 
 // oidcClaims represents the standard + custom JWT claims in an OIDC ID token.
 type oidcClaims struct {
-	Subject          string                 `json:"sub"`
-	Email            string                 `json:"email"`
-	Name             string                 `json:"name"`
+	Subject           string                 `json:"sub"`
+	Email             string                 `json:"email"`
+	Name              string                 `json:"name"`
 	PreferredUsername string                 `json:"preferred_username"`
-	Extra            map[string]interface{} `json:"-"`
+	Extra             map[string]interface{} `json:"-"`
 	jwt.RegisteredClaims
 }
 

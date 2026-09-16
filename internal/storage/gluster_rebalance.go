@@ -9,15 +9,15 @@ import (
 
 // GlusterRebalanceStatus represents the volume rebalance status.
 type GlusterRebalanceStatus struct {
-	VolumeName     string    `json:"volume_name"`
-	TaskID         string    `json:"task_id"`
-	Status         string    `json:"status"` // in progress, completed, not started, failed
-	FilesProcessed uint64    `json:"files_processed"`
-	SizeProcessedMB float64  `json:"size_processed_mb"`
-	LookupsFailed  uint64    `json:"lookups_failed"`
-	Skipped        uint64    `json:"skipped"`
-	TimeElapsedSec uint64    `json:"time_elapsed_sec"`
-	Timestamp      time.Time `json:"timestamp"`
+	VolumeName      string    `json:"volume_name"`
+	TaskID          string    `json:"task_id"`
+	Status          string    `json:"status"` // in progress, completed, not started, failed
+	FilesProcessed  uint64    `json:"files_processed"`
+	SizeProcessedMB float64   `json:"size_processed_mb"`
+	LookupsFailed   uint64    `json:"lookups_failed"`
+	Skipped         uint64    `json:"skipped"`
+	TimeElapsedSec  uint64    `json:"time_elapsed_sec"`
+	Timestamp       time.Time `json:"timestamp"`
 }
 
 // StartGlusterVolumeRebalance starts data migration across reconfigured bricks.

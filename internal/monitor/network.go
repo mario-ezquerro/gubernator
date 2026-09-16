@@ -78,4 +78,3 @@ func DisconnectGubernator() {
 		_ = exec.Command("docker", "network", "disconnect", "-f", "gbnt-monitor-net", hostname).Run()
 	}
 }
-

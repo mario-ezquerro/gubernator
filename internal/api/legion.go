@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
@@ -256,4 +257,3 @@ func ClusterDomainPutHandler(c *gin.Context) {
 		"cluster_domain": domain,
 	})
 }
-

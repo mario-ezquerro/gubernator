@@ -10,9 +10,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
-	"github.com/spf13/cobra"
 )
 
 var stackCmd = &cobra.Command{

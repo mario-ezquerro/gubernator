@@ -5,8 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
 var monitorCmd = &cobra.Command{

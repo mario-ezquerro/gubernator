@@ -12,13 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mario-ezquerro/gubernator/internal/caddy"
 	"github.com/mario-ezquerro/gubernator/internal/coredns"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/docker"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/timesync"
-	"github.com/spf13/cobra"
 )
 
 var legionCmd = &cobra.Command{
@@ -340,7 +341,9 @@ var legionJoinCmd = &cobra.Command{
 						} else if joinToken != "" {
 							statusReq.Header.Set("Authorization", "Bearer "+joinToken)
 						}
-						http.DefaultClient.Do(statusReq)
+						if resp, err := http.DefaultClient.Do(statusReq); err == nil && resp != nil {
+							_ = resp.Body.Close()
+						}
 					}
 				}
 
@@ -490,7 +493,7 @@ var legionJoinCmd = &cobra.Command{
 						taskID := strings.TrimPrefix(containerName, "gbnt-")
 						if !activeTasks[taskID] {
 							fmt.Printf("Reconciliation: stopping and removing orphaned container %s\n", containerName)
-							docker.StopContainer(containerName)
+							_ = docker.StopContainer(containerName)
 						}
 					}
 				}
@@ -672,14 +675,14 @@ var legionInfoCmd = &cobra.Command{
 		fmt.Println("╔══════════════════════════════════════════════════════════╗")
 		fmt.Println("║         🏛  GUBERNATOR — CLUSTER INFO                   ║")
 		fmt.Println("╠══════════════════════════════════════════════════════════╣")
-		fmt.Printf( "║  JOIN TOKEN : %-43s ║\n", data.JoinToken)
-		fmt.Printf( "║  API TOKEN  : %-43s ║\n", data.APIToken)
+		fmt.Printf("║  JOIN TOKEN : %-43s ║\n", data.JoinToken)
+		fmt.Printf("║  API TOKEN  : %-43s ║\n", data.APIToken)
 		fmt.Println("╠══════════════════════════════════════════════════════════╣")
 		fmt.Println("║  Add a WORKER node:                                      ║")
-		fmt.Printf( "║  > %s\n", data.JoinCommand)
+		fmt.Printf("║  > %s\n", data.JoinCommand)
 		fmt.Println("║                                                          ║")
 		fmt.Println("║  Configure remote CLI:                                   ║")
-		fmt.Printf( "║  > %s\n", data.ConfigCommand)
+		fmt.Printf("║  > %s\n", data.ConfigCommand)
 		fmt.Println("╚══════════════════════════════════════════════════════════╝")
 		fmt.Println("")
 	},

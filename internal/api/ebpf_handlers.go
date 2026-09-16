@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 )
 

@@ -8,26 +8,26 @@ import (
 )
 
 var (
-	ErrPasswordTooShort     = errors.New("password does not meet minimum length requirement")
-	ErrPasswordNoUpper      = errors.New("password must contain at least one uppercase letter (A-Z)")
-	ErrPasswordNoLower      = errors.New("password must contain at least one lowercase letter (a-z)")
-	ErrPasswordNoDigit      = errors.New("password must contain at least one numerical digit (0-9)")
-	ErrPasswordNoSpecial    = errors.New("password must contain at least one special character (!@#$%^&*...)")
-	ErrPasswordSameAsUser   = errors.New("password cannot match or contain the username")
-	ErrPasswordTrivial      = errors.New("password is too common or easily guessable")
+	ErrPasswordTooShort   = errors.New("password does not meet minimum length requirement")
+	ErrPasswordNoUpper    = errors.New("password must contain at least one uppercase letter (A-Z)")
+	ErrPasswordNoLower    = errors.New("password must contain at least one lowercase letter (a-z)")
+	ErrPasswordNoDigit    = errors.New("password must contain at least one numerical digit (0-9)")
+	ErrPasswordNoSpecial  = errors.New("password must contain at least one special character (!@#$%^&*...)")
+	ErrPasswordSameAsUser = errors.New("password cannot match or contain the username")
+	ErrPasswordTrivial    = errors.New("password is too common or easily guessable")
 )
 
 var commonTrivialPasswords = map[string]struct{}{
-	"password":     {},
-	"admin":        {},
+	"password":      {},
+	"admin":         {},
 	"administrator": {},
-	"123456":       {},
-	"12345678":     {},
-	"123456789":    {},
-	"1234567890":   {},
-	"gubernator":   {},
-	"qwerty":       {},
-	"letmein":      {},
+	"123456":        {},
+	"12345678":      {},
+	"123456789":     {},
+	"1234567890":    {},
+	"gubernator":    {},
+	"qwerty":        {},
+	"letmein":       {},
 }
 
 // ValidatePassword checks if a password complies with ENS op.acc.2 & CCN-STIC guidelines.

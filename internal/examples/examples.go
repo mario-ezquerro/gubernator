@@ -18,16 +18,16 @@ var DeployStackFn func(name, composeRaw, targetNode string) (*db.Stack, error)
 
 // POCExample represents a production blueprint / POC example packaged with Gubernator.
 type POCExample struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Category    string   `json:"category"` // "Web & Ingress", "Database & CMS", "SRE & Observability", "AI & Data Science", "Automation"
-	Description string   `json:"description"`
-	Filename    string   `json:"filename"`
-	DefaultStack string  `json:"default_stack"`
-	Services    []string `json:"services"`
-	ComposeRaw  string   `json:"compose_raw"`
-	Icon        string   `json:"icon"`
-	Tags        []string `json:"tags"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Category     string   `json:"category"` // "Web & Ingress", "Database & CMS", "SRE & Observability", "AI & Data Science", "Automation"
+	Description  string   `json:"description"`
+	Filename     string   `json:"filename"`
+	DefaultStack string   `json:"default_stack"`
+	Services     []string `json:"services"`
+	ComposeRaw   string   `json:"compose_raw"`
+	Icon         string   `json:"icon"`
+	Tags         []string `json:"tags"`
 }
 
 var catalog = []POCExample{

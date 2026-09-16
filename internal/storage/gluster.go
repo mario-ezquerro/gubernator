@@ -16,104 +16,104 @@ import (
 
 // GlusterPeer represents a node in the GlusterFS trusted storage pool.
 type GlusterPeer struct {
-	Hostname   string `json:"hostname"`
-	UUID       string `json:"uuid,omitempty"`
-	State      string `json:"state"`      // "Peer in Cluster", "Disconnected", "Pending"
-	Connected  bool   `json:"connected"`
-	IsLocal    bool   `json:"is_local"`
-	PingMs     int64  `json:"ping_ms,omitempty"`
-	CheckedAt  string `json:"checked_at"`
+	Hostname  string `json:"hostname"`
+	UUID      string `json:"uuid,omitempty"`
+	State     string `json:"state"` // "Peer in Cluster", "Disconnected", "Pending"
+	Connected bool   `json:"connected"`
+	IsLocal   bool   `json:"is_local"`
+	PingMs    int64  `json:"ping_ms,omitempty"`
+	CheckedAt string `json:"checked_at"`
 }
 
 // GlusterBrick represents a storage directory on a specific host that contributes to a volume.
 type GlusterBrick struct {
-	Path       string `json:"path"`        // e.g. "/data/glusterfs/brick1"
-	Host       string `json:"host"`        // e.g. "192.168.252.27"
-	FullSpec   string `json:"full_spec"`   // e.g. "192.168.252.27:/data/glusterfs/brick1"
-	Port       int    `json:"port,omitempty"`
-	Online     bool   `json:"online"`
-	PID        int    `json:"pid,omitempty"`
-	SizeTotal  int64  `json:"size_total,omitempty"`
-	SizeFree   int64  `json:"size_free,omitempty"`
-	IsArbiter  bool   `json:"is_arbiter,omitempty"`
+	Path      string `json:"path"`      // e.g. "/data/glusterfs/brick1"
+	Host      string `json:"host"`      // e.g. "192.168.252.27"
+	FullSpec  string `json:"full_spec"` // e.g. "192.168.252.27:/data/glusterfs/brick1"
+	Port      int    `json:"port,omitempty"`
+	Online    bool   `json:"online"`
+	PID       int    `json:"pid,omitempty"`
+	SizeTotal int64  `json:"size_total,omitempty"`
+	SizeFree  int64  `json:"size_free,omitempty"`
+	IsArbiter bool   `json:"is_arbiter,omitempty"`
 }
 
 // GlusterVolume represents a GlusterFS distributed/replicated storage volume.
 type GlusterVolume struct {
-	Name             string            `json:"name"`
-	UUID             string            `json:"uuid,omitempty"`
-	Type             string            `json:"type"`             // "Replicate", "Distributed-Replicate", "Arbiter", "Distribute", "Disperse"
-	Status           string            `json:"status"`           // "Started", "Stopped", "Degraded", "Created"
-	ReplicaCount     int               `json:"replica_count"`    // e.g. 3 for Replica 3
-	ArbiterCount     int               `json:"arbiter_count"`    // e.g. 1 if using arbiter
-	DisperseCount    int               `json:"disperse_count,omitempty"`
-	RedundancyCount  int               `json:"redundancy_count,omitempty"`
-	NumBricks        int               `json:"num_bricks"`
-	Transport        string            `json:"transport"`        // "tcp", "rdma"
-	Bricks           []GlusterBrick    `json:"bricks"`
-	Options          map[string]string `json:"options,omitempty"`
-	IsMounted        bool              `json:"is_mounted"`
-	MountPoint       string            `json:"mount_point,omitempty"` // e.g. "/var/contenedores"
-	CapacityTotal    int64             `json:"capacity_total"`
-	CapacityUsed     int64             `json:"capacity_used"`
-	CapacityFree     int64             `json:"capacity_free"`
-	CapacityPercent  float64           `json:"capacity_percent"`
-	PendingHeals     int               `json:"pending_heals"`
-	CreatedAt        string            `json:"created_at,omitempty"`
+	Name            string            `json:"name"`
+	UUID            string            `json:"uuid,omitempty"`
+	Type            string            `json:"type"`          // "Replicate", "Distributed-Replicate", "Arbiter", "Distribute", "Disperse"
+	Status          string            `json:"status"`        // "Started", "Stopped", "Degraded", "Created"
+	ReplicaCount    int               `json:"replica_count"` // e.g. 3 for Replica 3
+	ArbiterCount    int               `json:"arbiter_count"` // e.g. 1 if using arbiter
+	DisperseCount   int               `json:"disperse_count,omitempty"`
+	RedundancyCount int               `json:"redundancy_count,omitempty"`
+	NumBricks       int               `json:"num_bricks"`
+	Transport       string            `json:"transport"` // "tcp", "rdma"
+	Bricks          []GlusterBrick    `json:"bricks"`
+	Options         map[string]string `json:"options,omitempty"`
+	IsMounted       bool              `json:"is_mounted"`
+	MountPoint      string            `json:"mount_point,omitempty"` // e.g. "/var/contenedores"
+	CapacityTotal   int64             `json:"capacity_total"`
+	CapacityUsed    int64             `json:"capacity_used"`
+	CapacityFree    int64             `json:"capacity_free"`
+	CapacityPercent float64           `json:"capacity_percent"`
+	PendingHeals    int               `json:"pending_heals"`
+	CreatedAt       string            `json:"created_at,omitempty"`
 }
 
 // GlusterHealReport represents self-healing and split-brain diagnostics for a volume.
 type GlusterHealReport struct {
-	VolumeName     string                 `json:"volume_name"`
-	TotalPending   int                    `json:"total_pending"`
-	InSplitBrain   bool                   `json:"in_split_brain"`
-	SplitBrainCount int                   `json:"split_brain_count"`
-	BricksHealInfo []GlusterBrickHealInfo `json:"bricks_heal_info"`
-	LastHealCheck  string                 `json:"last_heal_check"`
-	StatusSummary  string                 `json:"status_summary"`
+	VolumeName      string                 `json:"volume_name"`
+	TotalPending    int                    `json:"total_pending"`
+	InSplitBrain    bool                   `json:"in_split_brain"`
+	SplitBrainCount int                    `json:"split_brain_count"`
+	BricksHealInfo  []GlusterBrickHealInfo `json:"bricks_heal_info"`
+	LastHealCheck   string                 `json:"last_heal_check"`
+	StatusSummary   string                 `json:"status_summary"`
 }
 
 // GlusterBrickHealInfo holds pending heal details for a specific brick.
 type GlusterBrickHealInfo struct {
-	BrickSpec      string   `json:"brick_spec"`
-	Status         string   `json:"status"`
-	NumberOfEntries int     `json:"number_of_entries"`
-	PendingFiles   []string `json:"pending_files,omitempty"`
+	BrickSpec       string   `json:"brick_spec"`
+	Status          string   `json:"status"`
+	NumberOfEntries int      `json:"number_of_entries"`
+	PendingFiles    []string `json:"pending_files,omitempty"`
 }
 
 // GlusterClusterDiagnostics provides a high-level health report of GlusterFS.
 type GlusterClusterDiagnostics struct {
-	Installed       bool           `json:"installed"`
-	DaemonRunning   bool           `json:"daemon_running"`
-	Version         string         `json:"version,omitempty"`
-	PeersCount      int            `json:"peers_count"`
-	VolumesCount    int            `json:"volumes_count"`
-	OnlineVolumes   int            `json:"online_volumes"`
-	QuorumHealthy   bool           `json:"quorum_healthy"`
-	HealthScore     int            `json:"health_score"` // 0-100
-	Issues          []string       `json:"issues,omitempty"`
-	Peers           []GlusterPeer  `json:"peers"`
-	CheckedAt       string         `json:"checked_at"`
+	Installed     bool          `json:"installed"`
+	DaemonRunning bool          `json:"daemon_running"`
+	Version       string        `json:"version,omitempty"`
+	PeersCount    int           `json:"peers_count"`
+	VolumesCount  int           `json:"volumes_count"`
+	OnlineVolumes int           `json:"online_volumes"`
+	QuorumHealthy bool          `json:"quorum_healthy"`
+	HealthScore   int           `json:"health_score"` // 0-100
+	Issues        []string      `json:"issues,omitempty"`
+	Peers         []GlusterPeer `json:"peers"`
+	CheckedAt     string        `json:"checked_at"`
 }
 
 // GlusterVolumeCreateRequest is the payload used to create a new cluster volume.
 type GlusterVolumeCreateRequest struct {
-	Name         string   `json:"name"`                   // e.g. "gv_contenedores"
-	Type         string   `json:"type"`                   // "replica", "arbiter", "distribute", "disperse"
-	ReplicaCount int      `json:"replica_count"`          // e.g. 3
-	ArbiterCount int      `json:"arbiter_count"`          // e.g. 1
-	Bricks       []string `json:"bricks"`                 // ["10.10.100.24:/data/glusterfs/brick1/gv", ...]
-	BrickDir     string   `json:"brick_dir"`              // optional shortcut, e.g. "/data/glusterfs/brick1"
-	NetworkMode  string   `json:"network_mode,omitempty"` // "storage" (Dual-NIC), "management", "custom"
-	CustomHosts  []string `json:"custom_hosts,omitempty"` // e.g. ["10.10.100.24", "10.10.100.25", "10.10.100.26"]
+	Name          string   `json:"name"`                   // e.g. "gv_contenedores"
+	Type          string   `json:"type"`                   // "replica", "arbiter", "distribute", "disperse"
+	ReplicaCount  int      `json:"replica_count"`          // e.g. 3
+	ArbiterCount  int      `json:"arbiter_count"`          // e.g. 1
+	Bricks        []string `json:"bricks"`                 // ["10.10.100.24:/data/glusterfs/brick1/gv", ...]
+	BrickDir      string   `json:"brick_dir"`              // optional shortcut, e.g. "/data/glusterfs/brick1"
+	NetworkMode   string   `json:"network_mode,omitempty"` // "storage" (Dual-NIC), "management", "custom"
+	CustomHosts   []string `json:"custom_hosts,omitempty"` // e.g. ["10.10.100.24", "10.10.100.25", "10.10.100.26"]
 	AutoMount     bool     `json:"auto_mount"`             // mount to /var/contenedores across cluster
 	MountPoint    string   `json:"mount_point"`            // default "/var/contenedores"
 	TargetNodes   []string `json:"target_nodes"`           // node IPs to auto-mount
 	Force         bool     `json:"force"`
-	ForceRecreate bool     `json:"force_recreate"`         // if volume already exists, stop and purge first
+	ForceRecreate bool     `json:"force_recreate"` // if volume already exists, stop and purge first
 }
 
-// Type alias to central DB model
+// ManagedGlusterVolume is a type alias to the central DB model.
 type ManagedGlusterVolume = db.ManagedGlusterVolume
 
 var (
@@ -778,12 +778,12 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 // tuneGlusterVolumeForContainers applies high-performance container options.
 func tuneGlusterVolumeForContainers(volName string) {
 	opts := map[string]string{
-		"performance.write-behind":        "on",
-		"performance.flush-behind":        "on",
-		"performance.stat-prefetch":       "on",
-		"performance.quick-read":          "on",
-		"network.ping-timeout":            "10",
-		"cluster.favorite-child-policy":   "mtime",
+		"performance.write-behind":      "on",
+		"performance.flush-behind":      "on",
+		"performance.stat-prefetch":     "on",
+		"performance.quick-read":        "on",
+		"network.ping-timeout":          "10",
+		"cluster.favorite-child-policy": "mtime",
 	}
 
 	for k, v := range opts {

@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 // CISBenchmarkVersion identifies the targeted version of the CIS Docker Benchmark.

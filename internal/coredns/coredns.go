@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 const (
@@ -276,19 +277,19 @@ func EnsureRunning() error {
 
 	// Try with privileged port 53 mapping first (for macOS resolver compatibility)
 	argsPrivileged := append([]string{}, baseArgs...)
-	argsPrivileged = append(argsPrivileged, 
-		"-p", fmt.Sprintf("%s:53:53/udp", hostIP), 
-		"-p", fmt.Sprintf("%s:53:53/tcp", hostIP), 
-		ImageName, 
+	argsPrivileged = append(argsPrivileged,
+		"-p", fmt.Sprintf("%s:53:53/udp", hostIP),
+		"-p", fmt.Sprintf("%s:53:53/tcp", hostIP),
+		ImageName,
 		"-conf", "/etc/coredns/Corefile")
 
 	cmd := exec.Command("docker", argsPrivileged...)
 	if err := cmd.Run(); err != nil {
 		// Clean up the failed container attempt
 		_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
-		
+
 		fmt.Println("⚠️  Could not bind to local port 53 (in use). Falling back to 5354 only...")
-		
+
 		argsFallback := append(baseArgs, ImageName, "-conf", "/etc/coredns/Corefile")
 		cmdFallback := exec.Command("docker", argsFallback...)
 		cmdFallback.Stdout = os.Stdout

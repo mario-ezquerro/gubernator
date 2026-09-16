@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/mario-ezquerro/gubernator/internal/audit"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/security"
@@ -675,4 +676,3 @@ func SecuritySIEMTestHandler(c *gin.Context) {
 		"message":       result.Message,
 	})
 }
-

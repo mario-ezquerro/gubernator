@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestNIS2DB(t *testing.T) *gorm.DB {
@@ -93,10 +94,10 @@ func TestEvaluateNIS2ComplianceFullyCompliant(t *testing.T) {
 		CreatedAt:  now,
 	})
 	database.Create(&db.LocalUser{
-		ID:         "auditor-1",
-		Username:   "auditor",
-		Role:       "auditor",
-		CreatedAt:  now,
+		ID:        "auditor-1",
+		Username:  "auditor",
+		Role:      "auditor",
+		CreatedAt: now,
 	})
 
 	// 4. Identity connector

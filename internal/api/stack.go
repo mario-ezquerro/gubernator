@@ -13,12 +13,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
+
 	"github.com/mario-ezquerro/gubernator/internal/aqueducts"
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 	"github.com/mario-ezquerro/gubernator/internal/slo"
-	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -399,8 +400,6 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 
 	return &stack, nil
 }
-
-
 
 // isMultiHostStack determines whether a Docker Compose stack should have its services
 // and replicas distributed across multiple Centurion cluster nodes (multi-host)

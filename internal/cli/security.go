@@ -9,9 +9,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/mario-ezquerro/gubernator/internal/security"
-	"github.com/spf13/cobra"
 )
 
 // Scan command
@@ -1282,5 +1283,3 @@ func init() {
 	rootCmd.AddCommand(cisCmd)
 	rootCmd.AddCommand(iso27001Cmd)
 }
-
-

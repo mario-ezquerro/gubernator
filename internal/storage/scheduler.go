@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/robfig/cron/v3"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 var (

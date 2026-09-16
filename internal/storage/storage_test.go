@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
 func setupTestDB(t *testing.T) {

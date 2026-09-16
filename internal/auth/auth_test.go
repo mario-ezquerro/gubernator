@@ -139,4 +139,3 @@ func TestMFAPendingToken(t *testing.T) {
 		t.Error("ValidateToken should reject MFA pending token")
 	}
 }
-

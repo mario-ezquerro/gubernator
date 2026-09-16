@@ -91,7 +91,7 @@ func ensureClusterConfig() error {
 
 		var apiToken string
 		if env := os.Getenv("GBNT_API_TOKEN"); env != "" {
-			apiToken = env // operator pre-set
+			apiToken = env    // operator pre-set
 			firstBoot = false // don't show banner when token is pre-set
 		} else {
 			apiBytes := make([]byte, 32)
@@ -177,7 +177,7 @@ func ensureClusterConfig() error {
 	fmt.Println("║      Este token identifica y autoriza todas las peticiones del CLI y API REST.  ║")
 	fmt.Println("║      This token identifies and authorizes all CLI and REST API requests.         ║")
 	fmt.Println("║                                                                                  ║")
-	fmt.Printf( "║  ▶   %-76s  ◀  ║\n", newToken)
+	fmt.Printf("║  ▶   %-76s  ◀  ║\n", newToken)
 	fmt.Println("║                                                                                  ║")
 	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════════╣")
 	fmt.Println("║                                                                                  ║")
@@ -188,7 +188,7 @@ func ensureClusterConfig() error {
 	fmt.Println("║                                                                                  ║")
 	fmt.Println("║     gbnt config add-context local \\                                             ║")
 	fmt.Println("║         --server http://localhost:4000 \\                                        ║")
-	fmt.Printf( "║         --token %-65s  ║\n", newToken)
+	fmt.Printf("║         --token %-65s  ║\n", newToken)
 	fmt.Println("║     gbnt config use-context local                                               ║")
 	fmt.Println("║                                                                                  ║")
 	fmt.Println("║  2) Si usas Docker, ejecuta comandos dentro del contenedor:                     ║")
@@ -389,7 +389,6 @@ func UpdateNodeLabels(nodeID string, newLabels map[string]string) error {
 	return DB.Save(&node).Error
 }
 
-
 func seedInitialLocalUser() {
 	var userCount int64
 	DB.Model(&LocalUser{}).Count(&userCount)
@@ -521,5 +520,3 @@ func seedInitialWAFConfig() {
 		}
 	}
 }
-
-

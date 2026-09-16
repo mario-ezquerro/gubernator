@@ -44,23 +44,23 @@ func CredentialsDir() string {
 
 // CreateMountRequest defines parameters for adding a new network mount.
 type CreateMountRequest struct {
-	Name         string `json:"name"`
-	Device       string `json:"device"`       // e.g. "192.168.1.50:/exports/contenedores", "//192.168.1.50/share", "s3fs#my-bucket"
-	MountPoint   string `json:"mount_point"`  // e.g. "/var/contenedores", "/mnt/s3-models"
-	FSType       string `json:"fs_type"`      // "nfs", "nfs4", "cifs", "fuse.s3fs", "rclone", "ext4", "glusterfs"
-	Options      string `json:"options"`      // e.g. "rw,hard,intr,_netdev,rsize=1048576"
-	Dump         int    `json:"dump"`
-	Pass         int    `json:"pass"`
-	TargetNode   string `json:"target_node"`  // "all" or specific Node ID
-	AutoMount    bool   `json:"auto_mount"`
-	Description  string `json:"description"`
+	Name        string `json:"name"`
+	Device      string `json:"device"`      // e.g. "192.168.1.50:/exports/contenedores", "//192.168.1.50/share", "s3fs#my-bucket"
+	MountPoint  string `json:"mount_point"` // e.g. "/var/contenedores", "/mnt/s3-models"
+	FSType      string `json:"fs_type"`     // "nfs", "nfs4", "cifs", "fuse.s3fs", "rclone", "ext4", "glusterfs"
+	Options     string `json:"options"`     // e.g. "rw,hard,intr,_netdev,rsize=1048576"
+	Dump        int    `json:"dump"`
+	Pass        int    `json:"pass"`
+	TargetNode  string `json:"target_node"` // "all" or specific Node ID
+	AutoMount   bool   `json:"auto_mount"`
+	Description string `json:"description"`
 	// Protocol-specific credentials
-	Username     string `json:"username,omitempty"`
-	Password     string `json:"password,omitempty"`
-	Domain       string `json:"domain,omitempty"`
-	S3Endpoint   string `json:"s3_endpoint,omitempty"`
-	S3AccessKey  string `json:"s3_access_key,omitempty"`
-	S3SecretKey  string `json:"s3_secret_key,omitempty"`
+	Username    string `json:"username,omitempty"`
+	Password    string `json:"password,omitempty"`
+	Domain      string `json:"domain,omitempty"`
+	S3Endpoint  string `json:"s3_endpoint,omitempty"`
+	S3AccessKey string `json:"s3_access_key,omitempty"`
+	S3SecretKey string `json:"s3_secret_key,omitempty"`
 }
 
 // TestMountResult holds diagnostics after testing a mount.

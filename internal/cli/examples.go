@@ -11,8 +11,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/mario-ezquerro/gubernator/internal/examples"
 	"github.com/spf13/cobra"
+
+	"github.com/mario-ezquerro/gubernator/internal/examples"
 )
 
 var examplesCmd = &cobra.Command{
