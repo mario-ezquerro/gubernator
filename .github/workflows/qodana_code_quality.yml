@@ -1,28 +1,76 @@
 name: Qodana
+
 on:
-  workflow_dispatch:
-  pull_request:
+  # Automatic on every push to main and release branches
   push:
-    branches: # Specify your branches here
-      - main # The 'main' branch
-      - 'releases/*' # The release branches
+    branches:
+      - main
+      - 'releases/*'
+  # Automatic on every Pull Request — annotates it with findings
+  pull_request:
+  # Weekly full scan every Monday at 07:00 UTC
+  schedule:
+    - cron: '0 7 * * 1'
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   qodana:
+    name: Qodana Code Quality
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
-      checks: write
+      contents: write          # needed to push baseline.sarif updates
+      pull-requests: write     # needed to post PR review comments
+      checks: write            # needed to create check runs
+      security-events: write   # needed to upload SARIF to GitHub Security tab
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
-          fetch-depth: 0  # a full history is required for pull request analysis
-      - name: 'Qodana Scan'
+          # Check out the actual PR commit (not the merge commit) for accurate analysis
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Full history is required for incremental/PR analysis
+          fetch-depth: 0
+
+      - name: Qodana Scan
         uses: JetBrains/qodana-action@v2026.1
         with:
+          # Use the baseline SARIF to suppress already-known findings
+          # so each run only reports NEW issues introduced since last scan
+          args: >-
+            --baseline,qodana.sarif.json
+          # Upload the resulting SARIF to GitHub Security Code Scanning tab
+          upload-result: true
+          # Post inline annotations on Pull Requests
           pr-mode: false
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_2133200645 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'
+
+      # Upload SARIF to GitHub Advanced Security (Code Scanning)
+      # This makes findings visible in the Security tab → Code Scanning alerts
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          category: qodana
+
+      # Auto-update the baseline.sarif.json in the repo after a clean main scan
+      # This means next run only flags NEW regressions — not historical debt
+      - name: Update baseline SARIF in repository
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          if [ -f "${{ runner.temp }}/qodana/results/qodana.sarif.json" ]; then
+            cp "${{ runner.temp }}/qodana/results/qodana.sarif.json" baseline.sarif.json
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add baseline.sarif.json
+            if git diff --cached --quiet; then
+              echo "No changes to baseline.sarif.json — skipping commit"
+            else
+              git commit -m "chore(qodana): auto-update baseline.sarif.json [skip ci]"
+              git push
+            fi
+          fi
