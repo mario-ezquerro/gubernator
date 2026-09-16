@@ -95,7 +95,7 @@ func FetchNetworkTime() (time.Time, error) {
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		dateHeader := resp.Header.Get("Date")
 		if dateHeader == "" {

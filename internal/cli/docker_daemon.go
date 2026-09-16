@@ -39,14 +39,14 @@ var daemonInspectCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("GET", endpoint, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Error (Status %d): %s\n", resp.StatusCode, string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Error (Status %d): %s\n", resp.StatusCode, string(body))
 			os.Exit(1)
 		}
 
@@ -54,7 +54,7 @@ var daemonInspectCmd = &cobra.Command{
 			Hosts []docker.HostDaemonStatus `json:"hosts"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -112,7 +112,7 @@ var daemonApplyCmd = &cobra.Command{
 		if daemonFilePath != "" {
 			data, err := os.ReadFile(daemonFilePath)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read config file '%s': %v\n", daemonFilePath, err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to read config file '%s': %v\n", daemonFilePath, err)
 				os.Exit(1)
 			}
 			configJSON = string(data)
@@ -121,14 +121,14 @@ var daemonApplyCmd = &cobra.Command{
 			presetKey := strings.ToLower(strings.TrimSpace(daemonPreset))
 			presetData, ok := presets[presetKey]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "Unknown preset '%s'. Available presets: production, gpu, sre, minimal\n", daemonPreset)
+				_, _ = fmt.Fprintf(os.Stderr, "Unknown preset '%s'. Available presets: production, gpu, sre, minimal\n", daemonPreset)
 				os.Exit(1)
 			}
 			bytesData, _ := json.MarshalIndent(presetData, "", "  ")
 			configJSON = string(bytesData)
 			fmt.Printf("Using built-in preset '%s'...\n", presetKey)
 		} else {
-			fmt.Fprintln(os.Stderr, "Error: Specify either --preset (production|gpu|sre|minimal) or --file=<path>")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: Specify either --preset (production|gpu|sre|minimal) or --file=<path>")
 			os.Exit(1)
 		}
 
@@ -144,14 +144,14 @@ var daemonApplyCmd = &cobra.Command{
 		bodyBytes, _ := json.Marshal(payload)
 		resp, err := DoAPIRequest("POST", "/v1/docker/daemon", bytes.NewReader(bodyBytes))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		respBody, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Error applying config (Status %d): %s\n", resp.StatusCode, string(respBody))
+			_, _ = fmt.Fprintf(os.Stderr, "Error applying config (Status %d): %s\n", resp.StatusCode, string(respBody))
 			os.Exit(1)
 		}
 

@@ -43,7 +43,7 @@ func queryPrometheus(query string) map[string]float64 {
 	if err != nil || resp == nil || resp.StatusCode != 200 {
 		return results
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var pResp prometheusQueryResponse
 	if err := json.NewDecoder(resp.Body).Decode(&pResp); err != nil {
@@ -87,7 +87,7 @@ func queryPrometheusMap(query string, keyLabel string) map[string]float64 {
 	if err != nil || resp == nil || resp.StatusCode != 200 {
 		return results
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var pResp prometheusQueryResponse
 	if err := json.NewDecoder(resp.Body).Decode(&pResp); err != nil {

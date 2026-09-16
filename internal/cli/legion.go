@@ -33,13 +33,13 @@ var legionInitCmd = &cobra.Command{
 		// Fetches the token from the local manager API
 		resp, err := DoAPIRequest("GET", "/v1/cluster/token", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reaching local Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error reaching local Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Access denied. Are you running this on the Manager node?\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Access denied. Are you running this on the Manager node?\n")
 			os.Exit(1)
 		}
 
@@ -81,7 +81,7 @@ var legionJoinCmd = &cobra.Command{
 	Short: "Join an existing Gubernator cluster as a worker",
 	Run: func(cmd *cobra.Command, args []string) {
 		if joinToken == "" || managerAddr == "" {
-			fmt.Fprintln(os.Stderr, "Error: --token and --manager flags are required.")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: --token and --manager flags are required.")
 			cmd.Help()
 			os.Exit(1)
 		}
@@ -116,7 +116,7 @@ var legionJoinCmd = &cobra.Command{
 		// Use an authenticated request — the join endpoint is protected by Bearer
 		req, err := http.NewRequest("POST", fmt.Sprintf("%s/v1/node/join", addr), bytes.NewBuffer(body))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to create request: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to create request: %v\n", err)
 			os.Exit(1)
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -126,14 +126,14 @@ var legionJoinCmd = &cobra.Command{
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to join: %s\n", string(bodyBytes))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to join: %s\n", string(bodyBytes))
 			os.Exit(1)
 		}
 
@@ -237,10 +237,10 @@ var legionJoinCmd = &cobra.Command{
 			}
 			resp, err := hbClient.Do(req)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "⚠️  Heartbeat network error: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "⚠️  Heartbeat network error: %v\n", err)
 			} else {
 				if resp.StatusCode != http.StatusOK {
-					fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
+					_, _ = fmt.Fprintf(os.Stderr, "⚠️  Heartbeat rejected by manager (HTTP %d)\n", resp.StatusCode)
 				} else {
 					var hbResp struct {
 						ServerTimestamp int64 `json:"server_timestamp"`
@@ -570,7 +570,7 @@ var legionJoinCmd = &cobra.Command{
 func detectLocalIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err == nil {
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		localAddr := conn.LocalAddr().(*net.UDPAddr)
 		return localAddr.IP.String()
 	}
@@ -615,7 +615,7 @@ var legionJoinTokenCmd = &cobra.Command{
 			fmt.Printf("Failed to reach manager: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
@@ -649,7 +649,7 @@ var legionInfoCmd = &cobra.Command{
 			fmt.Printf("Failed to reach manager: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)

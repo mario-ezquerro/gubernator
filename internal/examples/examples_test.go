@@ -57,7 +57,7 @@ func TestExportExamplesToDisk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	if err := ExportExamplesToDisk(tempDir); err != nil {
 		t.Fatalf("ExportExamplesToDisk failed: %v", err)
@@ -84,7 +84,7 @@ func TestReadServerStackFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	yamlContent := `services:
   testapp:

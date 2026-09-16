@@ -18,7 +18,7 @@ var healthCmd = &cobra.Command{
 			fmt.Printf("Gubernator is unhealthy: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			fmt.Printf("Gubernator is unhealthy (HTTP %d)\n", resp.StatusCode)

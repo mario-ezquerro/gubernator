@@ -14,7 +14,7 @@ func forward(localPort int, remoteTarget string) {
 		log.Printf("Failed to listen on 0.0.0.0:%d: %v", localPort, err)
 		return
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	log.Printf("🚀 Forwarding localhost:%d -> %s", localPort, remoteTarget)
 
 	for {
@@ -25,13 +25,13 @@ func forward(localPort int, remoteTarget string) {
 		}
 
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			remoteConn, err := net.Dial("tcp", remoteTarget)
 			if err != nil {
 				log.Printf("Failed to connect to %s: %v", remoteTarget, err)
 				return
 			}
-			defer remoteConn.Close()
+			defer func() { _ = remoteConn.Close() }()
 
 			var wg sync.WaitGroup
 			wg.Add(2)

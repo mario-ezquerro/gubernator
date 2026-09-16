@@ -26,20 +26,20 @@ var ebpfStatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/ebpf/stats", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to fetch eBPF status: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to fetch eBPF status: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var stats ebpf.EBPFStats
 		if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -128,20 +128,20 @@ var ebpfFlowsCmd = &cobra.Command{
 		path := "/v1/ebpf/flows?" + params.Encode()
 		resp, err := DoAPIRequest("GET", path, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to fetch flows: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to fetch flows: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var flows []ebpf.Flow
 		if err := json.NewDecoder(resp.Body).Decode(&flows); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse flows: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse flows: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -199,20 +199,20 @@ var ebpfTopologyCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/ebpf/topology", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to fetch topology: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to fetch topology: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var topo ebpf.EBPFTopology
 		if err := json.NewDecoder(resp.Body).Decode(&topo); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse topology: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse topology: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -262,14 +262,14 @@ var ebpfSimulateCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/ebpf/simulate", bytes.NewReader(data))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to start simulation: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to start simulation: %s\n", string(body))
 			os.Exit(1)
 		}
 

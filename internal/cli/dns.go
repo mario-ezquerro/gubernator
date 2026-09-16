@@ -68,12 +68,12 @@ var dnsStartCmd = &cobra.Command{
 		fmt.Println("🌐 Starting CoreDNS...")
 
 		if err := coredns.EnsureNetwork(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to create gbnt-net: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to create gbnt-net: %v\n", err)
 			os.Exit(1)
 		}
 
 		if err := coredns.EnsureRunning(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to start CoreDNS: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to start CoreDNS: %v\n", err)
 			os.Exit(1)
 		}
 	},
@@ -95,7 +95,7 @@ var dnsReloadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("🔄 Reloading CoreDNS configuration...")
 		if err := coredns.ReloadConfig(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Reload failed: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Reload failed: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("✅ CoreDNS reloaded.")
@@ -109,8 +109,8 @@ var dnsLsCmd = &cobra.Command{
 		hostsPath := coredns.HostsFilePath()
 		content, err := os.ReadFile(hostsPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to read hosts file: %v\n", err)
-			fmt.Fprintf(os.Stderr, "   (Is Gubernator running? Expected at: %s)\n", hostsPath)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to read hosts file: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "   (Is Gubernator running? Expected at: %s)\n", hostsPath)
 			os.Exit(1)
 		}
 

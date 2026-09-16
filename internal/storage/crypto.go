@@ -235,7 +235,7 @@ func IsEncryptedArchive(filePath string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	header := make([]byte, len(MagicHeader))
 	n, err := f.Read(header)

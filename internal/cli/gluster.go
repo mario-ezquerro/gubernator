@@ -24,7 +24,7 @@ var glusterStatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		diag, err := storage.GetGlusterDiagnostics()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error querying GlusterFS diagnostics: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error querying GlusterFS diagnostics: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -59,12 +59,12 @@ var glusterPeerLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		peers, err := storage.GetGlusterPeers()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching peers: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error fetching peers: %v\n", err)
 			os.Exit(1)
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "HOSTNAME\tSTATE\tCONNECTED\tLOCAL\tUUID")
+		_, _ = fmt.Fprintln(w, "HOSTNAME\tSTATE\tCONNECTED\tLOCAL\tUUID")
 		for _, p := range peers {
 			conn := "YES"
 			if !p.Connected {
@@ -78,9 +78,9 @@ var glusterPeerLsCmd = &cobra.Command{
 			if uuid == "" {
 				uuid = "-"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", p.Hostname, p.State, conn, isLocal, uuid)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", p.Hostname, p.State, conn, isLocal, uuid)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -93,7 +93,7 @@ var glusterPeerProbeCmd = &cobra.Command{
 		host := args[0]
 		err := storage.ProbeGlusterPeer(host)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error probing peer %s: %v\n", host, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error probing peer %s: %v\n", host, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Successfully probed peer: %s\n", host)
@@ -109,7 +109,7 @@ var glusterPeerDetachCmd = &cobra.Command{
 		host := args[0]
 		err := storage.DetachGlusterPeer(host, false)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error detaching peer %s: %v\n", host, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error detaching peer %s: %v\n", host, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Successfully detached peer: %s\n", host)
@@ -134,12 +134,12 @@ var glusterVolumeLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		vols, err := storage.GetGlusterVolumes()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching volumes: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error fetching volumes: %v\n", err)
 			os.Exit(1)
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "VOLUME NAME\tTYPE\tSTATUS\tREPLICAS\tBRICKS\tMOUNT POINT\tCAPACITY")
+		_, _ = fmt.Fprintln(w, "VOLUME NAME\tTYPE\tSTATUS\tREPLICAS\tBRICKS\tMOUNT POINT\tCAPACITY")
 		for _, v := range vols {
 			repl := fmt.Sprintf("Replica %d", v.ReplicaCount)
 			if v.ArbiterCount > 0 {
@@ -156,9 +156,9 @@ var glusterVolumeLsCmd = &cobra.Command{
 			if v.CapacityTotal > 0 {
 				capStr = fmt.Sprintf("%.1f%% (%s / %s)", v.CapacityPercent, storage.FormatBytes(v.CapacityUsed), storage.FormatBytes(v.CapacityTotal))
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n", v.Name, v.Type, v.Status, repl, v.NumBricks, mnt, capStr)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\n", v.Name, v.Type, v.Status, repl, v.NumBricks, mnt, capStr)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -192,7 +192,7 @@ var glusterVolumeCreateCmd = &cobra.Command{
 
 		err := storage.CreateGlusterVolume(req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating volume %s: %v\n", name, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error creating volume %s: %v\n", name, err)
 			os.Exit(1)
 		}
 
@@ -212,7 +212,7 @@ var glusterVolumeStartCmd = &cobra.Command{
 		name := args[0]
 		err := storage.StartGlusterVolume(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error starting volume %s: %v\n", name, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error starting volume %s: %v\n", name, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Volume '%s' started successfully\n", name)
@@ -228,7 +228,7 @@ var glusterVolumeStopCmd = &cobra.Command{
 		name := args[0]
 		err := storage.StopGlusterVolume(name, true)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error stopping volume %s: %v\n", name, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error stopping volume %s: %v\n", name, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Volume '%s' stopped\n", name)
@@ -244,7 +244,7 @@ var glusterVolumeRmCmd = &cobra.Command{
 		name := args[0]
 		err := storage.DeleteGlusterVolume(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error deleting volume %s: %v\n", name, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error deleting volume %s: %v\n", name, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Volume '%s' deleted\n", name)
@@ -260,7 +260,7 @@ var glusterVolumeHealCmd = &cobra.Command{
 		name := args[0]
 		report, err := storage.GetGlusterHealReport(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error querying heal status: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error querying heal status: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -291,7 +291,7 @@ var glusterMountCmd = &cobra.Command{
 		}
 		err := storage.MountGlusterToCluster(name, target, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error auto-mounting volume: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error auto-mounting volume: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Registered GlusterFS volume '%s' mounted on %s across cluster\n", name, target)
@@ -313,7 +313,7 @@ var glusterVolumeOptionCmd = &cobra.Command{
 		if glusterOptionReset {
 			err := storage.ResetGlusterVolumeOption(volName, key)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error resetting option %s on %s: %v\n", key, volName, err)
+				_, _ = fmt.Fprintf(os.Stderr, "Error resetting option %s on %s: %v\n", key, volName, err)
 				os.Exit(1)
 			}
 			fmt.Printf("✓ Option '%s' reset to default on volume '%s'\n", key, volName)
@@ -321,14 +321,14 @@ var glusterVolumeOptionCmd = &cobra.Command{
 		}
 
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "Error: value required when setting an option (e.g. gbnt gluster volume option gv_contenedores auth.allow '10.10.100.*')")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: value required when setting an option (e.g. gbnt gluster volume option gv_contenedores auth.allow '10.10.100.*')")
 			os.Exit(1)
 		}
 		val := args[2]
 
 		err := storage.SetGlusterVolumeOption(volName, key, val)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error setting option %s=%s on %s: %v\n", key, val, volName, err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error setting option %s=%s on %s: %v\n", key, val, volName, err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Successfully configured '%s=%s' on volume '%s'\n", key, val, volName)

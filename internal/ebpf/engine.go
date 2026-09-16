@@ -414,7 +414,7 @@ func pushSpanToJaeger(f Flow) {
 	for _, ep := range endpoints {
 		resp, err := client.Post(ep, "application/json", bytes.NewReader(data))
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				break
 			}

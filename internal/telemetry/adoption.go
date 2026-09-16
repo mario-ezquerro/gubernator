@@ -123,7 +123,7 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 		reqRel.Header.Set("User-Agent", "Gubernator-Adoption-Telemetry")
 		reqRel.Header.Set("Accept", "application/vnd.github.v3+json")
 		if resp, doErr := client.Do(reqRel); doErr == nil {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode == http.StatusOK {
 				var releases []ghReleaseItem
 				if decErr := json.NewDecoder(resp.Body).Decode(&releases); decErr == nil {
@@ -170,7 +170,7 @@ func GetAdoptionStats(forceRefresh bool) *AdoptionStats {
 		reqRepo.Header.Set("User-Agent", "Gubernator-Adoption-Telemetry")
 		reqRepo.Header.Set("Accept", "application/vnd.github.v3+json")
 		if resp, err := client.Do(reqRepo); err == nil {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode == http.StatusOK {
 				var repo ghRepoInfo
 				if err := json.NewDecoder(resp.Body).Decode(&repo); err == nil {

@@ -531,14 +531,14 @@ func (p *Probe) InspectLinuxInterfaces() {
 			continue
 		}
 		var rxB, rxP, rxE, rxD, txB, txP, txE, txD uint64
-		fmt.Sscanf(fields[0], "%d", &rxB)
-		fmt.Sscanf(fields[1], "%d", &rxP)
-		fmt.Sscanf(fields[2], "%d", &rxE)
-		fmt.Sscanf(fields[3], "%d", &rxD)
-		fmt.Sscanf(fields[8], "%d", &txB)
-		fmt.Sscanf(fields[9], "%d", &txP)
-		fmt.Sscanf(fields[10], "%d", &txE)
-		fmt.Sscanf(fields[11], "%d", &txD)
+		_, _ = fmt.Sscanf(fields[0], "%d", &rxB)
+		_, _ = fmt.Sscanf(fields[1], "%d", &rxP)
+		_, _ = fmt.Sscanf(fields[2], "%d", &rxE)
+		_, _ = fmt.Sscanf(fields[3], "%d", &rxD)
+		_, _ = fmt.Sscanf(fields[8], "%d", &txB)
+		_, _ = fmt.Sscanf(fields[9], "%d", &txP)
+		_, _ = fmt.Sscanf(fields[10], "%d", &txE)
+		_, _ = fmt.Sscanf(fields[11], "%d", &txD)
 
 		ifaces = append(ifaces, InterfaceStats{
 			Name:      name,
@@ -603,18 +603,18 @@ func parseHexSocket(s string) (string, int) {
 		return "", 0
 	}
 	var port int
-	fmt.Sscanf(parts[1], "%X", &port)
+	_, _ = fmt.Sscanf(parts[1], "%X", &port)
 
 	// Check IPv4 (8 chars) vs IPv6 (32 chars)
 	if len(parts[0]) == 8 {
 		var ipHex uint32
-		fmt.Sscanf(parts[0], "%X", &ipHex)
+		_, _ = fmt.Sscanf(parts[0], "%X", &ipHex)
 		ip := net.IPv4(byte(ipHex), byte(ipHex>>8), byte(ipHex>>16), byte(ipHex>>24)).String()
 		return ip, port
 	} else if len(parts[0]) == 32 {
 		var d [4]uint32
 		for i := 0; i < 4; i++ {
-			fmt.Sscanf(parts[0][i*8:(i+1)*8], "%X", &d[i])
+			_, _ = fmt.Sscanf(parts[0][i*8:(i+1)*8], "%X", &d[i])
 		}
 		ip := net.IP{
 			byte(d[0]), byte(d[0] >> 8), byte(d[0] >> 16), byte(d[0] >> 24),

@@ -90,7 +90,7 @@ func SendEmailAlert(cfg *db.SLONotificationConfig, subject, body string) error {
 			conn.Close()
 			return fmt.Errorf("SMTP client failed: %w", clientErr)
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		if auth != nil {
 			if errAuth := client.Auth(auth); errAuth != nil {
@@ -151,7 +151,7 @@ func SendWebhookAlert(cfg *db.SLONotificationConfig, subject, details string, is
 	if err != nil {
 		return fmt.Errorf("webhook POST failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("webhook returned status %d", resp.StatusCode)

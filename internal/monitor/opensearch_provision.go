@@ -254,7 +254,7 @@ func postSavedObject(client *http.Client, baseURL, objType, id, jsonBody string)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	io.Copy(io.Discard, resp.Body)
 	return nil
 }
@@ -272,7 +272,7 @@ func postSetting(client *http.Client, baseURL, key, jsonBody string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	io.Copy(io.Discard, resp.Body)
 	return nil
 }

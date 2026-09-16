@@ -100,7 +100,7 @@ func TestIsEncryptedArchive(t *testing.T) {
 		t.Fatalf("failed to create encFile: %v", err)
 	}
 	_ = EncryptStream(bytes.NewReader([]byte("encrypted data")), f, "password123")
-	f.Close()
+	_ = f.Close()
 
 	// Write unencrypted plain file
 	_ = os.WriteFile(plainFile, []byte("regular plain gzip/tar content"), 0644)

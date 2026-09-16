@@ -35,15 +35,15 @@ var configGetContextsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := loadConfig()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "CURRENT\tNAME\tSERVER")
+		_, _ = fmt.Fprintln(w, "CURRENT\tNAME\tSERVER")
 		for _, ctx := range cfg.Contexts {
 			current := ""
 			if ctx.Name == cfg.CurrentContext {
 				current = "*"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\n", current, ctx.Name, ctx.Server)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", current, ctx.Name, ctx.Server)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -80,8 +80,8 @@ func init() {
 
 	configAddContextCmd.Flags().StringVar(&contextServer, "server", "", "Manager API URL (e.g., http://192.168.1.10:4000)")
 	configAddContextCmd.Flags().StringVar(&contextToken, "token", "", "Bearer API token (from gbnt legion info)")
-	configAddContextCmd.MarkFlagRequired("server")
-	configAddContextCmd.MarkFlagRequired("token")
+	_ = configAddContextCmd.MarkFlagRequired("server")
+	_ = configAddContextCmd.MarkFlagRequired("token")
 }
 
 // configAddContextCmd adds or updates a context in ~/.gbntctl/config.
@@ -106,7 +106,7 @@ Example:
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
 		if contextServer == "" || contextToken == "" {
-			fmt.Fprintln(os.Stderr, "Error: --server and --token are required.")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: --server and --token are required.")
 			cmd.Help()
 			os.Exit(1)
 		}

@@ -119,7 +119,7 @@ func TestSIEMTestProbeUDP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to listen UDP: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	port := conn.LocalAddr().(*net.UDPAddr).Port
 

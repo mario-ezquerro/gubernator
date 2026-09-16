@@ -590,7 +590,7 @@ func queryPrometheusMetric(query string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		Data struct {
@@ -622,7 +622,7 @@ func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]
 	if err != nil {
 		return res
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		Data struct {

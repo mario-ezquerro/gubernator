@@ -101,7 +101,7 @@ func FetchOIDCDiscovery(cfg db.OIDCConfig) (*OIDCDiscovery, error) {
 	if err != nil {
 		return nil, fmt.Errorf("OIDC discovery request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
@@ -303,7 +303,7 @@ func exchangeCodeForTokens(cfg db.OIDCConfig, disc *OIDCDiscovery, code, codeVer
 	if err != nil {
 		return nil, fmt.Errorf("token endpoint request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 
@@ -413,7 +413,7 @@ func fetchJWKS(cfg db.OIDCConfig, jwksURI string) ([]jwk, error) {
 	if err != nil {
 		return nil, fmt.Errorf("JWKS request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var keyset jwksResponse
 	if err := json.NewDecoder(resp.Body).Decode(&keyset); err != nil {

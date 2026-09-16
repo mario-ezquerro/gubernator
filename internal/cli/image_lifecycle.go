@@ -27,17 +27,17 @@ var imageLsCmd = &cobra.Command{
 		path := "/v1/images/host-list?node=" + imageNodeFlag
 		resp, err := DoAPIRequest("GET", path, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var data struct {
 			Images []docker.HostDockerImage `json:"images"`
 			Count  int                      `json:"count"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to decode response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to decode response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -72,15 +72,15 @@ var imageHistoryCmd = &cobra.Command{
 		path := fmt.Sprintf("/v1/images/history?image=%s&node=%s", image, imageNodeFlag)
 		resp, err := DoAPIRequest("GET", path, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			var errData map[string]interface{}
 			json.NewDecoder(resp.Body).Decode(&errData)
-			fmt.Fprintf(os.Stderr, "Error: %v\n", errData["error"])
+			_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", errData["error"])
 			os.Exit(1)
 		}
 
@@ -118,10 +118,10 @@ var imageRmCmd = &cobra.Command{
 		path := fmt.Sprintf("/v1/images/host-delete?image=%s&node=%s&force=%s", image, imageNodeFlag, forceStr)
 		resp, err := DoAPIRequest("DELETE", path, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageRemoveResult
 		json.NewDecoder(resp.Body).Decode(&res)
@@ -144,10 +144,10 @@ var imagePruneCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/images/prune", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImagePruneResult
 		json.NewDecoder(resp.Body).Decode(&res)
@@ -164,7 +164,7 @@ var imageBuildCmd = &cobra.Command{
 	Short: "Build a Docker image from a Dockerfile on a Centurion node",
 	Run: func(cmd *cobra.Command, args []string) {
 		if imageBuildTagFlag == "" {
-			fmt.Fprintf(os.Stderr, "Error: -t/--tag is required\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Error: -t/--tag is required\n")
 			os.Exit(1)
 		}
 
@@ -172,7 +172,7 @@ var imageBuildCmd = &cobra.Command{
 		if imageBuildFileFlag != "" {
 			data, err := os.ReadFile(imageBuildFileFlag)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read Dockerfile %s: %v\n", imageBuildFileFlag, err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to read Dockerfile %s: %v\n", imageBuildFileFlag, err)
 				os.Exit(1)
 			}
 			dockerfileContent = string(data)
@@ -180,7 +180,7 @@ var imageBuildCmd = &cobra.Command{
 			// Check standard Dockerfile in current dir
 			data, err := os.ReadFile("Dockerfile")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Dockerfile not found. Specify with -f <path>\n")
+				_, _ = fmt.Fprintf(os.Stderr, "Error: Dockerfile not found. Specify with -f <path>\n")
 				os.Exit(1)
 			}
 			dockerfileContent = string(data)
@@ -196,10 +196,10 @@ var imageBuildCmd = &cobra.Command{
 		fmt.Printf("🔨 Building image '%s' on node '%s'...\n", imageBuildTagFlag, imageNodeFlag)
 		resp, err := DoAPIRequest("POST", "/v1/images/build", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageBuildResult
 		json.NewDecoder(resp.Body).Decode(&res)
@@ -231,10 +231,10 @@ var imageDistributeCmd = &cobra.Command{
 		fmt.Printf("🌐 Distributing image '%s' across cluster (target: %s)...\n", imageName, imageNodeFlag)
 		resp, err := DoAPIRequest("POST", "/v1/images/distribute", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res docker.ImageDistributeResult
 		json.NewDecoder(resp.Body).Decode(&res)

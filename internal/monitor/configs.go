@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mario-ezquerro/gubernator/internal/db"
 	"github.com/glebarez/sqlite"
+	"github.com/mario-ezquerro/gubernator/internal/db"
 	"gorm.io/gorm"
 )
 

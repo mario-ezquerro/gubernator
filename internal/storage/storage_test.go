@@ -129,7 +129,7 @@ func TestPruneRetainedBackups(t *testing.T) {
 
 	scheduleID := "sched-123"
 	sourceDir := t.TempDir()
-	os.WriteFile(filepath.Join(sourceDir, "test.txt"), []byte("test"), 0644)
+	_ = os.WriteFile(filepath.Join(sourceDir, "test.txt"), []byte("test"), 0644)
 
 	// Create 5 backups for the schedule
 	for i := 1; i <= 5; i++ {

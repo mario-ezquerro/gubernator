@@ -47,18 +47,18 @@ var stackDeployCmd = &cobra.Command{
 			body, _ := json.Marshal(payload)
 			resp, err := DoAPIRequest("POST", "/v1/stack/server-deploy", bytes.NewBuffer(body))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				bodyBytes, _ := io.ReadAll(resp.Body)
 				var errResp map[string]string
 				if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp["error"] != "" {
-					fmt.Fprintf(os.Stderr, "Failed to deploy stack from server: %s\n", errResp["error"])
+					_, _ = fmt.Fprintf(os.Stderr, "Failed to deploy stack from server: %s\n", errResp["error"])
 				} else {
-					fmt.Fprintf(os.Stderr, "Failed to deploy stack from server: %s\n", string(bodyBytes))
+					_, _ = fmt.Fprintf(os.Stderr, "Failed to deploy stack from server: %s\n", string(bodyBytes))
 				}
 				os.Exit(1)
 			}
@@ -78,14 +78,14 @@ var stackDeployCmd = &cobra.Command{
 
 		// Option 2: Deploy from client local machine file
 		if composeFile == "" {
-			fmt.Fprintln(os.Stderr, "Error: -c/--compose-file or -s/--from-server flag is required")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: -c/--compose-file or -s/--from-server flag is required")
 			cmd.Help()
 			os.Exit(1)
 		}
 
 		yamlData, err := os.ReadFile(composeFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read compose file: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to read compose file: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -99,10 +99,10 @@ var stackDeployCmd = &cobra.Command{
 		body, _ := json.Marshal(payload)
 		resp, err := DoAPIRequest("POST", "/v1/stack/deploy", bytes.NewBuffer(body))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode == http.StatusConflict {
 			bodyBytes, _ := io.ReadAll(resp.Body)
@@ -121,29 +121,29 @@ var stackDeployCmd = &cobra.Command{
 				} `json:"conflicts"`
 			}
 			if err := json.Unmarshal(bodyBytes, &conflictResp); err == nil && len(conflictResp.Conflicts) > 0 {
-				fmt.Fprintln(os.Stderr, "\n⚠️  PORT CONFLICT DETECTED")
-				fmt.Fprintln(os.Stderr, "Cannot deploy stack because requested published host ports are already in use:")
-				fmt.Fprintln(os.Stderr)
+				_, _ = fmt.Fprintln(os.Stderr, "\n⚠️  PORT CONFLICT DETECTED")
+				_, _ = fmt.Fprintln(os.Stderr, "Cannot deploy stack because requested published host ports are already in use:")
+				_, _ = fmt.Fprintln(os.Stderr)
 
 				w := tabwriter.NewWriter(os.Stderr, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "  SERVICE\tPORT\tCONFLICTING STACK\tCONFLICTING SERVICE\tNODE\tSUGGESTION")
+				_, _ = fmt.Fprintln(w, "  SERVICE\tPORT\tCONFLICTING STACK\tCONFLICTING SERVICE\tNODE\tSUGGESTION")
 				for _, c := range conflictResp.Conflicts {
 					suggestion := fmt.Sprintf("Change to %d:%d", c.SuggestedPort, c.HostPort)
 					nodeDesc := c.NodeID
 					if c.NodeIP != "" && c.NodeIP != c.NodeID {
 						nodeDesc = fmt.Sprintf("%s (%s)", c.NodeID, c.NodeIP)
 					}
-					fmt.Fprintf(w, "  %s\t%d/%s\t%s\t%s\t%s\t%s\n",
+					_, _ = fmt.Fprintf(w, "  %s\t%d/%s\t%s\t%s\t%s\t%s\n",
 						c.Service, c.HostPort, c.Protocol, c.ConflictingStack, c.ConflictingService, nodeDesc, suggestion)
 				}
-				w.Flush()
+				_ = w.Flush()
 
-				fmt.Fprintln(os.Stderr, "\nOptions to resolve:")
-				fmt.Fprintln(os.Stderr, "  1) Update host port mapping in your compose file according to the suggestions above.")
-				fmt.Fprintln(os.Stderr, "  2) Run with '--auto-remap-ports' to assign available ports automatically:")
-				fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --auto-remap-ports\n", composeFile)
-				fmt.Fprintln(os.Stderr, "  3) Run with '--force' to bypass port collision verification:")
-				fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --force\n\n", composeFile)
+				_, _ = fmt.Fprintln(os.Stderr, "\nOptions to resolve:")
+				_, _ = fmt.Fprintln(os.Stderr, "  1) Update host port mapping in your compose file according to the suggestions above.")
+				_, _ = fmt.Fprintln(os.Stderr, "  2) Run with '--auto-remap-ports' to assign available ports automatically:")
+				_, _ = fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --auto-remap-ports\n", composeFile)
+				_, _ = fmt.Fprintln(os.Stderr, "  3) Run with '--force' to bypass port collision verification:")
+				_, _ = fmt.Fprintf(os.Stderr, "     gbnt stack deploy -c %s --force\n\n", composeFile)
 				os.Exit(1)
 			}
 		}
@@ -152,9 +152,9 @@ var stackDeployCmd = &cobra.Command{
 			bodyBytes, _ := io.ReadAll(resp.Body)
 			var errResp map[string]string
 			if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp["error"] != "" {
-				fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", errResp["error"])
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", errResp["error"])
 			} else {
-				fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", string(bodyBytes))
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to deploy stack: %s\n", string(bodyBytes))
 			}
 			os.Exit(1)
 		}
@@ -189,7 +189,7 @@ var stackServerLsCmd = &cobra.Command{
 
 		resp, err := DoAPIRequestWithTimeout("GET", endpoint, nil, 1*time.Second)
 		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			var data struct {
 				Files       []examples.ServerStackFile `json:"files"`
 				StacksDir   string                     `json:"stacks_dir"`
@@ -219,15 +219,15 @@ var stackServerLsCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "FILE\tINFERRED NAME\tSERVICES\tTYPE\tSERVER PATH")
+		_, _ = fmt.Fprintln(w, "FILE\tINFERRED NAME\tSERVICES\tTYPE\tSERVER PATH")
 		for _, f := range files {
 			fileType := "Custom Stack"
 			if f.IsExample {
 				fileType = "POC Example"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", f.Filename, f.InferredName, f.Services, fileType, f.Path)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", f.Filename, f.InferredName, f.Services, fileType, f.Path)
 		}
-		w.Flush()
+		_ = w.Flush()
 		fmt.Println("\nDeploy any server stack with: gbnt stack deploy --from-server <SERVER-PATH>")
 	},
 }
@@ -241,17 +241,17 @@ var stackLsCmd = &cobra.Command{
 			fmt.Printf("Failed to fetch stacks: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var stacks []db.Stack
 		json.NewDecoder(resp.Body).Decode(&stacks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME\tDEPLOYED")
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tDEPLOYED")
 		for _, s := range stacks {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", s.ID[:8], s.Name, s.CreatedAt.Format("2006-01-02 15:04"))
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", s.ID[:8], s.Name, s.CreatedAt.Format("2006-01-02 15:04"))
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -265,17 +265,17 @@ var stackServicesCmd = &cobra.Command{
 			fmt.Printf("Failed to fetch services: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var services []db.Service
 		json.NewDecoder(resp.Body).Decode(&services)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS")
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS")
 		for _, s := range services {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", s.ID[:8], s.Name, s.Image, s.DesiredReplicas)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", s.ID[:8], s.Name, s.Image, s.DesiredReplicas)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -335,7 +335,7 @@ var stackReconcileCmd = &cobra.Command{
 			fmt.Printf("Failed to reconcile: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&res)

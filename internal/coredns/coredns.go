@@ -257,7 +257,7 @@ func EnsureRunning() error {
 			return nil
 		}
 		// Container exists but not running — remove it first
-		exec.Command("docker", "rm", "-f", ContainerName).Run()
+		_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
 	}
 
 	fmt.Println("🌐 Starting CoreDNS container (gbnt-coredns)...")
@@ -285,7 +285,7 @@ func EnsureRunning() error {
 	cmd := exec.Command("docker", argsPrivileged...)
 	if err := cmd.Run(); err != nil {
 		// Clean up the failed container attempt
-		exec.Command("docker", "rm", "-f", ContainerName).Run()
+		_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
 		
 		fmt.Println("⚠️  Could not bind to local port 53 (in use). Falling back to 5354 only...")
 		
@@ -333,9 +333,9 @@ func ReloadConfig() error {
 // Stop stops and removes the CoreDNS container.
 func Stop() {
 	fmt.Printf("⏹  Stopping %s...\n", ContainerName)
-	exec.Command("docker", "stop", ContainerName).Run()
-	exec.Command("docker", "rm", "-f", ContainerName).Run()
-	exec.Command("docker", "volume", "rm", "-f", VolumeName).Run()
+	_ = exec.Command("docker", "stop", ContainerName).Run()
+	_ = exec.Command("docker", "rm", "-f", ContainerName).Run()
+	_ = exec.Command("docker", "volume", "rm", "-f", VolumeName).Run()
 }
 
 // Restart stops and starts the CoreDNS container.
@@ -372,10 +372,10 @@ func populateConfigVolume() error {
 	dir := CoreDNSDir()
 
 	// Create volume
-	exec.Command("docker", "volume", "create", VolumeName).Run()
+	_ = exec.Command("docker", "volume", "create", VolumeName).Run()
 
 	helperName := "gbnt-coredns-vol-helper"
-	exec.Command("docker", "rm", "-f", helperName).Run()
+	_ = exec.Command("docker", "rm", "-f", helperName).Run()
 
 	// Create helper container with the volume
 	if err := exec.Command("docker", "create",
@@ -384,7 +384,7 @@ func populateConfigVolume() error {
 		"alpine:latest").Run(); err != nil {
 		return fmt.Errorf("failed to create volume helper: %w", err)
 	}
-	defer exec.Command("docker", "rm", "-f", helperName).Run()
+	defer func() { _ = exec.Command("docker", "rm", "-f", helperName).Run() }()
 
 	// Copy config files into the volume
 	if err := exec.Command("docker", "cp", dir+"/.", helperName+":/data/").Run(); err != nil {

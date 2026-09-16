@@ -76,7 +76,7 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// 1. Initial Bind (using Service Account BindDN if specified, otherwise anonymous)
 	if cfg.BindDN != "" && cfg.BindPassword != "" {
@@ -129,7 +129,7 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 	if err != nil {
 		return nil, fmt.Errorf("failed to open user bind connection: %w", err)
 	}
-	defer userConn.Close()
+	defer func() { _ = userConn.Close() }()
 
 	if err := userConn.Bind(userDN, password); err != nil {
 		return nil, errors.New("invalid LDAP credentials")
@@ -236,7 +236,7 @@ func TestLDAPConnection(cfg db.LDAPConfig, testUser, testPass string) (*TestResu
 			LatencyMs: time.Since(start).Milliseconds(),
 		}, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tlsActive := strings.ToLower(cfg.Security) == "tls" || strings.ToLower(cfg.Security) == "starttls" || strings.ToLower(cfg.Security) == "ldaps"
 

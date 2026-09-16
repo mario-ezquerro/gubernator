@@ -33,7 +33,7 @@ func EnsureNetwork() error {
 
 // RemoveNetwork removes the gbnt-monitor-net Docker network.
 func RemoveNetwork() {
-	exec.Command("docker", "network", "rm", "gbnt-monitor-net").Run()
+	_ = exec.Command("docker", "network", "rm", "gbnt-monitor-net").Run()
 }
 
 // ConnectGubernator connects the current gubernator container (if running inside Docker) to the monitor network.
@@ -75,7 +75,7 @@ func DisconnectGubernator() {
 	}
 
 	if err := exec.Command("docker", "inspect", hostname).Run(); err == nil {
-		exec.Command("docker", "network", "disconnect", "-f", "gbnt-monitor-net", hostname).Run()
+		_ = exec.Command("docker", "network", "disconnect", "-f", "gbnt-monitor-net", hostname).Run()
 	}
 }
 

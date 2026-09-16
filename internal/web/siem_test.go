@@ -79,7 +79,7 @@ func TestSIEMStatusAndProbeEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to listen UDP: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	mockPort := conn.LocalAddr().(*net.UDPAddr).Port
 
 	// 3. Update configuration to enable SIEM

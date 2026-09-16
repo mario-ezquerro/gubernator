@@ -46,7 +46,7 @@ Access points after deployment:
 
 		// 1. Create Docker network
 		if err := monitor.EnsureNetwork(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to create network: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to create network: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -61,20 +61,20 @@ Access points after deployment:
 
 		if monitorProfileFlag != "" && monitorProfileFlag != "cloud-native" {
 			if err := monitor.SwitchProfile(monitorProfileFlag, webUser, webPass); err != nil {
-				fmt.Fprintf(os.Stderr, "\n❌ Deployment failed for profile %s: %v\n", monitorProfileFlag, err)
+				_, _ = fmt.Fprintf(os.Stderr, "\n❌ Deployment failed for profile %s: %v\n", monitorProfileFlag, err)
 				os.Exit(1)
 			}
 		} else {
 			// 2. Generate config files
 			if err := monitor.WriteConfigs(nil); err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Failed to write configs: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to write configs: %v\n", err)
 				os.Exit(1)
 			}
 
 			// 3. Deploy all containers (pass Gubernator web credentials for Grafana SSO)
 			if err := monitor.DeployManagerStack(webUser, webPass); err != nil {
-				fmt.Fprintf(os.Stderr, "\n❌ Deployment failed: %v\n", err)
-				fmt.Fprintln(os.Stderr, "Run 'gbnt monitor stop' to clean up partially deployed containers.")
+				_, _ = fmt.Fprintf(os.Stderr, "\n❌ Deployment failed: %v\n", err)
+				_, _ = fmt.Fprintln(os.Stderr, "Run 'gbnt monitor stop' to clean up partially deployed containers.")
 				os.Exit(1)
 			}
 			_ = monitor.SetActiveProfile("cloud-native")
@@ -143,7 +143,7 @@ var monitorScopeStartCmd = &cobra.Command{
 	Short:   "Start Weave Scope container for Network Topology visualization",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := monitor.EnableScope(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to start Weave Scope: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to start Weave Scope: %v\n", err)
 			os.Exit(1)
 		}
 	},
@@ -155,7 +155,7 @@ var monitorScopeStopCmd = &cobra.Command{
 	Short:   "Stop and remove Weave Scope Network Topology container",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := monitor.DisableScope(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to stop Weave Scope: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to stop Weave Scope: %v\n", err)
 			os.Exit(1)
 		}
 	},
@@ -201,7 +201,7 @@ var monitorSwitchCmd = &cobra.Command{
 			webPass = "admin"
 		}
 		if err := monitor.SwitchProfile(targetID, webUser, webPass); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Failed to switch SRE profile: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "❌ Failed to switch SRE profile: %v\n", err)
 			os.Exit(1)
 		}
 	},

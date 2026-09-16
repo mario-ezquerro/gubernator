@@ -258,7 +258,7 @@ func QueryPrometheusMetric(query string) (float64, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return -1, fmt.Errorf("prometheus query failed: status %d", resp.StatusCode)

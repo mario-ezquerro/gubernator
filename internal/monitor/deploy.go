@@ -211,11 +211,11 @@ func StopAll() {
 
 	for _, name := range AllContainers() {
 		fmt.Printf("⏹  Stopping %s...\n", name)
-		exec.Command("docker", "stop", name).Run()
-		exec.Command("docker", "rm", "-f", name).Run()
+		_ = exec.Command("docker", "stop", name).Run()
+		_ = exec.Command("docker", "rm", "-f", name).Run()
 	}
 	for _, vol := range AllVolumes() {
-		exec.Command("docker", "volume", "rm", "-f", vol).Run()
+		_ = exec.Command("docker", "volume", "rm", "-f", vol).Run()
 	}
 	RemoveNetwork()
 }
@@ -296,12 +296,12 @@ func populateConfigVolumes() error {
 
 	for _, c := range copies {
 		// Create volume
-		exec.Command("docker", "volume", "create", c.volume).Run()
+		_ = exec.Command("docker", "volume", "create", c.volume).Run()
 
 		helperName := "gbnt-vol-helper-" + c.volume
 
 		// Remove any existing helper
-		exec.Command("docker", "rm", "-f", helperName).Run()
+		_ = exec.Command("docker", "rm", "-f", helperName).Run()
 
 		// Create a temporary container that mounts the volume
 		if err := exec.Command("docker", "create", "--name", helperName,
@@ -313,12 +313,12 @@ func populateConfigVolumes() error {
 		// Copy all files from the local source dir into the volume via docker cp
 		// docker cp copies the CONTENTS of srcDir into destPath
 		if err := exec.Command("docker", "cp", c.srcDir+"/.", helperName+":"+c.destPath+"/").Run(); err != nil {
-			exec.Command("docker", "rm", "-f", helperName).Run()
+			_ = exec.Command("docker", "rm", "-f", helperName).Run()
 			return fmt.Errorf("failed to copy configs into volume %s: %w", c.volume, err)
 		}
 
 		// Remove the helper container
-		exec.Command("docker", "rm", "-f", helperName).Run()
+		_ = exec.Command("docker", "rm", "-f", helperName).Run()
 	}
 
 	fmt.Println("📦 Config volumes populated successfully.")
@@ -335,7 +335,7 @@ func cleanupPortContainers(port, targetName string) {
 			if err == nil {
 				cName := strings.TrimPrefix(strings.TrimSpace(string(nameOut)), "/")
 				if cName != targetName {
-					exec.Command("docker", "rm", "-f", id).Run()
+					_ = exec.Command("docker", "rm", "-f", id).Run()
 				}
 			}
 		}
@@ -346,7 +346,7 @@ func cleanupPortContainers(port, targetName string) {
 // If a container with the same name already exists, it is removed first.
 func runContainer(name string, args []string) error {
 	// Remove if already exists
-	exec.Command("docker", "rm", "-f", name).Run()
+	_ = exec.Command("docker", "rm", "-f", name).Run()
 
 	// Clean up any conflicting containers publishing host ports specified in args
 	for i, arg := range args {
@@ -532,7 +532,7 @@ scrape_configs:
 `, lokiURL)
 
 	// Populate promtail config volume
-	exec.Command("docker", "volume", "create", VolPromtail).Run()
+	_ = exec.Command("docker", "volume", "create", VolPromtail).Run()
 	volCmd := exec.Command("docker", "run", "--rm", "-i", "-v", VolPromtail+":/data", "alpine:latest", "sh", "-c", "cat > /data/promtail-config.yml")
 	volCmd.Stdin = strings.NewReader(promtailYaml)
 	_ = volCmd.Run()

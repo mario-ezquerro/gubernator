@@ -161,7 +161,7 @@ func StopContainer(containerName string) error {
 	coredns.DisconnectContainer(containerName)
 
 	// Stop gracefully
-	exec.Command("docker", "stop", containerName).Run()
+	_ = exec.Command("docker", "stop", containerName).Run()
 	// Remove
 	if err := exec.Command("docker", "rm", "-f", containerName).Run(); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)

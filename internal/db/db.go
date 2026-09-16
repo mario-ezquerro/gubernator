@@ -131,7 +131,9 @@ func ensureClusterConfig() error {
 		slog.Info("API token updated from GBNT_API_TOKEN env var")
 	} else if config.APIToken != "" && envToken == "" {
 		// Load persisted token into env so the API middleware can read it
-		os.Setenv("GBNT_API_TOKEN", config.APIToken)
+		if err := os.Setenv("GBNT_API_TOKEN", config.APIToken); err != nil {
+			slog.Warn("failed to set GBNT_API_TOKEN env var", "err", err)
+		}
 		slog.Info("API token loaded from database")
 	}
 
@@ -148,7 +150,9 @@ func ensureClusterConfig() error {
 	// ── STARTUP & TOKEN INFO BANNER ─────────────────────────────────────────
 	// Printed on EVERY startup so the token and its recovery instructions are always visible.
 	newToken := config.APIToken
-	os.Setenv("GBNT_API_TOKEN", newToken)
+	if err := os.Setenv("GBNT_API_TOKEN", newToken); err != nil {
+		slog.Warn("failed to export GBNT_API_TOKEN to environment", "err", err)
+	}
 
 	fmt.Println("")
 	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════════╗")
@@ -297,7 +301,7 @@ func DetectLocalIP() string {
 
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err == nil {
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		localAddr := conn.LocalAddr().(*net.UDPAddr)
 		return localAddr.IP.String()
 	}

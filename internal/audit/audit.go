@@ -429,7 +429,7 @@ func dispatchToNetwork(addr, protocol string, data []byte) error {
 		if err != nil {
 			return fmt.Errorf("tcp dial failed: %w", err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 		_, err = conn.Write(data)
 		return err
@@ -441,7 +441,7 @@ func dispatchToNetwork(addr, protocol string, data []byte) error {
 		if err != nil {
 			return fmt.Errorf("tls dial failed: %w", err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 		_, err = conn.Write(data)
 		return err
@@ -451,7 +451,7 @@ func dispatchToNetwork(addr, protocol string, data []byte) error {
 		if err != nil {
 			return fmt.Errorf("udp dial failed: %w", err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_, err = conn.Write(data)
 		return err
 	}

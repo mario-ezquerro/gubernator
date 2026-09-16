@@ -25,17 +25,17 @@ var serviceLsCmd = &cobra.Command{
 			fmt.Printf("Failed to fetch services: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var services []db.Service
 		json.NewDecoder(resp.Body).Decode(&services)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS\tSTACK")
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tIMAGE\tREPLICAS\tSTACK")
 		for _, s := range services {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", s.ID[:8], s.Name, s.Image, s.DesiredReplicas, s.StackID[:8])
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", s.ID[:8], s.Name, s.Image, s.DesiredReplicas, s.StackID[:8])
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -49,17 +49,17 @@ var servicePsCmd = &cobra.Command{
 			fmt.Printf("Failed to fetch tasks: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var tasks []db.Task
 		json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNODE\tSTATUS\tIP")
+		_, _ = fmt.Fprintln(w, "ID\tNODE\tSTATUS\tIP")
 		for _, t := range tasks {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID[:8], t.NodeID, t.Status, t.ContainerIP)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID[:8], t.NodeID, t.Status, t.ContainerIP)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 

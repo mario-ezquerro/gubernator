@@ -73,7 +73,9 @@ func NodeJoinHandler(c *gin.Context) {
 
 	// Synchronize Worker Core & SRE Stacks in DB
 	coredns.SyncWorkerCoreStacks(db.DB)
-	monitor.RegisterInDB(db.DB)
+	if err := monitor.RegisterInDB(db.DB); err != nil {
+		slog.Warn("failed to register monitor stacks in DB on node join", "err", err)
+	}
 
 	// Broadcast Caddy TLS certificates to newly joined node in background
 	go func() {
@@ -137,7 +139,9 @@ func NodeHeartbeatHandler(c *gin.Context) {
 
 	// Ensure Worker Core & SRE Stacks are synced in DB
 	coredns.SyncWorkerCoreStacks(db.DB)
-	monitor.RegisterInDB(db.DB)
+	if err := monitor.RegisterInDB(db.DB); err != nil {
+		slog.Warn("failed to register monitor stacks in DB on heartbeat", "err", err)
+	}
 
 	nodemanager.ClearAuthMismatch(c.ClientIP())
 	nodemanager.ClearAuthMismatch(existingNode.IP)

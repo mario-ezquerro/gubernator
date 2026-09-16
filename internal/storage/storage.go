@@ -180,7 +180,7 @@ func CheckStoragePoolHealth(poolPath string) PoolHealthResponse {
 		} else {
 			mgrStatus.IsWritable = true
 			mgrStatus.Status = "accessible"
-			os.Remove(testFile)
+			_ = os.Remove(testFile)
 		}
 
 		// Query disk space

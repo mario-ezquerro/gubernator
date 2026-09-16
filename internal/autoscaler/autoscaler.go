@@ -373,7 +373,7 @@ func queryPrometheusScalar(query string) float64 {
 		resp, err := client.Get(ep)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			if resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 			continue
 		}
@@ -387,7 +387,7 @@ func queryPrometheusScalar(query string) float64 {
 		}
 
 		decErr := json.NewDecoder(resp.Body).Decode(&result)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if decErr == nil && len(result.Data.Result) > 0 {
 			valSlice := result.Data.Result[0].Value

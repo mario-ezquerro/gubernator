@@ -152,7 +152,7 @@ func TestAdmissionGatekeeper(t *testing.T) {
 	// Relax signature enforcement to audit
 	policy.EnforceSignatures = "audit"
 	policy.BlockCVESeverity = "none"
-	UpdateClusterPolicy(policy)
+	_ = UpdateClusterPolicy(policy)
 
 	decision2 := EvaluateAdmission("untrusted/app:latest", nil)
 	if !decision2.Allowed {

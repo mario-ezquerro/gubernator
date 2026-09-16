@@ -23,17 +23,17 @@ var scanCmd = &cobra.Command{
 			// List all scans
 			resp, err := DoAPIRequest("GET", "/v1/security/scans", nil)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			var data struct {
 				Scans   []db.ImageScan            `json:"scans"`
 				Summary *security.SecuritySummary `json:"summary"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -70,14 +70,14 @@ var scanCmd = &cobra.Command{
 		reqBody, _ := json.Marshal(map[string]string{"image": imageName})
 		resp, err := DoAPIRequest("POST", "/v1/security/scans/trigger", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Scan failed: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Scan failed: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -122,14 +122,14 @@ var sbomCmd = &cobra.Command{
 		url := fmt.Sprintf("/v1/security/sbom?image=%s&format=%s", imageName, sbomFormatFlag)
 		resp, err := DoAPIRequest("GET", url, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to get SBOM: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to get SBOM: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -158,7 +158,7 @@ var imageSignCmd = &cobra.Command{
 		if imageKeyFlag != "" {
 			data, err := os.ReadFile(imageKeyFlag)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to read private key file: %v\n", err)
 				os.Exit(1)
 			}
 			privKeyPEM = string(data)
@@ -166,7 +166,7 @@ var imageSignCmd = &cobra.Command{
 			// Automatically generate or use in-cluster key
 			_, privPEM, err := security.GenerateCosignKeypair("cli-auto-key")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to generate signing key: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to generate signing key: %v\n", err)
 				os.Exit(1)
 			}
 			privKeyPEM = privPEM
@@ -180,14 +180,14 @@ var imageSignCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/security/sign", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to sign image: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to sign image: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -204,10 +204,10 @@ var imageVerifyCmd = &cobra.Command{
 		reqBody, _ := json.Marshal(map[string]string{"image": imageName})
 		resp, err := DoAPIRequest("POST", "/v1/security/evaluate", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Decision security.AdmissionDecision `json:"decision"`
@@ -234,14 +234,14 @@ var imageUnsignCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/security/unsign", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to unsign image: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to unsign image: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -261,10 +261,10 @@ var securityPolicyCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/policy", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Policy db.SecurityPolicy `json:"policy"`
@@ -298,16 +298,16 @@ var securityPolicySetCmd = &cobra.Command{
 		// 1. Fetch current policy
 		resp, err := DoAPIRequest("GET", "/v1/security/policy", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Policy db.SecurityPolicy `json:"policy"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse current policy: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse current policy: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -316,7 +316,7 @@ var securityPolicySetCmd = &cobra.Command{
 		if cmd.Flags().Changed("signatures") {
 			sig := strings.ToLower(policySignaturesFlag)
 			if sig != "enforce" && sig != "audit" && sig != "disabled" {
-				fmt.Fprintln(os.Stderr, "Error: --signatures must be 'enforce', 'audit', or 'disabled'")
+				_, _ = fmt.Fprintln(os.Stderr, "Error: --signatures must be 'enforce', 'audit', or 'disabled'")
 				os.Exit(1)
 			}
 			p.EnforceSignatures = sig
@@ -325,7 +325,7 @@ var securityPolicySetCmd = &cobra.Command{
 		if cmd.Flags().Changed("block-cve") {
 			cve := strings.ToLower(policyBlockCVEFlag)
 			if cve != "critical" && cve != "high" && cve != "none" {
-				fmt.Fprintln(os.Stderr, "Error: --block-cve must be 'critical', 'high', or 'none'")
+				_, _ = fmt.Fprintln(os.Stderr, "Error: --block-cve must be 'critical', 'high', or 'none'")
 				os.Exit(1)
 			}
 			p.BlockCVESeverity = cve
@@ -342,14 +342,14 @@ var securityPolicySetCmd = &cobra.Command{
 		reqBody, _ := json.Marshal(p)
 		postResp, err := DoAPIRequest("POST", "/v1/security/policy", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to update policy: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to update policy: %v\n", err)
 			os.Exit(1)
 		}
-		defer postResp.Body.Close()
+		defer func() { _ = postResp.Body.Close() }()
 
 		if postResp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(postResp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to save security policy (%d): %s\n", postResp.StatusCode, string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to save security policy (%d): %s\n", postResp.StatusCode, string(body))
 			os.Exit(1)
 		}
 
@@ -372,10 +372,10 @@ var securityKeyLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/keys", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Keys []db.TrustedSigningKey `json:"keys"`
@@ -411,14 +411,14 @@ var securityKeyGenerateCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/security/keys/generate", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to generate signing key: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to generate signing key: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -447,14 +447,14 @@ var securityKeyRmCmd = &cobra.Command{
 		id := args[0]
 		resp, err := DoAPIRequest("DELETE", "/v1/security/keys/"+id, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to delete key: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to delete key: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -478,14 +478,14 @@ var imageFixCmd = &cobra.Command{
 			// Fetch preview and suggestions
 			resp, err := DoAPIRequest("GET", "/v1/security/remediate/preview?image="+currentImg, nil)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			var prev security.RemediationPreview
 			if err := json.NewDecoder(resp.Body).Decode(&prev); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -524,7 +524,7 @@ var imageFixCmd = &cobra.Command{
 		}
 
 		if imageStackFlag == "" {
-			fmt.Fprintf(os.Stderr, "Error: --stack is required when specifying --to\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Error: --stack is required when specifying --to\n")
 			os.Exit(1)
 		}
 
@@ -537,10 +537,10 @@ var imageFixCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("POST", "/v1/security/remediate", bytes.NewReader(reqBody))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result security.RemediationResult
 		json.NewDecoder(resp.Body).Decode(&result)
@@ -567,10 +567,10 @@ var scanPruneCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("POST", "/v1/security/scans/prune-orphans", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Message string `json:"message"`
@@ -588,15 +588,15 @@ var scanRmCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("DELETE", "/v1/security/scans/"+args[0], nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode == http.StatusOK {
 			fmt.Printf("✅ Scan report for '%s' purged successfully.\n", args[0])
 		} else {
-			fmt.Fprintf(os.Stderr, "Failed to purge scan for '%s'.\n", args[0])
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to purge scan for '%s'.\n", args[0])
 		}
 	},
 }
@@ -612,27 +612,27 @@ var ensCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/ens/status", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to evaluate ENS compliance: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to evaluate ENS compliance: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var s security.ENSSummary
 		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
 		if ensReportFlag || ensFormatFlag == "markdown" || ensFormatFlag == "md" {
 			reportResp, err := DoAPIRequest("GET", "/v1/security/ens/report", nil)
 			if err == nil && reportResp.StatusCode == http.StatusOK {
-				defer reportResp.Body.Close()
+				defer func() { _ = reportResp.Body.Close() }()
 				body, _ := io.ReadAll(reportResp.Body)
 				fmt.Println(string(body))
 				return
@@ -691,27 +691,27 @@ var nis2Cmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/nis2/status", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to evaluate NIS 2 compliance: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to evaluate NIS 2 compliance: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var s security.NIS2Summary
 		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
 		if nis2ReportFlag || nis2FormatFlag == "markdown" || nis2FormatFlag == "md" {
 			reportResp, err := DoAPIRequest("GET", "/v1/security/nis2/report", nil)
 			if err == nil && reportResp.StatusCode == http.StatusOK {
-				defer reportResp.Body.Close()
+				defer func() { _ = reportResp.Body.Close() }()
 				body, _ := io.ReadAll(reportResp.Body)
 				fmt.Println(string(body))
 				return
@@ -771,27 +771,27 @@ var cisCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/cis-docker/status", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to evaluate CIS Docker Benchmark: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to evaluate CIS Docker Benchmark: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var s security.CISDockerSummary
 		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
 		if cisReportFlag || cisFormatFlag == "markdown" || cisFormatFlag == "md" {
 			reportResp, err := DoAPIRequest("GET", "/v1/security/cis-docker/report", nil)
 			if err == nil && reportResp.StatusCode == http.StatusOK {
-				defer reportResp.Body.Close()
+				defer func() { _ = reportResp.Body.Close() }()
 				body, _ := io.ReadAll(reportResp.Body)
 				fmt.Println(string(body))
 				return
@@ -880,27 +880,27 @@ var iso27001Cmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/security/iso27001/status", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to evaluate ISO/IEC 27001: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to evaluate ISO/IEC 27001: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var s security.ISO27001Summary
 		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
 		if isoReportFlag || isoFormatFlag == "text" || isoFormatFlag == "report" {
 			reportResp, err := DoAPIRequest("GET", "/v1/security/iso27001/report", nil)
 			if err == nil && reportResp.StatusCode == http.StatusOK {
-				defer reportResp.Body.Close()
+				defer func() { _ = reportResp.Body.Close() }()
 				body, _ := io.ReadAll(reportResp.Body)
 				fmt.Println(string(body))
 				return
@@ -1000,7 +1000,7 @@ var securitySiemStatusCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -1111,7 +1111,7 @@ var securitySiemTestCmd = &cobra.Command{
 			fmt.Printf("Error de conexión con Manager: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res struct {
 			Success   bool   `json:"success"`
@@ -1167,7 +1167,7 @@ var securitySiemEnableCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
@@ -1193,7 +1193,7 @@ var securitySiemDisableCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)

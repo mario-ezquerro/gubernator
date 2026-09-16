@@ -26,13 +26,13 @@ var taskLsCmd = &cobra.Command{
 			fmt.Printf("Failed to fetch tasks: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var tasks []db.Task
 		json.NewDecoder(resp.Body).Decode(&tasks)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tCPU (LIVE/LIMIT)\tMEMORY (LIVE/LIMIT)\tIP\tERROR")
+		_, _ = fmt.Fprintln(w, "ID\tNODE\tSERVICE\tSTATUS\tCPU (LIVE/LIMIT)\tMEMORY (LIVE/LIMIT)\tIP\tERROR")
 		for _, t := range tasks {
 			errStr := t.Error
 			if len(errStr) > 40 {
@@ -66,9 +66,9 @@ var taskLsCmd = &cobra.Command{
 			if len(sID) > 8 {
 				sID = sID[:8]
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", tID, t.NodeID, sID, t.Status, cpuStr, memStr, t.ContainerIP, errStr)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", tID, t.NodeID, sID, t.Status, cpuStr, memStr, t.ContainerIP, errStr)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -97,7 +97,7 @@ var taskPruneCmd = &cobra.Command{
 			fmt.Printf("Failed to prune tasks: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&res)

@@ -24,14 +24,14 @@ var mountLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/storage/mounts", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to list mounts: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to list mounts: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -39,7 +39,7 @@ var mountLsCmd = &cobra.Command{
 			Mounts []db.StorageMount `json:"mounts"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -97,14 +97,14 @@ var mountAddCmd = &cobra.Command{
 		bodyBytes, _ := json.Marshal(req)
 		resp, err := DoAPIRequest("POST", "/v1/storage/mounts", bytes.NewReader(bodyBytes))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to create mount: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to create mount: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -121,14 +121,14 @@ var mountRmCmd = &cobra.Command{
 		id := args[0]
 		resp, err := DoAPIRequest("DELETE", fmt.Sprintf("/v1/storage/mounts/%s", id), nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to delete mount: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to delete mount: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -144,14 +144,14 @@ var mountMountCmd = &cobra.Command{
 		id := args[0]
 		resp, err := DoAPIRequest("POST", fmt.Sprintf("/v1/storage/mounts/%s/mount", id), nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to mount: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to mount: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -167,14 +167,14 @@ var mountUnmountCmd = &cobra.Command{
 		id := args[0]
 		resp, err := DoAPIRequest("POST", fmt.Sprintf("/v1/storage/mounts/%s/unmount", id), nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to unmount: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to unmount: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -188,17 +188,17 @@ var mountFstabCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/storage/fstab/raw", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var res struct {
 			Path string `json:"path"`
 			Raw  string `json:"raw"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 

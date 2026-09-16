@@ -25,20 +25,20 @@ var volumeLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/storage/volumes", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to list volumes: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to list volumes: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var vols []db.StorageVolume
 		if err := json.NewDecoder(resp.Body).Decode(&vols); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -72,20 +72,20 @@ var backupLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/backup/ls", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to list backups: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to list backups: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var backups []db.Backup
 		if err := json.NewDecoder(resp.Body).Decode(&backups); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -122,7 +122,7 @@ var backupCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		target := args[0]
 		if backupCreateEncrypt && backupCreatePassphrase == "" {
-			fmt.Fprintf(os.Stderr, "Error: --password is required when --encrypt is enabled (ENS mp.si.2)\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Error: --password is required when --encrypt is enabled (ENS mp.si.2)\n")
 			os.Exit(1)
 		}
 
@@ -138,20 +138,20 @@ var backupCreateCmd = &cobra.Command{
 		reqBytes, _ := json.Marshal(req)
 		resp, err := DoAPIRequest("POST", "/v1/backup/create", bytes.NewBuffer(reqBytes))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to create backup: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to create backup: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var b db.Backup
 		if err := json.NewDecoder(resp.Body).Decode(&b); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -187,14 +187,14 @@ var backupRestoreCmd = &cobra.Command{
 		reqBytes, _ := json.Marshal(req)
 		resp, err := DoAPIRequest("POST", "/v1/backup/restore", bytes.NewBuffer(reqBytes))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to restore backup: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to restore backup: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -225,20 +225,20 @@ var backupScheduleLsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/backup/schedules", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to list schedules: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to list schedules: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var schedules []db.BackupSchedule
 		if err := json.NewDecoder(resp.Body).Decode(&schedules); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -272,11 +272,11 @@ var backupScheduleAddCmd = &cobra.Command{
 	Short: "Create or update an automated periodic backup schedule",
 	Run: func(cmd *cobra.Command, args []string) {
 		if schedNameFlag == "" {
-			fmt.Fprintln(os.Stderr, "Error: --name is required")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: --name is required")
 			os.Exit(1)
 		}
 		if schedCronFlag == "" {
-			fmt.Fprintln(os.Stderr, "Error: --cron expression is required (e.g. '0 3 * * *')")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: --cron expression is required (e.g. '0 3 * * *')")
 			os.Exit(1)
 		}
 		if schedTargetFlag == "" {
@@ -303,14 +303,14 @@ var backupScheduleAddCmd = &cobra.Command{
 		reqBytes, _ := json.Marshal(payload)
 		resp, err := DoAPIRequest("POST", "/v1/backup/schedules", bytes.NewBuffer(reqBytes))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to create schedule: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to create schedule: %s\n", string(body))
 			os.Exit(1)
 		}
 
@@ -335,14 +335,14 @@ var backupScheduleRmCmd = &cobra.Command{
 		id := args[0]
 		resp, err := DoAPIRequest("DELETE", "/v1/backup/schedules/"+id, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to delete schedule: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to delete schedule: %s\n", string(body))
 			os.Exit(1)
 		}
 

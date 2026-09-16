@@ -29,20 +29,20 @@ var caddyWAFStatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		resp, err := DoAPIRequest("GET", "/v1/caddy/waf/stats", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "Failed to fetch WAF stats: %s\n", string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to fetch WAF stats: %s\n", string(body))
 			os.Exit(1)
 		}
 
 		var stats map[string]interface{}
 		if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -75,7 +75,7 @@ var caddyWAFStatusCmd = &cobra.Command{
 		// List per-route overrides
 		routeResp, err := DoAPIRequest("GET", "/v1/caddy/waf/routes", nil)
 		if err == nil && routeResp.StatusCode == http.StatusOK {
-			defer routeResp.Body.Close()
+			defer func() { _ = routeResp.Body.Close() }()
 			var routeData struct {
 				Routes []struct {
 					Host         string `json:"host"`
@@ -122,13 +122,13 @@ var caddyWAFEnableCmd = &cobra.Command{
 			})
 			resp, err := DoAPIRequest("POST", "/v1/caddy/waf/routes/toggle", bytes.NewReader(payload))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)
-				fmt.Fprintf(os.Stderr, "Failed to enable route WAF: %s\n", string(body))
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to enable route WAF: %s\n", string(body))
 				os.Exit(1)
 			}
 			fmt.Printf("✅ Threat Shield manually ENABLED for route: %s (mode: %s)\n", host, mode)
@@ -138,10 +138,10 @@ var caddyWAFEnableCmd = &cobra.Command{
 		// Global enable
 		cfgResp, err := DoAPIRequest("GET", "/v1/caddy/waf/config", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 			os.Exit(1)
 		}
-		defer cfgResp.Body.Close()
+		defer func() { _ = cfgResp.Body.Close() }()
 		var cfg map[string]interface{}
 		_ = json.NewDecoder(cfgResp.Body).Decode(&cfg)
 		cfg["enabled"] = true
@@ -152,10 +152,10 @@ var caddyWAFEnableCmd = &cobra.Command{
 		bodyBytes, _ := json.Marshal(cfg)
 		updateResp, err := DoAPIRequest("POST", "/v1/caddy/waf/config", bytes.NewReader(bodyBytes))
 		if err != nil || updateResp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to update global WAF config\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to update global WAF config\n")
 			os.Exit(1)
 		}
-		defer updateResp.Body.Close()
+		defer func() { _ = updateResp.Body.Close() }()
 		fmt.Println("✅ Threat Shield globally ENABLED across cluster Caddy Ingress.")
 	},
 }
@@ -173,13 +173,13 @@ var caddyWAFDisableCmd = &cobra.Command{
 			})
 			resp, err := DoAPIRequest("POST", "/v1/caddy/waf/routes/toggle", bytes.NewReader(payload))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)
-				fmt.Fprintf(os.Stderr, "Failed to disable route WAF: %s\n", string(body))
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to disable route WAF: %s\n", string(body))
 				os.Exit(1)
 			}
 			fmt.Printf("🛑 Threat Shield manually DISABLED for route: %s\n", host)
@@ -189,10 +189,10 @@ var caddyWAFDisableCmd = &cobra.Command{
 		// Global disable
 		cfgResp, err := DoAPIRequest("GET", "/v1/caddy/waf/config", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 			os.Exit(1)
 		}
-		defer cfgResp.Body.Close()
+		defer func() { _ = cfgResp.Body.Close() }()
 		var cfg map[string]interface{}
 		_ = json.NewDecoder(cfgResp.Body).Decode(&cfg)
 		cfg["enabled"] = false
@@ -200,10 +200,10 @@ var caddyWAFDisableCmd = &cobra.Command{
 		bodyBytes, _ := json.Marshal(cfg)
 		updateResp, err := DoAPIRequest("POST", "/v1/caddy/waf/config", bytes.NewReader(bodyBytes))
 		if err != nil || updateResp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to update global WAF config\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to update global WAF config\n")
 			os.Exit(1)
 		}
-		defer updateResp.Body.Close()
+		defer func() { _ = updateResp.Body.Close() }()
 		fmt.Println("🛑 Threat Shield globally DISABLED.")
 	},
 }
@@ -219,7 +219,7 @@ var caddyWAFModeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		newMode := strings.ToLower(strings.TrimSpace(args[0]))
 		if newMode != "enforce" && newMode != "detection" {
-			fmt.Fprintf(os.Stderr, "Invalid mode: %s (must be 'enforce' or 'detection')\n", newMode)
+			_, _ = fmt.Fprintf(os.Stderr, "Invalid mode: %s (must be 'enforce' or 'detection')\n", newMode)
 			os.Exit(1)
 		}
 
@@ -231,10 +231,10 @@ var caddyWAFModeCmd = &cobra.Command{
 			})
 			resp, err := DoAPIRequest("POST", "/v1/caddy/waf/routes/toggle", bytes.NewReader(payload))
 			if err != nil || resp.StatusCode != http.StatusOK {
-				fmt.Fprintf(os.Stderr, "Failed to set route mode\n")
+				_, _ = fmt.Fprintf(os.Stderr, "Failed to set route mode\n")
 				os.Exit(1)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			fmt.Printf("✅ Threat Shield mode for %s updated to: %s\n", wafTargetHostFlag, newMode)
 			return
 		}
@@ -242,10 +242,10 @@ var caddyWAFModeCmd = &cobra.Command{
 		// Global mode
 		cfgResp, err := DoAPIRequest("GET", "/v1/caddy/waf/config", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 			os.Exit(1)
 		}
-		defer cfgResp.Body.Close()
+		defer func() { _ = cfgResp.Body.Close() }()
 		var cfg map[string]interface{}
 		_ = json.NewDecoder(cfgResp.Body).Decode(&cfg)
 		cfg["mode"] = newMode
@@ -253,10 +253,10 @@ var caddyWAFModeCmd = &cobra.Command{
 		bodyBytes, _ := json.Marshal(cfg)
 		updateResp, err := DoAPIRequest("POST", "/v1/caddy/waf/config", bytes.NewReader(bodyBytes))
 		if err != nil || updateResp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to update global mode\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to update global mode\n")
 			os.Exit(1)
 		}
-		defer updateResp.Body.Close()
+		defer func() { _ = updateResp.Body.Close() }()
 		fmt.Printf("✅ Global Threat Shield mode updated to: %s\n", newMode)
 	},
 }
@@ -283,10 +283,10 @@ var caddyWAFIPBlockCmd = &cobra.Command{
 		})
 		resp, err := DoAPIRequest("POST", "/v1/caddy/waf/ip/block", bytes.NewReader(payload))
 		if err != nil || resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to block IP %s\n", ip)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to block IP %s\n", ip)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		fmt.Printf("🚫 IP %s has been added to Threat Shield blacklist (reason: %s)\n", ip, reason)
 	},
 }
@@ -300,10 +300,10 @@ var caddyWAFIPUnblockCmd = &cobra.Command{
 		payload, _ := json.Marshal(map[string]string{"ip": ip})
 		resp, err := DoAPIRequest("POST", "/v1/caddy/waf/ip/unblock", bytes.NewReader(payload))
 		if err != nil || resp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "Failed to unblock IP %s\n", ip)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to unblock IP %s\n", ip)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		fmt.Printf("✅ IP %s removed from Threat Shield blacklist\n", ip)
 	},
 }
@@ -328,10 +328,10 @@ var caddyWAFEventsCmd = &cobra.Command{
 
 		resp, err := DoAPIRequest("GET", url, nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var data struct {
 			Events []struct {
@@ -349,7 +349,7 @@ var caddyWAFEventsCmd = &cobra.Command{
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to decode events: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to decode events: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -401,10 +401,10 @@ var caddyWAFTestCmd = &cobra.Command{
 		})
 		resp, err := DoAPIRequest("POST", "/v1/caddy/waf/test", bytes.NewReader(payload))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var result struct {
 			Message string `json:"message"`

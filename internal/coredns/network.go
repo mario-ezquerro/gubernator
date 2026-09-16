@@ -48,7 +48,7 @@ func EnsureNetwork() error {
 
 // RemoveNetwork removes the gbnt-net Docker network.
 func RemoveNetwork() {
-	exec.Command("docker", "network", "rm", NetworkName).Run()
+	_ = exec.Command("docker", "network", "rm", NetworkName).Run()
 }
 
 // ConnectContainer connects a running container to gbnt-net so it can
@@ -74,7 +74,7 @@ func ConnectContainer(containerName string) error {
 // DisconnectContainer disconnects a container from gbnt-net.
 // Called when a container is stopped/removed.
 func DisconnectContainer(containerName string) {
-	exec.Command("docker", "network", "disconnect", "-f", NetworkName, containerName).Run()
+	_ = exec.Command("docker", "network", "disconnect", "-f", NetworkName, containerName).Run()
 }
 
 // SetNetworkDNS updates the gbnt-net network to use the CoreDNS container as

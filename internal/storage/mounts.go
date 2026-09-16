@@ -114,7 +114,7 @@ func getActiveMountPoints() map[string]string {
 		}
 		return active
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

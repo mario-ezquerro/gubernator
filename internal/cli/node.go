@@ -25,20 +25,20 @@ var nodeLsCmd = &cobra.Command{
 		// Call the API endpoint
 		resp, err := DoAPIRequest("GET", "/v1/node/ls", nil)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error reaching API: %v\n", err)
 			os.Exit(1)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
 			os.Exit(1)
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading response: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error reading response: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -60,7 +60,7 @@ var nodeLsCmd = &cobra.Command{
 		}
 
 		if err := json.Unmarshal(body, &data); err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -82,7 +82,7 @@ var nodeLsCmd = &cobra.Command{
 
 		// Print nicely formatted table
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tIP\tROLE\tSTATUS\tCPU\tMEMORY\tHOST DISK\t")
+		_, _ = fmt.Fprintln(w, "ID\tIP\tROLE\tSTATUS\tCPU\tMEMORY\tHOST DISK\t")
 		for _, n := range data.Nodes {
 			cpuStr := fmt.Sprintf("%.1f%%", n.CpuPercent)
 			memStr := "-"
@@ -93,9 +93,9 @@ var nodeLsCmd = &cobra.Command{
 			if n.DiskTotalBytes > 0 {
 				diskStr = fmt.Sprintf("%.0f%% (%s / %s)", n.DiskPercent, formatBytes(n.DiskUsedBytes), formatBytes(n.DiskTotalBytes))
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", n.ID, n.IP, n.Role, n.Status, cpuStr, memStr, diskStr)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n", n.ID, n.IP, n.Role, n.Status, cpuStr, memStr, diskStr)
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 
@@ -109,11 +109,11 @@ var nodeInspectCmd = &cobra.Command{
 			fmt.Printf("Failed to contact API: %v\n", err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+			_, _ = fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
 			os.Exit(1)
 		}
 
@@ -200,7 +200,7 @@ var nodeLabelCmd = &cobra.Command{
 		}
 
 		if len(toAdd) == 0 && len(toRm) == 0 {
-			fmt.Fprintln(os.Stderr, "Error: must specify at least one label to add (key=value) or remove (key)")
+			_, _ = fmt.Fprintln(os.Stderr, "Error: must specify at least one label to add (key=value) or remove (key)")
 			cmd.Help()
 			os.Exit(1)
 		}
@@ -217,14 +217,14 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	// 1. Fetch current node data to inspect its labels
 	resp, err := DoAPIRequest("GET", "/v1/node/"+nodeID, nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to contact API: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to contact API: %v\n", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
+		_, _ = fmt.Fprintf(os.Stderr, "API Error (Status %d): %s\n", resp.StatusCode, string(body))
 		os.Exit(1)
 	}
 
@@ -233,7 +233,7 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	}
 	err = json.NewDecoder(resp.Body).Decode(&node)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding node response: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error decoding node response: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -244,7 +244,7 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	// 2. Process removals
 	for _, key := range toRm {
 		if key == "gbnt.node.role" || key == "gbnt.node.arch" {
-			fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be removed.\n", key)
+			_, _ = fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be removed.\n", key)
 			os.Exit(1)
 		}
 		delete(node.Labels, key)
@@ -254,16 +254,16 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	for _, item := range toAdd {
 		parts := strings.SplitN(item, "=", 2)
 		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "Error: Invalid label format '%s'. Must be key=value.\n", item)
+			_, _ = fmt.Fprintf(os.Stderr, "Error: Invalid label format '%s'. Must be key=value.\n", item)
 			os.Exit(1)
 		}
 		key, value := parts[0], parts[1]
 		if key == "" {
-			fmt.Fprintf(os.Stderr, "Error: Label key cannot be empty.\n")
+			_, _ = fmt.Fprintf(os.Stderr, "Error: Label key cannot be empty.\n")
 			os.Exit(1)
 		}
 		if key == "gbnt.node.role" || key == "gbnt.node.arch" {
-			fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be modified.\n", key)
+			_, _ = fmt.Fprintf(os.Stderr, "Error: Label '%s' is a system/fixed label and cannot be modified.\n", key)
 			os.Exit(1)
 		}
 		node.Labels[key] = value
@@ -272,20 +272,20 @@ func updateNodeLabelsCLI(nodeID string, toAdd []string, toRm []string) {
 	// 4. Send the updated labels map
 	payload, err := json.Marshal(map[string]interface{}{"labels": node.Labels})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error encoding request payload: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error encoding request payload: %v\n", err)
 		os.Exit(1)
 	}
 
 	respUpdate, err := DoAPIRequest("POST", "/v1/node/"+nodeID+"/labels", bytes.NewReader(payload))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to contact API to update labels: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to contact API to update labels: %v\n", err)
 		os.Exit(1)
 	}
-	defer respUpdate.Body.Close()
+	defer func() { _ = respUpdate.Body.Close() }()
 
 	if respUpdate.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(respUpdate.Body)
-		fmt.Fprintf(os.Stderr, "Failed to update labels (Status %d): %s\n", respUpdate.StatusCode, string(body))
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to update labels (Status %d): %s\n", respUpdate.StatusCode, string(body))
 		os.Exit(1)
 	}
 

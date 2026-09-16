@@ -40,7 +40,7 @@ func setupRouter(t *testing.T) (_ *gin.Engine, _ string) {
 	}
 
 	token := db.GetAPIToken()
-	os.Setenv("GBNT_API_TOKEN", token)
+	_ = os.Setenv("GBNT_API_TOKEN", token)
 
 	r := gin.New()
 
@@ -453,7 +453,7 @@ func deployTestStack(t *testing.T, r *gin.Engine, tok string) string {
 		t.Fatalf("deploy stack failed: %d %s", w.Code, w.Body.String())
 	}
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	return fmt.Sprintf("%v", resp["stack_id"])
 }
 
@@ -497,7 +497,7 @@ func TestServiceScale_AfterDeploy(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	var services []map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &services)
+	_ = json.Unmarshal(w.Body.Bytes(), &services)
 	if len(services) == 0 {
 		t.Fatal("no services found after deploy")
 	}
@@ -524,7 +524,7 @@ func TestServiceTasks_AfterDeploy(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	var services []map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &services)
+	_ = json.Unmarshal(w.Body.Bytes(), &services)
 	if len(services) == 0 {
 		t.Fatal("no services found after deploy")
 	}
@@ -550,7 +550,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	var tasks []map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &tasks)
+	_ = json.Unmarshal(w.Body.Bytes(), &tasks)
 	if len(tasks) == 0 {
 		t.Fatal("no tasks found after deploy")
 	}
@@ -597,7 +597,7 @@ func TestNodeLabelsUpdate(t *testing.T) {
 	}
 
 	var node db.Node
-	json.Unmarshal(w2.Body.Bytes(), &node)
+	_ = json.Unmarshal(w2.Body.Bytes(), &node)
 
 	// Role should remain "manager"
 	if node.Labels["gbnt.node.role"] != "manager" {
