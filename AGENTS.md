@@ -1304,18 +1304,43 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 
 ### 121. Continuous Compliance Watchdog, Executive Matrix & Multi-Standard Auditor (`v2.95.0`)
 * **Continuous Background Compliance Watchdog (`internal/security/compliance_watchdog.go`):**
-  - High-precision background auditing daemon running on a 15-minute scheduler and continuously re-evaluating all 4 regulatory frameworks (Esquema Nacional de Seguridad ENS RD 311/2022, EU NIS 2 Directive EU 2022/2555, CIS Docker Benchmark v1.6.0, and ISO/IEC 27001:2022 Annex A).
+  - High-precision background auditing daemon running on a 15-minute scheduler and continuously re-evaluating all regulatory frameworks (Esquema Nacional de Seguridad ENS RD 311/2022, EU NIS 2 Directive EU 2022/2555, CIS Docker Benchmark v1.6.0, ISO/IEC 27001:2022 Annex A, and EU DORA Regulation 2022/2554).
   - Maintains persistent score history and detects score degradation in real-time.
 * **Tamper-Evident Degradation Audit Events:**
   - When security policies are relaxed or compliance posture drops (>1.0%), the Watchdog automatically logs a cryptographic `COMPLIANCE_DEGRADED` audit event with status `WARNING` detailing previous vs current scores per framework.
 * **Real-Time Reactive Audit Triggers:**
   - Security mutations (MFA enable/disable, SIEM/lockout/password policy changes, user additions/modifications) immediately trigger reactive out-of-band audit runs without waiting for the 15-minute cron cycle.
 * **Unified REST API & Prometheus Observability:**
-  - `GET /api/security/compliance/overview`: Returns unified compliance posture, global average score, breakdown for all 4 frameworks, and evaluation source/timestamp.
+  - `GET /api/security/compliance/overview`: Returns unified compliance posture, global average score, breakdown for all 5 frameworks, and evaluation source/timestamp.
   - `POST /api/security/compliance/evaluate-all`: Master endpoint executing immediate, synchronous cluster-wide multi-standard evaluation.
   - Prometheus gauge `gbnt_compliance_score{framework="..."}` exported on `:4002/metrics` for Grafana alerting and automated SRE multi-burn rate error budgets.
 * **Executive Compliance Matrix & Master Audit Button (`web-ui/lib/screens/pages/security_page.dart`):**
   - Top-level Executive Header displaying cluster-wide compliance posture (`EJEMPLAR`, `CONFORME`, `ACEPTABLE`, `RIESGO`), real-time `WATCHDOG ACTIVO` pulse badge, and relative evaluation timestamps.
-  - 4 interactive Mini-KPI chips (NIS 2, CIS Docker, ENS España, ISO 27001) allowing instant standard inspection and seamless tab switching.
+  - 5 interactive Mini-KPI chips (NIS 2, CIS Docker, ENS España, ISO 27001, EU DORA) allowing instant standard inspection and seamless tab switching.
   - Master `[ 🛡️ Re-evaluar Todo el Clúster ]` button with animated progress indicator and instant notification upon completion.
+
+### 122. EU DORA (Regulation 2022/2554) Digital Operational Resilience Engine (`v2.95.15`)
+* **EU Statutory Resilience Engine (`internal/security/dora.go`):**
+  - Native evaluation of all 5 statutory pillars of Regulation (EU) 2022/2554 (DORA):
+    1. ICT Risk Management Framework (Articles 5-16): Identification of critical functions, network isolation, cryptographic policy, backup encryption.
+    2. ICT-Related Incident Management & SIEM (Articles 17-23): Real-time security incident logging, tamper-evident audit ledger, SIEM syslog export.
+    3. Digital Operational Resilience Testing & Failover (Articles 24-27): Backup restoration verification, container health checks, automated rolling restarts.
+    4. Managing ICT Third-Party Risk & Cloud Exit Strategy (Articles 28-44): Software supply chain validation (SBOM CycloneDX/SPDX), Cosign image cryptographic signatures, multi-cloud and multi-host storage mobility roots (`/var/contenedores`).
+    5. Information-Sharing Arrangements & Supervisory Oversight (Articles 45-56): Automated audit reports for competent authorities and CSIRTs.
+* **Continuous Compliance Watchdog Integration:**
+  - Evaluates DORA alongside ENS, NIS 2, CIS Docker, and ISO 27001 in parallel goroutines.
+  - Automatically exports Prometheus metric `gbnt_compliance_score{framework="dora"}` on `:4002/metrics`.
+  - Dispatches `COMPLIANCE_DEGRADED` cryptographic audit events whenever DORA readiness score drops >1.0%.
+* **Unified REST API & Web Endpoints:**
+  - `GET /v1/security/dora/status` & `GET /api/security/dora/status`: Returns comprehensive DORA posture summary, pillar scores, readiness grade (`HIGH`, `MEDIUM`, `BASIC`, `INSUFFICIENT`), and 16 granular measure checks.
+  - `GET /v1/security/dora/report` & `GET /api/security/dora/report`: Downloads regulatory Markdown and JSON reports for auditors.
+* **Full CLI Parity (`internal/cli/security.go`):**
+  - `gbnt dora`: Interactive terminal report with colored pillar cards, readiness grade, and compliance percentages.
+  - `gbnt dora --report` / `-r`: Direct report generation with format flag (`-f markdown|json|text`).
+* **Material Design 3 DORA Dashboard (`web-ui/lib/screens/pages/security_page.dart`):**
+  - Interactive standard pill `🏛️ EU DORA (Reg. 2022/2554)` and 5th mini-KPI chip in the Watchdog Executive banner.
+  - 5 KPI cards for Overall Posture, P1 ICT Risk, P2 Incidents, P3 Testing, and P4/P5 Third-Party & Oversight.
+  - 5-pillar and status filtering with actionable remediation dialogs and one-click copy fixes.
+  - Instant export dialog supporting Markdown and JSON downloads.
+
 

@@ -1,14 +1,14 @@
 ---
-title: "El Único Orquestador con Compliance y Ciberseguridad Nativa: Cómo Gubernator Cumple ENS, NIS 2, CIS Benchmark e ISO 27001"
+title: "El Único Orquestador con Compliance y Ciberseguridad Nativa: Cómo Gubernator Cumple ENS, NIS 2, DORA, CIS Benchmark e ISO 27001"
 published: true
 tags: security, devops, docker, spanish
 series: Gubernator Orchestrator
 cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg
 canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/devto-seguridad-compliance-normativas-gubernator.md
-description: "Descubre cómo Gubernator revoluciona la orquestación de contenedores integrando nativamente ENS RD 311/2022, NIS 2, CIS Docker Benchmark, ISO 27001, auditoría forense SHA-256, Cosign y SBOM en un único binario soberano."
+description: "Descubre cómo Gubernator revoluciona la orquestación de contenedores integrando nativamente ENS RD 311/2022, NIS 2, DORA (Reg. 2022/2554), CIS Docker Benchmark, ISO 27001, auditoría forense SHA-256, Cosign y SBOM en un único binario soberano."
 ---
 
-# 🛡️ El Único Orquestador con Compliance y Ciberseguridad Nativa: Cómo Gubernator Cumple ENS, NIS 2, CIS Benchmark e ISO 27001
+# 🛡️ El Único Orquestador con Compliance y Ciberseguridad Nativa: Cómo Gubernator Cumple ENS, NIS 2, DORA, CIS Benchmark e ISO 27001
 
 Durante la última década, el ecosistema de orquestación de contenedores se ha polarizado en dos extremos:
 
@@ -32,29 +32,29 @@ En este artículo analizaremos en profundidad la arquitectura de seguridad de Gu
 A diferencia de otros orquestadores donde la seguridad es un parche que se añade a posteriori mediante plugins de terceros, en **Gubernator** cada Centurión (nodo del clúster) y cada Legión (stack de Docker Compose) nace bajo un marco de gobernanza estricto:
 
 ```
- ┌─────────────────────────────────────────────────────────────────────────────────────────┐
- │                      GUBERNATOR ENTERPRISE SECURITY & COMPLIANCE ENGINE                 │
- ├─────────────────────────────────────────────────────────────────────────────────────────┤
- │  🇪🇸 ENS RD 311/2022  │  🇪🇺 NIS 2 Directive  │  🔒 CIS Benchmark  │  🌐 ISO 27001:2022  │
- ├──────────────────────┼──────────────────────┼────────────────────┼─────────────────────┤
- │  • op.acc.2 / op.mon │  • Art. 21 Riesgos   │  • Daemon & Host   │  • Controles A.5    │
- │  • Básico/Medio/Alto │  • SIEM Syslog Live  │  • Kernel Seccomp  │  • Controles A.8    │
- │  • Evidencias CCN    │  • Ciberhigiene      │  • AppArmor/Caps   │  • Reporte SoA      │
- ├──────────────────────┴──────────────────────┴────────────────────┴─────────────────────┤
- │                  🔄 CONTINUOUS COMPLIANCE WATCHDOG DAEMON (Scheduler 15m)              │
- │          - Re-evaluación reactiva instantánea ante cualquier mutación de seguridad     │
- │          - Detección de degradación (>1.0% drop) -> Evento COMPLIANCE_DEGRADED         │
- │          - Métricas nativas en Prometheus: gbnt_compliance_score{framework="..."}      │
- ├─────────────────────────────────────────────────────────────────────────────────────────┤
- │                        🔐 CAPA DE IDENTIDAD, ACCESO Y AUDITORÍA                         │
- │  • Active Directory / OpenLDAP (LDAPS:636)    • SSO / OIDC (Google, Okta, Keycloak)     │
- │  • RBAC granular (Admin, Operator, Auditor)   • MFA/TOTP con Time Beacon Offline        │
- │  • Cadena de Auditoría Forense Criptográfica SHA-256 inmutable (Tamper-Evident Ledger)  │
- ├─────────────────────────────────────────────────────────────────────────────────────────┤
- │                  📦 SEGURIDAD EN LA CADENA DE SUMINISTRO DE SOFTWARE                    │
- │  • Escáner CVEs con CVSS v3 y parches         • SBOM CycloneDX y SPDX JSON              │
- │  • Firma Cosign ECDSA P-256 in-cluster        • Gatekeeper Admission Controller         │
- └─────────────────────────────────────────────────────────────────────────────────────────┘
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                           GUBERNATOR ENTERPRISE SECURITY & COMPLIANCE ENGINE                           │
+ ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │  🇪🇸 ENS RD 311/2022  │  🇪🇺 NIS 2 Directive  │  🏛️ DORA Reg. 2022   │  🔒 CIS Benchmark  │  🌐 ISO 27001:2022 │
+ ├──────────────────────┼──────────────────────┼──────────────────────┼────────────────────┼────────────────────┤
+ │  • op.acc.2 / op.mon │  • Art. 21 Riesgos   │  • 5 Pilares DORA    │  • Daemon & Host   │  • Controles A.5   │
+ │  • Básico/Medio/Alto │  • SIEM Syslog Live  │  • Resiliencia TIC   │  • Kernel Seccomp  │  • Controles A.8   │
+ │  • Evidencias CCN    │  • Ciberhigiene      │  • Riesgo Terceros   │  • AppArmor/Caps   │  • Reporte SoA     │
+ ├──────────────────────┴──────────────────────┴──────────────────────┴────────────────────┴────────────────────┤
+ │                    🔄 CONTINUOUS COMPLIANCE WATCHDOG DAEMON (Scheduler 15m)                            │
+ │            - Re-evaluación reactiva instantánea ante cualquier mutación de seguridad                   │
+ │            - Detección de degradación (>1.0% drop) -> Evento COMPLIANCE_DEGRADED                       │
+ │            - Métricas nativas en Prometheus: gbnt_compliance_score{framework="..."}                    │
+ ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │                          🔐 CAPA DE IDENTIDAD, ACCESO Y AUDITORÍA                                      │
+ │  • Active Directory / OpenLDAP (LDAPS:636)    • SSO / OIDC (Google, Okta, Keycloak)                   │
+ │  • RBAC granular (Admin, Operator, Auditor)   • MFA/TOTP con Time Beacon Offline                      │
+ │  • Cadena de Auditoría Forense Criptográfica SHA-256 inmutable (Tamper-Evident Ledger)                │
+ ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │                    📦 SEGURIDAD EN LA CADENA DE SUMINISTRO DE SOFTWARE                                  │
+ │  • Escáner CVEs con CVSS v3 y parches         • SBOM CycloneDX y SPDX JSON                            │
+ │  • Firma Cosign ECDSA P-256 in-cluster        • Gatekeeper Admission Controller                       │
+ └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Todo esto se ejecuta de forma nativa desde un **único binario en Go** (sin dependencias externas pesadas) y se gestiona visualmente a través de un **dashboard web moderno construido en Flutter**.
@@ -142,7 +142,35 @@ Desde la interfaz es posible descargar con un clic la **Declaración de Aplicabi
 
 ---
 
-## 🔄 5. Continuous Compliance Watchdog: Auditoría Continua y Detección de Degradación
+## 🏛️ 5. Reglamento DORA (Regulación UE 2022/2554 de Resiliencia Operativa Digital)
+
+El **Reglamento DORA (Digital Operational Resilience Act)** es el marco legal de obligado cumplimiento en toda la Unión Europea que exige a entidades financieras, bancarias, aseguradoras y a sus **proveedores esenciales de servicios TIC en la nube** garantizar una resiliencia operativa integral frente a ciberincidentes y disrupciones severas.
+
+Gubernator evalúa de forma nativa los **5 pilares reglamentarios** de DORA:
+
+1. **Pilar 1: Gestión del Riesgo TIC (Artículos 5 a 16):**
+   - Identificación de funciones críticas o esenciales y mapeo de dependencias de contenedores.
+   - Aislamiento de redes de microservicios con cortafuegos y políticas de segmentación estricta.
+   - Cifrado de credenciales, secretos y copias de seguridad con algoritmos criptográficos robustos.
+2. **Pilar 2: Gestión, Clasificación y Notificación de Incidentes TIC (Artículos 17 a 23):**
+   - Detección de incidentes en tiempo real y exportación de trazas a SIEM corporativo mediante Syslog RFC 5424.
+   - Cadena de custodia inmutable mediante registro SHA-256 a prueba de manipulaciones para auditorías regulatorias.
+3. **Pilar 3: Pruebas de Resiliencia Operativa Digital y Failover (Artículos 24 a 27):**
+   - Verificación de consistencia y restauración de copias de seguridad de volúmenes persistentes.
+   - Monitorización continua del estado operativo de contenedores con rearranque automático ante caídas.
+   - Pruebas periódicas de failover entre nodos Centurión para garantizar RTO y RPO mínimos.
+4. **Pilar 4: Gestión del Riesgo TIC Derivado de Terceros y Estrategia de Salida de la Nube (Artículos 28 a 44):**
+   - Auditoría de la cadena de suministro de software con escaneo de vulnerabilidades CVE y generación de SBOM (CycloneDX / SPDX JSON).
+   - Verificación obligatoria de firmas criptográficas de imágenes con Cosign antes de permitir el despliegue.
+   - Portabilidad multi-cloud sin bloqueo de proveedor (vendor lock-in) y movilidad de volúmenes con raíz compartida `/var/contenedores`.
+5. **Pilar 5: Acuerdos de Intercambio de Información y Supervisión (Artículos 45 a 56):**
+   - Generación instantánea de informes técnicos en formato Markdown y JSON listos para autoridades competentes y equipos CSIRT.
+
+Desde la consola CLI (`gbnt dora` y `gbnt dora --report`) o desde el panel web de Gubernator, los oficiales de cumplimiento y equipos SRE pueden inspeccionar el estado de cada medida y ejecutar planes de remediación con un solo clic.
+
+---
+
+## 🔄 6. Continuous Compliance Watchdog: Auditoría Continua y Detección de Degradación
 
 La mayoría de herramientas del mercado realizan "auditorías puntuales": un análisis hoy, y hasta la auditoría del próximo trimestre nadie sabe si la infraestructura sigue siendo segura.
 
@@ -183,6 +211,7 @@ Si un administrador desactiva el MFA para un usuario o reduce las políticas de 
    # HELP gbnt_compliance_score Current compliance score (0.0 to 100.0) evaluated by the continuous compliance audit engine.
    # TYPE gbnt_compliance_score gauge
    gbnt_compliance_score{framework="cis_docker"} 75.0
+   gbnt_compliance_score{framework="dora"} 93.8
    gbnt_compliance_score{framework="ens"} 88.5
    gbnt_compliance_score{framework="iso27001"} 97.9
    gbnt_compliance_score{framework="nis2"} 91.7
@@ -191,7 +220,7 @@ Si un administrador desactiva el MFA para un usuario o reduce las políticas de 
 
 ---
 
-## 🔐 6. Cadena de Auditoría Forense Criptográfica (SHA-256 Hash Chain)
+## 🔐 7. Cadena de Auditoría Forense Criptográfica (SHA-256 Hash Chain)
 
 Los atacantes avanzados, tras vulnerar un sistema, intentan borrar o modificar los registros de auditoría para ocultar sus huellas.
 
@@ -205,7 +234,7 @@ El botón **"Verificar Cadena Forense"** en el panel de seguridad recorre todo e
 
 ---
 
-## 📦 7. Seguridad en la Cadena de Suministro: SBOM, CVE Scanning y Cosign
+## 📦 8. Seguridad en la Cadena de Suministro: SBOM, CVE Scanning y Cosign
 
 El software no se puede considerar seguro si no se conoce con exactitud qué contiene cada contenedor desplegado.
 
@@ -224,14 +253,14 @@ Gubernator integra herramientas nativas de inspección profunda:
 
 ---
 
-## 🔑 8. Identidad Corporativa, RBAC y MFA Resiliente (Time Beacon)
+## 🔑 9. Identidad Corporativa, RBAC y MFA Resiliente (Time Beacon)
 
 * **Directorio Activo Empresarial (LDAP/LDAPS):** Integración nativa con servidores OpenLDAP y Microsoft Active Directory con soporte para LDAPS (puerto 636) y StartTLS, mapeando grupos del directorio a roles operativos de Gubernator.
 * **Single Sign-On (SSO / OIDC):** Conexión transparente con Google Workspace, Keycloak, Okta, Authentik y Azure AD mediante OpenID Connect.
 * **Control de Acceso Basado en Roles (RBAC):**
   - 👑 **`admin`:** Control total de clúster, claves de firma, certificados TLS y configuración de seguridad.
   - ⚡ **`operator`:** Despliegue de stacks, escalado, reinicio de contenedores y acceso a shells.
-  - 🔍 **`auditor`:** Acceso de auditoría forense a evidencias ENS, NIS 2, CIS e ISO 27001, sin permisos de mutación operativa.
+  - 🔍 **`auditor`:** Acceso de auditoría forense a evidencias ENS, NIS 2, DORA, CIS e ISO 27001, sin permisos de mutación operativa.
   - 👁️ **`readonly`:** Inspección visual de paneles y métricas.
 * **Solución de Desfase Temporal en Portátiles (Time Beacon):**
   - Un problema clásico en entornos de virtualización (Multipass, VMware, VirtualBox) es que al suspender el portátil cerrando la tapa, el reloj de las máquinas virtuales se desincroniza, provocando el fallo inmediato de los códigos de autenticación TOTP (RFC 6238).
@@ -247,6 +276,7 @@ Gubernator integra herramientas nativas de inspección profunda:
 | **Soporte Nativo de Compose** | ❌ No (Requiere Kompose/CRDs) | ✅ Sí | ❌ No (HCL propio) | ✅ **Sí (Nativo)** |
 | **Esquema Nacional de Seguridad (ENS)** | ❌ No (Requiere consultoría) | ❌ No | ❌ No | 🟢 **Nativo (Básico/Medio/Alto)** |
 | **Directiva Europea NIS 2 (Art. 21)** | ❌ No nativo | ❌ No | ❌ No | 🟢 **Nativo (EE y IE)** |
+| **Reglamento Europeo DORA (5 Pilares)** | ❌ No | ❌ No | ❌ No | 🟢 **Nativo (Resiliencia Operativa)** |
 | **CIS Docker Benchmark Automatizado** | ⚠️ Vía plugins (Kube-bench) | ❌ No | ❌ No | 🟢 **Nativo (6 Secciones CIS)** |
 | **ISO/IEC 27001 (SoA Automatizado)** | ❌ No | ❌ No | ❌ No | 🟢 **Nativo (Anexo A)** |
 | **Continuous Compliance Watchdog** | ❌ No integrado | ❌ No | ❌ No | 🟢 **Nativo (Scheduler + Triggers)** |
@@ -263,9 +293,10 @@ Gubernator integra herramientas nativas de inspección profunda:
 
 Gubernator demuestra que no es necesario aceptar la monstruosa complejidad operativa de Kubernetes ni la falta de gobernanza de las soluciones minimalistas. 
 
-Al integrar de forma nativa los marcos normativos más exigentes del mundo (**ENS RD 311/2022, NIS 2, CIS Docker Benchmark e ISO 27001**), junto con un **watchdog de auditoría continua**, **firma criptográfica Cosign**, **SBOMs estandarizados** y un **libro mayor forense inmutable**, Gubernator se consolida como el **único orquestador de contenedores del mercado** capaz de ofrecer soberanía tecnológica, simplicidad radical y cumplimiento estricto desde el primer minuto.
+Al integrar de forma nativa los marcos normativos más exigentes del mundo (**ENS RD 311/2022, NIS 2, DORA Reg. 2022/2554, CIS Docker Benchmark e ISO 27001**), junto con un **watchdog de auditoría continua**, **firma criptográfica Cosign**, **SBOMs estandarizados** y un **libro mayor forense inmutable**, Gubernator se consolida como el **único orquestador de contenedores del mercado** capaz de ofrecer soberanía tecnológica, simplicidad radical y cumplimiento estricto desde el primer minuto.
 
-Si trabajas en entornos regulados, administraciones públicas, defensa, sanidad o simplemente crees que la seguridad de tu infraestructura no debería depender de 20 plugins pegados con cinta adhesiva, dale una oportunidad a Gubernator:
+Si trabajas en entornos regulados, administraciones públicas, defensa, sector financiero, sanidad o simplemente crees que la seguridad de tu infraestructura no debería depender de 20 plugins pegados con cinta adhesiva, dale una oportunidad a Gubernator:
 
 👉 **GitHub del Proyecto:** [https://github.com/mario-ezquerro/gubernator](https://github.com/mario-ezquerro/gubernator)  
 ⭐ Si te resulta útil la iniciativa, ¡no dudes en dejar una estrella en el repositorio!
+
