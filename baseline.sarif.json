@@ -111,6 +111,10 @@
               "name": "JSON and JSON5"
             },
             {
+              "id": "MongoJS",
+              "name": "MongoJS"
+            },
+            {
               "id": "Go/Data flow analysis",
               "name": "Data flow analysis",
               "relationships": [
@@ -129,12 +133,8 @@
               ]
             },
             {
-              "id": "MongoJS",
-              "name": "MongoJS"
-            },
-            {
-              "id": "JavaScript and TypeScript/Code style issues",
-              "name": "Code style issues",
+              "id": "JavaScript and TypeScript/General",
+              "name": "General",
               "relationships": [
                 {
                   "target": {
@@ -151,8 +151,8 @@
               ]
             },
             {
-              "id": "JavaScript and TypeScript/General",
-              "name": "General",
+              "id": "JavaScript and TypeScript/Code style issues",
+              "name": "Code style issues",
               "relationships": [
                 {
                   "target": {
@@ -397,10 +397,6 @@
               ]
             },
             {
-              "id": "SQL",
-              "name": "SQL"
-            },
-            {
               "id": "JavaScript and TypeScript/Potentially confusing code constructs",
               "name": "Potentially confusing code constructs",
               "relationships": [
@@ -417,6 +413,10 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "SQL",
+              "name": "SQL"
             },
             {
               "id": "CSS",
@@ -905,8 +905,8 @@
                   "text": "Unnecessary character class"
                 },
                 "fullDescription": {
-                  "text": "Reports character classes that consist of a single character. Such classes can be simplified to a character, for example '[a]'\u2192'a'. Inspection ID: EditorConfigCharClassRedundancy",
-                  "markdown": "Reports character classes that consist of a single character. Such classes can be simplified to a character, for example `[a]`\u2192`a`.\n\nInspection ID: EditorConfigCharClassRedundancy"
+                  "text": "Reports character classes that consist of a single character. Such classes can be simplified to a character, for example '[a]'→'a'. Inspection ID: EditorConfigCharClassRedundancy",
+                  "markdown": "Reports character classes that consist of a single character. Such classes can be simplified to a character, for example `[a]`→`a`.\n\nInspection ID: EditorConfigCharClassRedundancy"
                 },
                 "defaultConfiguration": {
                   "enabled": false,
@@ -939,7 +939,7 @@
                   "text": "Extra top-level declaration"
                 },
                 "fullDescription": {
-                  "text": "Reports multiple top-level declarations. There can be only one optional \u201croot=true\u201d top-level declaration in the EditorConfig file. Using multiple top-level declarations is not allowed. Inspection ID: EditorConfigRootDeclarationUniqueness",
+                  "text": "Reports multiple top-level declarations. There can be only one optional “root=true” top-level declaration in the EditorConfig file. Using multiple top-level declarations is not allowed. Inspection ID: EditorConfigRootDeclarationUniqueness",
                   "markdown": "Reports multiple top-level declarations. There can be only one optional \"root=true\" top-level declaration in the EditorConfig file. Using multiple top-level declarations is not allowed.\n\nInspection ID: EditorConfigRootDeclarationUniqueness"
                 },
                 "defaultConfiguration": {
@@ -1007,7 +1007,7 @@
                   "text": "Overlapping sections"
                 },
                 "fullDescription": {
-                  "text": "Reports subsets of files specified in the current section that overlap with other subsets in other sections. For example: '[{foo,bar}]' and '[{foo,bas}]' both contain \u201cfoo\u201d. Inspection ID: EditorConfigPartialOverride",
+                  "text": "Reports subsets of files specified in the current section that overlap with other subsets in other sections. For example: '[{foo,bar}]' and '[{foo,bas}]' both contain “foo”. Inspection ID: EditorConfigPartialOverride",
                   "markdown": "Reports subsets of files specified in the current section that overlap with other subsets in other sections. For example: `[{foo,bar}]` and `[{foo,bas}]` both contain \"foo\".\n\nInspection ID: EditorConfigPartialOverride"
                 },
                 "defaultConfiguration": {
@@ -1143,7 +1143,7 @@
                   "text": "Unknown property"
                 },
                 "fullDescription": {
-                  "text": "Reports properties that are not supported by the IDE. Note: some \u201cij\u201d domain properties may require specific language plugins. Inspection ID: EditorConfigKeyCorrectness",
+                  "text": "Reports properties that are not supported by the IDE. Note: some “ij” domain properties may require specific language plugins. Inspection ID: EditorConfigKeyCorrectness",
                   "markdown": "Reports properties that are not supported by the IDE. Note: some \"ij\" domain properties may require specific language plugins.\n\nInspection ID: EditorConfigKeyCorrectness"
                 },
                 "defaultConfiguration": {
@@ -1245,7 +1245,7 @@
                   "text": "Unexpected top-level declaration"
                 },
                 "fullDescription": {
-                  "text": "Reports unexpected top-level declarations. Top-level declarations other than \u201croot=true\u201d are not allowed in the EditorConfig file. Inspection ID: EditorConfigRootDeclarationCorrectness",
+                  "text": "Reports unexpected top-level declarations. Top-level declarations other than “root=true” are not allowed in the EditorConfig file. Inspection ID: EditorConfigRootDeclarationCorrectness",
                   "markdown": "Reports unexpected top-level declarations. Top-level declarations other than \"root=true\" are not allowed in the EditorConfig file.\n\nInspection ID: EditorConfigRootDeclarationCorrectness"
                 },
                 "defaultConfiguration": {
@@ -1449,7 +1449,7 @@
                   "text": "Redundant wildcard"
                 },
                 "fullDescription": {
-                  "text": "Reports wildcards that become redundant when the \u201c**\u201d wildcard is used in the same section. The \u201c**\u201d wildcard defines a broader set of files than any other wildcard. That is why, any other wildcard used in the same section has no affect and can be removed. Inspection ID: EditorConfigWildcardRedundancy",
+                  "text": "Reports wildcards that become redundant when the “**” wildcard is used in the same section. The “**” wildcard defines a broader set of files than any other wildcard. That is why, any other wildcard used in the same section has no affect and can be removed. Inspection ID: EditorConfigWildcardRedundancy",
                   "markdown": "Reports wildcards that become redundant when the \"\\*\\*\" wildcard is used in the same section.\n\n\nThe \"\\*\\*\" wildcard defines a broader set of files than any other wildcard.\nThat is why, any other wildcard used in the same section has no affect and can be removed.\n\nInspection ID: EditorConfigWildcardRedundancy"
                 },
                 "defaultConfiguration": {
@@ -1585,7 +1585,7 @@
                   "text": "Invalid property value"
                 },
                 "fullDescription": {
-                  "text": "Reports property values that do not meet value restrictions. For example, some properties may be only \u201ctrue\u201d or \u201cfalse\u201d, others contain only integer numbers etc. If a value has a limited set of variants, use code completion to see all of them. Inspection ID: EditorConfigValueCorrectness",
+                  "text": "Reports property values that do not meet value restrictions. For example, some properties may be only “true” or “false”, others contain only integer numbers etc. If a value has a limited set of variants, use code completion to see all of them. Inspection ID: EditorConfigValueCorrectness",
                   "markdown": "Reports property values that do not meet value restrictions. For example, some properties may be only \"true\" or \"false\", others contain only integer numbers etc. If a value has a limited set of variants, use code completion to see all of them.\n\nInspection ID: EditorConfigValueCorrectness"
                 },
                 "defaultConfiguration": {
@@ -1966,40 +1966,6 @@
                 ]
               },
               {
-                "id": "NonBlockStatementBodyJS",
-                "shortDescription": {
-                  "text": "Statement body without braces"
-                },
-                "fullDescription": {
-                  "text": "Reports a 'if', 'while', 'for', or 'with' statements whose body is not a block statement. Using code block in statement bodies is usually safer for downstream maintenance. Inspection ID: NonBlockStatementBodyJS",
-                  "markdown": "Reports a `if`, `while`, `for`, or `with` statements whose body is not a block statement. Using code block in statement bodies is usually safer for downstream maintenance.\n\nInspection ID: NonBlockStatementBodyJS"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "NonBlockStatementBodyJS",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "JSValidateJSDoc",
                 "shortDescription": {
                   "text": "Syntax errors and unresolved references in JSDoc"
@@ -2022,7 +1988,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2057,6 +2023,40 @@
                     "target": {
                       "id": "JavaScript and TypeScript/Control flow issues",
                       "index": 2,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "NonBlockStatementBodyJS",
+                "shortDescription": {
+                  "text": "Statement body without braces"
+                },
+                "fullDescription": {
+                  "text": "Reports a 'if', 'while', 'for', or 'with' statements whose body is not a block statement. Using code block in statement bodies is usually safer for downstream maintenance. Inspection ID: NonBlockStatementBodyJS",
+                  "markdown": "Reports a `if`, `while`, `for`, or `with` statements whose body is not a block statement. Using code block in statement bodies is usually safer for downstream maintenance.\n\nInspection ID: NonBlockStatementBodyJS"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "NonBlockStatementBodyJS",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/Code style issues",
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2362,7 +2362,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2532,7 +2532,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2702,7 +2702,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2736,7 +2736,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2782,40 +2782,6 @@
                 ]
               },
               {
-                "id": "JSObjectNullOrUndefined",
-                "shortDescription": {
-                  "text": "Object is 'null' or 'undefined'"
-                },
-                "fullDescription": {
-                  "text": "Reports an error caused by invoking a method, accessing a property, or calling a function on an object that is 'undefined' or 'null'. Inspection ID: JSObjectNullOrUndefined",
-                  "markdown": "Reports an error caused by invoking a method, accessing a property, or calling a function on an object that is `undefined` or `null`.\n\nInspection ID: JSObjectNullOrUndefined"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "JSObjectNullOrUndefined",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/Control flow issues",
-                      "index": 2,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "TypeScriptMissingConfigOption",
                 "shortDescription": {
                   "text": "Missing tsconfig.json option "
@@ -2850,6 +2816,40 @@
                 ]
               },
               {
+                "id": "JSObjectNullOrUndefined",
+                "shortDescription": {
+                  "text": "Object is 'null' or 'undefined'"
+                },
+                "fullDescription": {
+                  "text": "Reports an error caused by invoking a method, accessing a property, or calling a function on an object that is 'undefined' or 'null'. Inspection ID: JSObjectNullOrUndefined",
+                  "markdown": "Reports an error caused by invoking a method, accessing a property, or calling a function on an object that is `undefined` or `null`.\n\nInspection ID: JSObjectNullOrUndefined"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "JSObjectNullOrUndefined",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/Control flow issues",
+                      "index": 2,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
                 "id": "JSXUnresolvedComponent",
                 "shortDescription": {
                   "text": "Unresolved JSX component"
@@ -2872,7 +2872,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -2940,7 +2940,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3076,7 +3076,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3144,7 +3144,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3212,7 +3212,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3314,7 +3314,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3450,7 +3450,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3484,7 +3484,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3518,7 +3518,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3620,7 +3620,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -3722,7 +3722,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4028,7 +4028,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4096,7 +4096,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4130,7 +4130,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4402,7 +4402,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4538,7 +4538,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4584,40 +4584,6 @@
                 ]
               },
               {
-                "id": "ES6PossiblyAsyncFunction",
-                "shortDescription": {
-                  "text": "'await' in non-async function"
-                },
-                "fullDescription": {
-                  "text": "Reports a usage of 'await' in a function that was possibly intended to be async but is actually missing the 'async' modifier. Although 'await' can be used as an identifier, it is likely that it was intended to be used as an operator, so the containing function should be made 'async'. Inspection ID: ES6PossiblyAsyncFunction",
-                  "markdown": "Reports a usage of `await` in a function that was possibly intended to be async but is actually missing the `async` modifier. Although `await` can be used as an identifier, it is likely that it was intended to be used as an operator, so the containing function should be made `async`.\n\nInspection ID: ES6PossiblyAsyncFunction"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "note",
-                  "parameters": {
-                    "suppressToolId": "ES6PossiblyAsyncFunction",
-                    "ideaSeverity": "WEAK WARNING",
-                    "qodanaSeverity": "Moderate",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/Async code and promises",
-                      "index": 57,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "TextLabelInSwitchStatementJS",
                 "shortDescription": {
                   "text": "Text label in 'switch' statement"
@@ -4641,6 +4607,40 @@
                     "target": {
                       "id": "JavaScript and TypeScript/Switch statement issues",
                       "index": 54,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "ES6PossiblyAsyncFunction",
+                "shortDescription": {
+                  "text": "'await' in non-async function"
+                },
+                "fullDescription": {
+                  "text": "Reports a usage of 'await' in a function that was possibly intended to be async but is actually missing the 'async' modifier. Although 'await' can be used as an identifier, it is likely that it was intended to be used as an operator, so the containing function should be made 'async'. Inspection ID: ES6PossiblyAsyncFunction",
+                  "markdown": "Reports a usage of `await` in a function that was possibly intended to be async but is actually missing the `async` modifier. Although `await` can be used as an identifier, it is likely that it was intended to be used as an operator, so the containing function should be made `async`.\n\nInspection ID: ES6PossiblyAsyncFunction"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "note",
+                  "parameters": {
+                    "suppressToolId": "ES6PossiblyAsyncFunction",
+                    "ideaSeverity": "WEAK WARNING",
+                    "qodanaSeverity": "Moderate",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/Async code and promises",
+                      "index": 57,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -4776,7 +4776,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5014,7 +5014,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5184,7 +5184,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5218,7 +5218,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5354,7 +5354,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5422,7 +5422,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5468,6 +5468,40 @@
                 ]
               },
               {
+                "id": "ES6ClassMemberInitializationOrder",
+                "shortDescription": {
+                  "text": "Use of possibly unassigned property in a static initializer"
+                },
+                "fullDescription": {
+                  "text": "Reports a class member initializer which references another non-hoisted class member while the latter may be not initialized yet. Initialization of class members happens consequently for fields, so a field cannot reference another field that is declared later. Inspection ID: ES6ClassMemberInitializationOrder",
+                  "markdown": "Reports a class member initializer which references another non-hoisted class member while the latter may be not initialized yet.   \n\nInitialization of class members happens consequently for fields, so a field cannot reference another field that is declared later.\n\nInspection ID: ES6ClassMemberInitializationOrder"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "ES6ClassMemberInitializationOrder",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/General",
+                      "index": 13,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
                 "id": "EmptyTryBlockJS",
                 "shortDescription": {
                   "text": "Empty 'try' block"
@@ -5491,40 +5525,6 @@
                     "target": {
                       "id": "JavaScript and TypeScript/Try statement issues",
                       "index": 34,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "ES6ClassMemberInitializationOrder",
-                "shortDescription": {
-                  "text": "Use of possibly unassigned property in a static initializer"
-                },
-                "fullDescription": {
-                  "text": "Reports a class member initializer which references another non-hoisted class member while the latter may be not initialized yet. Initialization of class members happens consequently for fields, so a field cannot reference another field that is declared later. Inspection ID: ES6ClassMemberInitializationOrder",
-                  "markdown": "Reports a class member initializer which references another non-hoisted class member while the latter may be not initialized yet.   \n\nInitialization of class members happens consequently for fields, so a field cannot reference another field that is declared later.\n\nInspection ID: ES6ClassMemberInitializationOrder"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "ES6ClassMemberInitializationOrder",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/General",
-                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5626,7 +5626,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5694,7 +5694,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5830,7 +5830,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -5898,7 +5898,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6136,7 +6136,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6170,7 +6170,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6204,7 +6204,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6442,7 +6442,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6646,7 +6646,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6680,7 +6680,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6782,7 +6782,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -6918,7 +6918,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7122,7 +7122,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7156,7 +7156,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7190,7 +7190,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7224,7 +7224,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7360,7 +7360,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7428,7 +7428,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7564,7 +7564,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7598,7 +7598,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7700,7 +7700,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7768,7 +7768,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7904,7 +7904,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -7938,7 +7938,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8040,41 +8040,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Code style issues",
-                      "index": 13,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "PlatformDetectionJS",
-                "shortDescription": {
-                  "text": "Inaccurate platform detection"
-                },
-                "fullDescription": {
-                  "text": "Reports a common JavaScript pattern for detecting the browser or operating system in which the script is run. In addition to pointing out non-portable constructs, these platform detection patterns are often incomplete and easily fooled. For most cases, detection of individual environment features is preferable to attempting to detect the entire platform. Patterns detected include: 'document.all' 'document.layers' 'navigator.userAgent' 'navigator.oscpu' 'navigator.appName' 'navigator.appCodeName' 'navigator.platform' Inspection ID: PlatformDetectionJS",
-                  "markdown": "Reports a common JavaScript pattern for detecting the browser or operating system in which the script is run. In addition to pointing out non-portable constructs, these platform detection patterns are often incomplete and easily fooled. For most cases, detection of individual environment features is preferable to attempting to detect the entire platform.\n\nPatterns detected include:\n\n* `document.all`\n* `document.layers`\n* `navigator.userAgent`\n* `navigator.oscpu`\n* `navigator.appName`\n* `navigator.appCodeName`\n* `navigator.platform`\n\nInspection ID: PlatformDetectionJS"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "PlatformDetectionJS",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/DOM issues",
-                      "index": 55,
+                      "index": 14,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8109,6 +8075,40 @@
                     "target": {
                       "id": "JavaScript and TypeScript/Control flow issues",
                       "index": 2,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "PlatformDetectionJS",
+                "shortDescription": {
+                  "text": "Inaccurate platform detection"
+                },
+                "fullDescription": {
+                  "text": "Reports a common JavaScript pattern for detecting the browser or operating system in which the script is run. In addition to pointing out non-portable constructs, these platform detection patterns are often incomplete and easily fooled. For most cases, detection of individual environment features is preferable to attempting to detect the entire platform. Patterns detected include: 'document.all' 'document.layers' 'navigator.userAgent' 'navigator.oscpu' 'navigator.appName' 'navigator.appCodeName' 'navigator.platform' Inspection ID: PlatformDetectionJS",
+                  "markdown": "Reports a common JavaScript pattern for detecting the browser or operating system in which the script is run. In addition to pointing out non-portable constructs, these platform detection patterns are often incomplete and easily fooled. For most cases, detection of individual environment features is preferable to attempting to detect the entire platform.\n\nPatterns detected include:\n\n* `document.all`\n* `document.layers`\n* `navigator.userAgent`\n* `navigator.oscpu`\n* `navigator.appName`\n* `navigator.appCodeName`\n* `navigator.platform`\n\nInspection ID: PlatformDetectionJS"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "PlatformDetectionJS",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/DOM issues",
+                      "index": 55,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8244,7 +8244,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8426,40 +8426,6 @@
                 ]
               },
               {
-                "id": "InnerHTMLJS",
-                "shortDescription": {
-                  "text": "Use of 'innerHTML' property"
-                },
-                "fullDescription": {
-                  "text": "Reports a JavaScript access to DOM nodes as text using the 'innerHTML' property. Most usages of 'innerHTML' are performed better with explicit DOM calls, such as 'getElementByID()' and 'createElement()'. Additionally, 'innerHTML' will not work with XML DOMs, including DOMs for XHTML if viewed as XML. This can lead to difficulties in diagnosing bugs. Inspection ID: InnerHTMLJS",
-                  "markdown": "Reports a JavaScript access to DOM nodes as text using the `innerHTML` property. Most usages of `innerHTML` are performed better with explicit DOM calls, such as `getElementByID()` and `createElement()`. Additionally, `innerHTML` will not work with XML DOMs, including DOMs for XHTML if viewed as XML. This can lead to difficulties in diagnosing bugs.\n\nInspection ID: InnerHTMLJS"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "InnerHTMLJS",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/DOM issues",
-                      "index": 55,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "ES6UnusedImports",
                 "shortDescription": {
                   "text": "Unused import"
@@ -8483,6 +8449,40 @@
                     "target": {
                       "id": "JavaScript and TypeScript/Imports and dependencies",
                       "index": 49,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "InnerHTMLJS",
+                "shortDescription": {
+                  "text": "Use of 'innerHTML' property"
+                },
+                "fullDescription": {
+                  "text": "Reports a JavaScript access to DOM nodes as text using the 'innerHTML' property. Most usages of 'innerHTML' are performed better with explicit DOM calls, such as 'getElementByID()' and 'createElement()'. Additionally, 'innerHTML' will not work with XML DOMs, including DOMs for XHTML if viewed as XML. This can lead to difficulties in diagnosing bugs. Inspection ID: InnerHTMLJS",
+                  "markdown": "Reports a JavaScript access to DOM nodes as text using the `innerHTML` property. Most usages of `innerHTML` are performed better with explicit DOM calls, such as `getElementByID()` and `createElement()`. Additionally, `innerHTML` will not work with XML DOMs, including DOMs for XHTML if viewed as XML. This can lead to difficulties in diagnosing bugs.\n\nInspection ID: InnerHTMLJS"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "InnerHTMLJS",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/DOM issues",
+                      "index": 55,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8618,7 +8618,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8788,7 +8788,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/Potentially confusing code constructs",
-                      "index": 31,
+                      "index": 30,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -8834,40 +8834,6 @@
                 ]
               },
               {
-                "id": "ReturnFromFinallyBlockJS",
-                "shortDescription": {
-                  "text": "'return' inside 'finally' block"
-                },
-                "fullDescription": {
-                  "text": "Reports a 'return' statement inside a 'finally' block. Such 'return' statements may mask exceptions thrown, and complicate debugging. Inspection ID: ReturnFromFinallyBlockJS",
-                  "markdown": "Reports a `return` statement inside a `finally` block. Such `return` statements may mask exceptions thrown, and complicate debugging.\n\nInspection ID: ReturnFromFinallyBlockJS"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "ReturnInsideFinallyBlockJS",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "JavaScript and TypeScript/Try statement issues",
-                      "index": 34,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "JSUnusedLocalSymbols",
                 "shortDescription": {
                   "text": "Unused local symbol"
@@ -8902,6 +8868,40 @@
                 ]
               },
               {
+                "id": "ReturnFromFinallyBlockJS",
+                "shortDescription": {
+                  "text": "'return' inside 'finally' block"
+                },
+                "fullDescription": {
+                  "text": "Reports a 'return' statement inside a 'finally' block. Such 'return' statements may mask exceptions thrown, and complicate debugging. Inspection ID: ReturnFromFinallyBlockJS",
+                  "markdown": "Reports a `return` statement inside a `finally` block. Such `return` statements may mask exceptions thrown, and complicate debugging.\n\nInspection ID: ReturnFromFinallyBlockJS"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "ReturnInsideFinallyBlockJS",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "JavaScript and TypeScript/Try statement issues",
+                      "index": 34,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
                 "id": "JSValidateTypes",
                 "shortDescription": {
                   "text": "Type mismatch"
@@ -8924,7 +8924,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -9140,7 +9140,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -9191,8 +9191,8 @@
                   "text": "Type-safe error unwrapping with 'errors.AsType'"
                 },
                 "fullDescription": {
-                  "text": "Syntax update: type-safe error unwrapping with 'errors.AsType' Reports usages of 'errors.As' that can be replaced with 'errors.AsType', a generic function introduced in Go 1.26 that unwraps errors in a type-safe way and returns a typed result directly. Instead of declaring a separate variable and passing a pointer to it, 'errors.AsType' returns a typed result directly. This makes the code shorter, easier to read, and avoids common mistakes related to incorrect pointer usage. Example: 'var cfgErr ConfigError        // wrong: value, not pointer\nif errors.As(err, &cfgErr) {  // panic\n    fmt.Println(\"Config error on field:\", cfgErr.Field)\n} else {\n    fmt.Println(\"errors.As: could not detect ConfigError\")\n}' Here, 'errors.As' requires a predeclared variable and a pointer to that variable. To simplify the code and improve type safety, use the Replace with 'errors.AsType' quick-fix. After the quick\u2011fix is applied: 'if cfgErr, ok := errors.AsType[*ConfigError](err); ok {\n    fmt.Println(\"Config error on field:\", cfgErr.Field)\n} else {\n    fmt.Println(\"errors.As: could not detect ConfigError\")\n}' This form unwraps the error in a single expression, returns a correctly typed value, and removes the need for manual pointer handling. Inspection ID: GoErrorsAsToAsType",
-                  "markdown": "**Syntax update: type-safe error unwrapping with `errors.AsType`**\n\nReports usages of `errors.As` that can be replaced with `errors.AsType`, a generic function introduced in Go 1.26 that unwraps errors in a type-safe way and returns a typed result directly.\n\nInstead of declaring a separate variable and passing a pointer to it, `errors.AsType` returns a typed result directly. This makes the code shorter, easier to read, and avoids common mistakes related to incorrect pointer usage.\n\nExample:\n\n\n    var cfgErr ConfigError        // wrong: value, not pointer\n    if errors.As(err, &cfgErr) {  // panic\n        fmt.Println(\"Config error on field:\", cfgErr.Field)\n    } else {\n        fmt.Println(\"errors.As: could not detect ConfigError\")\n    }\n\nHere, `errors.As` requires a predeclared variable and a pointer to that variable.\n\nTo simplify the code and improve type safety, use the **Replace with 'errors.AsType'** quick-fix.\n\nAfter the quick\u2011fix is applied:\n\n\n    if cfgErr, ok := errors.AsType[*ConfigError](err); ok {\n        fmt.Println(\"Config error on field:\", cfgErr.Field)\n    } else {\n        fmt.Println(\"errors.As: could not detect ConfigError\")\n    }\n\nThis form unwraps the error in a single expression, returns a correctly typed value, and removes the need for manual pointer handling.\n\nInspection ID: GoErrorsAsToAsType"
+                  "text": "Syntax update: type-safe error unwrapping with 'errors.AsType' Reports usages of 'errors.As' that can be replaced with 'errors.AsType', a generic function introduced in Go 1.26 that unwraps errors in a type-safe way and returns a typed result directly. Instead of declaring a separate variable and passing a pointer to it, 'errors.AsType' returns a typed result directly. This makes the code shorter, easier to read, and avoids common mistakes related to incorrect pointer usage. Example: 'var cfgErr ConfigError        // wrong: value, not pointer\nif errors.As(err, &cfgErr) {  // panic\n    fmt.Println(\"Config error on field:\", cfgErr.Field)\n} else {\n    fmt.Println(\"errors.As: could not detect ConfigError\")\n}' Here, 'errors.As' requires a predeclared variable and a pointer to that variable. To simplify the code and improve type safety, use the Replace with 'errors.AsType' quick-fix. After the quick‑fix is applied: 'if cfgErr, ok := errors.AsType[*ConfigError](err); ok {\n    fmt.Println(\"Config error on field:\", cfgErr.Field)\n} else {\n    fmt.Println(\"errors.As: could not detect ConfigError\")\n}' This form unwraps the error in a single expression, returns a correctly typed value, and removes the need for manual pointer handling. Inspection ID: GoErrorsAsToAsType",
+                  "markdown": "**Syntax update: type-safe error unwrapping with `errors.AsType`**\n\nReports usages of `errors.As` that can be replaced with `errors.AsType`, a generic function introduced in Go 1.26 that unwraps errors in a type-safe way and returns a typed result directly.\n\nInstead of declaring a separate variable and passing a pointer to it, `errors.AsType` returns a typed result directly. This makes the code shorter, easier to read, and avoids common mistakes related to incorrect pointer usage.\n\nExample:\n\n\n    var cfgErr ConfigError        // wrong: value, not pointer\n    if errors.As(err, &cfgErr) {  // panic\n        fmt.Println(\"Config error on field:\", cfgErr.Field)\n    } else {\n        fmt.Println(\"errors.As: could not detect ConfigError\")\n    }\n\nHere, `errors.As` requires a predeclared variable and a pointer to that variable.\n\nTo simplify the code and improve type safety, use the **Replace with 'errors.AsType'** quick-fix.\n\nAfter the quick‑fix is applied:\n\n\n    if cfgErr, ok := errors.AsType[*ConfigError](err); ok {\n        fmt.Println(\"Config error on field:\", cfgErr.Field)\n    } else {\n        fmt.Println(\"errors.As: could not detect ConfigError\")\n    }\n\nThis form unwraps the error in a single expression, returns a correctly typed value, and removes the need for manual pointer handling.\n\nInspection ID: GoErrorsAsToAsType"
                 },
                 "defaultConfiguration": {
                   "enabled": true,
@@ -9225,7 +9225,7 @@
                   "text": "Empty slice declared using a literal"
                 },
                 "fullDescription": {
-                  "text": "Reports slice declarations with empty literal initializers used instead of 'nil'. An empty slice can be represented by 'nil' or an empty slice literal. They are functionally equivalent \u2014 their 'len' and 'cap' are both zero \u2014 but the nil slice is the preferred style. For more information about empty slices, refer to Declaring Empty Slices at github.com/golang. Example: 's := []string{}' To change the declaration, use the Replace with nil slice declaration (changes semantics) quick-fix. After the quick-fix is applied: 'var s []string' Inspection ID: GoPreferNilSlice",
+                  "text": "Reports slice declarations with empty literal initializers used instead of 'nil'. An empty slice can be represented by 'nil' or an empty slice literal. They are functionally equivalent — their 'len' and 'cap' are both zero — but the nil slice is the preferred style. For more information about empty slices, refer to Declaring Empty Slices at github.com/golang. Example: 's := []string{}' To change the declaration, use the Replace with nil slice declaration (changes semantics) quick-fix. After the quick-fix is applied: 'var s []string' Inspection ID: GoPreferNilSlice",
                   "markdown": "Reports slice declarations with empty literal initializers used instead of `nil`.\n\nAn empty slice can be represented by `nil` or an empty slice literal. They are functionally equivalent ---\ntheir `len` and `cap` are both zero --- but the nil slice is the preferred style.\nFor more information about empty slices, refer to\n[Declaring Empty Slices at github.com/golang](https://github.com/golang/go/wiki/CodeReviewComments#declaring-empty-slices).\n\nExample:\n\n    s := []string{}\n\nTo change the declaration, use the **Replace with nil slice declaration (changes semantics)** quick-fix.\nAfter the quick-fix is applied:\n\n    var s []string\n\nInspection ID: GoPreferNilSlice"
                 },
                 "defaultConfiguration": {
@@ -9344,7 +9344,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -10330,7 +10330,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -11401,7 +11401,7 @@
                   "text": "Data flow analysis"
                 },
                 "fullDescription": {
-                  "text": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated. The first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read. Make sure the description doesn\u2019t just repeat the inspection title. See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information. Text after this comment will only be shown in the settings of the inspection. To open related settings directly from the description, add a link with `settings://$` optionally followed by `?$` to pre-select a UI element. Inspection ID: GoDfaInspectionRunner",
+                  "text": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated. The first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read. Make sure the description doesn’t just repeat the inspection title. See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information. Text after this comment will only be shown in the settings of the inspection. To open related settings directly from the description, add a link with `settings://$` optionally followed by `?$` to pre-select a UI element. Inspection ID: GoDfaInspectionRunner",
                   "markdown": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated.\n\n\nThe first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read.\nMake sure the description doesn't just repeat the inspection title.\n\n\nSee https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.\n\nText after this comment will only be shown in the settings of the inspection.\n\nTo open related settings directly from the description, add a link with \\`settings://$\\` optionally followed by \\`?$\\` to pre-select a UI\nelement.\n\nInspection ID: GoDfaInspectionRunner"
                 },
                 "defaultConfiguration": {
@@ -11418,7 +11418,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -11622,7 +11622,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -11860,41 +11860,7 @@
                   {
                     "target": {
                       "id": "Go/Data flow analysis",
-                      "index": 11,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "GoUnusedFunction",
-                "shortDescription": {
-                  "text": "Unused function"
-                },
-                "fullDescription": {
-                  "text": "Reports unused unexported functions. In Go, a function is unexported if it begins with a small letter. Names of unexported functions that were defined but never used are grayed out. '// Unused unexported function\nfunc unExportedUnusedFunc()  {\n\n}\n\nfunc main() {\n fmt.Println(\"Hello\")\n}' Inspection ID: GoUnusedFunction",
-                  "markdown": "Reports unused unexported functions.\n\nIn Go, a function is unexported if it begins with a small letter. Names of unexported functions that were defined but never used are\ngrayed out.\n\n    // Unused unexported function\n    func unExportedUnusedFunc()  {\n\n    }\n\n    func main() {\n     fmt.Println(\"Hello\")\n    }\n\nInspection ID: GoUnusedFunction"
-                },
-                "defaultConfiguration": {
-                  "enabled": true,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "GoUnusedFunction",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "Go/Declaration redundancy",
-                      "index": 6,
+                      "index": 12,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -11919,6 +11885,40 @@
                   "level": "warning",
                   "parameters": {
                     "suppressToolId": "GoUnusedConst",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "Go/Declaration redundancy",
+                      "index": 6,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "GoUnusedFunction",
+                "shortDescription": {
+                  "text": "Unused function"
+                },
+                "fullDescription": {
+                  "text": "Reports unused unexported functions. In Go, a function is unexported if it begins with a small letter. Names of unexported functions that were defined but never used are grayed out. '// Unused unexported function\nfunc unExportedUnusedFunc()  {\n\n}\n\nfunc main() {\n fmt.Println(\"Hello\")\n}' Inspection ID: GoUnusedFunction",
+                  "markdown": "Reports unused unexported functions.\n\nIn Go, a function is unexported if it begins with a small letter. Names of unexported functions that were defined but never used are\ngrayed out.\n\n    // Unused unexported function\n    func unExportedUnusedFunc()  {\n\n    }\n\n    func main() {\n     fmt.Println(\"Hello\")\n    }\n\nInspection ID: GoUnusedFunction"
+                },
+                "defaultConfiguration": {
+                  "enabled": true,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "GoUnusedFunction",
                     "ideaSeverity": "WARNING",
                     "qodanaSeverity": "High",
                     "codeQualityCategory": "Code Style"
@@ -11974,40 +11974,6 @@
                 ]
               },
               {
-                "id": "GoStringsReplaceCount",
-                "shortDescription": {
-                  "text": "Incorrect 'strings.Replace' count argument"
-                },
-                "fullDescription": {
-                  "text": "Reports 'strings.Replace' calls with the replace count '0' instead of '-1'. The count argument for how many times a string should be replaced should not be '0' as it will not replace anything and make the function call redundant. Use '-1' instead. Example: 'a := strings.Replace(\"SSS\", \"S\", \"H\", 0) // replaces nothing\nb := strings.Replace(\"SSS\", \"S\", \"H\", -1) // replaces all S occurrences with H' Inspection ID: GoStringsReplaceCount",
-                  "markdown": "Reports `strings.Replace` calls with the replace count `0` instead of `-1`.\n\nThe count argument for how many times a string should be replaced should not be `0`\nas it will not replace anything and make the function call redundant. Use `-1` instead.\n\nExample:\n\n    a := strings.Replace(\"SSS\", \"S\", \"H\", 0) // replaces nothing\n    b := strings.Replace(\"SSS\", \"S\", \"H\", -1) // replaces all S occurrences with H\n\nInspection ID: GoStringsReplaceCount"
-                },
-                "defaultConfiguration": {
-                  "enabled": true,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "GoStringsReplaceCount",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "Go/Probable bugs",
-                      "index": 4,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "GoTypeParameterInLowerCase",
                 "shortDescription": {
                   "text": "Type parameter is declared in lowercase"
@@ -12031,6 +11997,40 @@
                     "target": {
                       "id": "Go/Code style issues",
                       "index": 38,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "GoStringsReplaceCount",
+                "shortDescription": {
+                  "text": "Incorrect 'strings.Replace' count argument"
+                },
+                "fullDescription": {
+                  "text": "Reports 'strings.Replace' calls with the replace count '0' instead of '-1'. The count argument for how many times a string should be replaced should not be '0' as it will not replace anything and make the function call redundant. Use '-1' instead. Example: 'a := strings.Replace(\"SSS\", \"S\", \"H\", 0) // replaces nothing\nb := strings.Replace(\"SSS\", \"S\", \"H\", -1) // replaces all S occurrences with H' Inspection ID: GoStringsReplaceCount",
+                  "markdown": "Reports `strings.Replace` calls with the replace count `0` instead of `-1`.\n\nThe count argument for how many times a string should be replaced should not be `0`\nas it will not replace anything and make the function call redundant. Use `-1` instead.\n\nExample:\n\n    a := strings.Replace(\"SSS\", \"S\", \"H\", 0) // replaces nothing\n    b := strings.Replace(\"SSS\", \"S\", \"H\", -1) // replaces all S occurrences with H\n\nInspection ID: GoStringsReplaceCount"
+                },
+                "defaultConfiguration": {
+                  "enabled": true,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "GoStringsReplaceCount",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "Go/Probable bugs",
+                      "index": 4,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -12212,40 +12212,6 @@
                 ]
               },
               {
-                "id": "GoAssignmentToReceiver",
-                "shortDescription": {
-                  "text": "Assignment to a receiver"
-                },
-                "fullDescription": {
-                  "text": "Reports assignments to method receivers. When you assign a value to the method receiver, the value will not be reflected outside of the method itself. Values will be reflected in subsequent calls from the same method. Example: 'package main\n\nimport \"fmt\"\n\ntype demo struct {\n Val int\n}\n\nfunc (d *demo) change() {\n d = nil // Assignment to the method receiver propagates only to callees but not to callers\n d.myVal()\n}\n\nfunc (d *demo) myVal() {\n fmt.Printf(\"my val: %#v\\n\", d)\n}\n\nfunc (d demo) change2() {\n d = demo{} // Assignment to the method receiver doesn't propagate to other calls\n d.myVal()\n}\n\nfunc (d *demo) change3() {\n d.Val = 3\n d.myVal()\n}\n\nfunc main() {\n d := &demo{}\n d.myVal()\n d.change()\n d.myVal()\n d.Val = 2\n d.change2()\n d.myVal()\n d.change3()\n d.myVal()\n}' Inspection ID: GoAssignmentToReceiver",
-                  "markdown": "Reports assignments to method receivers.\n\nWhen you assign a value to the method receiver, the value will not be reflected outside of the method itself.\nValues will be reflected in subsequent calls from the same method.\n\nExample:\n\n    package main\n\n    import \"fmt\"\n\n    type demo struct {\n     Val int\n    }\n\n    func (d *demo) change() {\n     d = nil // Assignment to the method receiver propagates only to callees but not to callers\n     d.myVal()\n    }\n\n    func (d *demo) myVal() {\n     fmt.Printf(\"my val: %#v\\n\", d)\n    }\n\n    func (d demo) change2() {\n     d = demo{} // Assignment to the method receiver doesn't propagate to other calls\n     d.myVal()\n    }\n\n    func (d *demo) change3() {\n     d.Val = 3\n     d.myVal()\n    }\n\n    func main() {\n     d := &demo{}\n     d.myVal()\n     d.change()\n     d.myVal()\n     d.Val = 2\n     d.change2()\n     d.myVal()\n     d.change3()\n     d.myVal()\n    }\n\nInspection ID: GoAssignmentToReceiver"
-                },
-                "defaultConfiguration": {
-                  "enabled": true,
-                  "level": "note",
-                  "parameters": {
-                    "suppressToolId": "GoAssignmentToReceiver",
-                    "ideaSeverity": "WEAK WARNING",
-                    "qodanaSeverity": "Moderate",
-                    "codeQualityCategory": "Reliability"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "Go/Control flow issues",
-                      "index": 56,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "GoLoopClosure",
                 "shortDescription": {
                   "text": "Loop variables captured by the func literal"
@@ -12269,6 +12235,40 @@
                     "target": {
                       "id": "Go/Probable bugs",
                       "index": 4,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "GoAssignmentToReceiver",
+                "shortDescription": {
+                  "text": "Assignment to a receiver"
+                },
+                "fullDescription": {
+                  "text": "Reports assignments to method receivers. When you assign a value to the method receiver, the value will not be reflected outside of the method itself. Values will be reflected in subsequent calls from the same method. Example: 'package main\n\nimport \"fmt\"\n\ntype demo struct {\n Val int\n}\n\nfunc (d *demo) change() {\n d = nil // Assignment to the method receiver propagates only to callees but not to callers\n d.myVal()\n}\n\nfunc (d *demo) myVal() {\n fmt.Printf(\"my val: %#v\\n\", d)\n}\n\nfunc (d demo) change2() {\n d = demo{} // Assignment to the method receiver doesn't propagate to other calls\n d.myVal()\n}\n\nfunc (d *demo) change3() {\n d.Val = 3\n d.myVal()\n}\n\nfunc main() {\n d := &demo{}\n d.myVal()\n d.change()\n d.myVal()\n d.Val = 2\n d.change2()\n d.myVal()\n d.change3()\n d.myVal()\n}' Inspection ID: GoAssignmentToReceiver",
+                  "markdown": "Reports assignments to method receivers.\n\nWhen you assign a value to the method receiver, the value will not be reflected outside of the method itself.\nValues will be reflected in subsequent calls from the same method.\n\nExample:\n\n    package main\n\n    import \"fmt\"\n\n    type demo struct {\n     Val int\n    }\n\n    func (d *demo) change() {\n     d = nil // Assignment to the method receiver propagates only to callees but not to callers\n     d.myVal()\n    }\n\n    func (d *demo) myVal() {\n     fmt.Printf(\"my val: %#v\\n\", d)\n    }\n\n    func (d demo) change2() {\n     d = demo{} // Assignment to the method receiver doesn't propagate to other calls\n     d.myVal()\n    }\n\n    func (d *demo) change3() {\n     d.Val = 3\n     d.myVal()\n    }\n\n    func main() {\n     d := &demo{}\n     d.myVal()\n     d.change()\n     d.myVal()\n     d.Val = 2\n     d.change2()\n     d.myVal()\n     d.change3()\n     d.myVal()\n    }\n\nInspection ID: GoAssignmentToReceiver"
+                },
+                "defaultConfiguration": {
+                  "enabled": true,
+                  "level": "note",
+                  "parameters": {
+                    "suppressToolId": "GoAssignmentToReceiver",
+                    "ideaSeverity": "WEAK WARNING",
+                    "qodanaSeverity": "Moderate",
+                    "codeQualityCategory": "Reliability"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "Go/Control flow issues",
+                      "index": 56,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13103,7 +13103,7 @@
                   "text": "Grammar"
                 },
                 "fullDescription": {
-                  "text": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated. The first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read. Make sure the description doesn\u2019t just repeat the inspection title. See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information. Embed code snippets: '// automatically highlighted according to inspection registration 'language' attribute' Text after this comment will only be shown in the settings of the inspection. To open related settings directly from the description, add a link with `settings://$` optionally followed by `?$` to pre-select a UI element. Inspection ID: GrazieInspectionRunner",
+                  "text": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated. The first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read. Make sure the description doesn’t just repeat the inspection title. See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information. Embed code snippets: '// automatically highlighted according to inspection registration 'language' attribute' Text after this comment will only be shown in the settings of the inspection. To open related settings directly from the description, add a link with `settings://$` optionally followed by `?$` to pre-select a UI element. Inspection ID: GrazieInspectionRunner",
                   "markdown": "Write your description here. Start the description with a verb in 3rd person singular, like reports, detects, highlights. In the first sentence, briefly explain what exactly the inspection helps you detect. Make sure the sentence is not very long and complicated.\n\n\nThe first sentence must be in a dedicated paragraph separated from the rest of the text. This will make the description easier to read.\nMake sure the description doesn't just repeat the inspection title.\n\n\nSee https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.\n\n\nEmbed code snippets:\n\n\n    // automatically highlighted according to inspection registration 'language' attribute\n\nText after this comment will only be shown in the settings of the inspection.\n\nTo open related settings directly from the description, add a link with \\`settings://$\\` optionally followed by \\`?$\\` to pre-select a UI\nelement.\n\nInspection ID: GrazieInspectionRunner"
                 },
                 "defaultConfiguration": {
@@ -13382,7 +13382,7 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13450,7 +13450,7 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13518,7 +13518,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13552,7 +13552,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13586,7 +13586,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13620,7 +13620,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13654,7 +13654,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13688,7 +13688,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13722,7 +13722,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13756,7 +13756,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13790,7 +13790,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13824,7 +13824,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13858,7 +13858,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13892,7 +13892,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13926,7 +13926,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13960,7 +13960,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -13994,7 +13994,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14028,7 +14028,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14062,7 +14062,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14130,7 +14130,7 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14164,7 +14164,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14198,7 +14198,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14232,7 +14232,7 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14266,7 +14266,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14300,7 +14300,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14317,8 +14317,8 @@
                   "text": "Unicode usage in SQL"
                 },
                 "fullDescription": {
-                  "text": "Reports string literals that use national characters without the 'N' prefix. Without the N prefix, the string is converted to the default code page of the database. This default code page may not recognize certain characters. For more information, see nchar and nvarchar (Transact-SQL) at docs.microsoft.com. Example (Microsoft SQL Server): 'SELECT 'abcde' AS a;\nSELECT N'abcde' AS b;\nSELECT '\u0430\u0431\u0432\u0433\u0434' AS c;\nSELECT N'\u0430\u0431\u0432\u0433\u0434' AS d;' The 'SELECT '\u0430\u0431\u0432\u0433\u0434' AS c;' does not have the 'N' prefix, the ''\u0430\u0431\u0432\u0433\u0434'' part will be highlighted. Inspection ID: SqlUnicodeStringLiteralInspection",
-                  "markdown": "Reports string literals that use national characters without the `N` prefix.\n\nWithout the N prefix, the string is converted to the default\ncode page of the database. This default code page may not recognize certain characters. For more information, see\n[nchar and nvarchar\n(Transact-SQL)\nat docs.microsoft.com](https://docs.microsoft.com/en-us/sql/t-sql/data-types/nchar-and-nvarchar-transact-sql).\n\nExample (Microsoft SQL Server):\n\n    SELECT 'abcde' AS a;\n    SELECT N'abcde' AS b;\n    SELECT '\u0430\u0431\u0432\u0433\u0434' AS c;\n    SELECT N'\u0430\u0431\u0432\u0433\u0434' AS d;\n\nThe `SELECT '\u0430\u0431\u0432\u0433\u0434' AS c;` does not have the `N` prefix, the `'\u0430\u0431\u0432\u0433\u0434'` part will be highlighted.\n\nInspection ID: SqlUnicodeStringLiteralInspection"
+                  "text": "Reports string literals that use national characters without the 'N' prefix. Without the N prefix, the string is converted to the default code page of the database. This default code page may not recognize certain characters. For more information, see nchar and nvarchar (Transact-SQL) at docs.microsoft.com. Example (Microsoft SQL Server): 'SELECT 'abcde' AS a;\nSELECT N'abcde' AS b;\nSELECT 'абвгд' AS c;\nSELECT N'абвгд' AS d;' The 'SELECT 'абвгд' AS c;' does not have the 'N' prefix, the ''абвгд'' part will be highlighted. Inspection ID: SqlUnicodeStringLiteralInspection",
+                  "markdown": "Reports string literals that use national characters without the `N` prefix.\n\nWithout the N prefix, the string is converted to the default\ncode page of the database. This default code page may not recognize certain characters. For more information, see\n[nchar and nvarchar\n(Transact-SQL)\nat docs.microsoft.com](https://docs.microsoft.com/en-us/sql/t-sql/data-types/nchar-and-nvarchar-transact-sql).\n\nExample (Microsoft SQL Server):\n\n    SELECT 'abcde' AS a;\n    SELECT N'abcde' AS b;\n    SELECT 'абвгд' AS c;\n    SELECT N'абвгд' AS d;\n\nThe `SELECT 'абвгд' AS c;` does not have the `N` prefix, the `'абвгд'` part will be highlighted.\n\nInspection ID: SqlUnicodeStringLiteralInspection"
                 },
                 "defaultConfiguration": {
                   "enabled": false,
@@ -14334,7 +14334,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14368,41 +14368,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "SqlUnusedVariableInspection",
-                "shortDescription": {
-                  "text": "Unused variable"
-                },
-                "fullDescription": {
-                  "text": "Reports unused arguments, variables, or parameters. Example (PostgreSQL): 'CREATE FUNCTION foo(PARAMUSED INT, PARAMUNUSED INT) RETURNS INT AS\n$$\nBEGIN\n    RETURN PARAMUSED;\nEND\n$$ LANGUAGE plpgsql;' The 'PARAMUNUSED' parameter is not used in the function and might be deleted. Inspection ID: SqlUnusedVariableInspection",
-                  "markdown": "Reports unused arguments, variables, or parameters.\n\nExample (PostgreSQL):\n\n    CREATE FUNCTION foo(PARAMUSED INT, PARAMUNUSED INT) RETURNS INT AS\n    $$\n    BEGIN\n        RETURN PARAMUSED;\n    END\n    $$ LANGUAGE plpgsql;\n\nThe `PARAMUNUSED` parameter is not used in the function and might be deleted.\n\nInspection ID: SqlUnusedVariableInspection"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "SqlUnused",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14436,7 +14402,41 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "SqlUnusedVariableInspection",
+                "shortDescription": {
+                  "text": "Unused variable"
+                },
+                "fullDescription": {
+                  "text": "Reports unused arguments, variables, or parameters. Example (PostgreSQL): 'CREATE FUNCTION foo(PARAMUSED INT, PARAMUNUSED INT) RETURNS INT AS\n$$\nBEGIN\n    RETURN PARAMUSED;\nEND\n$$ LANGUAGE plpgsql;' The 'PARAMUNUSED' parameter is not used in the function and might be deleted. Inspection ID: SqlUnusedVariableInspection",
+                  "markdown": "Reports unused arguments, variables, or parameters.\n\nExample (PostgreSQL):\n\n    CREATE FUNCTION foo(PARAMUSED INT, PARAMUNUSED INT) RETURNS INT AS\n    $$\n    BEGIN\n        RETURN PARAMUSED;\n    END\n    $$ LANGUAGE plpgsql;\n\nThe `PARAMUNUSED` parameter is not used in the function and might be deleted.\n\nInspection ID: SqlUnusedVariableInspection"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "SqlUnused",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "SQL",
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14470,7 +14470,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14538,7 +14538,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14572,7 +14572,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14606,7 +14606,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14640,7 +14640,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14674,7 +14674,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14708,7 +14708,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14776,7 +14776,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14810,7 +14810,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14844,7 +14844,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14878,41 +14878,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "SqlRedundantAliasInspection",
-                "shortDescription": {
-                  "text": "Redundant alias expressions"
-                },
-                "fullDescription": {
-                  "text": "Reports alias expressions that duplicate names of columns in tables and might be redundant. Example (PostgreSQL): 'CREATE TABLE foo(a INT, b INT);\n\nSELECT * FROM foo foo(a, b);\nSELECT * FROM foo foo(a);\nSELECT * FROM foo foo(x);\nSELECT * FROM foo foo(x, y);' The first two aliases use the same column names as in the 'foo' table. They are considered redundant because they column names are identical. Inspection ID: SqlRedundantAliasInspection",
-                  "markdown": "Reports alias expressions that duplicate names of columns in tables and might be redundant.\n\nExample (PostgreSQL):\n\n    CREATE TABLE foo(a INT, b INT);\n\n    SELECT * FROM foo foo(a, b);\n    SELECT * FROM foo foo(a);\n    SELECT * FROM foo foo(x);\n    SELECT * FROM foo foo(x, y);\n\nThe first two aliases use the same column names as in the `foo` table. They are considered redundant because they\ncolumn names are identical.\n\nInspection ID: SqlRedundantAliasInspection"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "SqlRedundantAlias",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14946,7 +14912,41 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "SqlRedundantAliasInspection",
+                "shortDescription": {
+                  "text": "Redundant alias expressions"
+                },
+                "fullDescription": {
+                  "text": "Reports alias expressions that duplicate names of columns in tables and might be redundant. Example (PostgreSQL): 'CREATE TABLE foo(a INT, b INT);\n\nSELECT * FROM foo foo(a, b);\nSELECT * FROM foo foo(a);\nSELECT * FROM foo foo(x);\nSELECT * FROM foo foo(x, y);' The first two aliases use the same column names as in the 'foo' table. They are considered redundant because they column names are identical. Inspection ID: SqlRedundantAliasInspection",
+                  "markdown": "Reports alias expressions that duplicate names of columns in tables and might be redundant.\n\nExample (PostgreSQL):\n\n    CREATE TABLE foo(a INT, b INT);\n\n    SELECT * FROM foo foo(a, b);\n    SELECT * FROM foo foo(a);\n    SELECT * FROM foo foo(x);\n    SELECT * FROM foo foo(x, y);\n\nThe first two aliases use the same column names as in the `foo` table. They are considered redundant because they\ncolumn names are identical.\n\nInspection ID: SqlRedundantAliasInspection"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "SqlRedundantAlias",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "SQL",
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -14980,7 +14980,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15014,7 +15014,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15048,7 +15048,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15116,7 +15116,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15150,7 +15150,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15184,7 +15184,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15218,7 +15218,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15252,7 +15252,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15286,7 +15286,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15320,7 +15320,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15434,40 +15434,6 @@
                 ]
               },
               {
-                "id": "SqlGotoInspection",
-                "shortDescription": {
-                  "text": "Usages of GOTO statements"
-                },
-                "fullDescription": {
-                  "text": "Reports usages of backward GOTO statements and GOTO statements used to exit a loop. The extensive use of GOTO statements is generally not recommended. For details, see GOTO statement in SQL procedures at ibm.com. Instead of jumping back to a previous statement using GOTO, consider using a loop. Instead of exiting the WHILE loop with GOTO, consider using other control-of-flow statements (for example, RETURN or BREAK). Example (Oracle): 'CREATE PROCEDURE test(n INT) AS\nDECLARE\n    x INT;\nBEGIN\n    x := 0;\n    GOTO a;\n    <<a>> x := 1;\n    IF (n = 0) THEN\n        GOTO a;\n    END IF;\n    WHILE TRUE\n        LOOP\n            GOTO b;\n        END LOOP;\n    <<b>> x := 3;\nEND;' Inspection ID: SqlGotoInspection",
-                  "markdown": "Reports usages of backward GOTO statements and GOTO statements used to exit a loop.\n\nThe extensive use of GOTO statements is generally\nnot recommended. For details, see [GOTO statement in\nSQL\nprocedures at ibm.com](https://www.ibm.com/docs/no/db2/11.5?topic=procedures-goto-statement-in-sql).\n\nInstead of jumping back to a previous statement using GOTO, consider using a loop.\n\nInstead of exiting the WHILE loop with GOTO, consider using other control-of-flow statements (for example, RETURN or BREAK).\n\nExample (Oracle):\n\n    CREATE PROCEDURE test(n INT) AS\n    DECLARE\n        x INT;\n    BEGIN\n        x := 0;\n        GOTO a;\n        <<a>> x := 1;\n        IF (n = 0) THEN\n            GOTO a;\n        END IF;\n        WHILE TRUE\n            LOOP\n                GOTO b;\n            END LOOP;\n        <<b>> x := 3;\n    END;\n\nInspection ID: SqlGotoInspection"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "SqlGoto",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "SQL",
-                      "index": 30,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "MongoJSExtResolveInspection",
                 "shortDescription": {
                   "text": "Resolution problems"
@@ -15490,7 +15456,41 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "SqlGotoInspection",
+                "shortDescription": {
+                  "text": "Usages of GOTO statements"
+                },
+                "fullDescription": {
+                  "text": "Reports usages of backward GOTO statements and GOTO statements used to exit a loop. The extensive use of GOTO statements is generally not recommended. For details, see GOTO statement in SQL procedures at ibm.com. Instead of jumping back to a previous statement using GOTO, consider using a loop. Instead of exiting the WHILE loop with GOTO, consider using other control-of-flow statements (for example, RETURN or BREAK). Example (Oracle): 'CREATE PROCEDURE test(n INT) AS\nDECLARE\n    x INT;\nBEGIN\n    x := 0;\n    GOTO a;\n    <<a>> x := 1;\n    IF (n = 0) THEN\n        GOTO a;\n    END IF;\n    WHILE TRUE\n        LOOP\n            GOTO b;\n        END LOOP;\n    <<b>> x := 3;\nEND;' Inspection ID: SqlGotoInspection",
+                  "markdown": "Reports usages of backward GOTO statements and GOTO statements used to exit a loop.\n\nThe extensive use of GOTO statements is generally\nnot recommended. For details, see [GOTO statement in\nSQL\nprocedures at ibm.com](https://www.ibm.com/docs/no/db2/11.5?topic=procedures-goto-statement-in-sql).\n\nInstead of jumping back to a previous statement using GOTO, consider using a loop.\n\nInstead of exiting the WHILE loop with GOTO, consider using other control-of-flow statements (for example, RETURN or BREAK).\n\nExample (Oracle):\n\n    CREATE PROCEDURE test(n INT) AS\n    DECLARE\n        x INT;\n    BEGIN\n        x := 0;\n        GOTO a;\n        <<a>> x := 1;\n        IF (n = 0) THEN\n            GOTO a;\n        END IF;\n        WHILE TRUE\n            LOOP\n                GOTO b;\n            END LOOP;\n        <<b>> x := 3;\n    END;\n\nInspection ID: SqlGotoInspection"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "SqlGoto",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "SQL",
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15524,7 +15524,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15558,7 +15558,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15592,7 +15592,7 @@
                   {
                     "target": {
                       "id": "SQL",
-                      "index": 30,
+                      "index": 31,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -15626,7 +15626,7 @@
                   {
                     "target": {
                       "id": "MongoJS",
-                      "index": 12,
+                      "index": 11,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -17044,40 +17044,6 @@
                 ]
               },
               {
-                "id": "XmlDeprecatedElement",
-                "shortDescription": {
-                  "text": "Deprecated symbol"
-                },
-                "fullDescription": {
-                  "text": "Reports a deprecated XML element or attribute. Symbols can be marked by XML comment or documentation tag with text 'deprecated'. Inspection ID: XmlDeprecatedElement",
-                  "markdown": "Reports a deprecated XML element or attribute.\n\nSymbols can be marked by XML comment or documentation tag with text 'deprecated'.\n\nInspection ID: XmlDeprecatedElement"
-                },
-                "defaultConfiguration": {
-                  "enabled": false,
-                  "level": "warning",
-                  "parameters": {
-                    "suppressToolId": "XmlDeprecatedElement",
-                    "ideaSeverity": "WARNING",
-                    "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
-                  }
-                },
-                "relationships": [
-                  {
-                    "target": {
-                      "id": "XML",
-                      "index": 40,
-                      "toolComponent": {
-                        "name": "QDGO"
-                      }
-                    },
-                    "kinds": [
-                      "superset"
-                    ]
-                  }
-                ]
-              },
-              {
                 "id": "RegExpRedundantNestedCharacterClass",
                 "shortDescription": {
                   "text": "Redundant nested character class"
@@ -17101,6 +17067,40 @@
                     "target": {
                       "id": "RegExp",
                       "index": 44,
+                      "toolComponent": {
+                        "name": "QDGO"
+                      }
+                    },
+                    "kinds": [
+                      "superset"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "XmlDeprecatedElement",
+                "shortDescription": {
+                  "text": "Deprecated symbol"
+                },
+                "fullDescription": {
+                  "text": "Reports a deprecated XML element or attribute. Symbols can be marked by XML comment or documentation tag with text 'deprecated'. Inspection ID: XmlDeprecatedElement",
+                  "markdown": "Reports a deprecated XML element or attribute.\n\nSymbols can be marked by XML comment or documentation tag with text 'deprecated'.\n\nInspection ID: XmlDeprecatedElement"
+                },
+                "defaultConfiguration": {
+                  "enabled": false,
+                  "level": "warning",
+                  "parameters": {
+                    "suppressToolId": "XmlDeprecatedElement",
+                    "ideaSeverity": "WARNING",
+                    "qodanaSeverity": "High",
+                    "codeQualityCategory": "Code Style"
+                  }
+                },
+                "relationships": [
+                  {
+                    "target": {
+                      "id": "XML",
+                      "index": 40,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -17355,8 +17355,8 @@
                   "text": "Non-ASCII characters"
                 },
                 "fullDescription": {
-                  "text": "Reports code elements that use non-ASCII symbols in an unusual context. Example: Non-ASCII characters used in identifiers, strings, or comments. Identifiers written in different languages, such as 'my\u0421ollection' with the letter 'C' written in Cyrillic. Comments or strings containing Unicode symbols, such as long dashes and arrows. Inspection ID: NonAsciiCharacters",
-                  "markdown": "Reports code elements that use non-ASCII symbols in an unusual context.\n\nExample:\n\n* Non-ASCII characters used in identifiers, strings, or comments.\n* Identifiers written in different languages, such as `my`**\u0421**`ollection` with the letter **C** written in Cyrillic.\n* Comments or strings containing Unicode symbols, such as long dashes and arrows.\n\nInspection ID: NonAsciiCharacters"
+                  "text": "Reports code elements that use non-ASCII symbols in an unusual context. Example: Non-ASCII characters used in identifiers, strings, or comments. Identifiers written in different languages, such as 'myСollection' with the letter 'C' written in Cyrillic. Comments or strings containing Unicode symbols, such as long dashes and arrows. Inspection ID: NonAsciiCharacters",
+                  "markdown": "Reports code elements that use non-ASCII symbols in an unusual context.\n\nExample:\n\n* Non-ASCII characters used in identifiers, strings, or comments.\n* Identifiers written in different languages, such as `my`**С**`ollection` with the letter **C** written in Cyrillic.\n* Comments or strings containing Unicode symbols, such as long dashes and arrows.\n\nInspection ID: NonAsciiCharacters"
                 },
                 "defaultConfiguration": {
                   "enabled": false,
@@ -17452,22 +17452,22 @@
                 ]
               },
               {
-                "id": "RegExpDuplicateAlternationBranch",
+                "id": "RegExpRepeatedSpace",
                 "shortDescription": {
-                  "text": "Duplicate branch in alternation"
+                  "text": "Consecutive spaces"
                 },
                 "fullDescription": {
-                  "text": "Reports duplicate branches in a RegExp alternation. Duplicate branches slow down matching and obscure the intent of the expression. Example: '(alpha|bravo|charlie|alpha)' After the quick-fix is applied: '(alpha|bravo|charlie)' New in 2017.1 Inspection ID: RegExpDuplicateAlternationBranch",
-                  "markdown": "Reports duplicate branches in a RegExp alternation. Duplicate branches slow down matching and obscure the intent of the expression.\n\n**Example:**\n\n\n      (alpha|bravo|charlie|alpha)\n\nAfter the quick-fix is applied:\n\n\n      (alpha|bravo|charlie)\n\nNew in 2017.1\n\nInspection ID: RegExpDuplicateAlternationBranch"
+                  "text": "Reports multiple consecutive spaces in a RegExp. Because spaces are not visible by default, it can be hard to see how many spaces are required. The RegExp can be made more clear by replacing the consecutive spaces with a single space and a counted quantifier. Example: '(     )' After the quick-fix is applied: '( {5})' New in 2017.1 Inspection ID: RegExpRepeatedSpace",
+                  "markdown": "Reports multiple consecutive spaces in a RegExp. Because spaces are not visible by default, it can be hard to see how many spaces are required. The RegExp can be made more clear by replacing the consecutive spaces with a single space and a counted quantifier.\n\n**Example:**\n\n\n      (     )\n\nAfter the quick-fix is applied:\n\n\n      ( {5})\n\n\nNew in 2017.1\n\nInspection ID: RegExpRepeatedSpace"
                 },
                 "defaultConfiguration": {
                   "enabled": true,
                   "level": "warning",
                   "parameters": {
-                    "suppressToolId": "RegExpDuplicateAlternationBranch",
+                    "suppressToolId": "RegExpRepeatedSpace",
                     "ideaSeverity": "WARNING",
                     "qodanaSeverity": "High",
-                    "codeQualityCategory": "Performance"
+                    "codeQualityCategory": "Code Style"
                   }
                 },
                 "relationships": [
@@ -17486,22 +17486,22 @@
                 ]
               },
               {
-                "id": "RegExpRepeatedSpace",
+                "id": "RegExpDuplicateAlternationBranch",
                 "shortDescription": {
-                  "text": "Consecutive spaces"
+                  "text": "Duplicate branch in alternation"
                 },
                 "fullDescription": {
-                  "text": "Reports multiple consecutive spaces in a RegExp. Because spaces are not visible by default, it can be hard to see how many spaces are required. The RegExp can be made more clear by replacing the consecutive spaces with a single space and a counted quantifier. Example: '(     )' After the quick-fix is applied: '( {5})' New in 2017.1 Inspection ID: RegExpRepeatedSpace",
-                  "markdown": "Reports multiple consecutive spaces in a RegExp. Because spaces are not visible by default, it can be hard to see how many spaces are required. The RegExp can be made more clear by replacing the consecutive spaces with a single space and a counted quantifier.\n\n**Example:**\n\n\n      (     )\n\nAfter the quick-fix is applied:\n\n\n      ( {5})\n\n\nNew in 2017.1\n\nInspection ID: RegExpRepeatedSpace"
+                  "text": "Reports duplicate branches in a RegExp alternation. Duplicate branches slow down matching and obscure the intent of the expression. Example: '(alpha|bravo|charlie|alpha)' After the quick-fix is applied: '(alpha|bravo|charlie)' New in 2017.1 Inspection ID: RegExpDuplicateAlternationBranch",
+                  "markdown": "Reports duplicate branches in a RegExp alternation. Duplicate branches slow down matching and obscure the intent of the expression.\n\n**Example:**\n\n\n      (alpha|bravo|charlie|alpha)\n\nAfter the quick-fix is applied:\n\n\n      (alpha|bravo|charlie)\n\nNew in 2017.1\n\nInspection ID: RegExpDuplicateAlternationBranch"
                 },
                 "defaultConfiguration": {
                   "enabled": true,
                   "level": "warning",
                   "parameters": {
-                    "suppressToolId": "RegExpRepeatedSpace",
+                    "suppressToolId": "RegExpDuplicateAlternationBranch",
                     "ideaSeverity": "WARNING",
                     "qodanaSeverity": "High",
-                    "codeQualityCategory": "Code Style"
+                    "codeQualityCategory": "Performance"
                   }
                 },
                 "relationships": [
@@ -19746,7 +19746,7 @@
                   {
                     "target": {
                       "id": "JavaScript and TypeScript/General",
-                      "index": 14,
+                      "index": 13,
                       "toolComponent": {
                         "name": "QDGO"
                       }
@@ -19929,7 +19929,7 @@
       },
       "invocations": [
         {
-          "startTimeUtc": "2026-09-17T05:59:25.404172353Z",
+          "startTimeUtc": "2026-09-17T08:26:50.365641506Z",
           "exitCode": 0,
           "executionSuccessful": true
         }
@@ -19938,7 +19938,7 @@
       "versionControlProvenance": [
         {
           "repositoryUri": "https://github.com/mario-ezquerro/gubernator.git",
-          "revisionId": "10cd580eb0bdbb578dc067abca8666a4f02ec8c6",
+          "revisionId": "117fcebad1d754277df41b09a795ad955d7935fa",
           "branch": "main",
           "properties": {
             "repoUrl": "https://github.com/mario-ezquerro/gubernator.git",
@@ -27202,9 +27202,9 @@
       ],
       "automationDetails": {
         "id": "project/qodana/2026-09-17",
-        "guid": "3d23c7f3-64ea-43a4-b948-dc590fe01aef",
+        "guid": "3f7bd744-b790-45fe-af2c-26a45b2ca0c2",
         "properties": {
-          "jobUrl": "https://github.com/mario-ezquerro/gubernator/actions/runs/35187829296",
+          "jobUrl": "https://github.com/mario-ezquerro/gubernator/actions/runs/35199550893",
           "analysisKind": "regular"
         }
       },
