@@ -32,20 +32,20 @@ const (
 	ConfigMountPath = "/etc/coredns"
 )
 
-// CoreDNSDir returns the path to the CoreDNS config directory on the host (~/.gbnt/coredns/).
-func CoreDNSDir() string {
+// LocalConfigDir returns the path to the CoreDNS config directory on the host (~/.gbnt/coredns/).
+func LocalConfigDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".gbnt", "coredns")
 }
 
 // HostsFilePath returns the absolute path to the gubernator.hosts file.
 func HostsFilePath() string {
-	return filepath.Join(CoreDNSDir(), "gubernator.hosts")
+	return filepath.Join(LocalConfigDir(), "gubernator.hosts")
 }
 
 // CorefilePath returns the absolute path to the Corefile.
 func CorefilePath() string {
-	return filepath.Join(CoreDNSDir(), "Corefile")
+	return filepath.Join(LocalConfigDir(), "Corefile")
 }
 
 // detectLocalIP returns the preferred outbound IP of this machine.
@@ -66,7 +66,7 @@ func detectLocalIP() string {
 
 // EnsureConfigDir creates the CoreDNS config directory and writes default config files if they don't exist.
 func EnsureConfigDir() error {
-	dir := CoreDNSDir()
+	dir := LocalConfigDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create coredns config dir: %w", err)
 	}
@@ -189,9 +189,10 @@ func defaultCorefile() string {
 	return DefaultCorefile()
 }
 
+//noinspection GoUnusedExportedFunction
 // EnsureRunningWorker starts the CoreDNS container in worker mode (forwarding cluster domains to the manager).
 func EnsureRunningWorker(managerIP string) error {
-	dir := CoreDNSDir()
+	dir := LocalConfigDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create coredns config dir: %w", err)
 	}
@@ -303,7 +304,7 @@ func EnsureRunning() error {
 
 	fmt.Println("✅ CoreDNS started successfully. DNS domain: *.gbnt")
 	fmt.Printf("   📡 Listening on port 5354 (UDP+TCP)\n")
-	fmt.Printf("   📁 Config: %s\n", CoreDNSDir())
+	fmt.Printf("   📁 Config: %s\n", LocalConfigDir())
 	return nil
 }
 
@@ -370,7 +371,7 @@ func GetContainerIP() string {
 // populateConfigVolume creates the named volume and copies config files into it
 // using a temporary alpine container helper.
 func populateConfigVolume() error {
-	dir := CoreDNSDir()
+	dir := LocalConfigDir()
 
 	// Create volume
 	_ = exec.Command("docker", "volume", "create", VolumeName).Run()
@@ -435,7 +436,7 @@ type DigResult struct {
 	RawOutput   string            `json:"raw_output"`
 }
 
-type CoreDNSStatusInfo struct {
+type DNSStatusInfo struct {
 	Status        string   `json:"status"`
 	UptimeSeconds int64    `json:"uptime_seconds"`
 	MemBytes      uint64   `json:"mem_bytes"`
@@ -533,8 +534,8 @@ func PerformDig(domain string, recordType string) (*DigResult, error) {
 }
 
 // GetCoreDNSStatusInfo inspects CoreDNS container and returns diagnostic details.
-func GetCoreDNSStatusInfo(database *gorm.DB) *CoreDNSStatusInfo {
-	info := &CoreDNSStatusInfo{
+func GetCoreDNSStatusInfo(database *gorm.DB) *DNSStatusInfo {
+	info := &DNSStatusInfo{
 		Status:        "stopped",
 		ListeningPort: 5354,
 		Forwarders:    []string{"8.8.8.8", "1.1.1.1"},

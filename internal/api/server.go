@@ -419,6 +419,7 @@ type NodeListResponse struct {
 	Nodes []db.Node `json:"nodes"`
 }
 
+// NodeListHandler List all nodes.
 // @Summary List all nodes
 // @Description Get a list of all nodes currently registered in the Gubernator cluster from SQLite
 // @Tags nodes

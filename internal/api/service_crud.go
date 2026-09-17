@@ -10,6 +10,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
+// ServiceListHandler List Services.
 // @Summary List Services
 // @Description List all services
 // @Tags services
@@ -25,6 +26,7 @@ func ServiceListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, services)
 }
 
+// ServiceTasksHandler List Service Tasks.
 // @Summary List Service Tasks
 // @Description List tasks belonging to a service
 // @Tags services
@@ -42,6 +44,7 @@ func ServiceTasksHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// ServiceRmHandler Remove Service.
 // @Summary Remove Service
 // @Description Delete a service and its tasks
 // @Tags services
@@ -73,6 +76,7 @@ type ScaleRequest struct {
 	Replicas int `json:"replicas" binding:"required"`
 }
 
+// ServiceScaleHandler Scale Service.
 // @Summary Scale Service
 // @Description Update the replicas of a service
 // @Tags services

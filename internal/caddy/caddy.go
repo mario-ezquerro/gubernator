@@ -37,15 +37,15 @@ const (
 	ConfigMountPath = "/etc/caddy"
 )
 
-// CaddyDir returns the path to the Caddy config directory on the host (~/.gbnt/caddy/).
-func CaddyDir() string {
+// LocalCaddyDir returns the path to the Caddy config directory on the host (~/.gbnt/caddy/).
+func LocalCaddyDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".gbnt", "caddy")
 }
 
 // CaddyfilePath returns the absolute path to the Caddyfile.
 func CaddyfilePath() string {
-	return filepath.Join(CaddyDir(), "Caddyfile")
+	return filepath.Join(LocalCaddyDir(), "Caddyfile")
 }
 
 // IsLocalDomain returns true if the host is a local/internal TLD or IP address
@@ -71,7 +71,7 @@ func IsLocalDomain(host string) bool {
 
 // EnsureConfigDir creates the Caddy config directory and writes a default Caddyfile if it doesn't exist.
 func EnsureConfigDir() error {
-	dir := CaddyDir()
+	dir := LocalCaddyDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create caddy config dir: %w", err)
 	}
@@ -187,7 +187,7 @@ func Status() string {
 
 // populateConfigVolume creates the named volume and copies config files into it.
 func populateConfigVolume() error {
-	dir := CaddyDir()
+	dir := LocalCaddyDir()
 
 	// Create volume
 	_ = exec.Command("docker", "volume", "create", VolumeName).Run()
@@ -250,7 +250,7 @@ type CertificateInfo struct {
 
 // CertsDir returns the directory for custom certificates (~/.gbnt/caddy/certs/).
 func CertsDir() string {
-	return filepath.Join(CaddyDir(), "certs")
+	return filepath.Join(LocalCaddyDir(), "certs")
 }
 
 // ParseCertificatePEM extracts X.509 metadata from a PEM encoded certificate block.
@@ -459,7 +459,7 @@ func EnsureRootCA() ([]byte, error) {
 	if err == nil && len(out) > 0 {
 		return out, nil
 	}
-	certPath := filepath.Join(CaddyDir(), "pki", "authorities", "local", "root.crt")
+	certPath := filepath.Join(LocalCaddyDir(), "pki", "authorities", "local", "root.crt")
 	if b, readErr := os.ReadFile(certPath); readErr == nil && len(b) > 0 {
 		return b, nil
 	}
@@ -512,7 +512,7 @@ func EnsureRootCA() ([]byte, error) {
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
 
 	// Save to ~/.gbnt/caddy/pki/authorities/local/
-	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	localPKIDir := filepath.Join(LocalCaddyDir(), "pki", "authorities", "local")
 	_ = os.MkdirAll(localPKIDir, 0755)
 	_ = os.WriteFile(filepath.Join(localPKIDir, "root.crt"), caPEM, 0644)
 	_ = os.WriteFile(filepath.Join(localPKIDir, "root.key"), keyPEM, 0600)
@@ -560,7 +560,7 @@ func EnsureDomainCertificate(domain string) ([]byte, error) {
 	}
 
 	// Read CA key
-	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	localPKIDir := filepath.Join(LocalCaddyDir(), "pki", "authorities", "local")
 	caKeyPEM, err := os.ReadFile(filepath.Join(localPKIDir, "root.key"))
 	if err != nil {
 		return caPEM, nil
@@ -689,7 +689,7 @@ func SyncCertificatesToNodes() (syncedNodes []string, totalCerts int, err error)
 	}
 
 	// Read Root CA cert & key
-	localPKIDir := filepath.Join(CaddyDir(), "pki", "authorities", "local")
+	localPKIDir := filepath.Join(LocalCaddyDir(), "pki", "authorities", "local")
 	if caCert, err := os.ReadFile(filepath.Join(localPKIDir, "root.crt")); err == nil {
 		fileMap["pki/authorities/local/root.crt"] = caCert
 	}

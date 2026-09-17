@@ -169,7 +169,6 @@ func StopContainer(containerName string) error {
 	return nil
 }
 
-// splitCommand parses a command string into individual arguments,
 // SplitCommand splits a command string into arguments (like a shell would),
 // respecting single and double quotes.
 func SplitCommand(cmd string) []string {

@@ -95,6 +95,7 @@ func ReconcileSingleStack(stackID string) (prunedCount int, rescheduledCount int
 	return p, r, nil
 }
 
+//noinspection GoUnusedExportedFunction
 // PruneAllDeadAndOrphanTasks triggers an immediate full-cluster garbage collection.
 // TODO(watchdog): Exposed as a REST API endpoint in future scheduler iterations for manual GC triggers.
 func PruneAllDeadAndOrphanTasks() (prunedCount int, err error) {

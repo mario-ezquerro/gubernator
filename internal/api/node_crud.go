@@ -14,6 +14,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
+// NodeInspectHandler Inspect Node.
 // @Summary Inspect Node
 // @Description Fetch full details of a specific node
 // @Tags nodes
@@ -35,6 +36,7 @@ type NodeRoleRequest struct {
 	Role string `json:"role" binding:"required"` // "worker" or "manager"
 }
 
+// NodeRoleHandler Promote/Demote Node.
 // @Summary Promote/Demote Node
 // @Description Change the role of a node
 // @Tags nodes
@@ -75,6 +77,7 @@ type NodeAvailabilityRequest struct {
 	Availability string `json:"availability" binding:"required"` // "active", "pause", "drain"
 }
 
+// NodeAvailabilityHandler Update Node Availability.
 // @Summary Update Node Availability
 // @Description Pause or drain a node
 // @Tags nodes
@@ -122,6 +125,7 @@ func NodeAvailabilityHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Node availability updated"})
 }
 
+// NodeRebootHandler Reboot Node.
 // @Summary Reboot Node
 // @Description Drain tasks and initiate host reboot
 // @Tags nodes
@@ -167,6 +171,7 @@ func isSystemStack(stackID string) bool {
 		strings.Contains(s, "scope")
 }
 
+// NodeLeaveHandler Leave Legion.
 // @Summary Leave Legion
 // @Description Mark node as left
 // @Tags nodes
@@ -223,6 +228,7 @@ type NodeLabelsRequest struct {
 	Labels map[string]string `json:"labels" binding:"required"`
 }
 
+// NodeLabelsHandler Update Node Labels.
 // @Summary Update Node Labels
 // @Description Add, update, or remove node labels
 // @Tags nodes

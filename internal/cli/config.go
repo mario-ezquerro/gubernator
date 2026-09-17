@@ -19,7 +19,7 @@ type ConfigContext struct {
 	Token  string `yaml:"token,omitempty"`
 }
 
-type CLIConfig struct {
+type ContextConfig struct {
 	CurrentContext string          `yaml:"current-context"`
 	Contexts       []ConfigContext `yaml:"contexts"`
 }
@@ -164,8 +164,8 @@ func configPath() string {
 	return filepath.Join(home, ".gbntctl", "config")
 }
 
-func loadConfig() CLIConfig {
-	var cfg CLIConfig
+func loadConfig() ContextConfig {
+	var cfg ContextConfig
 	data, err := os.ReadFile(configPath())
 	if err == nil {
 		_ = yaml.Unmarshal(data, &cfg)
@@ -173,12 +173,13 @@ func loadConfig() CLIConfig {
 	return cfg
 }
 
-func saveConfig(cfg CLIConfig) {
+func saveConfig(cfg ContextConfig) {
 	data, _ := yaml.Marshal(cfg)
 	_ = os.MkdirAll(filepath.Dir(configPath()), 0755)
 	_ = os.WriteFile(configPath(), data, 0600)
 }
 
+//noinspection GoUnusedExportedFunction
 // GetAPIEndpoint returns the server URL from the current context without a trailing slash.
 func GetAPIEndpoint() string {
 	cfg := loadConfig()

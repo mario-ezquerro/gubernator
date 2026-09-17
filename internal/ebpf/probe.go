@@ -334,7 +334,7 @@ func (p *Probe) GetRecentFlows(limit int, protocolFilter string, statusFilter st
 }
 
 // BuildTopology synthesizes nodes and edges from registered endpoints and recent flow metrics.
-func (p *Probe) BuildTopology() EBPFTopology {
+func (p *Probe) BuildTopology() NetworkTopology {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
@@ -448,7 +448,7 @@ func (p *Probe) BuildTopology() EBPFTopology {
 		edges = append(edges, *e)
 	}
 
-	return EBPFTopology{
+	return NetworkTopology{
 		Nodes:     nodes,
 		Edges:     edges,
 		UpdatedAt: time.Now(),
@@ -456,11 +456,11 @@ func (p *Probe) BuildTopology() EBPFTopology {
 }
 
 // GetStats returns global aggregate telemetry metrics.
-func (p *Probe) GetStats() EBPFStats {
+func (p *Probe) GetStats() NetworkStats {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	stats := EBPFStats{
+	stats := NetworkStats{
 		KernelVersion:  p.kernelVer,
 		EBPFSupported:  p.ebpfEnabled,
 		Mode:           p.mode,

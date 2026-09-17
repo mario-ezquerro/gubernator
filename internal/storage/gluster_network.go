@@ -18,8 +18,8 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
-// StorageNetworkInterface represents a physical or virtual network interface on a node.
-type StorageNetworkInterface struct {
+// NodeNetworkInterface represents a physical or virtual network interface on a node.
+type NodeNetworkInterface struct {
 	Name         string   `json:"name"`
 	IPAddresses  []string `json:"ip_addresses"`
 	HardwareAddr string   `json:"mac"`
@@ -45,7 +45,7 @@ type NodeStorageNetworkInfo struct {
 	StorageIP  string                    `json:"storage_ip"`
 	StorageDNS string                    `json:"storage_dns"`
 	StorageNIC string                    `json:"storage_nic"`
-	Interfaces []StorageNetworkInterface `json:"interfaces"`
+	Interfaces []NodeNetworkInterface `json:"interfaces"`
 	IsOnline   bool                      `json:"is_online"`
 }
 
@@ -128,7 +128,7 @@ func getLocalNodeNetworkInfo() NodeStorageNetworkInfo {
 		HostIP:     os.Getenv("GBNT_HOST_IP"),
 		StorageDNS: "gbnt-manager.storage.gbnt.local",
 		StorageNIC: "enp0s2",
-		Interfaces: []StorageNetworkInterface{},
+		Interfaces: []NodeNetworkInterface{},
 		IsOnline:   true,
 	}
 	if info.HostIP == "" {
@@ -145,7 +145,7 @@ func getLocalNodeNetworkInfo() NodeStorageNetworkInfo {
 				continue
 			}
 
-			item := StorageNetworkInterface{
+			item := NodeNetworkInterface{
 				Name:         iface.Name,
 				HardwareAddr: iface.HardwareAddr.String(),
 				MTU:          iface.MTU,
@@ -200,7 +200,7 @@ func getRemoteNodeNetworkInfo(n db.Node) NodeStorageNetworkInfo {
 		HostIP:     n.IP,
 		StorageDNS: fmt.Sprintf("%s.storage.gbnt.local", hostname),
 		StorageNIC: "enp0s2",
-		Interfaces: []StorageNetworkInterface{},
+		Interfaces: []NodeNetworkInterface{},
 		IsOnline:   n.Status == "active",
 	}
 
@@ -245,7 +245,7 @@ func getRemoteNodeNetworkInfo(n db.Node) NodeStorageNetworkInfo {
 				continue
 			}
 
-			ifaceModel := StorageNetworkInterface{
+			ifaceModel := NodeNetworkInterface{
 				Name:         item.IfName,
 				HardwareAddr: item.Address,
 				MTU:          item.Mtu,
@@ -285,7 +285,7 @@ func getRemoteNodeNetworkInfo(n db.Node) NodeStorageNetworkInfo {
 			if strings.HasPrefix(ifName, "veth") || strings.HasPrefix(ifName, "br-") || strings.HasPrefix(ifName, "docker") || ifName == "lo" {
 				continue
 			}
-			ifaceModel := StorageNetworkInterface{
+			ifaceModel := NodeNetworkInterface{
 				Name:      ifName,
 				IsUp:      true,
 				RxBytes:   stat.RxBytes,
@@ -401,7 +401,7 @@ func isStorageIP(ipStr string) bool {
 
 // syncCoreDNSStorageHosts updates CoreDNS hosts file with storage domain records.
 func syncCoreDNSStorageHosts(report *ClusterStorageNetworkReport) {
-	hostsPath := filepath.Join(coredns.CoreDNSDir(), "gubernator.hosts")
+	hostsPath := filepath.Join(coredns.LocalConfigDir(), "gubernator.hosts")
 	existingBytes, err := os.ReadFile(hostsPath)
 	var lines []string
 	if err == nil {

@@ -1727,7 +1727,7 @@ func updateStackComposeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "saved"})
 }
 
-type WebPortConflict struct {
+type PortDetectionResult struct {
 	HostPort           int    `json:"host_port"`
 	Protocol           string `json:"protocol"`
 	Service            string `json:"service"`
@@ -1785,7 +1785,7 @@ func webParsePortMapping(portSpec string) (hostPort int, containerPort int, prot
 	return 0, 0, protocol, false
 }
 
-func webAutoRemapComposePorts(composeRaw string, conflicts []WebPortConflict) string {
+func webAutoRemapComposePorts(composeRaw string, conflicts []PortDetectionResult) string {
 	res := composeRaw
 	for _, c := range conflicts {
 		if c.SuggestedPort > 0 && c.HostPort != c.SuggestedPort {
@@ -1811,8 +1811,8 @@ func webAutoRemapComposePorts(composeRaw string, conflicts []WebPortConflict) st
 	return res
 }
 
-func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentStackName string) []WebPortConflict {
-	var conflicts []WebPortConflict
+func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentStackName string) []PortDetectionResult {
+	var conflicts []PortDetectionResult
 
 	type allocatedPort struct {
 		stackName   string
@@ -1917,7 +1917,7 @@ func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentSt
 			for _, prev := range requestedPorts {
 				if prev.hostPort == hp && prev.proto == proto {
 					suggested := findFreePort(hp)
-					conflicts = append(conflicts, WebPortConflict{
+					conflicts = append(conflicts, PortDetectionResult{
 						HostPort:           hp,
 						Protocol:           proto,
 						Service:            srvName,
@@ -1938,7 +1938,7 @@ func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentSt
 				key := fmt.Sprintf("%s:%d/%s", targetNodeID, hp, proto)
 				if alloc, exists := allocated[key]; exists {
 					suggested := findFreePort(hp)
-					conflicts = append(conflicts, WebPortConflict{
+					conflicts = append(conflicts, PortDetectionResult{
 						HostPort:           hp,
 						Protocol:           proto,
 						Service:            srvName,
@@ -1953,7 +1953,7 @@ func webDetectPortConflicts(compose *composeFile, targetNodeID string, currentSt
 				for key, alloc := range allocated {
 					if strings.HasSuffix(key, fmt.Sprintf(":%d/%s", hp, proto)) {
 						suggested := findFreePort(hp)
-						conflicts = append(conflicts, WebPortConflict{
+						conflicts = append(conflicts, PortDetectionResult{
 							HostPort:           hp,
 							Protocol:           proto,
 							Service:            srvName,
@@ -2027,7 +2027,7 @@ func deployStackHandler(c *gin.Context) {
 	// Check port conflicts
 	force := req.Force || c.Query("force") == "true"
 	autoRemap := req.AutoRemapPorts || c.Query("auto_remap_ports") == "true"
-	var conflicts []WebPortConflict
+	var conflicts []PortDetectionResult
 
 	if !force {
 		conflicts = webDetectPortConflicts(&compose, req.TargetNode, stackName)
@@ -2564,7 +2564,7 @@ func redeployCoreStack(c *gin.Context) {
 // differs between the existing DB service and the new compose definition.
 // TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
 //
-//nolint:unused
+//noinspection GoUnusedFunction
 func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 	if existing.Image != newDef.Image {
 		return true
@@ -3128,7 +3128,7 @@ func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
 // scaleServiceUp schedules `count` new tasks for an existing service.
 // TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
 //
-//nolint:unused
+//noinspection GoUnusedFunction
 func scaleServiceUp(svc *db.Service, count int) {
 	for i := 0; i < count; i++ {
 		var allNodes []db.Node
@@ -3174,7 +3174,7 @@ func scaleServiceUp(svc *db.Service, count int) {
 // Tasks are sorted by created_at DESC so the most recently created are removed first.
 // TODO(phase5): Used by Rolling Updates scheduler (Phase 5 roadmap).
 //
-//nolint:unused
+//noinspection GoUnusedFunction
 func scaleServiceDown(svc *db.Service, count int) {
 	var tasks []db.Task
 	db.DB.Where("service_id = ?", svc.ID).Find(&tasks)

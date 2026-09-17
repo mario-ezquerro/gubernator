@@ -55,7 +55,7 @@ var dnsStatusCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		fmt.Printf("  📁 Config dir:   %s\n", coredns.CoreDNSDir())
+		fmt.Printf("  📁 Config dir:   %s\n", coredns.LocalConfigDir())
 		fmt.Printf("  📄 Hosts file:   %s\n", coredns.HostsFilePath())
 		fmt.Printf("  🔗 Network:      %s\n", coredns.NetworkName)
 		fmt.Println()

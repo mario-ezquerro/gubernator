@@ -11,11 +11,12 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/ebpf"
 )
 
+// EBPFStatsHandler Get eBPF kernel network telemetry and probe stats.
 // @Summary Get eBPF kernel network telemetry and probe stats
 // @Description Returns kernel eBPF capabilities, active probes, flow rate, throughput, and packet statistics
 // @Tags ebpf
 // @Produce json
-// @Success 200 {object} ebpf.EBPFStats
+// @Success 200 {object} ebpf.NetworkStats
 // @Router /v1/ebpf/stats [get]
 func EBPFStatsHandler(c *gin.Context) {
 	eng := ebpf.GetEngine()
@@ -23,6 +24,7 @@ func EBPFStatsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// EBPFFlowsHandler Get recent eBPF captured network flows.
 // @Summary Get recent eBPF captured network flows
 // @Description Returns recent captured L4/L7 network flows with filtering by protocol, status, query, and limit
 // @Tags ebpf
@@ -51,11 +53,12 @@ func EBPFFlowsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, flows)
 }
 
+// EBPFTopologyHandler Get live eBPF service mesh topology graph.
 // @Summary Get live eBPF service mesh topology graph
 // @Description Returns interconnected topology graph with service nodes and active communication edges
 // @Tags ebpf
 // @Produce json
-// @Success 200 {object} ebpf.EBPFTopology
+// @Success 200 {object} ebpf.NetworkTopology
 // @Router /v1/ebpf/topology [get]
 func EBPFTopologyHandler(c *gin.Context) {
 	eng := ebpf.GetEngine()
@@ -63,6 +66,7 @@ func EBPFTopologyHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, topo)
 }
 
+// EBPFSimulateHandler Trigger on-demand eBPF traffic simulation.
 // @Summary Trigger on-demand eBPF traffic simulation
 // @Description Injects traffic flows (burst, normal, errors) for testing and UI live visualization
 // @Tags ebpf
@@ -83,6 +87,7 @@ func EBPFSimulateHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "Simulation triggered successfully", "pattern": profile.Pattern})
 }
 
+// EBPFStreamHandler Stream live eBPF network flows via Server-Sent Events (SSE).
 // @Summary Stream live eBPF network flows via Server-Sent Events (SSE)
 // @Description Real-time stream of captured network packets and flows
 // @Tags ebpf

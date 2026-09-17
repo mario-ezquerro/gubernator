@@ -16,6 +16,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
+// StackListHandler List Stacks.
 // @Summary List Stacks
 // @Description List all deployed stacks
 // @Tags stacks
@@ -42,6 +43,7 @@ func StackListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, stacks)
 }
 
+// StackServicesHandler List Stack Services.
 // @Summary List Stack Services
 // @Description List services belonging to a stack
 // @Tags stacks
@@ -63,6 +65,7 @@ func StackServicesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, services)
 }
 
+// StackRmHandler Remove Stack.
 // @Summary Remove Stack
 // @Description Delete a stack, stop its containers, and remove all related records
 // @Tags stacks
@@ -143,6 +146,7 @@ func StackRmHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Stack removed and containers stopped"})
 }
 
+// StackStopHandler Stop Stack.
 // @Summary Stop Stack
 // @Description Stop all running containers in a stack without deleting it
 // @Tags stacks
@@ -225,6 +229,7 @@ func StackStopHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "stopped", "stack_id": realID, "stopped_containers": stoppedCount})
 }
 
+// StackStartHandler Start Stack.
 // @Summary Start Stack
 // @Description Start all containers in a stopped stack
 // @Tags stacks
@@ -275,6 +280,7 @@ func StackStartHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "started", "stack_id": stack.ID})
 }
 
+// StackReconcileHandler Reconcile Stack.
 // @Summary Reconcile Stack
 // @Description Reconcile a stack against desired replicas, repairing degraded services and purging dead/stale containers
 // @Tags stacks
@@ -302,6 +308,7 @@ func StackReconcileHandler(c *gin.Context) {
 	})
 }
 
+// TasksPruneHandler Prune Tasks.
 // @Summary Prune Tasks
 // @Description Prune all dead, duplicate, and orphan containers across the cluster
 // @Tags tasks

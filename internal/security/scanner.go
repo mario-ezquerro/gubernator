@@ -13,8 +13,8 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
-// SecuritySummary provides cluster-wide vulnerability and signature metrics.
-type SecuritySummary struct {
+// ScanSummary provides cluster-wide vulnerability and signature metrics.
+type ScanSummary struct {
 	TotalImages    int `json:"total_images"`
 	TotalScanned   int `json:"total_scanned"`
 	CriticalCount  int `json:"critical_count"`
@@ -236,13 +236,13 @@ func GetScanByImage(imageName string) (*db.ImageScan, []db.ImageVulnerability, e
 }
 
 // GetSecuritySummary aggregates cluster-wide security statistics.
-func GetSecuritySummary() (*SecuritySummary, error) {
+func GetSecuritySummary() (*ScanSummary, error) {
 	scans, err := ListScans()
 	if err != nil {
 		return nil, err
 	}
 
-	summary := &SecuritySummary{
+	summary := &ScanSummary{
 		TotalImages:  len(scans),
 		TotalScanned: len(scans),
 	}

@@ -216,7 +216,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/ebpf.EBPFStats"
+                            "$ref": "#/definitions/ebpf.NetworkStats"
                         }
                     }
                 }
@@ -249,7 +249,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/ebpf.EBPFTopology"
+                            "$ref": "#/definitions/ebpf.NetworkTopology"
                         }
                     }
                 }
@@ -2219,7 +2219,7 @@ const docTemplate = `{
                 }
             }
         },
-        "ebpf.EBPFStats": {
+        "ebpf.NetworkStats": {
             "type": "object",
             "properties": {
                 "active_flows": {
@@ -2277,7 +2277,7 @@ const docTemplate = `{
                 }
             }
         },
-        "ebpf.EBPFTopology": {
+        "ebpf.NetworkTopology": {
             "type": "object",
             "properties": {
                 "edges": {

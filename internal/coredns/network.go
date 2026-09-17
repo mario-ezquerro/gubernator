@@ -46,6 +46,7 @@ func EnsureNetwork() error {
 	return nil
 }
 
+//noinspection GoUnusedExportedFunction
 // RemoveNetwork removes the gbnt-net Docker network.
 func RemoveNetwork() {
 	_ = exec.Command("docker", "network", "rm", NetworkName).Run()
@@ -77,10 +78,8 @@ func DisconnectContainer(containerName string) {
 	_ = exec.Command("docker", "network", "disconnect", "-f", NetworkName, containerName).Run()
 }
 
-// SetNetworkDNS updates the gbnt-net network to use the CoreDNS container as
-// its DNS server. This is called after CoreDNS starts and its IP is known.
-// Note: Docker doesn't support updating an existing network's DNS, so we
-// connect newly started containers with --dns flag instead (handled in ConnectContainerWithDNS).
+//noinspection GoUnusedExportedFunction
+// GetNetworkInfo returns the IPAM configuration of the gbnt-net Docker network.
 func GetNetworkInfo() string {
 	out, err := exec.Command("docker", "network", "inspect", NetworkName,
 		"--format", "{{.IPAM.Config}}").Output()
@@ -90,6 +89,7 @@ func GetNetworkInfo() string {
 	return strings.TrimSpace(string(out))
 }
 
+//noinspection GoUnusedExportedFunction
 // ConnectContainerWithDNS connects a container to gbnt-net. Since Docker
 // network DNS is set at container creation time, existing containers are
 // connected via 'docker network connect'. New containers launched after

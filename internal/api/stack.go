@@ -199,6 +199,7 @@ type StackDeployRequest struct {
 	AutoRemapPorts bool   `json:"auto_remap_ports"` // Automatically remap conflicting host ports to suggested free ports
 }
 
+// StackDeployHandler Deploy a Stack.
 // @Summary Deploy a Stack
 // @Description Parse a docker-compose yaml and schedule tasks to nodes
 // @Tags stack
@@ -244,6 +245,7 @@ func StackDeployHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// StackSaveHandler Save Stack Definition (Draft / Without Deploying).
 // @Summary Save Stack Definition (Draft / Without Deploying)
 // @Description Save or update stack compose definition in database and server files without deploying containers
 // @Tags stacks

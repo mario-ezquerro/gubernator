@@ -38,7 +38,7 @@ var ebpfStatusCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var stats ebpf.EBPFStats
+		var stats ebpf.NetworkStats
 		if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
 			os.Exit(1)
@@ -211,7 +211,7 @@ var ebpfTopologyCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var topo ebpf.EBPFTopology
+		var topo ebpf.NetworkTopology
 		if err := json.NewDecoder(resp.Body).Decode(&topo); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse topology: %v\n", err)
 			os.Exit(1)

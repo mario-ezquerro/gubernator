@@ -13,8 +13,8 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/storage"
 )
 
-// DockerDaemonConfig represents the structured configuration of /etc/docker/daemon.json.
-type DockerDaemonConfig struct {
+// DaemonJsonConfig represents the structured configuration of /etc/docker/daemon.json.
+type DaemonJsonConfig struct {
 	LogDriver              string                 `json:"log-driver,omitempty"`
 	LogOpts                map[string]string      `json:"log-opts,omitempty"`
 	LiveRestore            *bool                  `json:"live-restore,omitempty"`

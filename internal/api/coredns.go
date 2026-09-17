@@ -14,6 +14,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
+// GetCoreDNSConfig Get CoreDNS Configuration.
 // @Summary Get CoreDNS Configuration
 // @Description Returns the raw text of the Corefile
 // @Tags CoreDNS
@@ -33,6 +34,7 @@ type UpdateConfigRequest struct {
 	Config string `json:"config"`
 }
 
+// UpdateCoreDNSConfig Update CoreDNS Configuration.
 // @Summary Update CoreDNS Configuration
 // @Description Overwrites the Corefile and restarts the CoreDNS container
 // @Tags CoreDNS

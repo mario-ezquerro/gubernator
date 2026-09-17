@@ -30,6 +30,7 @@ func detectLocalIP() string {
 	return localAddr.IP.String()
 }
 
+// NodeAddHandler Add Node via SSH.
 // @Summary Add Node via SSH
 // @Description Provision a new worker node via SSH
 // @Tags nodes

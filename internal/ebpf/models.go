@@ -71,8 +71,8 @@ type TopologyEdge struct {
 	LastSeen      time.Time  `json:"last_seen"`
 }
 
-// EBPFTopology holds the complete live graph structure.
-type EBPFTopology struct {
+// NetworkTopology holds the complete live graph structure.
+type NetworkTopology struct {
 	Nodes     []TopologyNode `json:"nodes"`
 	Edges     []TopologyEdge `json:"edges"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -91,8 +91,8 @@ type InterfaceStats struct {
 	TxDrops   uint64 `json:"tx_drops"`
 }
 
-// EBPFStats contains global aggregate telemetry counters.
-type EBPFStats struct {
+// NetworkStats contains global aggregate telemetry counters.
+type NetworkStats struct {
 	KernelVersion  string           `json:"kernel_version"`
 	EBPFSupported  bool             `json:"ebpf_supported"`
 	Mode           string           `json:"mode"` // "kernel" or "emulation"

@@ -28,6 +28,7 @@ type JoinRequest struct {
 	Caddyfile   string            `json:"caddyfile"`
 }
 
+// NodeJoinHandler Join the cluster.
 // @Summary Join the cluster
 // @Description Register a new worker node in the Gubernator cluster using a Join Token
 // @Tags legion
@@ -98,6 +99,7 @@ type HeartbeatRequest struct {
 	Caddyfile   string `json:"caddyfile"`
 }
 
+// NodeHeartbeatHandler Node Heartbeat.
 // @Summary Node Heartbeat
 // @Description Nodes call this to let the manager know they are alive
 // @Tags legion
@@ -153,6 +155,7 @@ func NodeHeartbeatHandler(c *gin.Context) {
 	})
 }
 
+// ClusterTokenHandler Get Cluster Join Token.
 // @Summary Get Cluster Join Token
 // @Description Retrieve the current global join token (requires local access)
 // @Tags legion

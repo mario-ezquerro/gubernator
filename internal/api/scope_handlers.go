@@ -8,6 +8,7 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/monitor"
 )
 
+// ScopeStatusHandler Get Weave Scope Network Topology Status.
 // @Summary Get Weave Scope Network Topology Status
 // @Description Get current running status and URL of Weave Scope network topology superpower
 // @Tags monitor
@@ -33,6 +34,7 @@ func ScopeStatusHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
+// ScopeEnableHandler Enable Weave Scope Network Topology.
 // @Summary Enable Weave Scope Network Topology
 // @Description Deploy and start the Weave Scope container for interactive container network topology
 // @Tags monitor
@@ -48,6 +50,7 @@ func ScopeEnableHandler(c *gin.Context) {
 	ScopeStatusHandler(c)
 }
 
+// ScopeDisableHandler Disable Weave Scope Network Topology.
 // @Summary Disable Weave Scope Network Topology
 // @Description Stop and remove the Weave Scope container
 // @Tags monitor

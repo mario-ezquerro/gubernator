@@ -80,7 +80,7 @@ func DeployManagerStack(webUser, webPass string) error {
 		fmt.Printf("⚠️  Warning: failed to connect Gubernator to monitor network: %v\n", err)
 	}
 
-	// Populate config volumes from generated files in MonitorDir()
+	// Populate config volumes from generated files in MonitorConfigDir()
 	if err := populateConfigVolumes(); err != nil {
 		return fmt.Errorf("failed to populate config volumes: %w", err)
 	}
@@ -279,7 +279,7 @@ func Status() {
 // populateConfigVolumes creates Docker named volumes and copies config files into them
 // using a temporary alpine container. This works whether gbnt runs on the host or inside a container.
 func populateConfigVolumes() error {
-	dir := MonitorDir()
+	dir := MonitorConfigDir()
 
 	type volCopy struct {
 		volume   string

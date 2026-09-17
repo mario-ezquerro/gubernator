@@ -106,6 +106,7 @@ func parseConstraintsMap(constraints []string) map[string]string {
 	return res
 }
 
+// SLOListHandler List Service Level Objectives (SLOs).
 // @Summary List Service Level Objectives (SLOs)
 // @Description Fetch all active SLOs across services and query Prometheus for error budget metrics
 // @Tags slo
@@ -196,6 +197,7 @@ func SLOListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+// SLOSyncHandler Sync SLO Rules to Prometheus.
 // @Summary Sync SLO Rules to Prometheus
 // @Description Force generation and synchronization of Prometheus SLO rules
 // @Tags slo
@@ -210,6 +212,7 @@ func SLOSyncHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "SLO rules generated and synced successfully"})
 }
 
+// SLOJourneysHandler Get Composite User Journeys.
 // @Summary Get Composite User Journeys
 // @Description Aggregate service SLOs by user journey name
 // @Tags slo
@@ -327,6 +330,7 @@ func SLOJourneysHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// SLOCorrelationHandler Get SLO Deployment Correlations.
 // @Summary Get SLO Deployment Correlations
 // @Description Cross-reference burn rate spikes with stack deployment timestamps
 // @Tags slo
@@ -362,6 +366,7 @@ func SLOCorrelationHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
+// SLOHistoryHandler Get SLO Historical Trend Data Points.
 // @Summary Get SLO Historical Trend Data Points
 // @Description Fetch Prometheus range time-series points for an SLO
 // @Tags slo
@@ -437,6 +442,7 @@ func SLOHistoryHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// SLOREDMetricsHandler Get Service RED Metrics (Rate, Errors, Duration).
 // @Summary Get Service RED Metrics (Rate, Errors, Duration)
 // @Description Query Prometheus for RPS, Error RPS, and P99 Duration
 // @Tags slo
@@ -473,6 +479,7 @@ func SLOREDMetricsHandler(c *gin.Context) {
 	})
 }
 
+// SLOValidateHandler Validate and Backtest SLOs in Compose YAML.
 // @Summary Validate and Backtest SLOs in Compose YAML
 // @Description Dry-run validation & PromQL metric backtesting for Compose YAML
 // @Tags slo
@@ -666,6 +673,7 @@ type SLOEditRequest struct {
 	TotalQuery       string  `json:"total_query"`
 }
 
+// SLOEditHandler Create or Edit SLO for a Service.
 // @Summary Create or Edit SLO for a Service
 // @Description Updates service constraints in DB and triggers Prometheus / Grafana rule sync
 // @Tags slo
@@ -743,6 +751,7 @@ func SLOEditHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "SLO configuration saved and rules synced successfully"})
 }
 
+// SLODeleteHandler Delete/Disable SLO for a Service.
 // @Summary Delete/Disable SLO for a Service
 // @Description Removes SLO constraints from a service and syncs Prometheus / Grafana rules
 // @Tags slo

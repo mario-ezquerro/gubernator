@@ -13,8 +13,8 @@ import (
 	"github.com/mario-ezquerro/gubernator/internal/db"
 )
 
-// AuthResult represents the outcome of an LDAP authentication attempt.
-type AuthResult struct {
+// LoginResult represents the outcome of an LDAP authentication attempt.
+type LoginResult struct {
 	UserDN      string   `json:"user_dn"`
 	Username    string   `json:"username"`
 	DisplayName string   `json:"display_name"`
@@ -30,7 +30,7 @@ type TestResult struct {
 	TLSActive      bool        `json:"tls_active"`
 	BindSuccessful bool        `json:"bind_successful"`
 	UserFound      bool        `json:"user_found"`
-	AuthResult     *AuthResult `json:"auth_result,omitempty"`
+	LoginResult     *LoginResult `json:"auth_result,omitempty"`
 	Message        string      `json:"message"`
 	LatencyMs      int64       `json:"latency_ms"`
 }
@@ -68,7 +68,7 @@ func ConnectLDAP(cfg db.LDAPConfig) (*ldap.Conn, error) {
 }
 
 // AuthenticateLDAP attempts user authentication against an active LDAP configuration.
-func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult, error) {
+func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*LoginResult, error) {
 	if username == "" || password == "" {
 		return nil, errors.New("username and password cannot be empty")
 	}
@@ -175,7 +175,7 @@ func AuthenticateLDAP(cfg db.LDAPConfig, username, password string) (*AuthResult
 	// 6. Map Groups to Role
 	role := ResolveRole(cfg, groups)
 
-	return &AuthResult{
+	return &LoginResult{
 		UserDN:      userDN,
 		Username:    username,
 		DisplayName: displayName,
@@ -271,7 +271,7 @@ func TestLDAPConnection(cfg db.LDAPConfig, testUser, testPass string) (*TestResu
 			return res, authErr
 		}
 		res.UserFound = true
-		res.AuthResult = authRes
+		res.LoginResult = authRes
 		res.Message = fmt.Sprintf("Successfully authenticated test user %q (Assigned Role: %s, Groups: %d)", testUser, authRes.Role, len(authRes.Groups))
 	}
 

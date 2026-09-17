@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// MonitorDir returns the path to the monitor config directory (~/.gbnt/monitor/).
-func MonitorDir() string {
+// MonitorConfigDir returns the path to the monitor config directory (~/.gbnt/monitor/).
+func MonitorConfigDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".gbnt", "monitor")
 }

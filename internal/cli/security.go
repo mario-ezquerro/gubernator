@@ -31,7 +31,7 @@ var scanCmd = &cobra.Command{
 
 			var data struct {
 				Scans   []db.ImageScan            `json:"scans"`
-				Summary *security.SecuritySummary `json:"summary"`
+				Summary *security.ScanSummary `json:"summary"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 				_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)

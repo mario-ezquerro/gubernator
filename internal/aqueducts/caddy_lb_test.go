@@ -22,7 +22,7 @@ func TestGenerateCaddyfile_MultiUpstreamLoadBalancing(t *testing.T) {
 		t.Fatalf("db.Init failed: %v", err)
 	}
 
-	caddyDir := caddy.CaddyDir()
+	caddyDir := caddy.LocalCaddyDir()
 	if err := os.MkdirAll(caddyDir, 0755); err != nil {
 		t.Fatalf("failed to create caddy directory: %v", err)
 	}

@@ -71,7 +71,7 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 	_ = os.Setenv("HOME", tmpDir)
 	defer func() { _ = os.Setenv("HOME", origHome) }()
 
-	_ = os.MkdirAll(coredns.CoreDNSDir(), 0755)
+	_ = os.MkdirAll(coredns.LocalConfigDir(), 0755)
 
 	now := time.Now()
 
@@ -156,7 +156,7 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 	// Run GenerateHostsFile
 	GenerateHostsFile()
 
-	hostsFile := filepath.Join(coredns.CoreDNSDir(), "gubernator.hosts")
+	hostsFile := filepath.Join(coredns.LocalConfigDir(), "gubernator.hosts")
 	contentBytes, err := os.ReadFile(hostsFile)
 	if err != nil {
 		t.Fatalf("failed to read generated hosts file: %v", err)

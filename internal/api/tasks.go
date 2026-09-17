@@ -27,6 +27,7 @@ type TaskWithImage struct {
 	Constraints []string `json:"constraints"`
 }
 
+// NodeTasksHandler Get assigned tasks for a node.
 // @Summary Get assigned tasks for a node
 // @Description Fetches active tasks for the worker to execute and proxy
 // @Tags tasks
@@ -108,6 +109,7 @@ type TaskStatusRequest struct {
 	Error         string `json:"error"`
 }
 
+// UpdateTaskStatusHandler Update task status.
 // @Summary Update task status
 // @Description Worker reports back whether the task is running or failed
 // @Tags tasks
@@ -151,6 +153,7 @@ func UpdateTaskStatusHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
 }
 
+// TaskListHandler List all tasks.
 // @Summary List all tasks
 // @Description Get a list of all tasks
 // @Tags tasks
@@ -167,6 +170,7 @@ func TaskListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// TaskRmHandler Remove a task.
 // @Summary Remove a task
 // @Description Delete a task by ID
 // @Tags tasks
