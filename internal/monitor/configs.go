@@ -330,7 +330,7 @@ func getWorkerIPs() []string {
 				}
 				sqlDB, err := tmpDB.DB()
 				if err == nil {
-					sqlDB.Close()
+					_ = sqlDB.Close()
 				}
 				if len(ips) > 0 {
 					return ips

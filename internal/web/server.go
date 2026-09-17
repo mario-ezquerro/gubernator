@@ -1386,7 +1386,9 @@ func deleteTaskHandler(c *gin.Context) {
 	// Stop the actual container first across local or remote host
 	var task db.Task
 	if err := db.DB.First(&task, "id = ?", id).Error; err == nil && task.ContainerName != "" {
-		go docker.RemoveContainerOnNode(task.NodeID, task.ContainerName)
+		go func(nodeID, cName string) {
+			_ = docker.RemoveContainerOnNode(nodeID, cName)
+		}(task.NodeID, task.ContainerName)
 	}
 
 	db.DB.Where("id = ?", id).Delete(&db.Task{})
@@ -2573,7 +2575,7 @@ func serviceDefinitionChanged(existing db.Service, newDef composeService) bool {
 	if !stringSlicesEqual(existing.Ports, newDef.Ports) {
 		return true
 	}
-	if !stringSlicesEqual(existing.Env, []string(newDef.Environment)) {
+	if !stringSlicesEqual(existing.Env, newDef.Environment) {
 		return true
 	}
 	if !stringSlicesEqual(existing.Volumes, newDef.Volumes) {
@@ -3115,7 +3117,7 @@ func updateServiceRecord(svc *db.Service, newDef composeService, replicas int) {
 
 	svc.Image = newDef.Image
 	svc.Ports = newDef.Ports
-	svc.Env = []string(newDef.Environment)
+	svc.Env = newDef.Environment
 	svc.Volumes = newDef.Volumes
 	svc.Command = string(newDef.Command)
 	svc.Constraints = constraints
@@ -3198,8 +3200,8 @@ func stopContainerByName(name string) {
 		_ = docker.RemoveContainerOnNode(task.NodeID, name)
 		return
 	}
-	exec.Command("docker", "stop", name).Run()
-	exec.Command("docker", "rm", "-f", name).Run()
+	_ = exec.Command("docker", "stop", name).Run()
+	_ = exec.Command("docker", "rm", "-f", name).Run()
 }
 
 func nodeInspectHandler(c *gin.Context) {
@@ -3384,7 +3386,7 @@ func nodeRebootHandler(c *gin.Context) {
 		cmd := exec.Command("ssh", sshArgs...)
 		if err := cmd.Run(); err != nil {
 			slog.Warn("ssh reboot returned error, trying fallback local reboot", "ip", ip, "err", err)
-			exec.Command("sudo", "reboot").Run()
+			_ = exec.Command("sudo", "reboot").Run()
 		}
 	}(targetIP)
 
@@ -3538,7 +3540,7 @@ func nodeAddHandler(c *gin.Context) {
 		})
 		return
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	addLog("SSH Handshake", "SSH session established securely.", "ok")
 
 	// 2. Fetch system and hardware info
@@ -3558,10 +3560,10 @@ func nodeAddHandler(c *gin.Context) {
 	var cpuCount = 2
 	var ramMB = 2048
 	if len(lines) >= 3 {
-		fmt.Sscanf(lines[2], "%d", &cpuCount)
+		_, _ = fmt.Sscanf(lines[2], "%d", &cpuCount)
 	}
 	if len(lines) >= 4 {
-		fmt.Sscanf(lines[3], "%d", &ramMB)
+		_, _ = fmt.Sscanf(lines[3], "%d", &ramMB)
 	}
 	addLog("Hardware Discovery", fmt.Sprintf("Detected hostname '%s', %d CPU cores, %d MB RAM.", hostname, cpuCount, ramMB), "ok")
 
@@ -3972,7 +3974,7 @@ func nodeShellHandler(c *gin.Context) {
 	}
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
-		ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start host shell: %v\r\n", err)))
+		_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Failed to start host shell: %v\r\n", err)))
 		return
 	}
 	defer func() {
@@ -4033,8 +4035,8 @@ func webDrainNodeTasks(nodeID string) {
 			containerName = "gbnt-" + task.ID
 		}
 		if task.NodeID == "node-local-manager" {
-			exec.Command("docker", "stop", containerName).Run()
-			exec.Command("docker", "rm", "-f", containerName).Run()
+			_ = exec.Command("docker", "stop", containerName).Run()
+			_ = exec.Command("docker", "rm", "-f", containerName).Run()
 		} else {
 			var targetNode db.Node
 			if err := db.DB.First(&targetNode, "id = ? OR ip = ?", task.NodeID, task.NodeID).Error; err == nil && targetNode.IP != "" {
@@ -4793,7 +4795,7 @@ func queryPrometheusRangeMetric(query string, start, end, step int64) map[int64]
 	if err != nil {
 		return res
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		Data struct {
@@ -5068,7 +5070,7 @@ func queryPrometheusMetric(query string) (float64, error) {
 	if getErr != nil {
 		return 0, getErr
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		Data struct {
@@ -5665,7 +5667,7 @@ func authLoginHandler(c *gin.Context) {
 				}
 
 				// Check if user has MFA active or cluster enforces MFA (globally or for privileged roles: admin/operator)
-				isPrivileged := (role == auth.RoleAdmin || role == auth.RoleOperator)
+				isPrivileged := role == auth.RoleAdmin || role == auth.RoleOperator
 				userRequiresMFA := localUser.MFAEnabled || mfaEnforced || (secCfg.MFAEnforcePrivileged && isPrivileged)
 				if userRequiresMFA {
 					pendingToken, tErr := auth.GenerateMFAPendingToken(session)
@@ -5708,45 +5710,45 @@ func authLoginHandler(c *gin.Context) {
 					"user":  session,
 				})
 				return
-			} else {
-				// Local auth failed — enforce lockout policy (ENS op.acc.2)
-				maxAttempts := secCfg.MaxFailedLogins
-				if maxAttempts <= 0 {
-					maxAttempts = 5
-				}
-				lockMinutes := secCfg.LockoutDurationMinutes
-				if lockMinutes <= 0 {
-					lockMinutes = 15
-				}
+			}
 
-				localUser.FailedLoginAttempts++
-				if localUser.FailedLoginAttempts >= maxAttempts {
-					lockUntil := time.Now().Add(time.Duration(lockMinutes) * time.Minute)
-					localUser.LockedUntil = &lockUntil
-					db.DB.Model(&localUser).Updates(map[string]interface{}{
-						"failed_login_attempts": localUser.FailedLoginAttempts,
-						"locked_until":          lockUntil,
-					})
-					logAudit(c, localUser.Username, "LOCAL", "ACCOUNT_LOCKED", "FAILURE",
-						fmt.Sprintf("Account locked for %d minutes after %d consecutive failed login attempts (ENS op.acc.2)", lockMinutes, localUser.FailedLoginAttempts))
-					c.JSON(http.StatusLocked, gin.H{
-						"error":        fmt.Sprintf("Account has been locked for %d minutes due to %d consecutive failed login attempts (ENS op.acc.2).", lockMinutes, localUser.FailedLoginAttempts),
-						"locked":       true,
-						"locked_until": lockUntil,
-					})
-					return
-				}
+			// Local auth failed — enforce lockout policy (ENS op.acc.2)
+			maxAttempts := secCfg.MaxFailedLogins
+			if maxAttempts <= 0 {
+				maxAttempts = 5
+			}
+			lockMinutes := secCfg.LockoutDurationMinutes
+			if lockMinutes <= 0 {
+				lockMinutes = 15
+			}
 
-				db.DB.Model(&localUser).Update("failed_login_attempts", localUser.FailedLoginAttempts)
-				remaining := maxAttempts - localUser.FailedLoginAttempts
-				logAudit(c, localUser.Username, "LOCAL", "LOGIN_FAILED", "FAILURE",
-					fmt.Sprintf("Invalid credentials (attempt %d of %d, ENS op.acc.2)", localUser.FailedLoginAttempts, maxAttempts))
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error":              fmt.Sprintf("Invalid credentials. %d attempt(s) remaining before account lockout.", remaining),
-					"remaining_attempts": remaining,
+			localUser.FailedLoginAttempts++
+			if localUser.FailedLoginAttempts >= maxAttempts {
+				lockUntil := time.Now().Add(time.Duration(lockMinutes) * time.Minute)
+				localUser.LockedUntil = &lockUntil
+				db.DB.Model(&localUser).Updates(map[string]interface{}{
+					"failed_login_attempts": localUser.FailedLoginAttempts,
+					"locked_until":          lockUntil,
+				})
+				logAudit(c, localUser.Username, "LOCAL", "ACCOUNT_LOCKED", "FAILURE",
+					fmt.Sprintf("Account locked for %d minutes after %d consecutive failed login attempts (ENS op.acc.2)", lockMinutes, localUser.FailedLoginAttempts))
+				c.JSON(http.StatusLocked, gin.H{
+					"error":        fmt.Sprintf("Account has been locked for %d minutes due to %d consecutive failed login attempts (ENS op.acc.2).", lockMinutes, localUser.FailedLoginAttempts),
+					"locked":       true,
+					"locked_until": lockUntil,
 				})
 				return
 			}
+
+			db.DB.Model(&localUser).Update("failed_login_attempts", localUser.FailedLoginAttempts)
+			remaining := maxAttempts - localUser.FailedLoginAttempts
+			logAudit(c, localUser.Username, "LOCAL", "LOGIN_FAILED", "FAILURE",
+				fmt.Sprintf("Invalid credentials (attempt %d of %d, ENS op.acc.2)", localUser.FailedLoginAttempts, maxAttempts))
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":              fmt.Sprintf("Invalid credentials. %d attempt(s) remaining before account lockout.", remaining),
+				"remaining_attempts": remaining,
+			})
+			return
 		}
 
 		// Fallback for environment variable admin account
@@ -7185,7 +7187,7 @@ func logsStatusHandler(c *gin.Context) {
 	client := http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(baseURL + "/ready")
 	if err == nil && (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable) {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		c.JSON(http.StatusOK, gin.H{
 			"active": true,
 			"driver": "loki",
@@ -7194,7 +7196,7 @@ func logsStatusHandler(c *gin.Context) {
 		return
 	}
 	if resp != nil && resp.Body != nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"active": false,
@@ -7225,7 +7227,7 @@ func logsLabelsHandler(c *gin.Context) {
 					}
 				}
 			}
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -7339,7 +7341,7 @@ func fetchLogsInternal(query, container, node, _ /*stack*/, stream, level, timeR
 
 	resp, err := client.Get(reqURL)
 	if err == nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode == http.StatusOK {
 			var lokiRes struct {
 				Status string `json:"status"`
@@ -7585,7 +7587,7 @@ func storageDockerVolumePruneHandler(c *gin.Context) {
 	var req struct {
 		TargetNode string `json:"target_node"`
 	}
-	c.ShouldBindJSON(&req)
+	_ = c.ShouldBindJSON(&req)
 	report, err := storage.PruneDockerVolumes(req.TargetNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -7966,7 +7968,7 @@ func backupUploadHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	hasher := sha256.New()
 	_, _ = io.Copy(hasher, f)

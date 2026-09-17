@@ -57,7 +57,7 @@ func detectLocalIP() string {
 
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err == nil {
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		localAddr := conn.LocalAddr().(*net.UDPAddr)
 		return localAddr.IP.String()
 	}
@@ -569,9 +569,13 @@ func GetCoreDNSStatusInfo(database *gorm.DB) *CoreDNSStatusInfo {
 
 	var customCount int64
 	var taskCount int64
-	if db.DB != nil {
-		db.DB.Model(&db.CustomDNSRecord{}).Count(&customCount)
-		db.DB.Model(&db.Task{}).Where("status = ? AND container_ip != ?", "running", "").Count(&taskCount)
+	targetDB := database
+	if targetDB == nil {
+		targetDB = db.DB
+	}
+	if targetDB != nil {
+		targetDB.Model(&db.CustomDNSRecord{}).Count(&customCount)
+		targetDB.Model(&db.Task{}).Where("status = ? AND container_ip != ?", "running", "").Count(&taskCount)
 	}
 	info.TotalRecords = int(customCount + taskCount*2)
 

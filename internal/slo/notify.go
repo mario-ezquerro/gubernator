@@ -126,8 +126,7 @@ func SendWebhookAlert(cfg *db.SLONotificationConfig, subject, details string, is
 		payload = map[string]interface{}{
 			"content": fmt.Sprintf("**%s**\n%s", subject, details),
 		}
-	} else {
-		// Slack & generic default payload
+	} else if isSlack {
 		payload = map[string]interface{}{
 			"text": fmt.Sprintf("*%s*\n%s", subject, details),
 			"attachments": []map[string]interface{}{
@@ -138,6 +137,14 @@ func SendWebhookAlert(cfg *db.SLONotificationConfig, subject, details string, is
 					"ts":    time.Now().Unix(),
 				},
 			},
+		}
+	} else {
+		// Generic webhook payload
+		payload = map[string]interface{}{
+			"text":    fmt.Sprintf("%s: %s", subject, details),
+			"subject": subject,
+			"details": details,
+			"time":    time.Now().Format(time.RFC3339),
 		}
 	}
 
