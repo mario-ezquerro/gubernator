@@ -90,6 +90,13 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
   String _isoThemeFilter = "ALL"; // ALL, A.5, A.8
   String _isoStatusFilter = "ALL"; // ALL, ISSUES, COMPLIANT, PARTIAL, NON_COMPLIANT
 
+  // DORA Compliance State (Regulation (EU) 2022/2554)
+  DORASummaryModel? _doraSummary;
+  bool _doraLoading = true;
+  String? _doraError;
+  String _doraPillarFilter = "ALL";
+  String _doraStatusFilter = "ALL";
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +122,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     _loadCISStatus();
     _loadENSStatus();
     _loadISO27001Status();
+    _loadDORAStatus();
   }
 
   Future<void> _loadComplianceOverview() async {
@@ -148,6 +156,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         _loadCISStatus(),
         _loadENSStatus(),
         _loadISO27001Status(),
+        _loadDORAStatus(),
       ]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -266,6 +275,29 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         setState(() {
           _isoError = e.toString();
           _isoLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadDORAStatus() async {
+    setState(() {
+      _doraLoading = true;
+      _doraError = null;
+    });
+    try {
+      final summary = await ApiService.fetchDORAStatus();
+      if (mounted) {
+        setState(() {
+          _doraSummary = summary;
+          _doraLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _doraError = e.toString();
+          _doraLoading = false;
         });
       }
     }
@@ -3642,6 +3674,19 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   }
                 },
               ),
+              const SizedBox(width: 6),
+              _buildStandardPill(
+                isDark: isDark,
+                primaryColor: const Color(0xFFF59E0B),
+                title: "🏛️ EU DORA (Reg. 2022/2554)",
+                isSelected: _selectedComplianceStandard == "DORA",
+                onTap: () {
+                  setState(() => _selectedComplianceStandard = "DORA");
+                  if (_doraSummary == null && !_doraLoading) {
+                    _loadDORAStatus();
+                  }
+                },
+              ),
             ],
           ),
         ),
@@ -3655,7 +3700,9 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   ? _buildCISDockerDashboardTab(isDark, primaryColor)
                   : (_selectedComplianceStandard == "ENS"
                       ? _buildENSDashboardTab(isDark, primaryColor)
-                      : _buildISO27001DashboardTab(isDark, primaryColor))),
+                      : (_selectedComplianceStandard == "ISO27001"
+                          ? _buildISO27001DashboardTab(isDark, primaryColor)
+                          : _buildDORADashboardTab(isDark, primaryColor)))),
         ),
       ],
     );

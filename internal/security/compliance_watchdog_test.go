@@ -91,11 +91,12 @@ func TestEvaluateAllCompliance(t *testing.T) {
 	if overview.OverallScore <= 0 {
 		t.Errorf("expected positive overall score, got %.2f", overview.OverallScore)
 	}
-	if len(overview.Standards) != 4 {
-		t.Fatalf("expected 4 standards, got %d", len(overview.Standards))
+	if len(overview.Standards) != 5 {
+		t.Fatalf("expected 5 standards, got %d", len(overview.Standards))
 	}
 	if overview.Standards[0].Code != "ENS" || overview.Standards[1].Code != "NIS2" ||
-		overview.Standards[2].Code != "CIS" || overview.Standards[3].Code != "ISO27001" {
+		overview.Standards[2].Code != "CIS" || overview.Standards[3].Code != "ISO27001" ||
+		overview.Standards[4].Code != "DORA" {
 		t.Errorf("unexpected standards order: %+v", overview.Standards)
 	}
 
@@ -121,13 +122,13 @@ func TestEvaluateAllCompliance(t *testing.T) {
 	// Verify that degradation was recorded
 	foundDegraded := false
 	for _, std := range degradedOverview.DegradedStandards {
-		if std == "ENS" || std == "NIS2" {
+		if std == "ENS" || std == "NIS2" || std == "DORA" {
 			foundDegraded = true
 			break
 		}
 	}
 	if !foundDegraded {
-		t.Errorf("expected degraded standards to include ENS or NIS2, got: %v", degradedOverview.DegradedStandards)
+		t.Errorf("expected degraded standards to include ENS, NIS2, or DORA, got: %v", degradedOverview.DegradedStandards)
 	}
 
 	// 4. Verify GetLatestOverview returns cached overview

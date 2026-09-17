@@ -3118,7 +3118,39 @@ class ApiService {
     }
   }
 
-  /// Fetches the unified Continuous Compliance Overview across all 4 regulatory frameworks.
+  /// Fetches cluster compliance status against EU DORA (Regulation 2022/2554).
+  static Future<DORASummaryModel?> fetchDORAStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/dora/status'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return DORASummaryModel.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Downloads the technical DORA operational resilience audit report.
+  static Future<String?> fetchDORAReport({String format = 'markdown'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('/api/security/dora/report?format=$format'),
+        headers: authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetches the unified Continuous Compliance Overview across all 5 regulatory frameworks.
   static Future<ComplianceOverviewModel?> fetchComplianceOverview() async {
     try {
       final response = await http.get(

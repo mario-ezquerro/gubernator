@@ -544,6 +544,55 @@ func SecurityISO27001ReportHandler(c *gin.Context) {
 	c.String(http.StatusOK, report)
 }
 
+// SecurityDORAStatusHandler returns the European Union DORA Regulation (EU 2022/2554) compliance assessment.
+// @Summary      Get DORA compliance status
+// @Description  Evaluates 16 operational resilience measures across the 5 statutory DORA pillars, returning resilience score and tier
+// @Tags         Security
+// @Produce      json
+// @Success      200  {object}  security.DORASummary
+// @Router       /v1/security/dora/status [get]
+func SecurityDORAStatusHandler(c *gin.Context) {
+	summary := security.EvaluateDORACompliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+// SecurityDORAReportHandler generates and exports the technical DORA compliance report in Markdown or JSON.
+// @Summary      Export DORA operational resilience audit report
+// @Description  Generates official technical compliance report for financial supervisory authorities in Markdown or JSON
+// @Tags         Security
+// @Produce      markdown,json
+// @Param        format  query     string  false  "Report format (markdown, json)"  default(markdown)
+// @Success      200     {string}  string
+// @Router       /v1/security/dora/report [get]
+func SecurityDORAReportHandler(c *gin.Context) {
+	summary := security.EvaluateDORACompliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=dora-compliance-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	version := "v2.95.15"
+	for _, p := range []string{"VERSION", "/home/ubuntu/VERSION", "/data/VERSION", "/app/VERSION", "../VERSION"} {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			v := strings.TrimSpace(string(b))
+			if v != "" && strings.HasPrefix(v, "v") {
+				version = v
+				break
+			}
+		}
+	}
+
+	report := security.GenerateDORAReportMarkdown(summary, version)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=dora-compliance-report-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
 // SecuritySIEMConfigHandler returns the active SIEM & ENS configuration.
 func SecuritySIEMConfigHandler(c *gin.Context) {
 	var cfg db.SecurityConfig

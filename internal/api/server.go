@@ -336,6 +336,8 @@ func Start(ctx context.Context) error {
 			securityRoute.GET("/cis-docker/report", SecurityCISDockerReportHandler)
 			securityRoute.GET("/iso27001/status", SecurityISO27001StatusHandler)
 			securityRoute.GET("/iso27001/report", SecurityISO27001ReportHandler)
+			securityRoute.GET("/dora/status", SecurityDORAStatusHandler)
+			securityRoute.GET("/dora/report", SecurityDORAReportHandler)
 			securityRoute.GET("/siem", SecuritySIEMConfigHandler)
 			securityRoute.GET("/siem/status", SecuritySIEMStatusHandler)
 			securityRoute.POST("/siem", SecuritySIEMUpdateHandler)

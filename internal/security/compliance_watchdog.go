@@ -20,7 +20,7 @@ var (
 			Name: "gbnt_compliance_score",
 			Help: "Current compliance score (0.0 to 100.0) evaluated by the continuous compliance audit engine.",
 		},
-		[]string{"framework"}, // "ens", "nis2", "cis_docker", "iso27001"
+		[]string{"framework"}, // "ens", "nis2", "cis_docker", "iso27001", "dora"
 	)
 	metricsRegistered sync.Once
 
@@ -40,7 +40,7 @@ func init() {
 // StandardScore summarizes a specific regulatory framework's score and tier.
 type StandardScore struct {
 	Name           string    `json:"name"`            // e.g. "Spanish ENS (RD 311/2022)"
-	Code           string    `json:"code"`            // "ENS", "NIS2", "CIS", "ISO27001"
+	Code           string    `json:"code"`            // "ENS", "NIS2", "CIS", "ISO27001", "DORA"
 	Score          float64   `json:"score"`           // 0.0 - 100.0
 	Status         string    `json:"status"`          // "COMPLIANT", "PARTIAL", "NON_COMPLIANT"
 	Category       string    `json:"category"`        // e.g. "ALTO", "MEDIO", "HIGH", "A+"
@@ -49,17 +49,18 @@ type StandardScore struct {
 	EvaluatedAt    time.Time `json:"evaluated_at"`
 }
 
-// ComplianceOverview aggregates evaluation results across all 4 regulatory frameworks.
+// ComplianceOverview aggregates evaluation results across all 5 regulatory frameworks.
 type ComplianceOverview struct {
 	EvaluatedAt       time.Time        `json:"evaluated_at"`
 	TriggerSource     string           `json:"trigger_source"` // "SCHEDULER", "MANUAL", "MUTATION"
-	OverallScore      float64          `json:"overall_score"`  // Average score across 4 frameworks (0-100)
+	OverallScore      float64          `json:"overall_score"`  // Average score across 5 frameworks (0-100)
 	OverallStatus     string           `json:"overall_status"` // "EXEMPLARY", "COMPLIANT", "PARTIAL", "ACTION_REQUIRED"
 	Standards         []StandardScore  `json:"standards"`
 	ENS               ENSSummary       `json:"ens"`
 	NIS2              NIS2Summary      `json:"nis2"`
 	CIS               CISDockerSummary `json:"cis"`
 	ISO27001          ISO27001Summary  `json:"iso27001"`
+	DORA              DORASummary      `json:"dora"`
 	DegradedStandards []string         `json:"degraded_standards,omitempty"`
 }
 
@@ -86,12 +87,13 @@ func EvaluateAllCompliance(database *gorm.DB, triggerSource string) ComplianceOv
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
 
 	var ens ENSSummary
 	var nis2 NIS2Summary
 	var cis CISDockerSummary
 	var iso ISO27001Summary
+	var dora DORASummary
 
 	go func() {
 		defer wg.Done()
@@ -113,6 +115,11 @@ func EvaluateAllCompliance(database *gorm.DB, triggerSource string) ComplianceOv
 		iso = EvaluateISO27001Compliance(database)
 	}()
 
+	go func() {
+		defer wg.Done()
+		dora = EvaluateDORACompliance(database)
+	}()
+
 	wg.Wait()
 
 	now := time.Now().UTC()
@@ -130,14 +137,16 @@ func EvaluateAllCompliance(database *gorm.DB, triggerSource string) ComplianceOv
 
 	cisScore := cis.ScorePercent
 	isoScore := iso.OverallScore
+	doraScore := dora.OverallScore
 
 	// Update Prometheus metrics
 	complianceScoreGauge.WithLabelValues("ens").Set(ensScore)
 	complianceScoreGauge.WithLabelValues("nis2").Set(nis2Score)
 	complianceScoreGauge.WithLabelValues("cis_docker").Set(cisScore)
 	complianceScoreGauge.WithLabelValues("iso27001").Set(isoScore)
+	complianceScoreGauge.WithLabelValues("dora").Set(doraScore)
 
-	overallScore := (ensScore + nis2Score + cisScore + isoScore) / 4.0
+	overallScore := (ensScore + nis2Score + cisScore + isoScore + doraScore) / 5.0
 
 	overallStatus := "ACTION_REQUIRED"
 	if overallScore >= 95.0 {
@@ -189,6 +198,16 @@ func EvaluateAllCompliance(database *gorm.DB, triggerSource string) ComplianceOv
 			TotalMeasures:  iso.TotalControls,
 			EvaluatedAt:    now,
 		},
+		{
+			Name:           "EU DORA (Reg. 2022/2554)",
+			Code:           "DORA",
+			Score:          doraScore,
+			Status:         string(dora.OverallReadiness),
+			Category:       string(dora.OverallReadiness),
+			CompliantCount: dora.CompliantCount,
+			TotalMeasures:  dora.TotalMeasures,
+			EvaluatedAt:    now,
+		},
 	}
 
 	overview := ComplianceOverview{
@@ -201,17 +220,16 @@ func EvaluateAllCompliance(database *gorm.DB, triggerSource string) ComplianceOv
 		NIS2:          nis2,
 		CIS:           cis,
 		ISO27001:      iso,
+		DORA:          dora,
 	}
 
 	// Degradation analysis against previous evaluation
 	overviewMu.Lock()
 	var degraded []string
 	if lastOverview != nil {
-		prevScores := map[string]float64{
-			"ENS":      lastOverview.Standards[0].Score,
-			"NIS2":     lastOverview.Standards[1].Score,
-			"CIS":      lastOverview.Standards[2].Score,
-			"ISO27001": lastOverview.Standards[3].Score,
+		prevScores := make(map[string]float64)
+		for _, s := range lastOverview.Standards {
+			prevScores[s.Code] = s.Score
 		}
 
 		for _, cur := range standards {

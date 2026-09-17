@@ -3841,6 +3841,116 @@ class ISO27001SummaryModel {
 }
 
 // -----------------------------------------------------------------------------
+// DORA (Regulation EU 2022/2554) Compliance Models
+// -----------------------------------------------------------------------------
+
+class DORAMeasureModel {
+  final String id;
+  final String pillar;
+  final String article;
+  final String title;
+  final String description;
+  final String status; // COMPLIANT, PARTIAL, NON_COMPLIANT
+  final double score;
+  final double weight;
+  final String evidence;
+  final String remediation;
+
+  DORAMeasureModel({
+    required this.id,
+    required this.pillar,
+    required this.article,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.score,
+    required this.weight,
+    required this.evidence,
+    required this.remediation,
+  });
+
+  bool get isCompliant => status == 'COMPLIANT';
+  bool get isPartial => status == 'PARTIAL';
+  bool get isNonCompliant => status == 'NON_COMPLIANT';
+
+  factory DORAMeasureModel.fromJson(Map<String, dynamic> json) {
+    return DORAMeasureModel(
+      id: json['id'] ?? '',
+      pillar: json['pillar'] ?? '',
+      article: json['article'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      status: json['status'] ?? 'NON_COMPLIANT',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      weight: (json['weight'] as num?)?.toDouble() ?? 1.0,
+      evidence: json['evidence'] ?? '',
+      remediation: json['remediation'] ?? '',
+    );
+  }
+}
+
+class DORASummaryModel {
+  final String evaluatedAt;
+  final String standardVersion;
+  final double overallScore;
+  final String overallReadiness; // HIGH, MEDIUM, BASIC, INSUFFICIENT
+  final double pillar1Score;
+  final double pillar2Score;
+  final double pillar3Score;
+  final double pillar4Score;
+  final double pillar5Score;
+  final int compliantCount;
+  final int partialCount;
+  final int nonCompliantCount;
+  final int totalMeasures;
+  final List<DORAMeasureModel> measures;
+
+  DORASummaryModel({
+    required this.evaluatedAt,
+    required this.standardVersion,
+    required this.overallScore,
+    required this.overallReadiness,
+    required this.pillar1Score,
+    required this.pillar2Score,
+    required this.pillar3Score,
+    required this.pillar4Score,
+    required this.pillar5Score,
+    required this.compliantCount,
+    required this.partialCount,
+    required this.nonCompliantCount,
+    required this.totalMeasures,
+    required this.measures,
+  });
+
+  factory DORASummaryModel.fromJson(Map<String, dynamic> json) {
+    final mList = <DORAMeasureModel>[];
+    if (json['measures'] != null && json['measures'] is List) {
+      for (final m in json['measures']) {
+        if (m is Map<String, dynamic>) {
+          mList.add(DORAMeasureModel.fromJson(m));
+        }
+      }
+    }
+    return DORASummaryModel(
+      evaluatedAt: json['evaluated_at'] ?? '',
+      standardVersion: json['standard_version'] ?? 'Regulation (EU) 2022/2554 (DORA)',
+      overallScore: (json['overall_score'] as num?)?.toDouble() ?? 0.0,
+      overallReadiness: json['overall_readiness'] ?? 'INSUFFICIENT',
+      pillar1Score: (json['pillar1_score'] as num?)?.toDouble() ?? 0.0,
+      pillar2Score: (json['pillar2_score'] as num?)?.toDouble() ?? 0.0,
+      pillar3Score: (json['pillar3_score'] as num?)?.toDouble() ?? 0.0,
+      pillar4Score: (json['pillar4_score'] as num?)?.toDouble() ?? 0.0,
+      pillar5Score: (json['pillar5_score'] as num?)?.toDouble() ?? 0.0,
+      compliantCount: (json['compliant_count'] as num?)?.toInt() ?? 0,
+      partialCount: (json['partial_count'] as num?)?.toInt() ?? 0,
+      nonCompliantCount: (json['non_compliant_count'] as num?)?.toInt() ?? 0,
+      totalMeasures: (json['total_measures'] as num?)?.toInt() ?? 0,
+      measures: mList,
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Unified Continuous Compliance & Regulatory Suite Models
 // -----------------------------------------------------------------------------
 

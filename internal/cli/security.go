@@ -981,6 +981,96 @@ var iso27001Cmd = &cobra.Command{
 }
 
 var (
+	doraFormatFlag string
+	doraReportFlag bool
+	doraPillarFlag string
+)
+
+var doraCmd = &cobra.Command{
+	Use:     "dora",
+	Aliases: []string{"resilience"},
+	Short:   "Audit cluster operational resilience under Regulation (EU) 2022/2554 (DORA)",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp, err := DoAPIRequest("GET", "/v1/security/dora/status", nil)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to connect to Manager: %v\n", err)
+			os.Exit(1)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to evaluate DORA resilience: %s\n", string(body))
+			os.Exit(1)
+		}
+
+		var s security.DORASummary
+		if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Failed to parse response: %v\n", err)
+			os.Exit(1)
+		}
+
+		if doraReportFlag || doraFormatFlag == "markdown" || doraFormatFlag == "md" {
+			reportResp, err := DoAPIRequest("GET", "/v1/security/dora/report", nil)
+			if err == nil && reportResp.StatusCode == http.StatusOK {
+				defer func() { _ = reportResp.Body.Close() }()
+				body, _ := io.ReadAll(reportResp.Body)
+				fmt.Println(string(body))
+				return
+			}
+		}
+
+		if doraFormatFlag == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(s)
+			return
+		}
+
+		// Formatted terminal summary
+		fmt.Println("=========================================================================================")
+		fmt.Printf("🇪🇺  REGULATION (EU) 2022/2554 (DORA) | OPERATIONAL RESILIENCE AUDIT\n")
+		fmt.Println("=========================================================================================")
+		fmt.Printf("  Overall Resilience Score: %.1f%%\n", s.OverallScore)
+		fmt.Printf("  Resilience Readiness:    %s\n", s.OverallReadiness)
+		fmt.Printf("  Pillar 1 (ICT Risk):     %.1f%%\n", s.Pillar1Score)
+		fmt.Printf("  Pillar 2 (Incidents):    %.1f%%\n", s.Pillar2Score)
+		fmt.Printf("  Pillar 3 (Resilience):   %.1f%%\n", s.Pillar3Score)
+		fmt.Printf("  Pillar 4 (Third-Party):  %.1f%%\n", s.Pillar4Score)
+		fmt.Printf("  Pillar 5 (Reporting):    %.1f%%\n", s.Pillar5Score)
+		fmt.Printf("  Measures Evaluated:      %d (%d Compliant, %d Partial, %d Non-Compliant)\n",
+			s.TotalMeasures, s.CompliantCount, s.PartialCount, s.NonCompliantCount)
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		fmt.Printf("%-15s %-32s %-14s %-8s %-30s\n", "ARTICLE", "REQUIREMENT", "STATUS", "SCORE", "TECHNICAL EVIDENCE")
+		fmt.Println("-----------------------------------------------------------------------------------------")
+		for _, m := range s.Measures {
+			if doraPillarFlag != "" && doraPillarFlag != "all" {
+				if !strings.Contains(strings.ToLower(string(m.Pillar)), strings.ToLower(doraPillarFlag)) {
+					continue
+				}
+			}
+			statusStr := "❌ Non-Compliant"
+			if m.Status == security.DORAStatusCompliant {
+				statusStr = "✅ Compliant"
+			} else if m.Status == security.DORAStatusPartial {
+				statusStr = "⚠️ Partial"
+			}
+			evid := m.Evidence
+			if len(evid) > 35 {
+				evid = evid[:32] + "..."
+			}
+			title := m.Title
+			if len(title) > 30 {
+				title = title[:27] + "..."
+			}
+			fmt.Printf("%-15s %-32s %-14s %-8.0f%% %-30s\n", m.Article, title, statusStr, m.Score, evid)
+		}
+		fmt.Println("=========================================================================================")
+		fmt.Println("Tip: Run 'gbnt dora --report' to display the full official supervisory resilience report.")
+	},
+}
+
+var (
 	siemHostFlag   string
 	siemPortFlag   int
 	siemProtoFlag  string
@@ -1223,6 +1313,10 @@ func init() {
 	iso27001Cmd.Flags().StringVarP(&isoThemeFlag, "theme", "t", "all", "Filter controls by Annex A theme (a5, a8, all)")
 	iso27001Cmd.Flags().StringVarP(&isoStatusFlag, "status", "s", "all", "Filter controls by status (compliant, partial, non_compliant, all)")
 
+	doraCmd.Flags().StringVarP(&doraFormatFlag, "format", "f", "table", "Output format (table, json, markdown)")
+	doraCmd.Flags().BoolVarP(&doraReportFlag, "report", "r", false, "Display full official technical DORA resilience report")
+	doraCmd.Flags().StringVarP(&doraPillarFlag, "pillar", "p", "all", "Filter measures by DORA pillar (risk, incidents, resilience, third-party, reporting, all)")
+
 	securitySiemTestCmd.Flags().StringVarP(&siemHostFlag, "host", "H", "", "SIEM host/IP (e.g. 192.168.1.50)")
 	securitySiemTestCmd.Flags().IntVarP(&siemPortFlag, "port", "p", 514, "SIEM port")
 	securitySiemTestCmd.Flags().StringVar(&siemProtoFlag, "proto", "UDP", "Network protocol (UDP, TCP, TLS)")
@@ -1273,6 +1367,7 @@ func init() {
 	securityCmd.AddCommand(nis2Cmd)
 	securityCmd.AddCommand(cisCmd)
 	securityCmd.AddCommand(iso27001Cmd)
+	securityCmd.AddCommand(doraCmd)
 
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(sbomCmd)
@@ -1282,4 +1377,5 @@ func init() {
 	rootCmd.AddCommand(nis2Cmd)
 	rootCmd.AddCommand(cisCmd)
 	rootCmd.AddCommand(iso27001Cmd)
+	rootCmd.AddCommand(doraCmd)
 }

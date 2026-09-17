@@ -504,6 +504,9 @@ func StartDashboard() {
 		api.GET("/security/iso27001/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001StatusHandler)
 		api.GET("/security/iso27001/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), iso27001ReportHandler)
 
+		api.GET("/security/dora/status", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), doraStatusHandler)
+		api.GET("/security/dora/report", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), doraReportHandler)
+
 		// Unified Continuous Compliance & Regulatory Suite
 		api.GET("/security/compliance/overview", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator, auth.RoleReadOnly), complianceOverviewHandler)
 		api.POST("/security/compliance/evaluate-all", auth.RequireRole(auth.RoleAdmin, auth.RoleAuditor, auth.RoleOperator), complianceEvaluateAllHandler)
@@ -5135,6 +5138,9 @@ func caddyRoutesHandler(c *gin.Context) {
 	lines := strings.Split(string(content), "\n")
 	var curHost string
 	var upstreams []string
+	var curTLS string
+	var curDirectives []string
+
 	for _, l := range lines {
 		trimmed := strings.TrimSpace(l)
 		// Only unindented lines ending with '{' are top-level site blocks
@@ -5143,6 +5149,8 @@ func caddyRoutesHandler(c *gin.Context) {
 			if candidate != "" && !strings.HasPrefix(candidate, "@") && !strings.HasPrefix(candidate, "#") {
 				curHost = candidate
 				upstreams = nil
+				curDirectives = nil
+				curTLS = "Automated (ACME/Internal)"
 			}
 		} else if strings.HasPrefix(trimmed, "reverse_proxy") && curHost != "" {
 			parts := strings.Fields(trimmed)
@@ -5151,6 +5159,10 @@ func caddyRoutesHandler(c *gin.Context) {
 					upstreams = append(upstreams, p)
 				}
 			}
+		} else if strings.HasPrefix(trimmed, "tls") && curHost != "" {
+			curTLS = trimmed
+		} else if curHost != "" && trimmed != "" && !strings.HasPrefix(trimmed, "#") && trimmed != "}" && trimmed != "{" {
+			curDirectives = append(curDirectives, trimmed)
 		} else if l == "}" && curHost != "" {
 			if curHost != ":80" {
 				wafActive := globalWAFEnabled
@@ -5165,9 +5177,27 @@ func caddyRoutesHandler(c *gin.Context) {
 					wafOrigin = routeOverride.OverriddenBy
 				}
 
+				scheme := "https"
+				cleanHost := curHost
+				if strings.HasPrefix(curHost, "http://") {
+					scheme = "http"
+					cleanHost = strings.TrimPrefix(curHost, "http://")
+				} else if strings.HasPrefix(curHost, "https://") {
+					scheme = "https"
+					cleanHost = strings.TrimPrefix(curHost, "https://")
+				} else if strings.HasSuffix(curHost, ":80") {
+					scheme = "http"
+				}
+				fullURL := fmt.Sprintf("%s://%s", scheme, cleanHost)
+
 				routes = append(routes, gin.H{
 					"host":           curHost,
+					"clean_host":     cleanHost,
+					"scheme":         scheme,
+					"url":            fullURL,
 					"upstreams":      upstreams,
+					"tls":            curTLS,
+					"directives":     curDirectives,
 					"health":         "healthy",
 					"uptime_percent": 99.98,
 					"notes":          "Managed by Gubernator Ingress",
@@ -5179,7 +5209,10 @@ func caddyRoutesHandler(c *gin.Context) {
 			curHost = ""
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"routes": routes})
+	c.JSON(http.StatusOK, gin.H{
+		"routes":    routes,
+		"caddyfile": string(content),
+	})
 }
 
 func caddyCertsHandler(c *gin.Context) {
@@ -7137,6 +7170,33 @@ func iso27001ReportHandler(c *gin.Context) {
 	report := security.GenerateISO27001Report(summary)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=iso-27001-soa-report-%s.txt", timestamp))
 	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.String(http.StatusOK, report)
+}
+
+// ---------------------------------------------------------------------------
+// DORA (REGULATION EU 2022/2554) HANDLERS
+// ---------------------------------------------------------------------------
+
+func doraStatusHandler(c *gin.Context) {
+	summary := security.EvaluateDORACompliance(db.DB)
+	c.JSON(http.StatusOK, summary)
+}
+
+func doraReportHandler(c *gin.Context) {
+	summary := security.EvaluateDORACompliance(db.DB)
+	format := strings.ToLower(c.DefaultQuery("format", "markdown"))
+	timestamp := time.Now().Format("20060102-150405")
+
+	if format == "json" {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=dora-compliance-report-%s.json", timestamp))
+		c.Header("Content-Type", "application/json; charset=utf-8")
+		c.JSON(http.StatusOK, summary)
+		return
+	}
+
+	report := security.GenerateDORAReportMarkdown(summary, GetVersion())
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=dora-compliance-report-%s.md", timestamp))
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
 	c.String(http.StatusOK, report)
 }
 
