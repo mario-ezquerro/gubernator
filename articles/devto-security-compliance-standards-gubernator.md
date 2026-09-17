@@ -3,7 +3,7 @@ title: "The Only Container Orchestrator with Built-In Compliance: How Gubernator
 published: true
 tags: security, devops, docker, kubernetes
 series: Gubernator Orchestrator
-cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg
+cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_dora_cover.jpg
 canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/devto-security-compliance-standards-gubernator.md
 description: "Discover how Gubernator revolutionizes container orchestration by natively baking in ENS RD 311/2022, EU NIS 2, EU DORA (Reg. 2022/2554), CIS Docker Benchmark, ISO 27001, SHA-256 audit ledger, Cosign, and SBOM into a single sovereign Go binary."
 ---
@@ -23,7 +23,7 @@ In this deep dive, we explore Gubernator’s built-in security architecture, the
 
 ---
 
-![Gubernator Security & Compliance Suite](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg)
+![Gubernator Security & Compliance Suite](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_dora_cover.jpg)
 
 ---
 

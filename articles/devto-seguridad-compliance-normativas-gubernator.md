@@ -3,7 +3,7 @@ title: "El Único Orquestador con Compliance y Ciberseguridad Nativa: Cómo Gube
 published: true
 tags: security, devops, docker, spanish
 series: Gubernator Orchestrator
-cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg
+cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_dora_cover.jpg
 canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/devto-seguridad-compliance-normativas-gubernator.md
 description: "Descubre cómo Gubernator revoluciona la orquestación de contenedores integrando nativamente ENS RD 311/2022, NIS 2, DORA (Reg. 2022/2554), CIS Docker Benchmark, ISO 27001, auditoría forense SHA-256, Cosign y SBOM en un único binario soberano."
 ---
@@ -23,7 +23,7 @@ En este artículo analizaremos en profundidad la arquitectura de seguridad de Gu
 
 ---
 
-![Gubernator Security & Compliance Suite](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg)
+![Gubernator Security & Compliance Suite](https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_dora_cover.jpg)
 
 ---
 
