@@ -347,23 +347,48 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ── Logo ─────────────────────────────────────────────
                   Center(
                     child: Container(
-                      width: 64,
-                      height: 64,
+                      width: 76,
+                      height: 76,
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [primaryColor, const Color(0xFFD97706)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFF97316).withValues(alpha: 0.18),
+                            const Color(0xFFD97706).withValues(alpha: 0.08),
+                          ],
                         ),
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFF97316).withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.4),
-                            blurRadius: 16,
+                            color: const Color(0xFFF97316).withValues(alpha: 0.25),
+                            blurRadius: 18,
                             offset: const Offset(0, 6),
                           ),
                         ],
                       ),
-                      child: const Center(
-                        child: Text('🏛', style: TextStyle(fontSize: 32)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.asset(
+                          'assets/images/icono.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Image.network(
+                            '/gubernator-icon.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Image.network(
+                              '/images/icono.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => const Center(
+                                child: Icon(Icons.hub, color: Color(0xFFF97316), size: 36),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -515,32 +540,66 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        hintText: '••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                            size: 20,
+                    Stack(
+                      alignment: Alignment.centerRight,
+                      children: [
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            hintText: '••••••••',
+                            prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                            filled: true,
+                            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: primaryColor, width: 1.5),
+                            ),
+                            contentPadding: const EdgeInsets.only(left: 14, right: 48, top: 12, bottom: 12),
                           ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          onSubmitted: (_) => _handleLogin(),
                         ),
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                        Positioned(
+                          right: 4,
+                          child: Tooltip(
+                            message: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                mouseCursor: SystemMouseCursors.click,
+                                onTap: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                  final len = _passwordController.text.length;
+                                  _passwordController.selection = TextSelection.fromPosition(
+                                    TextPosition(offset: len),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    size: 20,
+                                    color: _obscurePassword
+                                        ? (isDark ? Colors.grey[400] : Colors.grey[600])
+                                        : const Color(0xFFF97316),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      onSubmitted: (_) => _handleLogin(),
+                      ],
                     ),
                     const SizedBox(height: 16),
 
