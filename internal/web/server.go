@@ -3502,7 +3502,7 @@ func runSSHCommand(client *ssh.Client, command string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to open SSH session: %w", err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	output, err := session.CombinedOutput(command)
 	return string(output), err
