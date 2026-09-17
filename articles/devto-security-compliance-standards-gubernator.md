@@ -1,10 +1,10 @@
 ---
 title: "The Only Container Orchestrator with Built-In Compliance: How Gubernator Enforces ENS, NIS 2, CIS Benchmark, and ISO 27001"
 published: true
-tags: security, devops, docker, compliance
+tags: security, devops, docker, kubernetes
 series: Gubernator Orchestrator
 cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg
-canonical_url: https://github.com/mario-ezquerro/gubernator
+canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/devto-security-compliance-standards-gubernator.md
 description: "Discover how Gubernator revolutionizes container orchestration by natively baking in ENS RD 311/2022, EU NIS 2, CIS Docker Benchmark, ISO 27001, SHA-256 audit ledger, Cosign, and SBOM into a single sovereign Go binary."
 ---
 

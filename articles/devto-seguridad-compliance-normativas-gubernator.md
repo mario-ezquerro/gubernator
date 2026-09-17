@@ -4,7 +4,7 @@ published: true
 tags: security, devops, docker, spanish
 series: Gubernator Orchestrator
 cover_image: https://raw.githubusercontent.com/mario-ezquerro/gubernator/main/articles/images/gubernator_security_compliance_cover.jpg
-canonical_url: https://github.com/mario-ezquerro/gubernator
+canonical_url: https://github.com/mario-ezquerro/gubernator/blob/main/articles/devto-seguridad-compliance-normativas-gubernator.md
 description: "Descubre cómo Gubernator revoluciona la orquestación de contenedores integrando nativamente ENS RD 311/2022, NIS 2, CIS Docker Benchmark, ISO 27001, auditoría forense SHA-256, Cosign y SBOM en un único binario soberano."
 ---
 
