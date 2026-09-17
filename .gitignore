@@ -69,3 +69,4 @@ gubernator.hosts
 # Static analysis reports
 *.sarif
 *.sarif.json
+!baseline.sarif.json
