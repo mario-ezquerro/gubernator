@@ -1347,9 +1347,15 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **DORA Technical Documentation Suite (`docs/dora.md`, `docs/compliance.md`, `mkdocs.yml`):**
   - Authored comprehensive `docs/dora.md` reference guide documenting the 5 statutory pillars of Regulation (EU) 2022/2554, the 16 technical evaluation measures, REST API endpoints, `gbnt dora` CLI commands, and Prometheus metrics.
   - Updated MkDocs navigation and Compliance Hub overview (`docs/compliance.md`) integrating EU DORA into the 5-framework regulatory matrix.
-* **Enterprise Login Hardening & Quick Admin Removal (`web-ui/lib/screens/login_screen.dart`, `internal/web/server.go`):**
-  - Removed "Quick Local Admin (admin / admin)" button from the public login screen to comply with ENS op.acc.2, CIS Docker Benchmark, and ISO 27001 access control baselines.
-  - Enhanced form navigation: pressing Enter in the username field now smoothly shifts focus to the password field (`TextInputAction.next`) via dedicated `FocusNode` instances instead of triggering an accidental premature submit.
-  - Added whitespace tolerance (`strings.TrimSpace`) and sanitization across login handlers to ensure copy-paste or mobile keyboard spaces never cause false-positive authentication errors.
+
+### 124. Deceptive Password Dots Removal, Clean Credential UX & Cache Busted Web Delivery (`v2.95.18`)
+* **Elimination of Fake Bullet Dots (`••••••••`) & Misleading Admin Hint (`web-ui/lib/screens/login_screen.dart`, `security_page.dart`):**
+  - Removed misleading `'••••••••'` hintText placeholders across the login screen and security modals (Local User creation, Password Reset, and LDAP bind credentials). Password fields now render clean and unpopulated (`hintText: 'Enter password'`), completely eliminating the false impression that credentials were pre-filled when no data was entered.
+  - Replaced misleading `'admin'` placeholder in the username field with `'Enter username'`, ensuring empty fields are immediately identifiable.
+  - Added `AutofillGroup` and standard `autofillHints` (`AutofillHints.username`, `AutofillHints.password`) to streamline browser autofill integrations.
+  - Added specific, bilingual validation error messages when either the username or password field is left blank.
+* **Automated Cache Busting & Service Worker Purge (`web-ui/web/index.html`, `flutter_bootstrap.js`):**
+  - Configured automatic CacheStorage and ServiceWorker purging in `index.html` and version-tagged script execution (`flutter_bootstrap.js?v=2.95.18`, `main.dart.js?v=2.95.18`) to eliminate stale PWA cache serving across client browsers.
+  - Stopped systemd services cleanly during binary deployment to prevent Linux `ETXTBUSY` (Text file busy) replacement failures across cluster nodes.
 
 

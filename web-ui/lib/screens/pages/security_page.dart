@@ -481,7 +481,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: "Password *",
-                          hintText: "••••••••",
+                          hintText: "Enter password",
                           helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
                         ),
                       ),
@@ -689,7 +689,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "New Password",
-                  hintText: "••••••••",
+                  hintText: "Enter new password",
                   helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
                 ),
               ),
@@ -699,7 +699,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Confirm New Password",
-                  hintText: "••••••••",
+                  hintText: "Confirm new password",
                 ),
               ),
             ],
@@ -1323,7 +1323,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                             obscureText: true,
                             decoration: const InputDecoration(
                               labelText: "Bind Password",
-                              hintText: "••••••••",
+                              hintText: "Enter bind password",
                             ),
                           ),
                         ),

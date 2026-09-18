@@ -52,7 +52,14 @@
         }
       });
     }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
   </script>
-  <script src="flutter_bootstrap.js?v=2.95.16" async></script>
+  <script src="flutter_bootstrap.js?v=2.95.18" async></script>
 </body>
 </html>

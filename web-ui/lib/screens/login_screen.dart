@@ -129,8 +129,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Please enter both username and password');
+    if (username.isEmpty && password.isEmpty) {
+      setState(() => _errorMessage = 'Por favor, introduzca usuario y contraseña / Please enter username and password');
+      return;
+    }
+    if (username.isEmpty) {
+      setState(() => _errorMessage = 'Por favor, introduzca el usuario (ej. admin) / Please enter username');
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() => _errorMessage = 'Por favor, introduzca la contraseña / Please enter password');
       return;
     }
 
@@ -503,111 +511,120 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Username
-                    Text(
-                      'Username / sAMAccountName',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _usernameController,
-                      focusNode: _usernameFocus,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        hintText: _selectedProvider == 'local' ? 'admin' : 'user@company.local',
-                        prefixIcon: const Icon(Icons.person_outline, size: 20),
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      onSubmitted: (_) => _passwordFocus.requestFocus(),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Password
-                    Text(
-                      'Password',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Stack(
-                      alignment: Alignment.centerRight,
-                      children: [
-                        TextField(
-                          controller: _passwordController,
-                          focusNode: _passwordFocus,
-                          textInputAction: TextInputAction.done,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            hintText: '••••••••',
-                            prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                            filled: true,
-                            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                    AutofillGroup(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Username
+                          Text(
+                            'Username / sAMAccountName',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: primaryColor, width: 1.5),
-                            ),
-                            contentPadding: const EdgeInsets.only(left: 14, right: 48, top: 12, bottom: 12),
                           ),
-                          onSubmitted: (_) => _handleLogin(),
-                        ),
-                        Positioned(
-                          right: 4,
-                          child: Tooltip(
-                            message: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                mouseCursor: SystemMouseCursors.click,
-                                onTap: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                  final len = _passwordController.text.length;
-                                  _passwordController.selection = TextSelection.fromPosition(
-                                    TextPosition(offset: len),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Icon(
-                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                    size: 20,
-                                    color: _obscurePassword
-                                        ? (isDark ? Colors.grey[400] : Colors.grey[600])
-                                        : const Color(0xFFF97316),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _usernameController,
+                            focusNode: _usernameFocus,
+                            autofillHints: const [AutofillHints.username],
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              hintText: _selectedProvider == 'local' ? 'Enter username' : 'user@company.local',
+                              prefixIcon: const Icon(Icons.person_outline, size: 20),
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            ),
+                            onSubmitted: (_) => _passwordFocus.requestFocus(),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Password
+                          Text(
+                            'Password',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Stack(
+                            alignment: Alignment.centerRight,
+                            children: [
+                              TextField(
+                                controller: _passwordController,
+                                focusNode: _passwordFocus,
+                                autofillHints: const [AutofillHints.password],
+                                textInputAction: TextInputAction.done,
+                                obscureText: _obscurePassword,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter password',
+                                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                                  filled: true,
+                                  fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(color: primaryColor, width: 1.5),
+                                  ),
+                                  contentPadding: const EdgeInsets.only(left: 14, right: 48, top: 12, bottom: 12),
+                                ),
+                                onSubmitted: (_) => _handleLogin(),
+                              ),
+                              Positioned(
+                                right: 4,
+                                child: Tooltip(
+                                  message: _obscurePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(20),
+                                      mouseCursor: SystemMouseCursors.click,
+                                      onTap: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                        final len = _passwordController.text.length;
+                                        _passwordController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: len),
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Icon(
+                                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                          size: 20,
+                                          color: _obscurePassword
+                                              ? (isDark ? Colors.grey[400] : Colors.grey[600])
+                                              : const Color(0xFFF97316),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
 
