@@ -157,16 +157,38 @@ func GenerateCaddyfile() {
 				}
 				// If no explicit caddyPort, route to published host port on worker
 				if caddyPort == "" && len(svc.Ports) > 0 {
-					parts := strings.Split(svc.Ports[0], ":")
-					if len(parts) >= 2 {
-						hostPort := parts[0]
-						if len(parts) == 3 {
-							hostPort = parts[1]
+					for _, portSpec := range svc.Ports {
+						spec := strings.TrimSpace(portSpec)
+						if idx := strings.Index(spec, "/"); idx != -1 {
+							spec = spec[:idx]
 						}
-						if hostPort != "" {
+						parts := strings.Split(spec, ":")
+						var hostPort string
+						if len(parts) == 2 {
+							hostPort = strings.TrimSpace(parts[0])
+						} else if len(parts) == 3 {
+							hostPort = strings.TrimSpace(parts[1])
+						}
+						if hostPort != "" && hostPort != "80" && hostPort != "443" {
 							targetPort = hostPort
+							break
 						}
 					}
+				}
+			}
+
+			// Safety check: Prevent Caddy from reverse proxying to its own listening port 80/443 on the same host
+			var node db.Node
+			isHostIP := targetIP == "127.0.0.1"
+			if err := db.DB.Where("id = ? OR ip = ?", t.NodeID, targetIP).First(&node).Error; err == nil {
+				if node.IP == targetIP {
+					isHostIP = true
+				}
+			}
+			if isHostIP && (targetPort == "80" || targetPort == "443") {
+				if t.ContainerIP != "" && t.ContainerIP != targetIP {
+					targetIP = t.ContainerIP
+					targetPort = defaultPort
 				}
 			}
 

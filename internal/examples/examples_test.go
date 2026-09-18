@@ -114,3 +114,53 @@ func TestReadServerStackFile(t *testing.T) {
 		t.Errorf("expected service 'testapp', got %v", res.Services)
 	}
 }
+
+func TestSaveServerStackFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "gbnt-server-save-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	yamlContent := `services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1::80"
+    deploy:
+      placement:
+        constraints:
+          - stack.name == demo-saved
+`
+	saved, err := SaveServerStackFile("demo-saved", "my-compose.yml", tempDir, yamlContent)
+	if err != nil {
+		t.Fatalf("SaveServerStackFile failed: %v", err)
+	}
+
+	if saved.Filename != "my-compose.yml" {
+		t.Errorf("expected filename 'my-compose.yml', got '%s'", saved.Filename)
+	}
+	if saved.InferredName != "demo-saved" {
+		t.Errorf("expected inferred name 'demo-saved', got '%s'", saved.InferredName)
+	}
+	if saved.Services != 1 {
+		t.Errorf("expected 1 service, got %d", saved.Services)
+	}
+
+	// Verify file exists on disk
+	if _, err := os.Stat(saved.Path); err != nil {
+		t.Errorf("saved file not found on disk: %v", err)
+	}
+
+	// Test invalid YAML rejection
+	_, err = SaveServerStackFile("bad", "bad.yml", tempDir, "this is not: valid: yaml: [")
+	if err == nil {
+		t.Errorf("expected error on invalid YAML, got nil")
+	}
+
+	// Test empty content rejection
+	_, err = SaveServerStackFile("empty", "empty.yml", tempDir, "   ")
+	if err == nil {
+		t.Errorf("expected error on empty content, got nil")
+	}
+}

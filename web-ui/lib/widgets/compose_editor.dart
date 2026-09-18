@@ -9,9 +9,11 @@ import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 
 import 'compose_autocomplete.dart';
+import 'save_server_stack_dialog.dart';
 import '../models/models.dart';
 import '../utils/clipboard_service.dart';
 import '../utils/compose_smart_merger.dart';
+import '../utils/download_service.dart';
 
 class ComposeEditorDialog extends StatefulWidget {
   final String stackName;
@@ -875,6 +877,65 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                                 label: const Text('Select All (Ctrl+A)', style: TextStyle(fontSize: 11)),
                                 onPressed: _handleSelectAll,
                               ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                  foregroundColor: const Color(0xFF58A6FF),
+                                ),
+                                icon: const Icon(Icons.download, size: 14),
+                                label: const Text('Save PC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                onPressed: () {
+                                  final fn = widget.stackName.isEmpty ? 'docker-compose.yml' : '${widget.stackName}.yml';
+                                  DownloadService.downloadYaml(_controller.text, filename: fn);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
+                                          const SizedBox(width: 8),
+                                          Text('Saved "$fn" to local computer disk'),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFF1E293B),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  visualDensity: VisualDensity.compact,
+                                  foregroundColor: const Color(0xFF2EA043),
+                                ),
+                                icon: const Icon(Icons.dns_outlined, size: 14),
+                                label: const Text('Save Server', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                onPressed: () async {
+                                  final savedPath = await showSaveServerStackDialog(
+                                    context: context,
+                                    initialName: widget.stackName,
+                                    yamlContent: _controller.text,
+                                  );
+                                  if (savedPath != null && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Text('Saved to Master server: $savedPath')),
+                                          ],
+                                        ),
+                                        backgroundColor: const Color(0xFF1E293B),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
                             ],
                           ),
                         ),
@@ -912,6 +973,55 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final fn = widget.stackName.isEmpty ? 'docker-compose.yml' : '${widget.stackName}.yml';
+                      DownloadService.downloadYaml(_controller.text, filename: fn);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
+                              const SizedBox(width: 8),
+                              Text('Saved "$fn" to local computer disk'),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFF1E293B),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.download, size: 16, color: Color(0xFF58A6FF)),
+                    label: const Text('Save on PC', style: TextStyle(color: Color(0xFF58A6FF))),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final savedPath = await showSaveServerStackDialog(
+                        context: context,
+                        initialName: widget.stackName,
+                        yamlContent: _controller.text,
+                      );
+                      if (savedPath != null && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text('Saved to Master server: $savedPath')),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF1E293B),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.dns_outlined, size: 16, color: Color(0xFF2EA043)),
+                    label: const Text('Save on Server', style: TextStyle(color: Color(0xFF2EA043))),
+                  ),
+                  const SizedBox(width: 16),
                   TextButton.icon(
                     onPressed: () {
                       _controller.text = _originalYaml;

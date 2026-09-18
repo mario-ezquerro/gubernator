@@ -386,3 +386,66 @@ func extractServiceNames(yamlContent string) []string {
 	}
 	return names
 }
+
+// SaveServerStackFile writes or updates a Compose YAML file directly on the Master server filesystem.
+func SaveServerStackFile(name, filename, customDir, content string) (*ServerStackFile, error) {
+	if strings.TrimSpace(content) == "" {
+		return nil, fmt.Errorf("compose YAML content cannot be empty")
+	}
+
+	// Verify basic YAML validity
+	var temp interface{}
+	if err := yaml.Unmarshal([]byte(content), &temp); err != nil {
+		return nil, fmt.Errorf("invalid YAML syntax: %w", err)
+	}
+
+	targetDir := strings.TrimSpace(customDir)
+	if targetDir == "" {
+		targetDir = DefaultServerStacksDir()
+	} else {
+		homeDir, _ := os.UserHomeDir()
+		if strings.HasPrefix(targetDir, "~") && homeDir != "" {
+			targetDir = filepath.Join(homeDir, strings.TrimPrefix(targetDir, "~"))
+		}
+	}
+
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory '%s': %w", targetDir, err)
+	}
+
+	fn := strings.TrimSpace(filename)
+	if fn == "" {
+		stName := strings.TrimSpace(name)
+		if stName == "" {
+			stName = inferStackName("stack", content)
+		}
+		fn = stName + ".yml"
+	}
+	if !strings.HasSuffix(fn, ".yml") && !strings.HasSuffix(fn, ".yaml") {
+		fn += ".yml"
+	}
+
+	fullPath := filepath.Join(targetDir, fn)
+	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write server file '%s': %w", fullPath, err)
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat written file: %w", err)
+	}
+
+	inferredName := inferStackName(fn, content)
+	svcCount := countServicesInYAML(content)
+
+	return &ServerStackFile{
+		Path:         fullPath,
+		Filename:     fn,
+		Directory:    targetDir,
+		Size:         info.Size(),
+		ModifiedAt:   info.ModTime().Format(time.RFC3339),
+		InferredName: inferredName,
+		IsExample:    strings.Contains(fullPath, "examples"),
+		Services:     svcCount,
+	}, nil
+}

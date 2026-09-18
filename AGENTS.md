@@ -1358,4 +1358,36 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Configured automatic CacheStorage and ServiceWorker purging in `index.html` and version-tagged script execution (`flutter_bootstrap.js?v=2.95.18`, `main.dart.js?v=2.95.18`) to eliminate stale PWA cache serving across client browsers.
   - Stopped systemd services cleanly during binary deployment to prevent Linux `ETXTBUSY` (Text file busy) replacement failures across cluster nodes.
 
+### 125. CoreDNS `.gbnt` Inter-Service Resolution, Container IP Routing & Ingress Self-Proxy Prevention (`v2.95.19`)
+* **CoreDNS `.gbnt` & `.<clusterDomain>` Dual Registration (`internal/aqueducts/dns.go`):**
+  - Enhanced `GenerateHostsFile()` to register both `.gbnt` and `.<clusterDomain>` (`.gbnt.local`) domain variants for user application stacks, inter-service aliases, and host-qualified domains.
+  - Corrected resolution of stack-scoped references like `WORDPRESS_DB_HOST: db.{{stack.name}}.gbnt:3306` (`db.wp.gbnt`) so that CoreDNS no longer falls through to the wildcard template returning the Manager host IP.
+* **Direct Container IP Routing for Inter-Service Communication (`internal/aqueducts/dns.go`):**
+  - Differentiated node-level IP (`nodeIP`) for host-level domains from container service IP (`serviceIP = t.ContainerIP`) for internal service-to-service communication.
+  - Fixed worker node scheduling where `targetIP` was previously overwritten with the worker's LAN IP (`taskNode.IP`), causing connection attempts to unmapped container ports (e.g. MySQL 3306) to fail with *Connection refused*.
+  - All inter-service aliases (`db`, `db.wp`, `db.wp.gbnt`, `db.wp.gbnt.local`) now resolve directly to the container's bridge IP (`t.ContainerIP`).
+* **Caddy Ingress Self-Proxy Loop Prevention & Published Port Extraction (`internal/aqueducts/ingress.go`):**
+  - Improved published host port extraction across multi-spec Compose port declarations.
+  - Added safety guard preventing Caddy from configuring `reverse_proxy` to its own listening ports (`80` or `443`) on host/worker IPs, completely eliminating infinite HTTP 308 redirect loops.
+* **WordPress Example Hardening (`examples/example-wordpress/docker-compose.yml`, `internal/examples/data/wordpress-mysql.yml`):**
+  - Standardized WordPress stack to use localhost isolation `ports: - "127.0.0.1::80"`, ensuring no raw unauthenticated ports are exposed to 0.0.0.0 and all external access passes strictly through Caddy Ingress with automatic TLS.
+
+### 126. Localhost Port Security, Worker `gbnt-net` Ingress & Server / Local Compose Persistence (`v2.95.20`)
+* **Strict Localhost Port Isolation (`127.0.0.1::port`):**
+  - Preserved and enforced Gubernator's zero-trust security pattern (`ports: - "127.0.0.1::80"` and `ports: - "127.0.0.1::3306"`) where backend container ports are only bound to host loopback `127.0.0.1`, guaranteeing zero external exposure on `0.0.0.0`.
+  - All external ingress traffic flows securely through Caddy reverse proxy (`https://hello-101.gbnt.local/`), while inter-service database traffic flows securely via CoreDNS internal container resolution (`db.wp.gbnt` / `172.18.0.x`).
+* **Automated Worker Container Attachment to `gbnt-net` (`internal/api/executor.go`, `internal/cli/legion.go`):**
+  - Updated remote worker SSH task executor (`executeRemoteWorkerTask`) to automatically connect newly created containers to the `gbnt-net` Docker network (`sudo docker network connect gbnt-net <container>`).
+  - Container IP inspection now prioritizes `gbnt-net` IP (`172.18.0.x`), ensuring worker-side Caddy ingress reverse-proxies directly to the container's internal network port without requiring host-bound routing.
+  - Added dynamic fallback in worker Caddy generator (`legion.go`) to verify local container presence on `gbnt-net` and route directly to its active container IP.
+* **Master Server & Local PC Compose Saving Subsystem (`POST /api/stacks/server-save`, `POST /v1/stack/server-save`):**
+  - Implemented dedicated backend endpoint for saving or updating Compose files directly on the Master server filesystem (`~/.gbnt/stacks/<name>.yml` or `/var/contenedores/...`).
+  - Added unit test suite `TestSaveServerStackFile` validating YAML syntax checking, directory auto-creation, and file discovery.
+* **Universal Save on PC & Save on Server UI Buttons (`web-ui`):**
+  - **Compose Studio (`compose_studio_page.dart`):** Added "Save Server" (`Icons.save_as_outlined`) button to both the code editor strip and the main header toolbar alongside "Save on Disk" (download to PC).
+  - **New Stack Dialog (`new_stack_dialog.dart`):** Added "Save PC" (`Icons.download`) and "Save Server" (`Icons.save_as_outlined`) buttons to the editor toolbar for instant file export or server drop.
+  - **Compose Editor Dialog (`compose_editor.dart`):** Added "Save PC" and "Save Server" buttons to both the top editor strip and bottom modal action buttons.
+  - **Legions & Dashboard (`legions_page.dart`, `dashboard_screen.dart`):** Added "Download docker-compose.yml to local PC" and "Save to Master Server (~/.gbnt/stacks/)" directly into each stack's action row for 1-click management.
+
+
 

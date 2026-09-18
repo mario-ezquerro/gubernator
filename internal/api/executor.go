@@ -204,8 +204,13 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 		return
 	}
 
-	// 3. Obtain container IP on remote worker (fallback to node.IP)
-	ipCmd := fmt.Sprintf("sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' '%s'", containerName)
+	// 3. Connect container to gbnt-net for cluster-wide inter-service DNS and Caddy ingress
+	connCmd := fmt.Sprintf("sudo docker network create gbnt-net 2>/dev/null || true; sudo docker network connect gbnt-net '%s' 2>/dev/null || true", containerName)
+	connSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), connCmd)
+	_ = exec.Command("ssh", connSSHArgs...).Run()
+
+	// 4. Obtain container IP on remote worker (prefer gbnt-net, fallback to any network or node.IP)
+	ipCmd := fmt.Sprintf("sudo docker inspect -f '{{with index .NetworkSettings.Networks \"gbnt-net\"}}{{.IPAddress}}{{else}}{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{end}}' '%s'", containerName)
 	ipSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), ipCmd)
 	var ipOut bytes.Buffer
 	inspectCmd := exec.Command("ssh", ipSSHArgs...)

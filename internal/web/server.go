@@ -579,6 +579,7 @@ func StartDashboard() {
 		api.POST("/tasks/prune", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), pruneTasksWebHandler)
 		api.POST("/stack", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deployStackHandler)
 		api.POST("/stack/save", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), saveStackHandler)
+		api.POST("/stacks/server-save", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerSaveWebHandler)
 		api.POST("/stacks/server-deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), stackServerDeployWebHandler)
 		api.POST("/examples/deploy", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), exampleDeployWebHandler)
 		api.DELETE("/stack/:id", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), deleteStackHandler)
@@ -2330,6 +2331,33 @@ func stackServerDeployWebHandler(c *gin.Context) {
 		"stack_id":   stack.ID,
 		"stack_name": stack.Name,
 		"path":       req.Path,
+	})
+}
+
+func stackServerSaveWebHandler(c *gin.Context) {
+	var req struct {
+		Name     string `json:"name"`
+		Filename string `json:"filename"`
+		Dir      string `json:"dir"`
+		Content  string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	savedFile, err := examples.SaveServerStackFile(req.Name, req.Filename, req.Dir, req.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Stack file saved successfully on Master server",
+		"file":     savedFile,
+		"path":     savedFile.Path,
+		"filename": savedFile.Filename,
+		"size":     savedFile.Size,
 	})
 }
 

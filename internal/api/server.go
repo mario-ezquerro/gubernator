@@ -207,6 +207,7 @@ func Start(ctx context.Context) error {
 			stack.GET("/server-files", StackServerFilesHandler)
 			stack.GET("/server-file", StackServerFileReadHandler)
 			stack.POST("/server-deploy", StackServerDeployHandler)
+			stack.POST("/server-save", StackServerSaveHandler)
 		}
 
 		examplesGroup := v1.Group("/examples", authMiddleware)

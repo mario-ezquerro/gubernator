@@ -7,9 +7,11 @@ import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/yaml.dart';
 import 'compose_autocomplete.dart';
 import 'server_stack_picker_dialog.dart';
+import 'save_server_stack_dialog.dart';
 import 'poc_examples_dialog.dart';
 import '../models/models.dart' as models;
 import '../utils/clipboard_service.dart';
+import '../utils/download_service.dart';
 
 /// A dialog to define and deploy a new Docker Compose stack, featuring the Gubernator Copilot.
 class NewStackDialog extends StatefulWidget {
@@ -464,11 +466,67 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                           ),
                                           const SizedBox(width: 4),
                                           Tooltip(
+                                            message: 'Download / Save docker-compose.yml directly to your local computer disk',
+                                            child: TextButton.icon(
+                                              onPressed: () {
+                                                final name = _nameController.text.trim();
+                                                final fn = name.isEmpty ? 'docker-compose.yml' : '$name.yml';
+                                                DownloadService.downloadYaml(_yamlController.text, filename: fn);
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Row(
+                                                      children: [
+                                                        const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
+                                                        const SizedBox(width: 8),
+                                                        Text('Saved "$fn" to local computer disk'),
+                                                      ],
+                                                    ),
+                                                    backgroundColor: const Color(0xFF1E293B),
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(Icons.download, size: 15, color: Color(0xFF388BFD)),
+                                              label: const Text('Save PC', style: TextStyle(color: Color(0xFF388BFD), fontWeight: FontWeight.bold)),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Tooltip(
                                             message: 'Load Compose file from Master server filesystem (~/.gbnt/stacks/)',
                                             child: TextButton.icon(
                                               onPressed: _showServerStackPicker,
                                               icon: const Icon(Icons.dns, size: 15, color: Color(0xFF58A6FF)),
                                               label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Tooltip(
+                                            message: 'Save Compose file directly to Master server filesystem (~/.gbnt/stacks/)',
+                                            child: TextButton.icon(
+                                              onPressed: () async {
+                                                final savedPath = await showSaveServerStackDialog(
+                                                  context: context,
+                                                  initialName: _nameController.text.trim(),
+                                                  yamlContent: _yamlController.text,
+                                                );
+                                                if (savedPath != null && mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Row(
+                                                        children: [
+                                                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+                                                          const SizedBox(width: 8),
+                                                          Expanded(child: Text('Saved to Master server: $savedPath')),
+                                                        ],
+                                                      ),
+                                                      backgroundColor: const Color(0xFF1E293B),
+                                                      behavior: SnackBarBehavior.floating,
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                              icon: const Icon(Icons.save_as_outlined, size: 15, color: Color(0xFF2EA043)),
+                                              label: const Text('Save Server', style: TextStyle(color: Color(0xFF2EA043), fontWeight: FontWeight.bold)),
                                             ),
                                           ),
                                           const SizedBox(width: 4),

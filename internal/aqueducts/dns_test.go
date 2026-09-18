@@ -182,18 +182,31 @@ func TestGenerateHostsFile_MultiNode_CleanMinimal(t *testing.T) {
 		t.Errorf("missing manager loki entry")
 	}
 
-	// Verify user app stack-scoped entries and inter-service aliases
-	if !strings.Contains(content, "192.168.1.101\tapp.wordpress.gbnt.local") {
+	// Verify user app stack-scoped entries and inter-service aliases (must resolve to ContainerIP)
+	if !strings.Contains(content, "172.18.0.5\tapp.wordpress.gbnt.local") {
 		t.Errorf("missing user stack-scoped domain app.wordpress.gbnt.local")
 	}
-	if !strings.Contains(content, "192.168.1.101\tapp.wordpress") {
+	if !strings.Contains(content, "172.18.0.5\tapp.wordpress.gbnt") {
+		t.Errorf("missing user stack-scoped domain app.wordpress.gbnt")
+	}
+	if !strings.Contains(content, "172.18.0.5\tapp.wordpress") {
 		t.Errorf("missing user stack alias app.wordpress")
 	}
-	if !strings.Contains(content, "192.168.1.101\tapp.gbnt.local") {
+	if !strings.Contains(content, "172.18.0.5\tapp.gbnt.local") {
 		t.Errorf("missing user domain alias app.gbnt.local")
 	}
-	if !strings.Contains(content, "192.168.1.101\tapp") {
+	if !strings.Contains(content, "172.18.0.5\tapp.gbnt") {
+		t.Errorf("missing user domain alias app.gbnt")
+	}
+	if !strings.Contains(content, "172.18.0.5\tapp") {
 		t.Errorf("missing bare user service alias app")
+	}
+	// Verify host-qualified domain resolves to node LAN IP
+	if !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.app.gbnt.local") {
+		t.Errorf("missing host-qualified domain node-gbnt-worker1.app.gbnt.local")
+	}
+	if !strings.Contains(content, "192.168.1.101\tnode-gbnt-worker1.app.gbnt") {
+		t.Errorf("missing host-qualified domain node-gbnt-worker1.app.gbnt")
 	}
 
 	// CRITICAL TEST: Verify that generic "caddy.gbnt.local" or "loki.gbnt.local" are NOT present to prevent collisions

@@ -299,6 +299,35 @@ class ApiService {
     }
   }
 
+  /// Saves or updates a Compose stack file directly on the Master server filesystem.
+  static Future<Map<String, dynamic>> saveServerStackFile({
+    required String content,
+    String? name,
+    String? filename,
+    String? dir,
+  }) async {
+    final response = await http.post(
+      Uri.parse('/api/stacks/server-save'),
+      headers: authHeaders,
+      body: jsonEncode({
+        'content': content,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (filename != null && filename.isNotEmpty) 'filename': filename,
+        if (dir != null && dir.isNotEmpty) 'dir': dir,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    try {
+      final body = jsonDecode(response.body);
+      throw Exception(body['error'] ?? 'Server error ${response.statusCode}');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Server error: ${response.statusCode}');
+    }
+  }
+
   /// Retrieves the list of built-in POC examples and blueprints.
   static Future<List<POCExampleModel>> fetchPOCExamples() async {
     final response = await http.get(Uri.parse('/api/examples'), headers: authHeaders);

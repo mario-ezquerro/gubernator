@@ -16,6 +16,7 @@ import '../../widgets/compose_autocomplete.dart';
 import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
 import '../../widgets/port_conflict_dialog.dart';
+import '../../widgets/save_server_stack_dialog.dart';
 
 class _ComposeBlockSegment {
   final String id;
@@ -1134,6 +1135,32 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  Future<void> _saveToServer() async {
+    final rawName = _nameController.text.trim();
+    final savedPath = await showSaveServerStackDialog(
+      context: context,
+      initialName: rawName,
+      yamlContent: _codeController.text,
+    );
+    if (savedPath != null && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Saved to Master server: $savedPath')),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _importFile() {
@@ -3091,6 +3118,19 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           ),
           const SizedBox(width: 4),
 
+          // Save to Master Server
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              foregroundColor: const Color(0xFF2EA043),
+            ),
+            icon: const Icon(Icons.dns_outlined, size: 14),
+            label: const Text('Save Server', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            onPressed: _saveToServer,
+          ),
+          const SizedBox(width: 4),
+
           // Toggle Block Gutter Markers Strip
           IconButton(
             tooltip: _showBlockGutter ? 'Hide Block Markers Strip' : 'Show Block Markers Strip',
@@ -3342,6 +3382,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       icon: const Icon(Icons.dns, size: 16, color: Color(0xFF58A6FF)),
                       label: const Text('Master Server', style: TextStyle(color: Color(0xFF58A6FF))),
                       onPressed: _showServerStackPicker,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Save to Master Server Filesystem
+                  Tooltip(
+                    message: 'Save Compose YAML directly to Master server filesystem (~/.gbnt/stacks/)',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.save_as_outlined, size: 16, color: Color(0xFF2EA043)),
+                      label: const Text('Save Server', style: TextStyle(color: Color(0xFF2EA043), fontWeight: FontWeight.bold)),
+                      onPressed: _saveToServer,
                     ),
                   ),
                   const SizedBox(width: 14),

@@ -110,14 +110,14 @@ func GenerateHostsFile() {
 			continue
 		}
 
-		targetIP := t.ContainerIP
+		nodeIP := t.ContainerIP
 		cleanNode := "manager"
 
 		if t.NodeID != "node-local-manager" && t.NodeID != "" {
 			var taskNode db.Node
 			if err := db.DB.First(&taskNode, "id = ?", t.NodeID).Error; err == nil {
 				if taskNode.IP != "" {
-					targetIP = taskNode.IP
+					nodeIP = taskNode.IP
 				}
 				cleanNode = SanitizeDNSLabel(taskNode.ID)
 			} else {
@@ -125,9 +125,15 @@ func GenerateHostsFile() {
 			}
 		}
 
-		// Fallback for missing/invalid container IPs
-		if targetIP == "" || targetIP == "invalid" || strings.Contains(targetIP, "invalid") || net.ParseIP(targetIP) == nil {
-			targetIP = hostIP
+		// Fallback for missing/invalid node IPs
+		if nodeIP == "" || nodeIP == "invalid" || strings.Contains(nodeIP, "invalid") || net.ParseIP(nodeIP) == nil {
+			nodeIP = hostIP
+		}
+
+		// Service container IP for internal container-to-container communication within the stack
+		serviceIP := t.ContainerIP
+		if serviceIP == "" || serviceIP == "invalid" || strings.Contains(serviceIP, "invalid") || net.ParseIP(serviceIP) == nil {
+			serviceIP = nodeIP
 		}
 
 		cleanSvc := SanitizeDNSLabel(svc.Name)
@@ -137,23 +143,36 @@ func GenerateHostsFile() {
 
 		clusterDomain := db.GetClusterDomain()
 
-		// 1. Host-Qualified Domain (<node>.<service>.<clusterDomain>)
-		addRecord(targetIP, fmt.Sprintf("%s.%s.%s", cleanNode, cleanSvc, clusterDomain))
-
-		// If manager node is identified as node-local-manager, also alias manager
-		if t.NodeID == "node-local-manager" && cleanNode != "manager" {
-			addRecord(targetIP, fmt.Sprintf("manager.%s.%s", cleanSvc, clusterDomain))
+		// 1. Host-Qualified Domain (<node>.<service>.<clusterDomain> and <node>.<service>.gbnt)
+		addRecord(nodeIP, fmt.Sprintf("%s.%s.%s", cleanNode, cleanSvc, clusterDomain))
+		if clusterDomain != "gbnt" {
+			addRecord(nodeIP, fmt.Sprintf("%s.%s.gbnt", cleanNode, cleanSvc))
 		}
 
-		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.<clusterDomain>) and inter-service aliases
+		// If manager node is identified as node-local-manager, also alias manager
+		if (t.NodeID == "node-local-manager" || t.NodeID == "") && cleanNode != "manager" {
+			addRecord(nodeIP, fmt.Sprintf("manager.%s.%s", cleanSvc, clusterDomain))
+			if clusterDomain != "gbnt" {
+				addRecord(nodeIP, fmt.Sprintf("manager.%s.gbnt", cleanSvc))
+			}
+		}
+
+		// 2. User Application Stacks: Stack-Scoped Domain (<service>.<stack>.<clusterDomain>, <service>.<stack>.gbnt, <service>.<stack>)
+		// and inter-service aliases (<service>.<clusterDomain>, <service>.gbnt, <service>)
 		if !isSystemStack(stack.ID, stack.Name) {
 			cleanStack := SanitizeDNSLabel(stack.Name)
 			if cleanStack != "" {
-				addRecord(targetIP, fmt.Sprintf("%s.%s.%s", cleanSvc, cleanStack, clusterDomain))
-				addRecord(targetIP, fmt.Sprintf("%s.%s", cleanSvc, cleanStack))
+				addRecord(serviceIP, fmt.Sprintf("%s.%s.%s", cleanSvc, cleanStack, clusterDomain))
+				if clusterDomain != "gbnt" {
+					addRecord(serviceIP, fmt.Sprintf("%s.%s.gbnt", cleanSvc, cleanStack))
+				}
+				addRecord(serviceIP, fmt.Sprintf("%s.%s", cleanSvc, cleanStack))
 			}
-			addRecord(targetIP, fmt.Sprintf("%s.%s", cleanSvc, clusterDomain))
-			addRecord(targetIP, cleanSvc)
+			addRecord(serviceIP, fmt.Sprintf("%s.%s", cleanSvc, clusterDomain))
+			if clusterDomain != "gbnt" {
+				addRecord(serviceIP, fmt.Sprintf("%s.gbnt", cleanSvc))
+			}
+			addRecord(serviceIP, cleanSvc)
 		}
 	}
 

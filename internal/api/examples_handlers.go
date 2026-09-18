@@ -73,6 +73,37 @@ func StackServerDeployHandler(c *gin.Context) {
 	})
 }
 
+// StackServerSaveRequest is the payload for saving a Compose file onto the Master server.
+type StackServerSaveRequest struct {
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+	Dir      string `json:"dir"`
+	Content  string `json:"content" binding:"required"`
+}
+
+// StackServerSaveHandler saves or updates a Compose file directly onto the Master server.
+func StackServerSaveHandler(c *gin.Context) {
+	var req StackServerSaveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	savedFile, err := examples.SaveServerStackFile(req.Name, req.Filename, req.Dir, req.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Stack file saved successfully on Master server",
+		"file":     savedFile,
+		"path":     savedFile.Path,
+		"filename": savedFile.Filename,
+		"size":     savedFile.Size,
+	})
+}
+
 // ExamplesListHandler lists all built-in POC examples.
 func ExamplesListHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{

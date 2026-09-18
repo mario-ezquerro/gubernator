@@ -504,6 +504,18 @@ var legionJoinCmd = &cobra.Command{
 
 				for _, t := range data.Tasks {
 					taskIP := t.Task.ContainerIP
+					cName := t.Task.ContainerName
+					if cName == "" && len(t.Task.ID) >= 8 {
+						cName = "gbnt-" + t.Task.ID
+					}
+					if cName != "" {
+						_ = exec.Command("docker", "network", "connect", "gbnt-net", cName).Run()
+						if localIPOut, err := exec.Command("docker", "inspect", "-f", "{{with index .NetworkSettings.Networks \"gbnt-net\"}}{{.IPAddress}}{{end}}", cName).Output(); err == nil {
+							if trimmed := strings.TrimSpace(string(localIPOut)); trimmed != "" {
+								taskIP = trimmed
+							}
+						}
+					}
 					if t.Task.Status != "running" || taskIP == "" {
 						continue
 					}

@@ -8,7 +8,9 @@ import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
 import '../../widgets/port_conflict_dialog.dart';
 import '../../widgets/autoscale_dialog.dart';
+import '../../widgets/save_server_stack_dialog.dart';
 import '../../utils/clipboard_service.dart';
+import '../../utils/download_service.dart';
 
 /// Legions page — full-width stacks table with all actions.
 class LegionsPage extends StatefulWidget {
@@ -308,6 +310,33 @@ class _LegionsPageState extends State<LegionsPage> {
       );
     } catch (e) {
       _showSnackBar('Failed to load compose file', isError: true);
+    }
+  }
+
+  Future<void> _downloadStackYaml(StackModel s) async {
+    try {
+      final yaml = await ApiService.getStackCompose(s.id);
+      DownloadService.downloadYaml(yaml, filename: '${s.name}.yml');
+      _showSnackBar('Saved "${s.name}.yml" to local computer disk');
+    } catch (e) {
+      _showSnackBar('Failed to download compose file: $e', isError: true);
+    }
+  }
+
+  Future<void> _saveStackToServer(StackModel s) async {
+    try {
+      final yaml = await ApiService.getStackCompose(s.id);
+      if (!mounted) return;
+      final savedPath = await showSaveServerStackDialog(
+        context: context,
+        initialName: s.name,
+        yamlContent: yaml,
+      );
+      if (savedPath != null && mounted) {
+        _showSnackBar('Saved "${s.name}" to Master server: $savedPath');
+      }
+    } catch (e) {
+      _showSnackBar('Failed to load compose file: $e', isError: true);
     }
   }
 
@@ -1051,6 +1080,10 @@ class _LegionsPageState extends State<LegionsPage> {
                                         const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
                                     _actionBtn(Icons.code, 'Edit YAML',
                                         const Color(0xFFF97316), () => _openComposeEditor(s)),
+                                    _actionBtn(Icons.download, 'Download docker-compose.yml to local PC',
+                                        const Color(0xFF388BFD), () => _downloadStackYaml(s)),
+                                    _actionBtn(Icons.dns_outlined, 'Save to Master Server (~/.gbnt/stacks/)',
+                                        const Color(0xFF2EA043), () => _saveStackToServer(s)),
                                     isBase
                                         ? const SizedBox(width: 36)
                                         : _actionBtn(Icons.copy, 'Duplicate',
