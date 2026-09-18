@@ -643,8 +643,10 @@ class ApiService {
   static Future<List<CustomDNSRecord>> fetchCustomDNSRecords() async {
     final response = await http.get(Uri.parse('/api/coredns/custom-records'));
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => CustomDNSRecord.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => CustomDNSRecord.fromJson(e)).toList();
+      }
     }
     return [];
   }
@@ -792,8 +794,10 @@ class ApiService {
   static Future<List<SLOItem>> fetchSLOs() async {
     final response = await http.get(Uri.parse('/api/slo'));
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => SLOItem.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => SLOItem.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }
@@ -808,8 +812,10 @@ class ApiService {
   static Future<List<UserJourney>> fetchUserJourneys() async {
     final response = await http.get(Uri.parse('/api/slo/journeys'));
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => UserJourney.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => UserJourney.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }
@@ -818,8 +824,10 @@ class ApiService {
   static Future<List<SLOCorrelationEvent>> fetchSLOCorrelations() async {
     final response = await http.get(Uri.parse('/api/slo/correlation'));
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => SLOCorrelationEvent.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => SLOCorrelationEvent.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }
@@ -832,8 +840,10 @@ class ApiService {
       body: jsonEncode({'compose_raw': composeRaw}),
     );
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => SLOValidationItem.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => SLOValidationItem.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }
@@ -842,8 +852,10 @@ class ApiService {
   static Future<List<SLOHistoryPoint>> fetchSLOHistory(String serviceId, String timeRange) async {
     final response = await http.get(Uri.parse('/api/slo/history?service_id=$serviceId&range=$timeRange'));
     if (response.statusCode == 200) {
-      final List list = jsonDecode(response.body);
-      return list.map((e) => SLOHistoryPoint.fromJson(e)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((e) => SLOHistoryPoint.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }
@@ -852,7 +864,10 @@ class ApiService {
   static Future<SLOREDMetrics> fetchSLOREDMetrics(String serviceId) async {
     final response = await http.get(Uri.parse('/api/slo/red?service_id=$serviceId'));
     if (response.statusCode == 200) {
-      return SLOREDMetrics.fromJson(jsonDecode(response.body));
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return SLOREDMetrics.fromJson(decoded);
+      }
     }
     return SLOREDMetrics(rps: 0, errorRps: 0, p99LatencyMs: 0);
   }
@@ -2982,8 +2997,11 @@ class ApiService {
     final uri = Uri.parse('/api/ebpf/flows').replace(queryParameters: params);
     final response = await http.get(uri, headers: authHeaders);
     if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List;
-      return list.map((item) => EbpfFlow.fromJson(item)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded.map((item) => EbpfFlow.fromJson(item)).toList();
+      }
+      return [];
     }
     throw Exception('Failed to fetch eBPF flows: ${response.statusCode}');
   }

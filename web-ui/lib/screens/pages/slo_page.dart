@@ -81,9 +81,9 @@ services:
 
       if (mounted) {
         setState(() {
-          _slos = results[0] as List<SLOItem>;
-          _journeys = results[1] as List<UserJourney>;
-          _correlations = results[2] as List<SLOCorrelationEvent>;
+          _slos = (results[0] as List<SLOItem>?) ?? [];
+          _journeys = (results[1] as List<UserJourney>?) ?? [];
+          _correlations = (results[2] as List<SLOCorrelationEvent>?) ?? [];
           _loading = false;
         });
       }
@@ -799,7 +799,7 @@ services:
       itemCount: templates.length,
       separatorBuilder: (ctx, idx) => const SizedBox(height: 16),
       itemBuilder: (ctx, idx) {
-        final tmpl = templates[idx]!;
+        final tmpl = templates[idx];
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -810,16 +810,16 @@ services:
                   children: [
                     Icon(Icons.dashboard_customize, color: theme.colorScheme.primary),
                     const SizedBox(width: 10),
-                    Text(tmpl['title']!, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(tmpl['title'] ?? '', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const Spacer(),
                     Chip(
-                      label: Text(tmpl['label']!, style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, fontWeight: FontWeight.bold)),
+                      label: Text(tmpl['label'] ?? '', style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, fontWeight: FontWeight.bold)),
                       backgroundColor: theme.colorScheme.secondaryContainer,
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(tmpl['desc']!, style: theme.textTheme.bodyMedium),
+                Text(tmpl['desc'] ?? '', style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -830,10 +830,10 @@ services:
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SelectableText('Error Query: ${tmpl['error']}',
+                      SelectableText('Error Query: ${tmpl['error'] ?? ''}',
                           style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.redAccent)),
                       const SizedBox(height: 4),
-                      SelectableText('Total Query: ${tmpl['total']}',
+                      SelectableText('Total Query: ${tmpl['total'] ?? ''}',
                           style: const TextStyle(fontFamily: 'Courier New', fontSize: 12, color: Colors.blueAccent)),
                     ],
                   ),
@@ -1020,6 +1020,12 @@ services:
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text('Error loading SLO suite: $_error', style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: _loadData,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Retry'),
                     ),
                   ],
                 ),

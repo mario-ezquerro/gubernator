@@ -24,7 +24,7 @@ import (
 // @Success 200 {array} db.Stack
 // @Router /v1/stack/ls [get]
 func StackListHandler(c *gin.Context) {
-	var stacks []db.Stack
+	stacks := make([]db.Stack, 0)
 	if err := db.DB.Find(&stacks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stacks"})
 		return

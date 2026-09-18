@@ -1388,6 +1388,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **New Stack Dialog (`new_stack_dialog.dart`):** Added "Save PC" (`Icons.download`) and "Save Server" (`Icons.save_as_outlined`) buttons to the editor toolbar for instant file export or server drop.
   - **Compose Editor Dialog (`compose_editor.dart`):** Added "Save PC" and "Save Server" buttons to both the top editor strip and bottom modal action buttons.
   - **Legions & Dashboard (`legions_page.dart`, `dashboard_screen.dart`):** Added "Download docker-compose.yml to local PC" and "Save to Master Server (~/.gbnt/stacks/)" directly into each stack's action row for 1-click management.
-
-
+### 127. SLO Overview & Budgets Null Check Elimination & Empty State Hardening (`v2.95.21`)
+* **Elimination of "Error loading SLO suite: Null check operator used on a null value" (`internal/api/slo_handlers.go`, `web-ui/lib/services/api_service.dart`):**
+  - Resolved root cause where Go endpoints `/v1/slo/ls` (`SLOListHandler`), `/v1/slo/journeys` (`SLOJourneysHandler`), and `/v1/slo/correlation` (`SLOCorrelationHandler`) returned JSON literal `null` instead of empty array `[]` when no SLOs were defined in the cluster database.
+  - Replaced uninitialized slice variables with explicit empty allocations `make([]T, 0)` across all SLO handlers, CoreDNS custom records (`coredns.go`), service CRUD (`service_crud.go`), stack CRUD (`stack_crud.go`), and node list (`server.go`), guaranteeing valid JSON arrays `[]` on empty query results.
+  - Hardened frontend `ApiService` (`fetchSLOs`, `fetchUserJourneys`, `fetchSLOCorrelations`, `validateSLO`, `fetchSLOHistory`, `fetchSLOREDMetrics`, `fetchCustomDNSRecords`, and `fetchEbpfFlows`) by verifying `if (decoded is List)` before mapping, safely preventing Dart runtime null check and type casting exceptions.
+* **Seamless Empty State UX & Error Recovery (`web-ui/lib/screens/pages/slo_page.dart`):**
+  - When zero SLOs are configured in the cluster, the Overview & Budgets tab cleanly renders the designed empty state card ("No Active SLOs Configured", explanatory guidance, and "+ Configure / Add SLO" action button) with all summary counters safely showing 0.
+  - Removed dangerous force unwrap operators (`templates[idx]!`, `tmpl['title']!`, `tmpl['label']!`) in SLI Templates tab.
+  - Enhanced error banner with visual retry button (`FilledButton.tonalIcon`) enabling 1-click re-fetching upon transient network issues.
 

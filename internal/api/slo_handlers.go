@@ -120,7 +120,7 @@ func SLOListHandler(c *gin.Context) {
 		return
 	}
 
-	var items []SLOItem
+	items := make([]SLOItem, 0)
 	for _, svc := range services {
 		cmap := parseConstraintsMap(svc.Constraints)
 		if cmap["gbnt.slo.enable"] != "true" && cmap["gbnt.slo.enable"] != "1" {
@@ -292,7 +292,7 @@ func SLOJourneysHandler(c *gin.Context) {
 		journeysMap[journey] = append(journeysMap[journey], item)
 	}
 
-	var result []UserJourney
+	result := make([]UserJourney, 0)
 	for jName, items := range journeysMap {
 		var totalTarget float64
 		var totalBudget float64
@@ -341,7 +341,7 @@ func SLOCorrelationHandler(c *gin.Context) {
 	var stacks []db.Stack
 	db.DB.Order("updated_at desc").Limit(10).Find(&stacks)
 
-	var events []SLOCorrelationEvent
+	events := make([]SLOCorrelationEvent, 0)
 	for _, st := range stacks {
 		var services []db.Service
 		db.DB.Where("stack_id = ?", st.ID).Find(&services)
@@ -431,7 +431,7 @@ func SLOHistoryHandler(c *gin.Context) {
 		}
 	}
 
-	var result []SLOHistoryPoint
+	result := make([]SLOHistoryPoint, 0)
 	for i := start; i <= now; i += stepSec {
 		closest := i - (i % stepSec)
 		if pt, exists := pointsMap[closest]; exists {
@@ -501,7 +501,7 @@ func SLOValidateHandler(c *gin.Context) {
 		return
 	}
 
-	var results []SLOValidationItem
+	results := make([]SLOValidationItem, 0)
 	for srvName, srvDef := range compose.Services {
 		labels := make(map[string]string)
 		for k, v := range srvDef.Labels {

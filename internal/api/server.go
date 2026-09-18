@@ -430,7 +430,7 @@ type NodeListResponse struct {
 // @Success 200 {object} NodeListResponse
 // @Router /v1/node/ls [get]
 func NodeListHandler(c *gin.Context) {
-	var nodes []db.Node
+	nodes := make([]db.Node, 0)
 	if err := db.DB.Find(&nodes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch nodes"})
 		return

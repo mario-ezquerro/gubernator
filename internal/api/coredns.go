@@ -88,7 +88,7 @@ func GetCoreDNSStatusHandler(c *gin.Context) {
 }
 
 func GetCustomDNSRecordsHandler(c *gin.Context) {
-	var records []db.CustomDNSRecord
+	records := make([]db.CustomDNSRecord, 0)
 	if err := db.DB.Order("created_at desc").Find(&records).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch custom DNS records"})
 		return

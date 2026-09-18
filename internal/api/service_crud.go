@@ -18,7 +18,7 @@ import (
 // @Success 200 {array} db.Service
 // @Router /v1/service/ls [get]
 func ServiceListHandler(c *gin.Context) {
-	var services []db.Service
+	services := make([]db.Service, 0)
 	if err := db.DB.Find(&services).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch services"})
 		return
@@ -36,7 +36,7 @@ func ServiceListHandler(c *gin.Context) {
 // @Router /v1/service/{id}/tasks [get]
 func ServiceTasksHandler(c *gin.Context) {
 	id := c.Param("id")
-	var tasks []db.Task
+	tasks := make([]db.Task, 0)
 	if err := db.DB.Where("service_id = ?", id).Find(&tasks).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return
