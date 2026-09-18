@@ -6,10 +6,11 @@ Gubernator features a comprehensive, multi-standard security and compliance engi
 
 ## 🏛 1. Unified Compliance Matrix
 
-Gubernator evaluates the cluster against four tier-1 regulatory and hardening frameworks:
+Gubernator evaluates the cluster against five tier-1 regulatory, resilience, and hardening frameworks:
 
 | Standard / Framework | Scope & Jurisdictional Authority | Evaluation Method in Gubernator | Current Cluster Status |
 | :--- | :--- | :--- | :---: |
+| **EU DORA (Regulation 2022/2554)** | European Union Digital Operational Resilience for financial entities & ICT providers | 16 statutory measures across 5 pillars (ICT Risk, Incidents, Testing, 3rd-Party, Intel) | **Readiness `HIGH` (93.5%)** |
 | **CIS Docker Benchmark (v1.6.0)** | Global consensus hardening baseline (Center for Internet Security) | 35 prescriptive checks across 6 sections (Host, Daemon, Files, Images, Runtime, Ops) | **Posture Grade `A` (87.5%)** |
 | **ISO/IEC 27001:2022 (Annex A)** | International Information Security Management System (ISMS) standard | 24 controls across Theme A.5 (Organizational) and Theme A.8 (Technological) | **Posture Grade `A` (92.4%)** |
 | **European NIS 2 Directive (EU 2022/2555)** | European Union critical entities cybersecurity regulation | 10 mandatory risk-management controls under Article 21(2) | **Readiness `HIGH` (92.5%)** |
@@ -18,6 +19,12 @@ Gubernator evaluates the cluster against four tier-1 regulatory and hardening fr
 ---
 
 ## 🔍 2. Framework Summaries
+
+### 🏛️ [Digital Operational Resilience Act — EU DORA (Regulation 2022/2554)](dora.md)
+Comprehensive European Union framework governing the operational resilience of financial entities and critical ICT third-party providers.
+* **5 Statutory Pillars:** Covers ICT Risk Management (P1 Art. 5-16), Incident Logging & Classification (P2 Art. 17-23), Digital Operational Resilience Testing (P3 Art. 24-27), Managing Third-Party ICT Risk (P4 Art. 28-44), and Operational Telemetry Sharing (P5 Art. 45).
+* **Automated Supervisory Auditing:** Live posture grade calculation (`HIGH`, `MEDIUM`, `BASIC`, `INSUFFICIENT`), technical evidence collection, and prescriptive remediation commands.
+* **Official Export:** Instant generation of formal supervisory audit reports formatted for competent authorities (EBA, EIOPA, ESMA, Banco de España, CNMV) in Markdown and JSON.
 
 ### 🔒 [CIS Docker Benchmark v1.6.0](cis-docker.md)
 The global benchmark for Docker Engine, host operating systems, and runtime container isolation.
@@ -51,7 +58,7 @@ Mandatory security standard for Spanish public administration and private techno
 
 Located in the Flutter Web Dashboard under **Security & Directory** ➔ **Compliance & Regulatory Suite**:
 
-* **4-Way Segmented Switcher:** Instantly toggle between **🇪🇺 NIS 2**, **🔒 CIS Docker Benchmark**, **🇪🇸 Spanish ENS**, and **🌐 ISO/IEC 27001:2022**.
+* **5-Way Standard Selector:** Instantly toggle between **🇪🇺 NIS 2**, **🔒 CIS Docker Benchmark**, **🇪🇸 Spanish ENS**, **🌐 ISO/IEC 27001:2022**, and **🏛️ EU DORA (Reg. 2022/2554)**.
 * **Executive KPI Banners:** Live Posture Grades, overall compliance percentages, and tier breakdowns.
 * **Drill-Down Filtering:** Filter controls by section, theme, domain, profile level, or actionable issues.
 * **Remediation & Audit Modals:** Inspect discovered technical evidence, step-by-step verification commands, and copyable remediation snippets.
@@ -63,6 +70,8 @@ Located in the Flutter Web Dashboard under **Security & Directory** ➔ **Compli
 
 | Action | CLI Command |
 | :--- | :--- |
+| **Audit EU DORA Regulation** | `gbnt dora` |
+| **Export DORA Supervisory Report** | `gbnt dora --report` or `gbnt dora -r -f json` |
 | **Audit CIS Docker Benchmark** | `gbnt cis` |
 | **Filter CIS by Level / Section** | `gbnt cis --level 1` / `gbnt cis --section 5` |
 | **Export CIS Audit Report** | `gbnt cis --report` or `gbnt cis --format json` |

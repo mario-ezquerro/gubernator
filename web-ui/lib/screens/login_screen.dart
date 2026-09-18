@@ -18,6 +18,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
   bool _loading = false;
   bool _oidcLoading = false;
@@ -58,6 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
     _mfaCodeController.dispose();
     super.dispose();
   }
@@ -123,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // ── Standard form login ──────────────────────────────────────────────────
   Future<void> _handleLogin() async {
     final username = _usernameController.text.trim();
-    final password = _passwordController.text;
+    final password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Please enter both username and password');
@@ -511,6 +515,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: _usernameController,
+                      focusNode: _usernameFocus,
+                      textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         hintText: _selectedProvider == 'local' ? 'admin' : 'user@company.local',
                         prefixIcon: const Icon(Icons.person_outline, size: 20),
@@ -526,7 +532,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
-                      onSubmitted: (_) => _handleLogin(),
+                      onSubmitted: (_) => _passwordFocus.requestFocus(),
                     ),
                     const SizedBox(height: 14),
 
@@ -545,6 +551,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         TextField(
                           controller: _passwordController,
+                          focusNode: _passwordFocus,
+                          textInputAction: TextInputAction.done,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             hintText: '••••••••',
@@ -671,25 +679,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text('Sign In', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Quick Admin shortcut
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      icon: const Icon(Icons.flash_on, size: 16, color: Color(0xFFF59E0B)),
-                      label: const Text('Quick Local Admin (admin / admin)', style: TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        setState(() {
-                          _selectedProvider = 'local';
-                          _usernameController.text = 'admin';
-                          _passwordController.text = 'admin';
-                        });
-                        _handleLogin();
-                      },
                     ),
                   ],
                 ],

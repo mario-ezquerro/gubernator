@@ -5677,7 +5677,11 @@ func authLoginHandler(c *gin.Context) {
 				})
 				return
 			}
-			if err := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password)); err == nil {
+			matchErr := bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(req.Password))
+			if matchErr != nil && strings.TrimSpace(req.Password) != req.Password {
+				matchErr = bcrypt.CompareHashAndPassword([]byte(localUser.PasswordHash), []byte(strings.TrimSpace(req.Password)))
+			}
+			if matchErr == nil {
 				now := time.Now()
 				localUser.LastLogin = &now
 				localUser.FailedLoginAttempts = 0
@@ -5793,7 +5797,8 @@ func authLoginHandler(c *gin.Context) {
 		if expectedPass == "" {
 			expectedPass = "admin"
 		}
-		if req.Username == expectedUser && req.Password == expectedPass {
+		trimmedPass := strings.TrimSpace(req.Password)
+		if (req.Username == expectedUser || strings.EqualFold(req.Username, expectedUser)) && (req.Password == expectedPass || trimmedPass == expectedPass) {
 			session := auth.GenerateLocalAdminSession(req.Username)
 			if mfaEnforced || secCfg.MFAEnforcePrivileged {
 				pendingToken, err := auth.GenerateMFAPendingToken(session)
