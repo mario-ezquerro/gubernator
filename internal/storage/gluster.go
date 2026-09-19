@@ -657,6 +657,24 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		}
 	}
 
+	// 0. Pre-validate: Check if volume already exists in GlusterFS before touching any brick directories
+	installed, running, _ := CheckGlusterInstalled()
+	if installed && running {
+		if vols, err := GetGlusterVolumes(); err == nil {
+			for _, v := range vols {
+				if v.Name == req.Name {
+					if !req.ForceRecreate {
+						return fmt.Errorf("glusterfs volume '%s' already exists in the cluster (tip: choose a different volume name, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly)", req.Name)
+					}
+					slog.Info("proactively purging existing volume for force recreate", "volume", req.Name)
+					_ = DeleteGlusterVolume(req.Name, false)
+					time.Sleep(1 * time.Second)
+					break
+				}
+			}
+		}
+	}
+
 	// 1. Proactively clean stale volume metadata/xattrs and prepare all brick storage directories across target nodes
 	for _, b := range bricks {
 		parts := strings.SplitN(b, ":", 2)
@@ -673,7 +691,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 			}
 
 			// Clean any residual .glusterfs hidden folder and extended filesystem attributes from previous volume instances
-			cleanScript := fmt.Sprintf("sudo mkdir -p %s && sudo chmod 0777 %s && sudo rm -rf %s/.glusterfs && sudo setfattr -x trusted.gfid %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.volume-id %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.dht %s 2>/dev/null; true", brickPath, brickPath, brickPath, brickPath, brickPath, brickPath)
+			cleanScript := fmt.Sprintf("sudo mkdir -p %s && sudo chmod 0777 %s && sudo rm -rf %s/.glusterfs && sudo setfattr -x trusted.gfid %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.volume-id %s 2>/dev/null; sudo setfattr -x trusted.glusterfs.dht %s 2>/dev/null; sudo mkdir -p %s/.glusterfs/indices/xattrop %s/.glusterfs/indices/entry-changes %s/.glusterfs/landfill %s/.glusterfs/unlink; true", brickPath, brickPath, brickPath, brickPath, brickPath, brickPath, brickPath, brickPath, brickPath, brickPath)
 
 			if IsLocalHost(host) {
 				slog.Info("preparing and cleaning local gluster brick directory", "host", host, "path", brickPath)
@@ -708,15 +726,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 	// Always append force to ensure volume creation passes over directory checks
 	args = append(args, "force")
 
-	installed, running, _ := CheckGlusterInstalled()
 	if installed && running {
-		// If ForceRecreate is requested, proactively delete and clean any existing ghost volume first
-		if req.ForceRecreate {
-			slog.Info("proactively purging existing volume for force recreate", "volume", req.Name)
-			_ = DeleteGlusterVolume(req.Name, false)
-			time.Sleep(1 * time.Second)
-		}
-
 		cmd := ExecGlusterCmd(args...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {

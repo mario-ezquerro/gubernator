@@ -1442,3 +1442,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **UI Resilience:** Added `ScaffoldMessenger.clearSnackBars()` on data load and `hideCurrentSnackBar()` before displaying new feedback, preventing persistent error bars from masking updated dashboard state.
 * **Cross-Compilation & Manager Stability:**
   - Enforced `CGO_ENABLED=0` during Go compilation for Linux ARM64, eliminating libc/TLS startup SIGSEGV crashes on Ubuntu hosts.
+
+### 131. GlusterFS Brick Metadata Preservation & Keycloak SSO Resilience (`v2.95.25`)
+* **GlusterFS Internal Brick Metadata Protection (`internal/storage/gluster.go`):**
+  - **Pre-Validation Guard:** Added Step 0 in `CreateGlusterVolume` checking whether the target volume already exists in the cluster before running any brick cleanup or directory creation commands. If the volume exists and `ForceRecreate` is false, returns an immediate, descriptive error preventing accidental disruption of active bricks.
+  - **Brick Index Subdirectory Initialization:** Enhanced brick preparation scripts to always recreate essential internal GlusterFS metadata directories (`.glusterfs/indices/xattrop`, `.glusterfs/indices/entry-changes`, `.glusterfs/landfill`, `.glusterfs/unlink`), preventing glusterfsd brick crashes with missing parent directory errors (`gv_contenedores-index: Failed to find parent dir`).
+* **Keycloak SSO Stack & Storage Resilience:**
+  - Recovered GlusterFS 3-way mirrored volume `gv_contenedores` across all Centurion nodes (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`), restoring Online status across all bricks.
+  - Restored `/var/contenedores` FUSE mount points across nodes, resolving PostgreSQL `Socket not connected` (`ENOTCONN`) errors on `/var/contenedores/keycloak/postgres`.
+  - Keycloak 24.0.5 successfully connected to PostgreSQL, serving the login and admin consoles cleanly at `https://auth.gbnt.local/` and `http://192.168.252.40:8080/` without HTTP 500 errors.
+  - Validated OpenID Connect JWT admin token issuance via `POST /realms/master/protocol/openid-connect/token`.
+
