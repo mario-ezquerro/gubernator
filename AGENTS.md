@@ -1425,3 +1425,20 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - **Gubernator Copilot CoreDNS Wizard Tab:** Dedicated "CoreDNS" tab in Copilot side panel with live nameserver IP badge, domain diagnostics, and 4 specialized injection presets (Servicio Actual, Todos los Servicios, Inyectar con Upstream Fallback, Solo Search Domains).
   - **Compose Editor & Autocompletion (`compose_editor.dart`, `compose_autocomplete.dart`):** Added CoreDNS injection button in modal header, CoreDNS wizard tab, and autocompletion suggestion chips (`dns.coredns`, `dns_search`, `dns.fallback`).
   - **Smart YAML Merger (`compose_smart_merger.dart`):** Implemented AST-like multi-service DNS injection preserving indentation, comments, and existing directives.
+
+### 130. GlusterFS-Backed Docker Volumes, Safe Cluster Creation & Storage UI Resilience (`v2.95.24`)
+* **Native GlusterFS Support for Docker Volumes (`internal/storage/storage.go`):**
+  - Seamlessly bridges Docker Named Volume creation with Gubernator's 3-node GlusterFS replicated storage mesh (`/var/contenedores`).
+  - When specifying driver `glusterfs` or `gluster`, Gubernator automatically creates the underlying subfolder `/var/contenedores/<name>` across target cluster nodes with permissions `0777` (`CreateDirectory`).
+  - Registers the Docker volume via native Docker bind mounting (`--driver local --opt type=none --opt o=bind --opt device=/var/contenedores/<name> --label gbnt.storage.driver=glusterfs`), eliminating third-party plugin dependency failures (`error looking up volume plugin glusterfs: plugin "glusterfs" not found`).
+  - Container writes to these volumes automatically replicate synchronously across all Centurion cluster nodes via the active GlusterFS storage network.
+* **GlusterFS Replicated Volume Safety & Lifecycle Hardening (`internal/storage/gluster.go`):**
+  - Separated `ForceRecreate` from standard command `force` flags, preventing unintended teardown or deletion of existing cluster volumes during normal volume creation requests.
+  - Smart mount point auto-assignment: when creating additional GlusterFS volumes, defaults to unique non-colliding mount paths (`/mnt/gluster/<name>`) rather than colliding with the primary `/var/contenedores` mount.
+  - Integrated duplicate volume name validation and informative cluster health diagnostics.
+* **Storage & Backups UI Enhancements & Error Resilience (`web-ui/lib/screens/pages/storage_page.dart`):**
+  - **Docker Volume Dialog:** Added prominent callout explaining that selecting `glusterfs` provisions a cross-node replicated volume backed by the cluster mesh at `/var/contenedores/<name>`.
+  - **GlusterFS Cluster Dialog:** Auto-generates unique suggested names (`gv_data`, `gv_storage`) when primary volume `gv_contenedores` is present, renders real-time duplicate name warning banner, and auto-populates non-colliding mount paths.
+  - **UI Resilience:** Added `ScaffoldMessenger.clearSnackBars()` on data load and `hideCurrentSnackBar()` before displaying new feedback, preventing persistent error bars from masking updated dashboard state.
+* **Cross-Compilation & Manager Stability:**
+  - Enforced `CGO_ENABLED=0` during Go compilation for Linux ARM64, eliminating libc/TLS startup SIGSEGV crashes on Ubuntu hosts.

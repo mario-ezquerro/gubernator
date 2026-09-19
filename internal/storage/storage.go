@@ -828,14 +828,30 @@ func CreateDockerVolume(req CreateDockerVolumeRequest) ([]string, error) {
 		return nil, fmt.Errorf("volume name is required")
 	}
 
-	driver := strings.TrimSpace(req.Driver)
+	driver := strings.TrimSpace(strings.ToLower(req.Driver))
 	if driver == "" {
 		driver = "local"
 	}
 
 	var cmdArgs []string
 	cmdArgs = append(cmdArgs, "volume", "create", name)
-	if driver != "local" {
+
+	// If driver is glusterfs or gluster, back it automatically using the cluster's
+	// shared pool (/var/contenedores/<name>) via Docker's local bind-mount driver options.
+	// This avoids "plugin glusterfs not found" and guarantees multi-node persistence and mobility.
+	if driver == "glusterfs" || driver == "gluster" {
+		targetPath := fmt.Sprintf("/var/contenedores/%s", name)
+		_ = CreateDirectory(targetPath, "0777", req.TargetNode)
+
+		cmdArgs = append(cmdArgs,
+			"--driver", "local",
+			"--opt", "type=none",
+			"--opt", "o=bind",
+			"--opt", fmt.Sprintf("device=%s", targetPath),
+			"--label", "gbnt.storage.driver=glusterfs",
+			"--label", fmt.Sprintf("gbnt.storage.path=%s", targetPath),
+		)
+	} else if driver != "local" {
 		cmdArgs = append(cmdArgs, "--driver", driver)
 	}
 	for k, v := range req.DriverOpts {

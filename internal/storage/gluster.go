@@ -722,7 +722,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 		if err != nil {
 			outStr := string(out)
 			if strings.Contains(outStr, "already exists") {
-				if req.ForceRecreate || req.Force {
+				if req.ForceRecreate {
 					slog.Info("gluster volume already exists, executing force recreation cleanup", "name", req.Name)
 					_ = DeleteGlusterVolume(req.Name, false)
 					time.Sleep(1 * time.Second)
@@ -732,7 +732,7 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 						return fmt.Errorf("gluster volume create failed after purge: %s (%v)", string(outRetry), errRetry)
 					}
 				} else {
-					return fmt.Errorf("glusterfs volume '%s' already exists in the cluster (tip: you can delete the volume from the GlusterFS tab, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly)", req.Name)
+					return fmt.Errorf("glusterfs volume '%s' already exists in the cluster (tip: choose a different volume name, or enable 'Force Recreate / Purge Ghost Volume' in the creation modal to replace it cleanly)", req.Name)
 				}
 			} else {
 				return fmt.Errorf("gluster volume create failed: %s (%v)", outStr, err)
@@ -748,7 +748,11 @@ func CreateGlusterVolume(req GlusterVolumeCreateRequest) error {
 
 	mountPoint := req.MountPoint
 	if mountPoint == "" {
-		mountPoint = "/var/contenedores"
+		if req.Name == "gv_contenedores" {
+			mountPoint = "/var/contenedores"
+		} else {
+			mountPoint = fmt.Sprintf("/mnt/gluster/%s", req.Name)
+		}
 	}
 
 	// Persist to database

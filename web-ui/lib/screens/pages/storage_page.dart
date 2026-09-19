@@ -66,6 +66,9 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
   }
 
   Future<void> _loadAllData() async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+    }
     setState(() => _loading = true);
     try {
       final volsFuture = ApiService.fetchStorageVolumes(
@@ -119,11 +122,12 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
 
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? Colors.redAccent : const Color(0xFF10B981),
-        duration: Duration(seconds: isError ? 12 : 4),
+        duration: Duration(seconds: isError ? 6 : 4),
         action: isError
             ? SnackBarAction(
                 label: 'View Error',
@@ -1043,14 +1047,46 @@ class _StoragePageState extends State<StoragePage> with SingleTickerProviderStat
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'local', child: Text('local — Default POSIX Docker driver')),
-                        DropdownMenuItem(value: 'glusterfs', child: Text('glusterfs — Multi-node distributed storage driver')),
-                        DropdownMenuItem(value: 'nfs', child: Text('nfs — Remote network filesystem driver')),
+                        DropdownMenuItem(
+                          value: 'local',
+                          child: Text('local — Default Node-Local POSIX Docker driver'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'glusterfs',
+                          child: Text('glusterfs — Replicated Cluster Volume (/var/contenedores)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'nfs',
+                          child: Text('nfs — Remote network filesystem driver'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) setDlgState(() => selectedDriver = val);
                       },
                     ),
+                    if (selectedDriver == 'glusterfs') ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.hub, size: 16, color: Color(0xFF10B981)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Backed by the cluster GlusterFS 3-node storage mesh. Automatically maps /var/contenedores/<volume_name> natively into Docker with cross-node replication and zero-downtime persistence.',
+                                style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       value: selectedTargetNode,
@@ -6783,9 +6819,18 @@ volumes:
   // ── Dialogs & Action Handlers for GlusterFS ───────────────────────────────
 
   void _showCreateGlusterVolumeDialog() {
-    final nameCtrl = TextEditingController(text: 'gv_contenedores');
+    final existingNames = _glusterVolumes.map((v) => v.name).toSet();
+    String defaultName = 'gv_data';
+    if (!existingNames.contains('gv_contenedores')) {
+      defaultName = 'gv_contenedores';
+    } else if (existingNames.contains('gv_data')) {
+      defaultName = 'gv_storage';
+    }
+    final nameCtrl = TextEditingController(text: defaultName);
     final brickDirCtrl = TextEditingController(text: '/data/glusterfs/brick1');
-    final mountPointCtrl = TextEditingController(text: '/var/contenedores');
+    final mountPointCtrl = TextEditingController(
+      text: defaultName == 'gv_contenedores' ? '/var/contenedores' : '/mnt/gluster/$defaultName',
+    );
     final customHostsCtrl = TextEditingController(text: '');
     int replicaCount = 3;
     bool autoMount = true;
@@ -6838,13 +6883,48 @@ volumes:
                     children: [
                       TextField(
                         controller: nameCtrl,
+                        onChanged: (val) {
+                          setDlgState(() {
+                            final trimmed = val.trim();
+                            if (mountPointCtrl.text.isEmpty ||
+                                mountPointCtrl.text == '/var/contenedores' ||
+                                mountPointCtrl.text.startsWith('/mnt/gluster/')) {
+                              mountPointCtrl.text = trimmed == 'gv_contenedores'
+                                  ? '/var/contenedores'
+                                  : (trimmed.isNotEmpty ? '/mnt/gluster/$trimmed' : '');
+                            }
+                          });
+                        },
                         decoration: const InputDecoration(
                           labelText: 'Volume Name',
-                          hintText: 'e.g. gv_contenedores',
+                          hintText: 'e.g. gv_data, gv_mysql',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.folder_shared, size: 20),
                         ),
                       ),
+                      if (existingNames.contains(nameCtrl.text.trim())) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFEF4444)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Volume "${nameCtrl.text.trim()}" already exists in the cluster. Choose another name, or enable "Force Recreate / Purge Ghost Volume" below.',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFFEF4444)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
 
                       // Replication Strategy with clear explanation
@@ -7188,7 +7268,7 @@ volumes:
                               'mount_point': mountPointCtrl.text.trim(),
                               'auto_mount': autoMount,
                               'target_nodes': targetNodes,
-                              'force': true,
+                              'force': false,
                               'force_recreate': forceRecreate,
                             });
                             _showSnackBar('GlusterFS volume ${nameCtrl.text} created and tuned successfully');
