@@ -34,7 +34,7 @@ class LegionsPage extends StatefulWidget {
 
 class _LegionsPageState extends State<LegionsPage> {
   String _searchQuery = '';
-  String _selectedGroup = 'all'; // 'all', 'deployed', 'base'
+  String _selectedGroup = 'deployed'; // 'deployed', 'base', 'all'
   int? _sortColumnIndex;
   bool _sortAscending = true;
   final ScrollController _horizontalScrollController = ScrollController();
@@ -666,11 +666,6 @@ class _LegionsPageState extends State<LegionsPage> {
                   SegmentedButton<String>(
                     segments: [
                       ButtonSegment(
-                        value: 'all',
-                        icon: const Icon(Icons.layers_outlined, size: 15),
-                        label: Text('All (${widget.state.stacks.length})'),
-                      ),
-                      ButtonSegment(
                         value: 'deployed',
                         icon: const Icon(Icons.rocket_launch, size: 15, color: Color(0xFF38BDF8)),
                         label: Text('Deployed Apps ($deployedCount)'),
@@ -679,6 +674,11 @@ class _LegionsPageState extends State<LegionsPage> {
                         value: 'base',
                         icon: const Icon(Icons.foundation, size: 15, color: Color(0xFF8B5CF6)),
                         label: Text('Base Stacks ($baseCount)'),
+                      ),
+                      ButtonSegment(
+                        value: 'all',
+                        icon: const Icon(Icons.layers_outlined, size: 15),
+                        label: Text('All (${widget.state.stacks.length})'),
                       ),
                     ],
                     selected: {_selectedGroup},

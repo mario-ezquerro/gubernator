@@ -1453,3 +1453,13 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Keycloak 24.0.5 successfully connected to PostgreSQL, serving the login and admin consoles cleanly at `https://auth.gbnt.local/` and `http://192.168.252.40:8080/` without HTTP 500 errors.
   - Validated OpenID Connect JWT admin token issuance via `POST /realms/master/protocol/openid-connect/token`.
 
+### 132. Legions (Stacks) Default View Optimization: Deployed Apps First (`v2.95.26`)
+* **Deployed Apps Prioritization (`web-ui/lib/screens/pages/legions_page.dart`):**
+  - Updated the default selected filter group from `all` to `deployed`, directly focusing the Legions view on user-deployed application stacks (e.g. WordPress, Keycloak, custom stacks) rather than internal cluster infrastructure stacks.
+  - Reordered the `SegmentedButton` filter segments to:
+    1. **`Deployed Apps`** (first, default selected)
+    2. **`Base Stacks`** (middle)
+    3. **`All`** (last)
+  - Improves UX by immediately presenting application workloads while preserving instant 1-click access to base system stacks and the complete stack inventory.
+
+

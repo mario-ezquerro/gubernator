@@ -34398,7 +34398,7 @@ _.f=d
 _.a=e},
 Vf:function Vf(a,b,c){var _=this
 _.d=""
-_.e="all"
+_.e="deployed"
 _.f=null
 _.r=!0
 _.w=a
@@ -133694,7 +133694,7 @@ l=t.p
 d=A.k(A.a([o,B.a1,A.d("Legions (Stacks)",g,g,g,g,m==null?g:m.br(B.n),g,g),B.a5,A.dk(A.b5(B.as9,B.bjw,h.gaV0(),g),"Reconcile all stacks and purge dead/stale containers across the cluster"),B.p,A.b5(B.HG,B.bj0,h.gaPl(),g),B.p,A.EU(B.Ir,B.Xv,h.gaPj(),g),B.p,A.ee(B.fC,B.bfC,h.gaYL(),A.hJ(g,g,d,g,g,g,g,g,g,B.r,g,g,g,g,g,g,g,g,g,g))],l),B.h,B.b,B.e,0,g,g)
 m=t.e
 o=t.N
-o=A.k(A.a([A.tz(new A.bh9(h),A.a([new A.dI("all",B.HJ,A.d("All ("+h.a.c.b.length+")",g,g,g,g,g,g,g),m),new A.dI("deployed",B.Ie,A.d("Deployed Apps ("+s+")",g,g,g,g,g,g,g),m),new A.dI("base",B.Hz,A.d("Base Stacks ("+r+")",g,g,g,g,g,g,g),m)],t.CK),A.cy([h.e],o),A.bXZ(B.ax),o),B.aY,A.I(A.aO(g,B.J,!1,g,!0,B.u,g,A.aP(),g,g,g,g,g,g,2,B.auM,B.t,!0,g,!0,g,!1,g,B.K,g,g,g,g,g,g,g,g,1,g,g,!1,"\u2022",g,new A.bha(h),g,g,g,!1,g,g,!1,g,!0,g,B.B,g,g,g,g,g,g,g,g,g,g,g,g,!0,B.H,g,B.M,g,g,g,g),1,g)],l),B.h,B.b,B.e,0,g,g)
+o=A.k(A.a([A.tz(new A.bh9(h),A.a([new A.dI("deployed",B.Ie,A.d("Deployed Apps ("+s+")",g,g,g,g,g,g,g),m),new A.dI("base",B.Hz,A.d("Base Stacks ("+r+")",g,g,g,g,g,g,g),m),new A.dI("all",B.HJ,A.d("All ("+h.a.c.b.length+")",g,g,g,g,g,g,g),m)],t.CK),A.cy([h.e],o),A.bXZ(B.ax),o),B.aY,A.I(A.aO(g,B.J,!1,g,!0,B.u,g,A.aP(),g,g,g,g,g,g,2,B.auM,B.t,!0,g,!0,g,!1,g,B.K,g,g,g,g,g,g,g,g,1,g,g,!1,"\u2022",g,new A.bha(h),g,g,g,!1,g,g,!1,g,!0,g,B.B,g,g,g,g,g,g,g,g,g,g,g,g,!0,B.H,g,B.M,g,g,g,g),1,g)],l),B.h,B.b,B.e,0,g,g)
 if(q.length===0){e=e.k3
 m=A.af(B.wG,e.j(0.2),g,48)
 k=h.a.c.b.length===0?"No stacks deployed yet":"No matching stacks found in this group"
