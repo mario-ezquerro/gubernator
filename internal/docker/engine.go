@@ -29,6 +29,8 @@ type ContainerConfig struct {
 	Ports             []string // ["8080:80", "443:443"]
 	Env               []string // ["FOO=bar", "BAR=baz"]
 	Volumes           []string // ["/host:/container", "namedvol:/data"]
+	DNS               []string // ["192.168.252.39", "8.8.8.8"]
+	DnsSearch         []string // ["gbnt.local", "gbnt"]
 	Command           string   // optional override command
 	Restart           string   // restart policy e.g. "unless-stopped", "always", "on-failure"
 	CpuLimit          string   // e.g. "1.5"
@@ -103,20 +105,44 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 		args = append(args, "-v", v)
 	}
 
-	// Set CoreDNS as resolver if running or configured
-	dnsIP := DefaultDNS
-	if dnsIP == "" {
-		dnsIP = coredns.GetContainerIP()
-	}
-	if dnsIP == "" {
-		dnsIP = os.Getenv("GBNT_DNS_SERVER")
-	}
-	if dnsIP == "" {
-		dnsIP = os.Getenv("GBNT_MANAGER_IP")
-	}
-	if dnsIP != "" {
-		args = append(args, "--dns", dnsIP)
-		args = append(args, "--dns-search", "gbnt.local")
+	// DNS Resolver configuration: use explicit DNS from Compose if provided,
+	// otherwise fallback to CoreDNS resolver IP.
+	if len(cfg.DNS) > 0 {
+		for _, d := range cfg.DNS {
+			if strings.TrimSpace(d) != "" {
+				args = append(args, "--dns", strings.TrimSpace(d))
+			}
+		}
+		if len(cfg.DnsSearch) > 0 {
+			for _, s := range cfg.DnsSearch {
+				if strings.TrimSpace(s) != "" {
+					args = append(args, "--dns-search", strings.TrimSpace(s))
+				}
+			}
+		} else {
+			args = append(args, "--dns-search", "gbnt.local")
+		}
+	} else {
+		dnsIP := DefaultDNS
+		if dnsIP == "" {
+			dnsIP = coredns.GetContainerIP()
+		}
+		if dnsIP == "" {
+			dnsIP = os.Getenv("GBNT_DNS_SERVER")
+		}
+		if dnsIP == "" {
+			var managerNode db.Node
+			if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
+				dnsIP = managerNode.IP
+			}
+		}
+		if dnsIP == "" {
+			dnsIP = os.Getenv("GBNT_MANAGER_IP")
+		}
+		if dnsIP != "" {
+			args = append(args, "--dns", dnsIP)
+			args = append(args, "--dns-search", "gbnt.local")
+		}
 	}
 
 	args = append(args, cfg.Image)

@@ -23,6 +23,8 @@ type TaskWithImage struct {
 	Ports       []string `json:"ports"`
 	Env         []string `json:"env"`
 	Volumes     []string `json:"volumes"`
+	DNS         []string `json:"dns"`
+	DnsSearch   []string `json:"dns_search"`
 	Command     string   `json:"command"`
 	Constraints []string `json:"constraints"`
 }
@@ -94,6 +96,8 @@ func NodeTasksHandler(c *gin.Context) {
 			Ports:       svc.Ports,
 			Env:         env,
 			Volumes:     svc.Volumes,
+			DNS:         svc.DNS,
+			DnsSearch:   svc.DnsSearch,
 			Command:     svc.Command,
 			Constraints: svc.Constraints,
 		})

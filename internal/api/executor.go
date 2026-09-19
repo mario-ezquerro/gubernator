@@ -157,14 +157,34 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 	if !hasEnv("GBNT_SERVICE_NAME") && svc.Name != "" {
 		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("'GBNT_SERVICE_NAME=%s'", svc.Name))
 	}
-	// Lookup Manager DNS IP (use the manager's reachable LAN IP for remote worker nodes)
-	var managerNode db.Node
-	managerDNS := "127.0.0.1"
-	if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
-		managerDNS = managerNode.IP
+	// DNS Resolver configuration
+	if len(svc.DNS) > 0 {
+		for _, d := range svc.DNS {
+			dClean := strings.TrimSpace(d)
+			if dClean != "" {
+				dockerArgs = append(dockerArgs, "--dns", fmt.Sprintf("'%s'", strings.ReplaceAll(dClean, "'", "'\\''")))
+			}
+		}
+	} else {
+		// Lookup Manager DNS IP (use the manager's reachable LAN IP for remote worker nodes)
+		var managerNode db.Node
+		managerDNS := "127.0.0.1"
+		if err := db.DB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
+			managerDNS = managerNode.IP
+		}
+		dockerArgs = append(dockerArgs, "--dns", fmt.Sprintf("'%s'", managerDNS))
 	}
-	dockerArgs = append(dockerArgs, "--dns", fmt.Sprintf("'%s'", managerDNS))
-	dockerArgs = append(dockerArgs, "--dns-search", "'gbnt.local'")
+
+	if len(svc.DnsSearch) > 0 {
+		for _, s := range svc.DnsSearch {
+			sClean := strings.TrimSpace(s)
+			if sClean != "" {
+				dockerArgs = append(dockerArgs, "--dns-search", fmt.Sprintf("'%s'", strings.ReplaceAll(sClean, "'", "'\\''")))
+			}
+		}
+	} else {
+		dockerArgs = append(dockerArgs, "--dns-search", "'gbnt.local'")
+	}
 
 	for _, v := range svc.Volumes {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "'\\''")))
@@ -288,6 +308,8 @@ func executeTask(task db.Task, svc db.Service) {
 		Ports:             svc.Ports,
 		Env:               localEnv,
 		Volumes:           svc.Volumes,
+		DNS:               svc.DNS,
+		DnsSearch:         svc.DnsSearch,
 		Command:           svc.Command,
 		CpuLimit:          svc.CpuLimit,
 		MemoryLimit:       svc.MemoryLimit,

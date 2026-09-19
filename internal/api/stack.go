@@ -158,6 +158,36 @@ func (p *PlacementPreferences) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// StringOrSlice handles both scalar string (e.g. "192.168.252.39") and sequence list (e.g. ["192.168.252.39", "8.8.8.8"]) formats in YAML.
+type StringOrSlice []string
+
+func (s *StringOrSlice) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		if strings.TrimSpace(value.Value) != "" {
+			*s = []string{strings.TrimSpace(value.Value)}
+		} else {
+			*s = []string{}
+		}
+		return nil
+	}
+	if value.Kind == yaml.SequenceNode {
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		var clean []string
+		for _, item := range list {
+			t := strings.TrimSpace(item)
+			if t != "" {
+				clean = append(clean, t)
+			}
+		}
+		*s = clean
+		return nil
+	}
+	return nil
+}
+
 // ComposeService maps a docker-compose service definition, capturing all
 // fields needed to run a container: image, replicas, ports, env, volumes, command, placement.
 type ComposeService struct {
@@ -166,6 +196,8 @@ type ComposeService struct {
 	Environment    EnvSlice          `yaml:"environment"` // handles both list and map formats
 	EnvMap         map[string]string `yaml:"environment_map,omitempty"`
 	Volumes        []string          `yaml:"volumes"` // e.g. ["./data:/app/data"]
+	DNS            StringOrSlice     `yaml:"dns"`     // e.g. ["192.168.252.39"] or "192.168.252.39"
+	DnsSearch      StringOrSlice     `yaml:"dns_search"` // e.g. ["gbnt.local"]
 	Command        CommandVal        `yaml:"command"` // handles both string and list formats
 	Labels         LabelsMap         `yaml:"labels"`  // handles service labels (e.g. gbnt.slo.*)
 	Cpus           FlexString        `yaml:"cpus"`
@@ -384,6 +416,8 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 				Ports:             srvDef.Ports,
 				Env:               []string(srvDef.Environment),
 				Volumes:           srvDef.Volumes,
+				DNS:               []string(srvDef.DNS),
+				DnsSearch:         []string(srvDef.DnsSearch),
 				Command:           string(srvDef.Command),
 				CpuLimit:          cpuLimit,
 				MemoryLimit:       memLimit,
@@ -898,6 +932,8 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 			Ports:             srvDef.Ports,
 			Env:               []string(srvDef.Environment),
 			Volumes:           srvDef.Volumes,
+			DNS:               []string(srvDef.DNS),
+			DnsSearch:         []string(srvDef.DnsSearch),
 			Command:           string(srvDef.Command),
 			CpuLimit:          cpuLimit,
 			MemoryLimit:       memLimit,

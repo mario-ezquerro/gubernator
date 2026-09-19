@@ -517,6 +517,15 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
     );
   }
 
+  String get _managerDnsIp {
+    for (final n in widget.nodes) {
+      if (n.role.toLowerCase() == 'manager' && n.ip.isNotEmpty && n.ip != '127.0.0.1') {
+        return n.ip;
+      }
+    }
+    return '192.168.252.39';
+  }
+
   Widget _buildCopilotPanel(ThemeData theme) {
     return Container(
       width: 380,
@@ -550,6 +559,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             child: Row(
               children: [
                 _tabBtn('Resources', 'resources', Icons.speed),
+                _tabBtn('CoreDNS', 'coredns', Icons.dns),
                 _tabBtn('Caddy', 'caddy', Icons.public),
                 _tabBtn('SLO', 'slo', Icons.show_chart),
                 _tabBtn('Security', 'security', Icons.security),
@@ -563,6 +573,53 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_activeTab == 'coredns') ...[
+                  const Text('CoreDNS Resolver Suite', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Inject CoreDNS resolver ($_managerDnsIp:53) and search domains for inter-service DNS resolution.', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        dnsServers: [_managerDnsIp],
+                        searchDomains: ['gbnt.local', 'gbnt'],
+                        allServices: false,
+                      ));
+                    },
+                    icon: const Icon(Icons.dns, color: Colors.tealAccent),
+                    label: Text('🌐 Inject CoreDNS ($_managerDnsIp)'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        dnsServers: [_managerDnsIp],
+                        searchDomains: ['gbnt.local', 'gbnt'],
+                        allServices: true,
+                      ));
+                    },
+                    icon: const Icon(Icons.hub, color: Colors.greenAccent),
+                    label: const Text('✨ Inject CoreDNS into All Services'),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        dnsServers: [_managerDnsIp, '8.8.8.8', '1.1.1.1'],
+                        searchDomains: ['gbnt.local', 'gbnt'],
+                        allServices: false,
+                      ));
+                    },
+                    icon: const Icon(Icons.alt_route, color: Colors.orangeAccent),
+                    label: const Text('🛡️ Inject CoreDNS + Fallback Upstream'),
+                  ),
+                ],
                 if (_activeTab == 'resources') ...[
                   const Text('CPU & RAM Resources', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -768,6 +825,20 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Inyectar CoreDNS ($_managerDnsIp)',
+                    icon: const Icon(Icons.dns, size: 20, color: Color(0xFF10B981)),
+                    onPressed: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _controller.text,
+                        _controller.selection.baseOffset,
+                        dnsServers: [_managerDnsIp],
+                        searchDomains: ['gbnt.local', 'gbnt'],
+                        allServices: true,
+                      ));
+                    },
+                  ),
+                  const SizedBox(width: 4),
                   IconButton(
                     tooltip: 'Save on disk (Download YAML)',
                     icon: const Icon(Icons.download, size: 20),

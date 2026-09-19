@@ -21,6 +21,29 @@ class ComposeSnippet {
 
 class ComposeAutocomplete {
   static const List<ComposeSnippet> snippets = [
+    // CoreDNS & DNS Resolution (Aqueducts)
+    ComposeSnippet(
+      label: 'dns.coredns',
+      category: 'DNS',
+      description: 'Inject Gubernator CoreDNS resolver and search domain',
+      icon: Icons.dns,
+      snippet: '    dns:\n      - 192.168.252.39\n    dns_search:\n      - gbnt.local\n      - gbnt\n',
+    ),
+    ComposeSnippet(
+      label: 'dns_search',
+      category: 'DNS',
+      description: 'Cluster internal search domains for CoreDNS service discovery',
+      icon: Icons.domain,
+      snippet: '    dns_search:\n      - gbnt.local\n      - gbnt\n',
+    ),
+    ComposeSnippet(
+      label: 'dns.fallback',
+      category: 'DNS',
+      description: 'Redundant public upstream DNS resolvers (8.8.8.8, 1.1.1.1)',
+      icon: Icons.alt_route,
+      snippet: '    dns:\n      - 192.168.252.39\n      - 8.8.8.8\n      - 1.1.1.1\n',
+    ),
+
     // Caddy Ingress
     ComposeSnippet(
       label: 'ingress.host',

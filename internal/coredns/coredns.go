@@ -443,6 +443,9 @@ type DNSStatusInfo struct {
 	ListeningPort int      `json:"listening_port"`
 	Forwarders    []string `json:"forwarders"`
 	TotalRecords  int      `json:"total_records"`
+	ManagerIP     string   `json:"manager_ip"`
+	CoreDNSIP     string   `json:"coredns_ip"`
+	ClusterDomain string   `json:"cluster_domain"`
 }
 
 // PerformDig executes a DNS query against the local CoreDNS instance.
@@ -579,6 +582,22 @@ func GetCoreDNSStatusInfo(database *gorm.DB) *DNSStatusInfo {
 		targetDB.Model(&db.Task{}).Where("status = ? AND container_ip != ?", "running", "").Count(&taskCount)
 	}
 	info.TotalRecords = int(customCount + taskCount*2)
+
+	info.ClusterDomain = "gbnt.local"
+	var managerNode db.Node
+	if targetDB != nil {
+		if err := targetDB.Where("role = ?", "manager").First(&managerNode).Error; err == nil && managerNode.IP != "" {
+			info.ManagerIP = managerNode.IP
+		}
+		var clusterCfg db.ClusterConfig
+		if targetDB.First(&clusterCfg).Error == nil && clusterCfg.ClusterDomain != "" {
+			info.ClusterDomain = clusterCfg.ClusterDomain
+		}
+	}
+	if info.ManagerIP == "" {
+		info.ManagerIP = detectLocalIP()
+	}
+	info.CoreDNSIP = info.ManagerIP
 
 	return info
 }

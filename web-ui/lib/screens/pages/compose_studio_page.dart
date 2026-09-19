@@ -642,6 +642,46 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
+  models.CoreDNSStatusInfo? _corednsInfo;
+
+  void _loadCoreDNSInfo() async {
+    try {
+      final info = await ApiService.fetchCoreDNSStatusInfo();
+      if (mounted) setState(() => _corednsInfo = info);
+    } catch (_) {}
+  }
+
+  String get _clusterCoreDnsIp {
+    if (_corednsInfo?.corednsIp != null && _corednsInfo!.corednsIp!.isNotEmpty) {
+      return _corednsInfo!.corednsIp!;
+    }
+    for (final n in widget.state.nodes) {
+      if (n.role.toLowerCase() == 'manager' && n.ip.isNotEmpty && n.ip != '127.0.0.1') {
+        return n.ip;
+      }
+    }
+    return '192.168.252.39';
+  }
+
+  String get _clusterDomain {
+    return _corednsInfo?.clusterDomain.isNotEmpty == true
+        ? _corednsInfo!.clusterDomain
+        : 'gbnt.local';
+  }
+
+  void _injectCoreDNS({bool allServices = false}) {
+    final dnsIp = _clusterCoreDnsIp;
+    final domain = _clusterDomain;
+    final res = ComposeSmartMerger.mergeDNS(
+      _codeController.text,
+      _codeController.selection.baseOffset,
+      dnsServers: [dnsIp],
+      searchDomains: [domain, 'gbnt'],
+      allServices: allServices,
+    );
+    _applySmartMerge(res);
+  }
+
   // Native browser clipboard event handlers — most reliable approach for HTTP
   html.EventListener? _copyHandler;
   html.EventListener? _cutHandler;
@@ -652,6 +692,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   @override
   void initState() {
     super.initState();
+    _loadCoreDNSInfo();
     _originalYaml = _defaultTemplate;
     _codeController = CodeController(
       text: _defaultTemplate,
@@ -1542,6 +1583,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       _buildAdaptiveTabPill('Resources', 'resources', Icons.speed, const Color(0xFF10B981), blocksMap['resources']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Autoscale', 'autoscale', Icons.bolt, const Color(0xFFA855F7), blocksMap['autoscale']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Caddy', 'caddy', Icons.public, const Color(0xFF8B5CF6), blocksMap['caddy']?.isPresent ?? false, theme, isDark),
+                      _buildAdaptiveTabPill('CoreDNS', 'coredns', Icons.dns, const Color(0xFF0D9488), blocksMap['coredns']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('SLO', 'slo', Icons.show_chart, const Color(0xFFF59E0B), blocksMap['slo']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Security & WAF', 'security', Icons.security, const Color(0xFFEC4899), blocksMap['security']?.isPresent ?? false, theme, isDark),
                       _buildAdaptiveTabPill('Placement & LB', 'nodes', Icons.alt_route, const Color(0xFF06B6D4), blocksMap['nodes']?.isPresent ?? false, theme, isDark),
@@ -2031,6 +2073,82 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   ),
                 ],
 
+                if (_activeCopilotTab == 'coredns') ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.dns, size: 20, color: Color(0xFF0D9488)),
+                      const SizedBox(width: 8),
+                      const Text('CoreDNS Resolver & DNS Suite', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                            const SizedBox(width: 5),
+                            Text(
+                              _clusterCoreDnsIp,
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Inyecta el servidor CoreDNS de Gubernator ($_clusterCoreDnsIp:53) para resolución de nombres interna entre servicios (*.$_clusterDomain) y clúster multi-nodo.',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSnippetCard(
+                    title: 'Inyectar CoreDNS (Servicio Actual)',
+                    subtitle: 'dns: [$_clusterCoreDnsIp] & dns_search: [$_clusterDomain, gbnt]',
+                    icon: Icons.dns,
+                    onTap: () => _injectCoreDNS(allServices: false),
+                  ),
+                  _buildSnippetCard(
+                    title: 'Inyectar CoreDNS en Todos los Servicios',
+                    subtitle: 'Aplica el resolver CoreDNS a todos los contenedores de este Compose',
+                    icon: Icons.hub,
+                    onTap: () => _injectCoreDNS(allServices: true),
+                  ),
+                  _buildSnippetCard(
+                    title: 'Inyectar CoreDNS + Upstream Fallback',
+                    subtitle: 'dns: [$_clusterCoreDnsIp, 8.8.8.8, 1.1.1.1] con redundancia externa',
+                    icon: Icons.alt_route,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        dnsServers: [_clusterCoreDnsIp, '8.8.8.8', '1.1.1.1'],
+                        searchDomains: [_clusterDomain, 'gbnt'],
+                        allServices: false,
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Solo Search Domains ($_clusterDomain, gbnt)',
+                    subtitle: 'dns_search: [$_clusterDomain, gbnt] para autocompletado de dominios cortos',
+                    icon: Icons.domain,
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.mergeDNS(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        dnsServers: [],
+                        searchDomains: [_clusterDomain, 'gbnt'],
+                        allServices: false,
+                      ));
+                    },
+                  ),
+                ],
+
                 if (_activeCopilotTab == 'slo') ...[
                   const Text('SLO Engine (Sloth Alerts)', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
@@ -2482,6 +2600,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       'resources': [],
       'autoscale': [],
       'caddy': [],
+      'coredns': [],
       'slo': [],
       'security': [],
       'nodes': [],
@@ -2493,6 +2612,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       'resources': '',
       'autoscale': '',
       'caddy': '',
+      'coredns': '',
       'slo': '',
       'security': '',
       'nodes': '',
@@ -2565,6 +2685,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         }
       }
 
+      // CoreDNS & DNS Resolution
+      if (trimmed.startsWith('dns:') ||
+          trimmed.startsWith('dns_search:') ||
+          trimmed.contains('gbnt-coredns') ||
+          (trimmed.startsWith('- ') && trimmed.contains('gbnt.local') && !trimmed.contains('ingress.host'))) {
+        blockLines['coredns']!.add(lineNum);
+        if (summaries['coredns']!.isEmpty) {
+          summaries['coredns'] = 'CoreDNS';
+        }
+      }
+
       // SLO
       if (trimmed.contains('gbnt.slo')) {
         blockLines['slo']!.add(lineNum);
@@ -2620,6 +2751,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       ('resources', 'Resources', Icons.speed, const Color(0xFF10B981)),
       ('autoscale', 'Autoscale', Icons.bolt, const Color(0xFFA855F7)),
       ('caddy', 'Caddy Ingress', Icons.public, const Color(0xFF8B5CF6)),
+      ('coredns', 'CoreDNS (DNS)', Icons.dns, const Color(0xFF0D9488)),
       ('slo', 'Sloth SLO', Icons.show_chart, const Color(0xFFF59E0B)),
       ('security', 'Security & WAF', Icons.security, const Color(0xFFEC4899)),
       ('nodes', 'Placement & LB', Icons.alt_route, const Color(0xFF06B6D4)),
@@ -3084,6 +3216,19 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
           ),
           const SizedBox(width: 4),
 
+          // Inyectar CoreDNS
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              foregroundColor: const Color(0xFF10B981),
+            ),
+            icon: const Icon(Icons.dns, size: 14),
+            label: const Text('Inyectar CoreDNS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            onPressed: () => _injectCoreDNS(allServices: true),
+          ),
+          const SizedBox(width: 4),
+
           // Save on Disk (Download YAML)
           TextButton.icon(
             style: TextButton.styleFrom(
@@ -3339,6 +3484,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                       icon: const Icon(Icons.file_open_outlined, size: 16),
                       label: const Text('Open PC'),
                       onPressed: _importFile,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Inyectar CoreDNS
+                  Tooltip(
+                    message: 'Inyectar el resolver CoreDNS de Gubernator ($_clusterCoreDnsIp) y dominios de búsqueda en este Compose',
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.dns, size: 16, color: Color(0xFF10B981)),
+                      label: const Text('Inyectar CoreDNS', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                      onPressed: () => _injectCoreDNS(allServices: true),
                     ),
                   ),
                   const SizedBox(width: 8),

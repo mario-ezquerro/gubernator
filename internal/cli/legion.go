@@ -315,6 +315,8 @@ var legionJoinCmd = &cobra.Command{
 					Ports       []string `json:"ports"`
 					Env         []string `json:"env"`
 					Volumes     []string `json:"volumes"`
+					DNS         []string `json:"dns"`
+					DnsSearch   []string `json:"dns_search"`
 					Command     string   `json:"command"`
 					Constraints []string `json:"constraints"`
 				} `json:"tasks"`
@@ -450,12 +452,14 @@ var legionJoinCmd = &cobra.Command{
 						reportStatus(t.Task.ID, "starting", "", "", "Starting container...")
 
 						cfg := docker.ContainerConfig{
-							TaskID:  t.Task.ID,
-							Image:   t.Image,
-							Ports:   t.Ports,
-							Env:     t.Env,
-							Volumes: t.Volumes,
-							Command: t.Command,
+							TaskID:    t.Task.ID,
+							Image:     t.Image,
+							Ports:     t.Ports,
+							Env:       t.Env,
+							Volumes:   t.Volumes,
+							DNS:       t.DNS,
+							DnsSearch: t.DnsSearch,
+							Command:   t.Command,
 						}
 
 						fmt.Printf("Starting container for task %s...\n", t.Task.ID)

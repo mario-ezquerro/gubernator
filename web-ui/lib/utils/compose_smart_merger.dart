@@ -52,8 +52,8 @@ class _BlockBounds {
 /// are updated in-place without duplicating blocks, while collections (volumes, ports, env)
 /// are merged cleanly without creating redundant section headers or duplicate entries.
 class ComposeSmartMerger {
-  /// Resolves the target service bounds in the Compose document based on cursor offset.
-  static _ServiceBounds? _findTargetService(List<String> lines, int cursorOffset) {
+  /// Finds all service definitions under "services:" in the Compose document.
+  static List<_ServiceBounds> _findAllServices(List<String> lines) {
     int servicesIdx = -1;
     for (int i = 0; i < lines.length; i++) {
       if (lines[i].trim().startsWith('services:')) {
@@ -61,7 +61,42 @@ class ComposeSmartMerger {
         break;
       }
     }
-    if (servicesIdx == -1) return null;
+    if (servicesIdx == -1) return [];
+
+    final services = <_ServiceBounds>[];
+    for (int i = servicesIdx + 1; i < lines.length; i++) {
+      final line = lines[i];
+      if (line.isNotEmpty && !line.startsWith(' ') && !line.startsWith('\t') && !line.startsWith('#')) {
+        break;
+      }
+      final match = RegExp(r'^  ([a-zA-Z0-9_\-]+):').firstMatch(line);
+      if (match != null) {
+        final name = match.group(1)!;
+        services.add(_ServiceBounds(
+          name: name,
+          startLine: i,
+          endLine: lines.length - 1,
+          indent: '  ',
+        ));
+      }
+    }
+
+    for (int i = 0; i < services.length; i++) {
+      final nextStart = (i + 1 < services.length) ? services[i + 1].startLine - 1 : lines.length - 1;
+      services[i] = _ServiceBounds(
+        name: services[i].name,
+        startLine: services[i].startLine,
+        endLine: nextStart,
+        indent: services[i].indent,
+      );
+    }
+    return services;
+  }
+
+  /// Resolves the target service bounds in the Compose document based on cursor offset.
+  static _ServiceBounds? _findTargetService(List<String> lines, int cursorOffset) {
+    final services = _findAllServices(lines);
+    if (services.isEmpty) return null;
 
     // Calculate cursor line number
     int cursorLine = 0;
@@ -72,40 +107,6 @@ class ComposeSmartMerger {
         cursorLine = i;
         break;
       }
-    }
-
-    // Identify all services under "services:"
-    final services = <_ServiceBounds>[];
-    for (int i = servicesIdx + 1; i < lines.length; i++) {
-      final line = lines[i];
-      // Top-level key (0 indent) terminates services block
-      if (line.isNotEmpty && !line.startsWith(' ') && !line.startsWith('\t') && !line.startsWith('#')) {
-        break;
-      }
-      // Service name line (exactly 2 spaces indentation ending with :)
-      final match = RegExp(r'^  ([a-zA-Z0-9_\-]+):').firstMatch(line);
-      if (match != null) {
-        final name = match.group(1)!;
-        services.add(_ServiceBounds(
-          name: name,
-          startLine: i,
-          endLine: lines.length - 1, // temporary, will fix below
-          indent: '  ',
-        ));
-      }
-    }
-
-    if (services.isEmpty) return null;
-
-    // Fix endLines for each service
-    for (int i = 0; i < services.length; i++) {
-      final nextStart = (i + 1 < services.length) ? services[i + 1].startLine - 1 : lines.length - 1;
-      services[i] = _ServiceBounds(
-        name: services[i].name,
-        startLine: services[i].startLine,
-        endLine: nextStart,
-        indent: services[i].indent,
-      );
     }
 
     // Try finding service enclosing cursor
@@ -777,7 +778,139 @@ class ComposeSmartMerger {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 9. AUTOMATIC SMART MERGE DETECTOR (Fallback for Generic Snippets)
+  // 9. DNS RESOLVERS & SEARCH DOMAINS: (CoreDNS Smart Merge)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  static MergeResult mergeDNS(
+    String yaml,
+    int cursorOffset, {
+    required List<String> dnsServers,
+    List<String>? searchDomains,
+    bool allServices = false,
+  }) {
+    var lines = yaml.split('\n');
+    final allSrvs = _findAllServices(lines);
+    if (allSrvs.isEmpty) {
+      final dnsLines = ['services:', '  app:', '    dns:'];
+      for (final d in dnsServers) {
+        dnsLines.add('      - "$d"');
+      }
+      if (searchDomains != null && searchDomains.isNotEmpty) {
+        dnsLines.add('    dns_search:');
+        for (final s in searchDomains) {
+          dnsLines.add('      - "$s"');
+        }
+      }
+      final sep = yaml.endsWith('\n') ? '' : '\n';
+      return MergeResult(
+        newYaml: '$yaml$sep${dnsLines.join('\n')}\n',
+        action: MergeActionType.inserted,
+        message: 'Injected CoreDNS configuration',
+      );
+    }
+
+    final targetServices = allServices
+        ? allSrvs.reversed.toList()
+        : [_findTargetService(lines, cursorOffset)!];
+
+    bool anyModified = false;
+    final messages = <String>[];
+
+    for (final srv in targetServices) {
+      // 1. Process dns: block
+      final dnsBlock = _findSubBlock(lines, srv.startLine, srv.endLine, 'dns');
+      if (dnsBlock != null) {
+        final toAdd = <String>[];
+        for (final d in dnsServers) {
+          bool exists = false;
+          for (int i = dnsBlock.keyLine + 1; i <= dnsBlock.endLine; i++) {
+            final clean = lines[i].replaceAll('"', '').replaceAll("'", "").trim();
+            if (clean == '- $d' || clean == d || clean == '- "$d"') {
+              exists = true;
+              break;
+            }
+          }
+          if (!exists) toAdd.add(d);
+        }
+        if (toAdd.isNotEmpty) {
+          anyModified = true;
+          final lastLine = lines[dnsBlock.endLine];
+          final indent = lastLine.contains('-') ? lastLine.substring(0, lastLine.indexOf('-')) : '      ';
+          final newLines = toAdd.map((d) => '$indent- "$d"').toList();
+          lines.insertAll(dnsBlock.endLine + 1, newLines);
+        }
+      } else {
+        anyModified = true;
+        final newLines = ['    dns:'];
+        for (final d in dnsServers) {
+          newLines.add('      - "$d"');
+        }
+        lines.insertAll(srv.startLine + 1, newLines);
+      }
+
+      // Re-find service bounds since lines changed
+      final updatedSrv = _findAllServices(lines).firstWhere(
+        (s) => s.name == srv.name,
+        orElse: () => srv,
+      );
+
+      // 2. Process dns_search: block if requested
+      if (searchDomains != null && searchDomains.isNotEmpty) {
+        final searchBlock = _findSubBlock(lines, updatedSrv.startLine, updatedSrv.endLine, 'dns_search');
+        if (searchBlock != null) {
+          final toAdd = <String>[];
+          for (final dom in searchDomains) {
+            bool exists = false;
+            for (int i = searchBlock.keyLine + 1; i <= searchBlock.endLine; i++) {
+              final clean = lines[i].replaceAll('"', '').replaceAll("'", "").trim();
+              if (clean == '- $dom' || clean == dom || clean == '- "$dom"') {
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) toAdd.add(dom);
+          }
+          if (toAdd.isNotEmpty) {
+            anyModified = true;
+            final lastLine = lines[searchBlock.endLine];
+            final indent = lastLine.contains('-') ? lastLine.substring(0, lastLine.indexOf('-')) : '      ';
+            final newLines = toAdd.map((dom) => '$indent- "$dom"').toList();
+            lines.insertAll(searchBlock.endLine + 1, newLines);
+          }
+        } else {
+          final currentDns = _findSubBlock(lines, updatedSrv.startLine, updatedSrv.endLine, 'dns');
+          int insertAt = (currentDns != null) ? currentDns.endLine + 1 : updatedSrv.startLine + 1;
+          anyModified = true;
+          final newLines = ['    dns_search:'];
+          for (final dom in searchDomains) {
+            newLines.add('      - "$dom"');
+          }
+          lines.insertAll(insertAt, newLines);
+        }
+      }
+
+      messages.add('${srv.name} (DNS: ${dnsServers.join(', ')})');
+    }
+
+    if (!anyModified) {
+      return MergeResult(
+        newYaml: yaml,
+        action: MergeActionType.alreadyExists,
+        message: 'CoreDNS configuration already present in compose',
+      );
+    }
+
+    return MergeResult(
+      newYaml: lines.join('\n'),
+      action: MergeActionType.added,
+      message: allServices
+          ? 'Injected CoreDNS into all services: ${messages.join('; ')}'
+          : 'Injected CoreDNS: ${messages.first}',
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 10. AUTOMATIC SMART MERGE DETECTOR (Fallback for Generic Snippets)
   // ──────────────────────────────────────────────────────────────────────────
 
   static MergeResult? trySmartMerge(String yaml, int cursorOffset, String snippet) {
@@ -828,12 +961,12 @@ class ComposeSmartMerger {
 
     // 2. Restart Policy
     if (clean.startsWith('restart:')) {
-      final policy = clean.replaceFirst('restart:', '').trim();
+      final policy = clean.replaceFirst('restart:', '').replaceAll('"', '').trim();
       return mergeRestartPolicy(yaml, cursorOffset, policy);
     }
 
     // 3. Healthcheck
-    if (snippet.contains('healthcheck:')) {
+    if (clean.startsWith('healthcheck:') || snippet.contains('test:')) {
       String testCmd = 'http://localhost:8080/health';
       for (final l in snippet.split('\n')) {
         final t = l.trim();
@@ -921,6 +1054,31 @@ class ComposeSmartMerger {
       }
       if (labels.isNotEmpty) {
         return mergeLabels(yaml, cursorOffset, labels);
+      }
+    }
+
+    // 9. DNS / CoreDNS
+    if (clean.startsWith('dns:') || snippet.contains('dns:') || clean.startsWith('dns_search:')) {
+      final dnsIPs = <String>[];
+      final searchDoms = <String>[];
+      for (final line in snippet.split('\n')) {
+        final t = line.replaceAll('"', '').replaceAll("'", "").trim();
+        if (t.startsWith('- ') && (t.contains('.') || t.contains('gbnt'))) {
+          final val = t.substring(2).trim();
+          if (RegExp(r'^[0-9\.]+$').hasMatch(val)) {
+            dnsIPs.add(val);
+          } else {
+            searchDoms.add(val);
+          }
+        }
+      }
+      if (dnsIPs.isNotEmpty || searchDoms.isNotEmpty) {
+        return mergeDNS(
+          yaml,
+          cursorOffset,
+          dnsServers: dnsIPs.isEmpty ? ['192.168.252.39'] : dnsIPs,
+          searchDomains: searchDoms.isEmpty ? ['gbnt.local', 'gbnt'] : searchDoms,
+        );
       }
     }
 

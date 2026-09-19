@@ -1066,6 +1066,9 @@ class CoreDNSStatusInfo {
   final int listeningPort;
   final List<String> forwarders;
   final int totalRecords;
+  final String? managerIp;
+  final String? corednsIp;
+  final String clusterDomain;
 
   CoreDNSStatusInfo({
     required this.status,
@@ -1074,6 +1077,9 @@ class CoreDNSStatusInfo {
     required this.listeningPort,
     required this.forwarders,
     required this.totalRecords,
+    this.managerIp,
+    this.corednsIp,
+    this.clusterDomain = 'gbnt.local',
   });
 
   factory CoreDNSStatusInfo.fromJson(Map<String, dynamic> json) {
@@ -1084,6 +1090,9 @@ class CoreDNSStatusInfo {
       listeningPort: (json['listening_port'] as num?)?.toInt() ?? 5354,
       forwarders: (json['forwarders'] as List? ?? []).map((e) => e.toString()).toList(),
       totalRecords: (json['total_records'] as num?)?.toInt() ?? 0,
+      managerIp: json['manager_ip']?.toString(),
+      corednsIp: json['coredns_ip']?.toString(),
+      clusterDomain: json['cluster_domain']?.toString() ?? 'gbnt.local',
     );
   }
 }

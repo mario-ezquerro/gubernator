@@ -99,6 +99,10 @@ type Service struct {
 	Env               []string  `gorm:"-" json:"env"` // e.g. ["FOO=bar"]
 	VolumesRaw        []byte    `gorm:"type:json" json:"-"`
 	Volumes           []string  `gorm:"-" json:"volumes"` // e.g. ["/host:/container"]
+	DNSRaw            []byte    `gorm:"type:json" json:"-"`
+	DNS               []string  `gorm:"-" json:"dns"` // e.g. ["192.168.252.39"]
+	DnsSearchRaw      []byte    `gorm:"type:json" json:"-"`
+	DnsSearch         []string  `gorm:"-" json:"dns_search"` // e.g. ["gbnt.local", "gbnt"]
 	Command           string    `gorm:"type:text" json:"command"`
 	CpuLimit          string    `gorm:"type:varchar(50)" json:"cpu_limit"`
 	MemoryLimit       string    `gorm:"type:varchar(50)" json:"memory_limit"`
@@ -156,6 +160,8 @@ func (s *Service) BeforeSave(_ *gorm.DB) (err error) {
 	s.PortsRaw = marshalField(s.Ports, []byte("[]"))
 	s.EnvRaw = marshalField(s.Env, []byte("[]"))
 	s.VolumesRaw = marshalField(s.Volumes, []byte("[]"))
+	s.DNSRaw = marshalField(s.DNS, []byte("[]"))
+	s.DnsSearchRaw = marshalField(s.DnsSearch, []byte("[]"))
 	return nil
 }
 
@@ -169,8 +175,16 @@ func (s *Service) AfterFind(_ *gorm.DB) (err error) {
 	unmarshal(s.PortsRaw, &s.Ports)
 	unmarshal(s.EnvRaw, &s.Env)
 	unmarshal(s.VolumesRaw, &s.Volumes)
+	unmarshal(s.DNSRaw, &s.DNS)
+	unmarshal(s.DnsSearchRaw, &s.DnsSearch)
 	if s.Constraints == nil {
 		s.Constraints = make([]string, 0)
+	}
+	if s.DNS == nil {
+		s.DNS = make([]string, 0)
+	}
+	if s.DnsSearch == nil {
+		s.DnsSearch = make([]string, 0)
 	}
 	return nil
 }

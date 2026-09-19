@@ -1409,3 +1409,19 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Added context-aware browser guidance box: informs users on HTTP connections about configuring their browser's download settings (*"Preguntar dónde se guardará cada archivo antes de descargarlo"*) to enable folder browsing on any platform.
 * **Full Dashboard & Studio Integration:**
   - Connected `showSavePcStackDialog` across **Compose Studio** (`compose_studio_page.dart`), **Compose Editor** (`compose_editor.dart`), **New Stack Dialog** (`new_stack_dialog.dart`), **Stacks Management** (`legions_page.dart`), and the main **Dashboard** (`dashboard_screen.dart`).
+
+### 129. CoreDNS Resolver Injection & DNS Suite for Docker Compose (`v2.95.23`)
+* **CoreDNS Resolver Injection Subsystem (`internal/api/stack.go`, `internal/db/models.go`):**
+  - Added native parsing and unmarshaling support in Docker Compose parser for `dns:` and `dns_search:` service directives supporting both scalar strings and list slices (`StringOrSlice`).
+  - Added `DNSRaw` and `DnsSearchRaw` JSON serialization hooks to `db.Service` model, preserving DNS definitions into SQLite cluster state.
+  - Added unit test suite `compose_dns_test.go` verifying scalar and list format unmarshaling.
+* **Multi-Node Container DNS Runtime Enforcement (`internal/docker/engine.go`, `internal/api/executor.go`, `internal/cli/legion.go`):**
+  - Integrated `DNS` and `DnsSearch` into `ContainerConfig` and Docker Engine container startup.
+  - When explicit `dns:` is specified in Compose, passes addresses into container's `HostConfig.Dns` and search domains into `HostConfig.DnsSearch`.
+  - When no explicit DNS is specified, automatically injects cluster's active CoreDNS resolver IP (`coredns.GetContainerIP()` or Manager host IP) as default nameserver, ensuring all stack containers seamlessly resolve internal services (`*.gbnt.local`, `*.gbnt`).
+  - Remote SSH task executor (`executeRemoteWorkerTask`) automatically forwards `--dns <ip>` and `--dns-search <domain>` flags when provisioning tasks on Centurion worker nodes.
+* **1-Click CoreDNS Injection in Compose Studio & Editor (`web-ui`):**
+  - **Compose Studio (`compose_studio_page.dart`):** Added 1-click "Inyectar CoreDNS" button in the quick code toolbar and main header bar, automatically injecting CoreDNS nameserver (`192.168.252.39`), fallback resolvers (`8.8.8.8`, `1.1.1.1`), and search domains (`gbnt.local`, `gbnt`).
+  - **Gubernator Copilot CoreDNS Wizard Tab:** Dedicated "CoreDNS" tab in Copilot side panel with live nameserver IP badge, domain diagnostics, and 4 specialized injection presets (Servicio Actual, Todos los Servicios, Inyectar con Upstream Fallback, Solo Search Domains).
+  - **Compose Editor & Autocompletion (`compose_editor.dart`, `compose_autocomplete.dart`):** Added CoreDNS injection button in modal header, CoreDNS wizard tab, and autocompletion suggestion chips (`dns.coredns`, `dns_search`, `dns.fallback`).
+  - **Smart YAML Merger (`compose_smart_merger.dart`):** Implemented AST-like multi-service DNS injection preserving indentation, comments, and existing directives.
