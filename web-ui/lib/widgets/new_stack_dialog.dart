@@ -8,6 +8,7 @@ import 'package:highlight/languages/yaml.dart';
 import 'compose_autocomplete.dart';
 import 'server_stack_picker_dialog.dart';
 import 'save_server_stack_dialog.dart';
+import 'save_pc_stack_dialog.dart';
 import 'poc_examples_dialog.dart';
 import '../models/models.dart' as models;
 import '../utils/clipboard_service.dart';
@@ -469,21 +470,10 @@ class _NewStackDialogState extends State<NewStackDialog> {
                                             message: 'Download / Save docker-compose.yml directly to your local computer disk',
                                             child: TextButton.icon(
                                               onPressed: () {
-                                                final name = _nameController.text.trim();
-                                                final fn = name.isEmpty ? 'docker-compose.yml' : '$name.yml';
-                                                DownloadService.downloadYaml(_yamlController.text, filename: fn);
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Row(
-                                                      children: [
-                                                        const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
-                                                        const SizedBox(width: 8),
-                                                        Text('Saved "$fn" to local computer disk'),
-                                                      ],
-                                                    ),
-                                                    backgroundColor: const Color(0xFF1E293B),
-                                                    behavior: SnackBarBehavior.floating,
-                                                  ),
+                                                showSavePcStackDialog(
+                                                  context: context,
+                                                  initialName: _nameController.text,
+                                                  yamlContent: _yamlController.text,
                                                 );
                                               },
                                               icon: const Icon(Icons.download, size: 15, color: Color(0xFF388BFD)),

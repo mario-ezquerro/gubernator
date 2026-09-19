@@ -1398,3 +1398,14 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Removed dangerous force unwrap operators (`templates[idx]!`, `tmpl['title']!`, `tmpl['label']!`) in SLI Templates tab.
   - Enhanced error banner with visual retry button (`FilledButton.tonalIcon`) enabling 1-click re-fetching upon transient network issues.
 
+### 128. Local PC Save Dialog, Filename Customization & Folder Navigation (`v2.95.22`)
+* **Interactive Local Computer Save Dialog (`web-ui/lib/widgets/save_pc_stack_dialog.dart`):**
+  - Created dedicated `SavePcStackDialog` modal replacing silent, non-configurable browser downloads across the dashboard.
+  - Users can now freely customize and edit the destination filename before saving, with quick 1-click preset chips (`docker-compose.yml`, `<stack-name>.yml`, `compose.yml`, `<stack-name>-compose.yml`).
+  - Integrated 1-click "Copiar YAML" action button with floating clipboard feedback.
+* **File System Access API & Native Folder Navigation (`web-ui/lib/utils/download_service.dart`):**
+  - Upgraded `DownloadService.saveYamlFile()` to support the W3C File System Access API (`window.showSaveFilePicker()`) when supported by the client browser.
+  - Prompts the native OS File Save dialog (macOS Finder Save sheet / Windows File Explorer Save As dialog), allowing users to directly navigate their computer's directory tree, choose destination folders, and rename files natively.
+  - Added context-aware browser guidance box: informs users on HTTP connections about configuring their browser's download settings (*"Preguntar dónde se guardará cada archivo antes de descargarlo"*) to enable folder browsing on any platform.
+* **Full Dashboard & Studio Integration:**
+  - Connected `showSavePcStackDialog` across **Compose Studio** (`compose_studio_page.dart`), **Compose Editor** (`compose_editor.dart`), **New Stack Dialog** (`new_stack_dialog.dart`), **Stacks Management** (`legions_page.dart`), and the main **Dashboard** (`dashboard_screen.dart`).

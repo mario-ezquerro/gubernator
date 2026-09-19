@@ -10,6 +10,7 @@ import 'package:highlight/languages/yaml.dart';
 
 import 'compose_autocomplete.dart';
 import 'save_server_stack_dialog.dart';
+import 'save_pc_stack_dialog.dart';
 import '../models/models.dart';
 import '../utils/clipboard_service.dart';
 import '../utils/compose_smart_merger.dart';
@@ -509,32 +510,10 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
   }
 
   void _saveOnDisk() {
-    final rawName = widget.stackName.trim();
-    final name = rawName.isEmpty ? 'docker-compose' : rawName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '-');
-    final filename = name.endsWith('.yml') || name.endsWith('.yaml') ? name : '$name.yml';
-
-    final bytes = utf8.encode(_controller.text);
-    final blob = html.Blob([bytes], 'application/x-yaml');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', filename)
-      ..click();
-    html.Url.revokeObjectUrl(url);
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
-            const SizedBox(width: 8),
-            Text('Saved "$filename" to local computer disk'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E293B),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
+    showSavePcStackDialog(
+      context: context,
+      initialName: widget.stackName,
+      yamlContent: _controller.text,
     );
   }
 
@@ -886,23 +865,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                                 ),
                                 icon: const Icon(Icons.download, size: 14),
                                 label: const Text('Save PC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                onPressed: () {
-                                  final fn = widget.stackName.isEmpty ? 'docker-compose.yml' : '${widget.stackName}.yml';
-                                  DownloadService.downloadYaml(_controller.text, filename: fn);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
-                                          const SizedBox(width: 8),
-                                          Text('Saved "$fn" to local computer disk'),
-                                        ],
-                                      ),
-                                      backgroundColor: const Color(0xFF1E293B),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
+                                onPressed: _saveOnDisk,
                               ),
                               const SizedBox(width: 4),
                               TextButton.icon(
@@ -974,23 +937,7 @@ class _ComposeEditorDialogState extends State<ComposeEditorDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () {
-                      final fn = widget.stackName.isEmpty ? 'docker-compose.yml' : '${widget.stackName}.yml';
-                      DownloadService.downloadYaml(_controller.text, filename: fn);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
-                              const SizedBox(width: 8),
-                              Text('Saved "$fn" to local computer disk'),
-                            ],
-                          ),
-                          backgroundColor: const Color(0xFF1E293B),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: _saveOnDisk,
                     icon: const Icon(Icons.download, size: 16, color: Color(0xFF58A6FF)),
                     label: const Text('Save on PC', style: TextStyle(color: Color(0xFF58A6FF))),
                   ),

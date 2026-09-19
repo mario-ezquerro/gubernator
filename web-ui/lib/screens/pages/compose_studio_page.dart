@@ -17,6 +17,7 @@ import '../../widgets/server_stack_picker_dialog.dart';
 import '../../widgets/poc_examples_dialog.dart';
 import '../../widgets/port_conflict_dialog.dart';
 import '../../widgets/save_server_stack_dialog.dart';
+import '../../widgets/save_pc_stack_dialog.dart';
 
 class _ComposeBlockSegment {
   final String id;
@@ -1108,32 +1109,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   }
 
   void _saveOnDisk() {
-    final rawName = _nameController.text.trim();
-    final name = rawName.isEmpty ? 'docker-compose' : rawName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '-');
-    final filename = name.endsWith('.yml') || name.endsWith('.yaml') ? name : '$name.yml';
-
-    final bytes = utf8.encode(_codeController.text);
-    final blob = html.Blob([bytes], 'application/x-yaml');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', filename)
-      ..click();
-    html.Url.revokeObjectUrl(url);
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.download_done, color: Colors.greenAccent, size: 18),
-            const SizedBox(width: 8),
-            Text('Saved "$filename" to local computer disk'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1E293B),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
+    showSavePcStackDialog(
+      context: context,
+      initialName: _nameController.text,
+      yamlContent: _codeController.text,
     );
   }
 

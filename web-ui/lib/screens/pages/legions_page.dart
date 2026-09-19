@@ -9,6 +9,7 @@ import '../../widgets/poc_examples_dialog.dart';
 import '../../widgets/port_conflict_dialog.dart';
 import '../../widgets/autoscale_dialog.dart';
 import '../../widgets/save_server_stack_dialog.dart';
+import '../../widgets/save_pc_stack_dialog.dart';
 import '../../utils/clipboard_service.dart';
 import '../../utils/download_service.dart';
 
@@ -316,8 +317,12 @@ class _LegionsPageState extends State<LegionsPage> {
   Future<void> _downloadStackYaml(StackModel s) async {
     try {
       final yaml = await ApiService.getStackCompose(s.id);
-      DownloadService.downloadYaml(yaml, filename: '${s.name}.yml');
-      _showSnackBar('Saved "${s.name}.yml" to local computer disk');
+      if (!mounted) return;
+      await showSavePcStackDialog(
+        context: context,
+        initialName: s.name,
+        yamlContent: yaml,
+      );
     } catch (e) {
       _showSnackBar('Failed to download compose file: $e', isError: true);
     }
