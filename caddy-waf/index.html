@@ -1,0 +1,1669 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../image-security/">
+      
+      
+        <link rel="next" href="../cli/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Caddy WAF & Threat Shield - Gubernator Orchestrator (v2.95.26)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#caddy-ingress-threat-shield-web-application-firewall-waf" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v2.95.26)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v2.95.26)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v2.95.26)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Caddy WAF & Threat Shield
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../compliance/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compliance & Security
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ebpf/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v2.95.26)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v2.95.26)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v2.95.26)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../architecture/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance Hub Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Digital Operational Resilience Act (EU DORA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cis-docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIS Docker Benchmark (v1.6.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../iso27001/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ISO/IEC 27001:2022 (Annex A)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nis2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    European NIS 2 Directive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Esquema Nacional de Seguridad (ENS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image Security, SBOM & Gatekeeper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy WAF & Threat Shield
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy WAF & Threat Shield
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Core Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protection-vectors-owasp-top-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Protection Vectors (OWASP Top 10)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#declarative-compose-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📋 Declarative Compose Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📋 Declarative Compose Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-compose-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Compose Constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-control-a-mano" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖐️ Manual Control ("A Mano")
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🖐️ Manual Control (&#34;A Mano&#34;)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-via-flutter-web-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Via Flutter Web Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-commands-gbnt-caddy-waf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        💻 CLI Commands (gbnt caddy waf)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="💻 CLI Commands (gbnt caddy waf)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-display-status-protected-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Display Status &amp; Protected Routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-enable-or-disable-waf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Enable or Disable WAF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-change-operating-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Change Operating Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-ip-blacklisting-whitelisting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. IP Blacklisting &amp; Whitelisting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-inspect-threat-events-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Inspect Threat Events Stream
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-simulate-attack-probes-penetration-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Simulate Attack Probes (Penetration Test)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 REST API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zero-downtime-hot-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔄 Zero-Downtime Hot Reload
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../ebpf/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="caddy-ingress-threat-shield-web-application-firewall-waf">Caddy Ingress Threat Shield &amp; Web Application Firewall (WAF)</h1>
+<p>Gubernator integrates an <strong>air-gapped, zero-dependency Web Application Firewall (WAF) &amp; Threat Shield</strong> directly into the native Caddy Ingress reverse proxy gateway.</p>
+<p>Designed with a <strong>hybrid security model</strong>, Threat Shield can be controlled <strong>declaratively via Docker Compose labels</strong> or <strong>manually ("a mano")</strong> per route or globally through the Flutter Web Dashboard, CLI, and REST API.</p>
+<hr />
+<h2 id="core-capabilities">🛡️ Core Capabilities</h2>
+<ul>
+<li><strong>Dual Management Control</strong>:</li>
+<li><strong>Declarative (Compose)</strong>: Specify <code>gbnt.waf.enabled=true</code> and <code>gbnt.waf.mode=enforce|detection</code> in your stack <code>docker-compose.yml</code>.</li>
+<li><strong>Manual ("A Mano")</strong>: Toggle WAF on or off instantly with 1 click from the Web UI or via <code>gbnt caddy waf enable/disable &lt;host&gt;</code>. Manual overrides take precedence over Compose labels.</li>
+<li><strong>100% Native Caddy Architecture</strong>: Uses Caddy's high-performance native request matchers (<code>vars_regexp</code>, <code>header_regexp</code>, <code>path_regexp</code>, <code>remote_ip</code>) without requiring Cgo, external daemon sidecars, or dynamic binary compilation.</li>
+<li><strong>Dual Operating Modes</strong>:</li>
+<li><strong>Enforce (Block 403)</strong>: Blocks malicious requests immediately at the edge and returns a detailed <code>403 Forbidden</code> response.</li>
+<li><strong>Detection (Alert Only)</strong>: Permissive mode that passes traffic downstream while annotating responses with <code>X-Threat-Shield-Warning</code> and recording security events in the audit trail.</li>
+<li><strong>Real-Time SIEM &amp; Audit Trail</strong>: Every intercepted probe is recorded in the SQLite database with client IP, timestamp, target URI, attack vector, rule ID, and action taken.</li>
+<li><strong>Built-in Attack Simulator</strong>: One-click penetration test probe tool built into the Web UI and CLI to verify WAF interception rules on any cluster route.</li>
+</ul>
+<hr />
+<h2 id="protection-vectors-owasp-top-10">🎯 Protection Vectors (OWASP Top 10)</h2>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Rule ID</th>
+<th>Threat Description</th>
+<th>Detection Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SQL Injection (SQLi)</strong></td>
+<td><code>WAF003</code></td>
+<td>Unauthorized database queries, UNION SELECT, timing attacks, data dumping</td>
+<td><code>union select</code>, <code>select ... from</code>, <code>sleep()</code>, <code>benchmark()</code>, <code>information_schema</code>, <code>or 1=1</code>, <code>--</code>, <code>;drop table</code></td>
+</tr>
+<tr>
+<td><strong>Cross-Site Scripting (XSS)</strong></td>
+<td><code>WAF004</code></td>
+<td>Malicious JavaScript injection, stolen session cookies, DOM poisoning</td>
+<td><code>&lt;script&gt;</code>, <code>javascript:</code>, <code>onerror=</code>, <code>onload=</code>, <code>document.cookie</code>, <code>&lt;img src=x&gt;</code></td>
+</tr>
+<tr>
+<td><strong>Remote Code Execution (RCE)</strong></td>
+<td><code>WAF005</code></td>
+<td>Shell command injection, Log4j / Log4Shell exploitation, malicious binaries</td>
+<td><code>${jndi:ldap</code>, <code>/bin/sh</code>, <code>/bin/bash</code>, <code>powershell</code>, <code>cmd.exe</code>, <code>wget http</code>, <code>curl http</code></td>
+</tr>
+<tr>
+<td><strong>Path Traversal &amp; LFI / RFI</strong></td>
+<td><code>WAF002</code></td>
+<td>Local File Inclusion, access to system files outside web root</td>
+<td><code>../</code>, <code>..\</code>, <code>/etc/passwd</code>, <code>/proc/self</code>, <code>win.ini</code>, <code>boot.ini</code></td>
+</tr>
+<tr>
+<td><strong>Scanners &amp; Bot Probes</strong></td>
+<td><code>WAF001</code></td>
+<td>Automated vulnerability scanners, brute-force recon tools</td>
+<td><code>sqlmap</code>, <code>nikto</code>, <code>w3af</code>, <code>acunetix</code>, <code>nessus</code>, <code>gobuster</code>, <code>dirbuster</code>, <code>masscan</code>, <code>nmap</code>, <code>wpscan</code></td>
+</tr>
+<tr>
+<td><strong>IP Blacklist &amp; Whitelist</strong></td>
+<td><code>WAF006</code></td>
+<td>Edge IP / CIDR blocklist with private subnet whitelist</td>
+<td>Exact IP match or CIDR subnet block (<code>remote_ip</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="declarative-compose-usage">📋 Declarative Compose Usage</h2>
+<p>You can enable and configure Threat Shield directly in any stack's <code>docker-compose.yml</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">'3.8'</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">webapp</span><span class="p">:</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx:alpine</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">placement</span><span class="p">:</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"ingress.host=app.gbnt.local"</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"gbnt.waf.enabled=true"</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"gbnt.waf.mode=enforce"</span>
+</span></code></pre></div>
+<h3 id="supported-compose-constraints">Supported Compose Constraints</h3>
+<ul>
+<li><code>gbnt.waf.enabled=true|false</code> (or <code>ingress.waf.enabled</code>): Enable or disable WAF for this service route.</li>
+<li><code>gbnt.waf.mode=enforce|detection</code> (or <code>ingress.waf.mode</code>): Set route-specific operating mode.</li>
+</ul>
+<hr />
+<h2 id="manual-control-a-mano">🖐️ Manual Control ("A Mano")</h2>
+<p>Whenever a developer or security operator needs to override Compose settings or urgently protect a route:</p>
+<h3 id="1-via-flutter-web-dashboard">1. Via Flutter Web Dashboard</h3>
+<ol>
+<li>Navigate to <strong>Caddy Ingress</strong> in the left sidebar.</li>
+<li>In <strong>Tab 2 (Routes)</strong>:</li>
+<li>Review the <strong>THREAT SHIELD (WAF)</strong> column.</li>
+<li>View the active status badge (<code>🟢 ENFORCE [a mano]</code>, <code>🟡 DETECT</code>, or <code>⚪ OFF</code>).</li>
+<li>Click the <strong>Power / Play</strong> button to toggle WAF ON or OFF instantly for that specific route.</li>
+<li>In <strong>Tab 8 (WAF &amp; Threat Shield)</strong>:</li>
+<li>Toggle the global cluster-wide master switch.</li>
+<li>Switch between <strong>Enforce</strong> and <strong>Detection</strong> modes.</li>
+<li>Select Paranoia Level (1 to 4).</li>
+<li>Toggle individual attack vectors (SQLi, XSS, RCE, LFI, Scanners).</li>
+<li>Manage the IP Blacklist and Whitelist.</li>
+<li>Run live attack probes with the built-in Attack Simulator.</li>
+<li>Review the real-time Intercepted Threat Events Stream.</li>
+</ol>
+<hr />
+<h2 id="cli-commands-gbnt-caddy-waf">💻 CLI Commands (<code>gbnt caddy waf</code>)</h2>
+<p>Gubernator provides complete CLI parity for WAF management:</p>
+<h3 id="1-display-status-protected-routes">1. Display Status &amp; Protected Routes</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>status
+</span></code></pre></div>
+<p><strong>Output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>🛡️  Gubernator Caddy Threat Shield &amp; WAF Engine
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>==================================================
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Status:             🟢 ACTIVE (ENFORCING)
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Default Mode:       enforce
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>Paranoia Level:     1
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Requests Evaluated: 142
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Blocked Attacks:    8
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>Blacklisted IPs:    2
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>--------------------------------------------------
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>Threat Vectors Protected:
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  • SQLi (SQL Injection):       true
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  • XSS (Cross-Site Scripting): true
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  • RCE / Log4j:                true
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  • Path Traversal / LFI:       true
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  • Scanners &amp; Automated Bots:  true
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>--------------------------------------------------
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>Per-Route Overrides ("A Mano" / Compose):
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>HOST                                STATUS       MODE         ORIGIN      
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>---------------------------------------------------------------------------
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>app.gbnt.local                      ENABLED      enforce      manual      
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>api.example.com                     DISABLED     inherit      manual      
+</span></code></pre></div></p>
+<h3 id="2-enable-or-disable-waf">2. Enable or Disable WAF</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Enable globally across all ingress routes</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">enable</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Enable for a specific route ("a mano")</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--mode<span class="w"> </span>enforce
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Disable for a specific route ("a mano")</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>disable<span class="w"> </span>app.gbnt.local
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Disable globally</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>disable
+</span></code></pre></div>
+<h3 id="3-change-operating-mode">3. Change Operating Mode</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Set global mode to detection (audit without blocking)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>mode<span class="w"> </span>detection
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Set global mode to enforce (active blocking with 403)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>mode<span class="w"> </span>enforce
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Set mode for a specific route</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>mode<span class="w"> </span>detection<span class="w"> </span>--host<span class="w"> </span>app.gbnt.local
+</span></code></pre></div>
+<h3 id="4-ip-blacklisting-whitelisting">4. IP Blacklisting &amp; Whitelisting</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Block an IP address or CIDR subnet</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>ip<span class="w"> </span>block<span class="w"> </span><span class="m">198</span>.51.100.42<span class="w"> </span><span class="s2">"Repeated automated SQLi attacks"</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Unblock an IP</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>ip<span class="w"> </span>unblock<span class="w"> </span><span class="m">198</span>.51.100.42
+</span></code></pre></div>
+<h3 id="5-inspect-threat-events-stream">5. Inspect Threat Events Stream</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># View recent intercepted attacks</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>events<span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Filter by attack vector</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>events<span class="w"> </span>--type<span class="w"> </span>SQLI
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Filter by target hostname</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span>events<span class="w"> </span>--host<span class="w"> </span>app.gbnt.local
+</span></code></pre></div>
+<h3 id="6-simulate-attack-probes-penetration-test">6. Simulate Attack Probes (Penetration Test)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Test SQL injection probe</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">test</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--vector<span class="w"> </span>SQLI
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Test Cross-Site Scripting</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">test</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--vector<span class="w"> </span>XSS
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Test Remote Code Execution (Log4j)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">test</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--vector<span class="w"> </span>RCE
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># Test Path Traversal</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">test</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--vector<span class="w"> </span>LFI
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="c1"># Test Malicious Scanner User-Agent</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>gbnt<span class="w"> </span>caddy<span class="w"> </span>waf<span class="w"> </span><span class="nb">test</span><span class="w"> </span>app.gbnt.local<span class="w"> </span>--vector<span class="w"> </span>SCANNER
+</span></code></pre></div>
+<hr />
+<h2 id="rest-api-reference">🌐 REST API Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+<th>Auth Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/waf/config</code></td>
+<td>Fetch global Threat Shield configuration</td>
+<td>Admin / Operator / Readonly</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/waf/config</code></td>
+<td>Update global Threat Shield configuration</td>
+<td>Admin / Operator</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/waf/routes</code></td>
+<td>List per-route WAF overrides</td>
+<td>Admin / Operator / Readonly</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/waf/routes/toggle</code></td>
+<td>Toggle WAF state for a specific route ("a mano")</td>
+<td>Admin / Operator</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/v1/caddy/waf/routes/:host</code></td>
+<td>Clear route override and restore cluster default</td>
+<td>Admin / Operator</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/waf/events</code></td>
+<td>List intercepted threat events (supports <code>?limit=</code>, <code>?type=</code>, <code>?host=</code>)</td>
+<td>Admin / Operator / Readonly</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/v1/caddy/waf/stats</code></td>
+<td>Fetch aggregate attack counts and metrics</td>
+<td>Admin / Operator / Readonly</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/waf/ip/block</code></td>
+<td>Add IP or CIDR to blacklist</td>
+<td>Admin / Operator</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/waf/ip/unblock</code></td>
+<td>Remove IP from blacklist</td>
+<td>Admin / Operator</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/v1/caddy/waf/test</code></td>
+<td>Simulate a threat attack probe</td>
+<td>Admin / Operator</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="zero-downtime-hot-reload">🔄 Zero-Downtime Hot Reload</h2>
+<p>Whenever a WAF rule, per-route toggle, or IP blacklist is modified:
+1. Gubernator updates the SQLite state database (<code>managed_waf_configs</code>, <code>managed_route_wafs</code>).
+2. The internal hook <code>OnWAFConfigUpdatedHook</code> triggers <code>aqueducts.GenerateCaddyfile()</code>.
+3. The Caddyfile is atomically rewritten in <code>/var/lib/caddy/Caddyfile</code>.
+4. Caddy executes an internal configuration reload via <code>caddy reload --config /etc/caddy/Caddyfile</code> without dropping existing HTTP connections.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
