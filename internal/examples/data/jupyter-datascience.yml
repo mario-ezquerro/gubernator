@@ -11,6 +11,9 @@ services:
       - JUPYTER_ENABLE_LAB=yes
     volumes:
       - /var/contenedores/{{stack.name}}/workspace:/home/jovyan/work
+    labels:
+      - "ingress.host=jupyter.gbnt.local"
+      - "gbnt.caddy.port=8888"
     deploy:
       replicas: 1
       resources:
@@ -20,7 +23,3 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == jupyter-datascience
-          - ingress.host == jupyter.gbnt.local

@@ -13,6 +13,8 @@ services:
       gbnt.slo.window: "30d"
       gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
       gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
+      ingress.host: "orders.gbnt.local"
+      gbnt.node.role: "worker"
     deploy:
       replicas: 1
       resources:
@@ -22,7 +24,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - node.labels.gbnt.node.role == worker
-          - ingress.host == orders.gbnt.local

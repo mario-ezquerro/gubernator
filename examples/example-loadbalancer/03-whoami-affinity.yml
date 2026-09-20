@@ -7,12 +7,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    labels:
+      - "ingress.host=whoami.gbnt.local"
+      - "gbnt.caddy.port=80"
+      - "gbnt.caddy.lb=least_conn"
+      - "gbnt.placement.strategy=spread"
     deploy:
       replicas: 3
-      placement:
-        preferences:
-          - spread: node.id
-        constraints:
-          - ingress.host == whoami.gbnt.local
-          - gbnt.caddy.lb == least_conn
-          - gbnt.placement.strategy == spread

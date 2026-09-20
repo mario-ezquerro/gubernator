@@ -1,6 +1,10 @@
 services:
   whoami:
     image: traefik/whoami
+    labels:
+      - "ingress.host=whoami.gubernator.local"
+      - "gbnt.caddy.port=80"
+      - "gbnt.node.role=worker"
     deploy:
       replicas: 1
       resources:
@@ -10,9 +14,3 @@ services:
         reservations:
           cpus: "0.05"
           memory: 32M
-      placement:
-        constraints:
-          - stack.name == test-app
-          - node.labels.gbnt.node.role == worker
-          # The magic label that tells Gubernator to configure Caddy
-          - ingress.host == whoami.gubernator.local

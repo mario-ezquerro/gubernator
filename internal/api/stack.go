@@ -317,10 +317,22 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 		extractedName := ""
 		for _, srv := range tempCompose.Services {
 			for _, constraint := range srv.Deploy.Placement.Constraints {
-				parts := strings.Split(constraint, "==")
-				if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
-					extractedName = strings.TrimSpace(parts[1])
+				var key, val string
+				if parts := strings.Split(constraint, "=="); len(parts) == 2 {
+					key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+				} else if parts := strings.SplitN(constraint, "=", 2); len(parts) == 2 {
+					key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+				}
+				if key == "stack.name" || key == "gbnt.stack.name" {
+					extractedName = val
 					break
+				}
+			}
+			if extractedName == "" {
+				if n, ok := srv.Labels["stack.name"]; ok {
+					extractedName = n
+				} else if n, ok := srv.Labels["gbnt.stack.name"]; ok {
+					extractedName = n
 				}
 			}
 			if extractedName != "" {
@@ -384,6 +396,13 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 		for srvName, srvDef := range compose.Services {
 			replicas := srvDef.Deploy.Replicas
 			if replicas == 0 {
+				if rStr, ok := srvDef.Labels["gbnt.replicas"]; ok {
+					if rVal, err := strconv.Atoi(strings.TrimSpace(rStr)); err == nil && rVal > 0 {
+						replicas = rVal
+					}
+				}
+			}
+			if replicas == 0 {
 				replicas = 1
 			}
 
@@ -399,9 +418,15 @@ func SaveStackRaw(reqName, composeRawInput, targetNode string) (*db.Stack, error
 			if cpuLimit == "" {
 				cpuLimit = string(srvDef.Cpus)
 			}
+			if cpuLimit == "" {
+				cpuLimit = srvDef.Labels["gbnt.resources.cpus"]
+			}
 			memLimit := string(srvDef.Deploy.Resources.Limits.Memory)
 			if memLimit == "" {
 				memLimit = string(srvDef.MemLimit)
+			}
+			if memLimit == "" {
+				memLimit = srvDef.Labels["gbnt.resources.memory"]
 			}
 			cpuRes := string(srvDef.Deploy.Resources.Reservations.Cpus)
 			memRes := string(srvDef.Deploy.Resources.Reservations.Memory)
@@ -464,18 +489,26 @@ func isMultiHostStack(compose *ComposeFile, requestedTargetNode string) bool {
 
 		// 2. Check labels for placement strategy
 		for k, v := range srv.Labels {
-			if k == "gbnt.placement.strategy" && (v == "spread" || v == "multi-host") {
+			if (k == "gbnt.placement.strategy" || k == "gbnt.placement") && (v == "spread" || v == "multi-host") {
 				hasExplicitSpread = true
 			}
 		}
 		for k, v := range srv.Deploy.Labels {
-			if k == "gbnt.placement.strategy" && (v == "spread" || v == "multi-host") {
+			if (k == "gbnt.placement.strategy" || k == "gbnt.placement") && (v == "spread" || v == "multi-host") {
 				hasExplicitSpread = true
 			}
 		}
 
 		// 3. Check if service has multiple replicas AND caddy load balancing configured
-		if srv.Deploy.Replicas > 1 {
+		srvReplicas := srv.Deploy.Replicas
+		if srvReplicas == 0 {
+			if rStr, ok := srv.Labels["gbnt.replicas"]; ok {
+				if rVal, err := strconv.Atoi(strings.TrimSpace(rStr)); err == nil && rVal > 0 {
+					srvReplicas = rVal
+				}
+			}
+		}
+		if srvReplicas > 1 {
 			for k := range srv.Labels {
 				if strings.HasPrefix(k, "gbnt.caddy.lb") || k == "ingress.lb" {
 					hasExplicitSpread = true
@@ -485,13 +518,30 @@ func isMultiHostStack(compose *ComposeFile, requestedTargetNode string) bool {
 
 		// 4. Collect node targeting constraints per service
 		for _, c := range srv.Deploy.Placement.Constraints {
-			parts := strings.Split(c, "==")
-			if len(parts) == 2 {
-				leftSide := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
-				if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
-					nodeConstraintsByService[srvName] = append(nodeConstraintsByService[srvName], val)
-				}
+			var leftSide, val string
+			if parts := strings.Split(c, "=="); len(parts) == 2 {
+				leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			} else if parts := strings.SplitN(c, "=", 2); len(parts) == 2 {
+				leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			}
+			leftSide = strings.ToLower(strings.Trim(leftSide, "\"' "))
+			val = strings.Trim(val, "\"' ")
+			if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
+				nodeConstraintsByService[srvName] = append(nodeConstraintsByService[srvName], val)
+			}
+		}
+		for k, v := range srv.Labels {
+			kLower := strings.ToLower(strings.Trim(k, "\"' "))
+			vTrim := strings.Trim(v, "\"' ")
+			if kLower == "node.hostname" || kLower == "node.id" || kLower == "gbnt.node.hostname" || kLower == "gbnt.node.id" {
+				nodeConstraintsByService[srvName] = append(nodeConstraintsByService[srvName], vTrim)
+			}
+		}
+		for k, v := range srv.Deploy.Labels {
+			kLower := strings.ToLower(strings.Trim(k, "\"' "))
+			vTrim := strings.Trim(v, "\"' ")
+			if kLower == "node.hostname" || kLower == "node.id" || kLower == "gbnt.node.hostname" || kLower == "gbnt.node.id" {
+				nodeConstraintsByService[srvName] = append(nodeConstraintsByService[srvName], vTrim)
 			}
 		}
 	}
@@ -795,10 +845,22 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 		if err := yaml.Unmarshal([]byte(composeRawInput), &tempCompose); err == nil {
 			for _, srv := range tempCompose.Services {
 				for _, constraint := range srv.Deploy.Placement.Constraints {
-					parts := strings.Split(constraint, "==")
-					if len(parts) == 2 && strings.TrimSpace(parts[0]) == "stack.name" {
-						stackName = strings.TrimSpace(parts[1])
+					var key, val string
+					if parts := strings.Split(constraint, "=="); len(parts) == 2 {
+						key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+					} else if parts := strings.SplitN(constraint, "=", 2); len(parts) == 2 {
+						key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+					}
+					if key == "stack.name" || key == "gbnt.stack.name" {
+						stackName = val
 						break
+					}
+				}
+				if stackName == "" {
+					if n, ok := srv.Labels["stack.name"]; ok {
+						stackName = n
+					} else if n, ok := srv.Labels["gbnt.stack.name"]; ok {
+						stackName = n
 					}
 				}
 				if stackName != "" {
@@ -895,6 +957,13 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 	for srvName, srvDef := range compose.Services {
 		replicas := srvDef.Deploy.Replicas
 		if replicas == 0 {
+			if rStr, ok := srvDef.Labels["gbnt.replicas"]; ok {
+				if rVal, err := strconv.Atoi(strings.TrimSpace(rStr)); err == nil && rVal > 0 {
+					replicas = rVal
+				}
+			}
+		}
+		if replicas == 0 {
 			replicas = 1 // default
 		}
 
@@ -912,9 +981,15 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 		if cpuLimit == "" {
 			cpuLimit = string(srvDef.Cpus)
 		}
+		if cpuLimit == "" {
+			cpuLimit = srvDef.Labels["gbnt.resources.cpus"]
+		}
 		memLimit := string(srvDef.Deploy.Resources.Limits.Memory)
 		if memLimit == "" {
 			memLimit = string(srvDef.MemLimit)
+		}
+		if memLimit == "" {
+			memLimit = srvDef.Labels["gbnt.resources.memory"]
 		}
 		cpuRes := string(srvDef.Deploy.Resources.Reservations.Cpus)
 		memRes := string(srvDef.Deploy.Resources.Reservations.Memory)
@@ -952,7 +1027,7 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 					serviceSpread = true
 				}
 			}
-			if srvDef.Labels["gbnt.placement.strategy"] == "spread" || srvDef.Deploy.Labels["gbnt.placement.strategy"] == "spread" {
+			if srvDef.Labels["gbnt.placement.strategy"] == "spread" || srvDef.Deploy.Labels["gbnt.placement.strategy"] == "spread" || srvDef.Labels["gbnt.placement"] == "spread" {
 				serviceSpread = true
 			}
 			if replicas > 1 {
@@ -961,15 +1036,18 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 
 			// Check if service targets a specific node
 			for _, c := range constraints {
-				parts := strings.Split(c, "==")
-				if len(parts) == 2 {
-					leftSide := strings.TrimSpace(parts[0])
-					val := strings.TrimSpace(parts[1])
-					if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
-						serviceTargetNode = val
-						serviceSpread = false
-						break
-					}
+				var leftSide, val string
+				if parts := strings.Split(c, "=="); len(parts) == 2 {
+					leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+				} else if parts := strings.SplitN(c, "=", 2); len(parts) == 2 {
+					leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+				}
+				leftSide = strings.ToLower(strings.Trim(leftSide, "\"' "))
+				val = strings.Trim(val, "\"' ")
+				if leftSide == "node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.hostname" || leftSide == "gbnt.node.id" {
+					serviceTargetNode = val
+					serviceSpread = false
+					break
 				}
 			}
 
@@ -994,6 +1072,72 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 	}
 
 	return &stack, conflicts, nil
+}
+
+// matchSingleNodeConstraint evaluates whether a candidate cluster node satisfies
+// a placement constraint, hardware affinity, or label directive.
+// Returns (matched, isNodeConstraint). If isNodeConstraint is false, the constraint is
+// non-placement metadata (e.g. ingress.host, stack.name, gbnt.caddy.port, gbnt.placement.strategy).
+func matchSingleNodeConstraint(node *db.Node, constraint string) (matched bool, isNodeConstraint bool) {
+	var leftSide, val string
+	if parts := strings.Split(constraint, "=="); len(parts) == 2 {
+		leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+	} else if parts := strings.SplitN(constraint, "=", 2); len(parts) == 2 {
+		leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+	} else if parts := strings.SplitN(constraint, ":", 2); len(parts) == 2 {
+		leftSide, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+	} else {
+		return true, false
+	}
+
+	leftSide = strings.ToLower(strings.Trim(leftSide, "\"' "))
+	val = strings.Trim(val, "\"' ")
+
+	// 1. Role matching: node.role == worker / gbnt.node.role=worker / manager
+	if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+		isMatch := strings.EqualFold(node.Role, val) || strings.EqualFold(node.Labels["gbnt.node.role"], val)
+		return isMatch, true
+	}
+
+	// 2. Hostname / ID / IP pinning: node.hostname == ... / gbnt.node.hostname=...
+	if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.id" {
+		isMatch := strings.EqualFold(node.Labels["gbnt.node.hostname"], val) || strings.EqualFold(node.ID, val) || strings.EqualFold(node.IP, val)
+		return isMatch, true
+	}
+
+	// 3. GPU Hardware Affinity: gbnt.node.gpu=nvidia / node.gpu == nvidia
+	if leftSide == "gbnt.node.gpu" || leftSide == "node.gpu" || leftSide == "node.labels.gbnt.node.gpu" {
+		isMatch := strings.EqualFold(node.Labels["gbnt.node.gpu"], val) || strings.EqualFold(node.Labels["gpu"], val)
+		return isMatch, true
+	}
+
+	// 4. CPU Architecture: gbnt.node.arch=arm64 / node.arch == amd64
+	if leftSide == "gbnt.node.arch" || leftSide == "node.arch" || leftSide == "node.labels.gbnt.node.arch" {
+		isMatch := strings.EqualFold(node.Labels["gbnt.node.arch"], val) || strings.EqualFold(node.Labels["arch"], val)
+		return isMatch, true
+	}
+
+	// 5. Zone Affinity: gbnt.node.zone=europe-1 / node.zone == ...
+	if leftSide == "gbnt.node.zone" || leftSide == "node.zone" || leftSide == "node.labels.gbnt.node.zone" {
+		isMatch := strings.EqualFold(node.Labels["gbnt.node.zone"], val) || strings.EqualFold(node.Labels["zone"], val)
+		return isMatch, true
+	}
+
+	// Skip non-node metadata directives (e.g. ingress.host, stack.name, gbnt.caddy.port, gbnt.placement.strategy)
+	if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+		return true, false
+	}
+
+	key := strings.TrimPrefix(leftSide, "node.labels.")
+	key = strings.TrimPrefix(key, "gbnt.node.")
+	nodeVal, exists := node.Labels[key]
+	if !exists {
+		nodeVal, exists = node.Labels["gbnt.node."+key]
+	}
+	if !exists {
+		return false, true
+	}
+	return strings.EqualFold(nodeVal, val), true
 }
 
 // SelectOptimalNodeForStack selects a single host node for an entire Docker Compose stack.
@@ -1087,39 +1231,10 @@ func SelectOptimalNodeForStack(constraints []string, targetNode string) (*db.Nod
 	for _, node := range orderedNodes {
 		matchesAll := true
 		for _, constraint := range constraints {
-			parts := strings.Split(constraint, "==")
-			if len(parts) == 2 {
-				leftSide := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
-
-				// Support node.role == worker / node.role == manager
-				if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-					if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
-						matchesAll = false
-						break
-					}
-					continue
-				}
-
-				// Support node.hostname == gbnt-worker1 or node.id == ...
-				if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" {
-					if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) {
-						matchesAll = false
-						break
-					}
-					continue
-				}
-
-				if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
-					// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port)
-					continue
-				}
-
-				key := strings.TrimPrefix(leftSide, "node.labels.")
-				if nodeVal, exists := node.Labels[key]; !exists || nodeVal != val {
-					matchesAll = false
-					break
-				}
+			matched, isNodeConstraint := matchSingleNodeConstraint(&node, constraint)
+			if isNodeConstraint && !matched {
+				matchesAll = false
+				break
 			}
 		}
 
@@ -1262,47 +1377,10 @@ func ScheduleSingleReplicaWithSpread(service *db.Service, targetNode string, spr
 		for _, node := range allNodes {
 			matchesAll := true
 			for _, constraint := range service.Constraints {
-				parts := strings.Split(constraint, "==")
-				if len(parts) == 2 {
-					leftSide := strings.TrimSpace(parts[0])
-					val := strings.TrimSpace(parts[1])
-
-					// Support node.role == worker / node.role == manager directly
-					if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-						if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
-							matchesAll = false
-							break
-						}
-						continue
-					}
-
-					// Support node.hostname == ... or node.id == ...
-					if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.id" {
-						if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) && !strings.EqualFold(node.IP, val) {
-							matchesAll = false
-							break
-						}
-						continue
-					}
-
-					if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
-						// Skip non-node-placement constraints (like ingress.host, stack.name, gbnt.caddy.port, gbnt.caddy.lb)
-						continue
-					}
-
-					key := strings.TrimPrefix(leftSide, "node.labels.")
-					nodeVal, exists := node.Labels[key]
-					if !exists {
-						if strings.HasPrefix(key, "gbnt.node.") {
-							nodeVal, exists = node.Labels[strings.TrimPrefix(key, "gbnt.node.")]
-						} else {
-							nodeVal, exists = node.Labels["gbnt.node."+key]
-						}
-					}
-					if !exists || !strings.EqualFold(nodeVal, val) {
-						matchesAll = false
-						break
-					}
+				matched, isNodeConstraint := matchSingleNodeConstraint(&node, constraint)
+				if isNodeConstraint && !matched {
+					matchesAll = false
+					break
 				}
 			}
 

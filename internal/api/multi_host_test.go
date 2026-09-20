@@ -214,4 +214,52 @@ func TestScheduleServiceWithSpreadAndAffinity(t *testing.T) {
 		t.Errorf("hostname constraint failure: expected node-mgr, got %s", hostPinTask.NodeID)
 	}
 	t.Logf("hostname constraint pinning success: task scheduled to %s", hostPinTask.NodeID)
+
+	// 4. Test Labels-First syntax with single '=': gbnt.node.role=worker
+	svcLabelRole := db.Service{
+		ID:              "svc-label-role",
+		StackID:         "stack-1",
+		Name:            "worker-app",
+		Image:           "nginx:alpine",
+		DesiredReplicas: 1,
+		Constraints:     []string{"gbnt.node.role=worker"},
+	}
+	db.DB.Create(&svcLabelRole)
+	labelRoleTask := ScheduleSingleReplica(&svcLabelRole, "auto")
+	if labelRoleTask.NodeID != "node-w1" && labelRoleTask.NodeID != "node-w2" {
+		t.Errorf("labels-first role failure: expected worker node, got %s", labelRoleTask.NodeID)
+	}
+	t.Logf("labels-first role success: task scheduled to worker %s", labelRoleTask.NodeID)
+
+	// 5. Test Labels-First syntax with single '=': gbnt.node.gpu=nvidia
+	svcLabelGPU := db.Service{
+		ID:              "svc-label-gpu",
+		StackID:         "stack-1",
+		Name:            "llm-app",
+		Image:           "ollama:latest",
+		DesiredReplicas: 1,
+		Constraints:     []string{"gbnt.node.gpu=nvidia"},
+	}
+	db.DB.Create(&svcLabelGPU)
+	labelGpuTask := ScheduleSingleReplica(&svcLabelGPU, "auto")
+	if labelGpuTask.NodeID != "node-w2" {
+		t.Errorf("labels-first GPU failure: expected node-w2, got %s", labelGpuTask.NodeID)
+	}
+	t.Logf("labels-first GPU success: task scheduled to %s", labelGpuTask.NodeID)
+
+	// 6. Test Labels-First syntax with single '=': gbnt.node.hostname=node-mgr
+	svcLabelHost := db.Service{
+		ID:              "svc-label-host",
+		StackID:         "stack-1",
+		Name:            "pinned-app",
+		Image:           "redis:alpine",
+		DesiredReplicas: 1,
+		Constraints:     []string{"gbnt.node.hostname=node-mgr"},
+	}
+	db.DB.Create(&svcLabelHost)
+	labelHostTask := ScheduleSingleReplica(&svcLabelHost, "auto")
+	if labelHostTask.NodeID != "node-mgr" {
+		t.Errorf("labels-first hostname failure: expected node-mgr, got %s", labelHostTask.NodeID)
+	}
+	t.Logf("labels-first hostname success: task scheduled to %s", labelHostTask.NodeID)
 }

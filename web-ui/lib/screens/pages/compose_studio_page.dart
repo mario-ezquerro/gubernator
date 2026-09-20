@@ -83,6 +83,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     labels:
       - "ingress.host=app.gbnt.local"
       - "gbnt.caddy.port=80"
+      - "gbnt.node.role=worker"
     deploy:
       replicas: 1
       resources:
@@ -92,9 +93,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reservations:
           cpus: "0.25"
           memory: 128M
-      placement:
-        constraints:
-          - "node.role == worker"
 ''';
 
   static const Map<String, String> _starterTemplates = {
@@ -108,6 +106,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.port=8000"
       - "gbnt.caddy.lb=round_robin"
       - "gbnt.placement.strategy=spread"
+      - "gbnt.node.gpu=nvidia"
       - "gbnt.autoscaling.enable=true"
       - "gbnt.autoscaling.metric=gpu"
       - "gbnt.autoscaling.scope=cluster"
@@ -117,9 +116,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.autoscaling.cooldown=60s"
     deploy:
       replicas: 1
-      placement:
-        constraints:
-          - "gbnt.node.gpu == nvidia"
 ''',
     'Multi-Host Load Balanced Web': '''services:
   web:
@@ -132,13 +128,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "gbnt.caddy.lb=round_robin"
       - "gbnt.caddy.health_uri=/"
       - "gbnt.placement.strategy=spread"
+      - "gbnt.node.role=worker"
     deploy:
       replicas: 3
-      placement:
-        preferences:
-          - spread: node.id
-        constraints:
-          - "node.role == worker"
       resources:
         limits:
           cpus: "1.0"
@@ -298,6 +290,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       - "11434:11434"
     volumes:
       - /var/contenedores/\${STACK_NAME}/models:/root/.ollama
+    labels:
+      - "gbnt.node.gpu=nvidia"
     deploy:
       replicas: 1
       resources:
@@ -307,9 +301,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reservations:
           cpus: "2.0"
           memory: 2G
-      placement:
-        constraints:
-          - "gbnt.node.gpu == nvidia"
 ''',
     'JupyterLab PyTorch LLM': '''services:
   jupyter-llm:
@@ -493,11 +484,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reservations:
           cpus: "1.0"
           memory: 4G
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - ingress.host == api.deepseek.gbnt.local
-          - gbnt.caddy.port == 8000
 
   chat-ui:
     image: ghcr.io/open-webui/open-webui:main
@@ -520,11 +506,6 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - ingress.host == chat.deepseek.gbnt.local
-          - gbnt.caddy.port == 8080
 ''',
     'GenAI RAG Search (pgvector)': '''services:
   postgres-vector:
@@ -1610,8 +1591,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '⚡ GPU AI/Inference Cluster Autoscale',
                     subtitle: 'Target 80% GPU utilization across GPU Centurions (Min: 1, Max: 4)',
                     icon: Icons.developer_board,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'gpu'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -1626,13 +1608,31 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'GPU Cluster Autoscaling',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          'gbnt.autoscaling.enable',
+                          'gbnt.autoscaling.metric',
+                          'gbnt.autoscaling.scope',
+                          'gbnt.autoscaling.target',
+                          'gbnt.autoscaling.min',
+                          'gbnt.autoscaling.max',
+                          'gbnt.autoscaling.cooldown',
+                        ],
+                        categoryTitle: 'GPU Cluster Autoscaling',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: '🚀 CPU High-Load Web Autoscale (Cluster)',
                     subtitle: 'Target 75% CPU load distributed across active cluster nodes (Min: 2, Max: 8)',
                     icon: Icons.speed,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu') &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'cluster'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -1647,13 +1647,31 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'CPU Cluster Autoscaling',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          'gbnt.autoscaling.enable',
+                          'gbnt.autoscaling.metric',
+                          'gbnt.autoscaling.scope',
+                          'gbnt.autoscaling.target',
+                          'gbnt.autoscaling.min',
+                          'gbnt.autoscaling.max',
+                          'gbnt.autoscaling.cooldown',
+                        ],
+                        categoryTitle: 'CPU Cluster Autoscaling',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: '💻 Single-Host CPU Autoscale (Local Host)',
                     subtitle: 'Target 85% CPU load strictly on the same host node (Min: 1, Max: 3)',
                     icon: Icons.computer,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu') &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'host'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -1664,6 +1682,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.autoscaling.min', '1'),
                           MapEntry('gbnt.autoscaling.max', '3'),
                           MapEntry('gbnt.autoscaling.cooldown', '60s'),
+                        ],
+                        categoryTitle: 'Single-Host Autoscaling',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          'gbnt.autoscaling.enable',
+                          'gbnt.autoscaling.metric',
+                          'gbnt.autoscaling.scope',
+                          'gbnt.autoscaling.target',
+                          'gbnt.autoscaling.min',
+                          'gbnt.autoscaling.max',
+                          'gbnt.autoscaling.cooldown',
                         ],
                         categoryTitle: 'Single-Host Autoscaling',
                       ));
@@ -2008,8 +2042,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Standard HTTP Ingress',
                     subtitle: 'ingress.host=app.gbnt.local & port=80',
                     icon: Icons.public,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'ingress.host') &&
+                        !ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2019,13 +2055,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Caddy HTTP Ingress',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['ingress.host', 'gbnt.caddy.port'],
+                        categoryTitle: 'Caddy HTTP Ingress',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Ingress + Threat Shield WAF (Enforce)',
                     subtitle: 'Expose host with active L7 WAF blocking OWASP attacks (403)',
                     icon: Icons.shield,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2037,13 +2082,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Caddy WAF Ingress',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['ingress.host', 'gbnt.caddy.port', 'gbnt.waf.enabled', 'gbnt.waf.mode'],
+                        categoryTitle: 'Caddy WAF Ingress',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Threat Shield WAF (Detection / Audit)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Log & inspect only)',
                     icon: Icons.remove_red_eye_outlined,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2053,13 +2107,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'WAF Detection Mode',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
+                        categoryTitle: 'WAF Detection Mode',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Internal TLS Ingress',
                     subtitle: 'Automatic Caddy internal certificate',
                     icon: Icons.lock,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.tls', 'internal'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2067,6 +2130,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.caddy.port', '443'),
                           MapEntry('gbnt.caddy.tls', 'internal'),
                         ],
+                        categoryTitle: 'Caddy TLS Ingress',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['ingress.host', 'gbnt.caddy.port', 'gbnt.caddy.tls'],
                         categoryTitle: 'Caddy TLS Ingress',
                       ));
                     },
@@ -2158,8 +2229,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '99.9% High Availability SLO',
                     subtitle: '30-day window availability budget',
                     icon: Icons.speed,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.target', '99.9'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2170,13 +2242,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: '99.9% Availability SLO',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.slo.enable', 'gbnt.slo.target', 'gbnt.slo.window'],
+                        categoryTitle: '99.9% Availability SLO',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Latency < 200ms Threshold',
                     subtitle: 'Triggers multi-burn alerts on slow requests',
                     icon: Icons.timer,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.indicator', 'latency'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2185,6 +2266,14 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.slo.indicator', 'latency'),
                           MapEntry('gbnt.slo.latency.threshold', '200ms'),
                         ],
+                        categoryTitle: 'Latency SLO',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.slo.enable', 'gbnt.slo.target', 'gbnt.slo.indicator', 'gbnt.slo.latency.threshold'],
                         categoryTitle: 'Latency SLO',
                       ));
                     },
@@ -2200,8 +2289,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Threat Shield WAF (Enforce Mode)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=enforce (Blocks SQLi, XSS, RCE with 403)',
                     icon: Icons.shield,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2211,13 +2301,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Threat Shield WAF',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
+                        categoryTitle: 'Threat Shield WAF',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Threat Shield WAF (Detection / Audit)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Non-blocking SIEM logs)',
                     icon: Icons.policy_outlined,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2227,13 +2326,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'WAF Audit Mode',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
+                        categoryTitle: 'WAF Audit Mode',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Enforce Cryptographic Signatures',
                     subtitle: 'Blocks deployment if image is not Cosign-signed (Zero-Trust)',
                     icon: Icons.verified_user,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2242,13 +2350,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Signature Gatekeeper',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.security.require-signature'],
+                        categoryTitle: 'Signature Gatekeeper',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Block Critical CVE Vulnerabilities',
                     subtitle: 'Rejects images with unpatched critical CVEs (CVSS >= 9.0)',
                     icon: Icons.security,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'critical'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2257,13 +2374,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Critical CVE Policy',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.security.max-cve-severity'],
+                        categoryTitle: 'Critical CVE Policy',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Block High & Critical CVEs',
                     subtitle: 'Stricter threshold rejecting both High and Critical CVEs',
                     icon: Icons.shield_outlined,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'high'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2272,13 +2398,23 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'High CVE Policy',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.security.max-cve-severity'],
+                        categoryTitle: 'High CVE Policy',
+                      ));
+                    },
                   ),
                   _buildSnippetCard(
                     title: 'Full Zero-Trust & WAF Shield Suite',
                     subtitle: 'Signature check + critical CVE block + Threat Shield WAF enforce',
                     icon: Icons.verified,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true') &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2287,6 +2423,20 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.security.allow-unfixed-cve', 'false'),
                           MapEntry('gbnt.waf.enabled', 'true'),
                           MapEntry('gbnt.waf.mode', 'enforce'),
+                        ],
+                        categoryTitle: 'Zero-Trust & WAF Suite',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [
+                          'gbnt.security.require-signature',
+                          'gbnt.security.max-cve-severity',
+                          'gbnt.security.allow-unfixed-cve',
+                          'gbnt.waf.enabled',
+                          'gbnt.waf.mode',
                         ],
                         categoryTitle: 'Zero-Trust & WAF Suite',
                       ));
@@ -2310,8 +2460,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Multi-Host Placement & LB', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            Text('Distribute replicas across nodes & balance HTTP traffic.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text('Multi-Host Placement & LB (Labels-First)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text('Distribute replicas across nodes & balance HTTP traffic via labels.', style: TextStyle(fontSize: 11, color: Colors.grey)),
                           ],
                         ),
                       ),
@@ -2332,7 +2482,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Multi-Host Spread distributes service replicas across distinct Centurion nodes for high availability. Caddy Ingress automatically balances traffic across all running replicas.',
+                            'En Gubernator v3.0+, todas las reglas de afinidad, roles y balanceo se configuran limpiamente como labels (gbnt.node.*, gbnt.placement.*), sin anidaciones profundas.',
                             style: TextStyle(fontSize: 11, height: 1.3),
                           ),
                         ),
@@ -2343,29 +2493,23 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   const Text('Distribution Strategy & Anti-Affinity:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   _buildSnippetCard(
-                    title: 'Anti-Affinity (Spread Across Nodes)',
-                    subtitle: 'deploy.placement.preferences: spread: node.id',
+                    title: 'Anti-Affinity Spread Strategy',
+                    subtitle: 'gbnt.placement.strategy=spread (Multi-Host)',
                     icon: Icons.alt_route,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.placement.strategy', 'spread'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        constraint: 'spread: node.id',
-                        replacePrefix: 'spread:',
+                        const [MapEntry('gbnt.placement.strategy', 'spread')],
+                        categoryTitle: 'Spread Strategy',
                       ));
                     },
-                  ),
-                  _buildSnippetCard(
-                    title: 'Spread Strategy Label',
-                    subtitle: 'gbnt.placement.strategy=spread',
-                    icon: Icons.share,
-                    onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        const [
-                          MapEntry('gbnt.placement.strategy', 'spread'),
-                        ],
+                        const ['gbnt.placement.strategy', 'gbnt.placement'],
                         categoryTitle: 'Spread Strategy',
                       ));
                     },
@@ -2377,13 +2521,20 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Round Robin Policy (Default)',
                     subtitle: 'gbnt.caddy.lb=round_robin',
                     icon: Icons.balance,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'round_robin'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        const [
-                          MapEntry('gbnt.caddy.lb', 'round_robin'),
-                        ],
+                        const [MapEntry('gbnt.caddy.lb', 'round_robin')],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
                       ));
                     },
@@ -2392,13 +2543,20 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Least Connections Policy',
                     subtitle: 'gbnt.caddy.lb=least_conn',
                     icon: Icons.speed,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'least_conn'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        const [
-                          MapEntry('gbnt.caddy.lb', 'least_conn'),
-                        ],
+                        const [MapEntry('gbnt.caddy.lb', 'least_conn')],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
                       ));
                     },
@@ -2407,13 +2565,20 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'IP Hash (Sticky Sessions)',
                     subtitle: 'gbnt.caddy.lb=ip_hash',
                     icon: Icons.pin_drop,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'ip_hash'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        const [
-                          MapEntry('gbnt.caddy.lb', 'ip_hash'),
-                        ],
+                        const [MapEntry('gbnt.caddy.lb', 'ip_hash')],
+                        categoryTitle: 'Caddy Load Balancing',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
                       ));
                     },
@@ -2422,8 +2587,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Active Health Check Probe',
                     subtitle: 'gbnt.caddy.health_uri=/health (5s interval)',
                     icon: Icons.health_and_safety,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.health_uri'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [
@@ -2433,64 +2599,151 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         categoryTitle: 'Caddy Health Check',
                       ));
                     },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.caddy.health_uri', 'gbnt.caddy.health_interval'],
+                        categoryTitle: 'Caddy Health Check',
+                      ));
+                    },
                   ),
                   const SizedBox(height: 16),
-                  const Text('Hardware Affinity & Node Pinning:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Hardware Affinity & Node Roles:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   _buildSnippetCard(
                     title: 'Worker Nodes Only',
-                    subtitle: 'node.role == worker constraint',
+                    subtitle: 'gbnt.node.role=worker (Labels-First)',
                     icon: Icons.group_work,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'worker'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        constraint: 'node.role == worker',
-                        replacePrefix: 'node.role ==',
+                        const [MapEntry('gbnt.node.role', 'worker')],
+                        categoryTitle: 'Worker Role Affinity',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.node.role', 'node.role'],
+                        categoryTitle: 'Worker Role Affinity',
+                      ));
+                    },
+                  ),
+                  _buildSnippetCard(
+                    title: 'Manager Node Only',
+                    subtitle: 'gbnt.node.role=manager (Labels-First)',
+                    icon: Icons.star,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'manager'),
+                    onTap: () {
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const [MapEntry('gbnt.node.role', 'manager')],
+                        categoryTitle: 'Manager Role Affinity',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.node.role', 'node.role'],
+                        categoryTitle: 'Manager Role Affinity',
                       ));
                     },
                   ),
                   _buildSnippetCard(
                     title: 'NVIDIA GPU Accelerated Node',
-                    subtitle: 'gbnt.node.gpu == nvidia constraint',
+                    subtitle: 'gbnt.node.gpu=nvidia (Labels-First)',
                     icon: Icons.developer_board,
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.gpu', 'nvidia'),
                     onTap: () {
-                      _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
+                      _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
-                        constraint: 'gbnt.node.gpu == nvidia',
-                        replacePrefix: 'gbnt.node.gpu ==',
+                        const [MapEntry('gbnt.node.gpu', 'nvidia')],
+                        categoryTitle: 'GPU Affinity',
+                      ));
+                    },
+                    onRemove: () {
+                      _applySmartMerge(ComposeSmartMerger.removeLabels(
+                        _codeController.text,
+                        _codeController.selection.baseOffset,
+                        const ['gbnt.node.gpu', 'node.gpu'],
+                        categoryTitle: 'GPU Affinity',
                       ));
                     },
                   ),
                   const Divider(height: 24),
-                  const Text('Active Cluster Nodes:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Active Cluster Nodes (Pinning via Labels):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ...widget.state.nodes.map((node) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      dense: true,
-                      leading: Icon(
-                        node.role == 'manager' ? Icons.star : Icons.dns,
-                        color: node.status == 'active' ? Colors.green : Colors.grey,
-                        size: 20,
+                  ...widget.state.nodes.map((node) {
+                    final isPinned = ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.hostname', node.id);
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: isPinned ? const Color(0xFF10B981) : Theme.of(context).dividerColor,
+                          width: isPinned ? 1.5 : 1.0,
+                        ),
                       ),
-                      title: Text(node.id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                      subtitle: Text('${node.ip} • ${node.role.toUpperCase()}', style: const TextStyle(fontSize: 10)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.add_circle_outline, size: 18),
-                        tooltip: 'Pin to ${node.id}',
-                        onPressed: () {
-                          _applySmartMerge(ComposeSmartMerger.mergePlacementConstraint(
-                            _codeController.text,
-                            _codeController.selection.baseOffset,
-                            constraint: 'node.hostname == ${node.id}',
-                            replacePrefix: 'node.hostname ==',
-                          ));
-                        },
+                      color: isPinned ? const Color(0xFF10B981).withValues(alpha: 0.05) : null,
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(
+                          node.role == 'manager' ? Icons.star : Icons.dns,
+                          color: isPinned ? const Color(0xFF10B981) : (node.status == 'active' ? Colors.green : Colors.grey),
+                          size: 20,
+                        ),
+                        title: Row(
+                          children: [
+                            Text(node.id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                            if (isPinned) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text('ANCLADO', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                              ),
+                            ],
+                          ],
+                        ),
+                        subtitle: Text('${node.ip} • ${node.role.toUpperCase()}', style: const TextStyle(fontSize: 10)),
+                        trailing: IconButton(
+                          icon: Icon(
+                            isPinned ? Icons.check_circle : Icons.add_circle_outline,
+                            color: isPinned ? const Color(0xFF10B981) : Theme.of(context).colorScheme.primary,
+                            size: 18,
+                          ),
+                          tooltip: isPinned ? 'Desanclar de ${node.id}' : 'Anclar a ${node.id}',
+                          onPressed: () {
+                            if (isPinned) {
+                              _applySmartMerge(ComposeSmartMerger.removeLabels(
+                                _codeController.text,
+                                _codeController.selection.baseOffset,
+                                const ['gbnt.node.hostname', 'node.hostname'],
+                                categoryTitle: 'Node Pinning',
+                              ));
+                            } else {
+                              _applySmartMerge(ComposeSmartMerger.mergeLabels(
+                                _codeController.text,
+                                _codeController.selection.baseOffset,
+                                [MapEntry('gbnt.node.hostname', node.id)],
+                                categoryTitle: 'Pin to ${node.id}',
+                              ));
+                            }
+                          },
+                        ),
                       ),
-                    ),
-                  )),
+                    );
+                  }),
                 ],
 
                 if (_activeCopilotTab == 'storage') ...[
@@ -2550,15 +2803,22 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
+    bool isActive = false,
+    VoidCallback? onRemove,
   }) {
     final theme = Theme.of(context);
+    const activeColor = Color(0xFF10B981);
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: theme.dividerColor),
+        side: BorderSide(
+          color: isActive ? activeColor.withValues(alpha: 0.7) : theme.dividerColor,
+          width: isActive ? 1.5 : 1.0,
+        ),
       ),
+      color: isActive ? activeColor.withValues(alpha: 0.04) : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -2569,23 +2829,61 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  color: (isActive ? activeColor : theme.colorScheme.primary).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+                child: Icon(icon, size: 18, color: isActive ? activeColor : theme.colorScheme.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: activeColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check, size: 10, color: activeColor),
+                                SizedBox(width: 2),
+                                Text('ACTIVO', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: activeColor)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 2),
                     Text(subtitle, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
                   ],
                 ),
               ),
-              Icon(Icons.add, size: 16, color: theme.colorScheme.primary),
+              if (isActive && onRemove != null) ...[
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                  tooltip: 'Quitar configuración (Eliminar del YAML)',
+                  onPressed: onRemove,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Icon(
+                isActive ? Icons.check_circle : Icons.add,
+                size: 16,
+                color: isActive ? activeColor : theme.colorScheme.primary,
+              ),
             ],
           ),
         ),

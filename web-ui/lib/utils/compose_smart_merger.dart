@@ -488,9 +488,187 @@ class ComposeSmartMerger {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 5. LABELS: Caddy, Sloth SLO, Security Gatekeeper (Smart Merge / Updates)
+  // 5. LABELS: Unified Labels-First Engine (Smart Merge, Remove, Toggle)
   // ──────────────────────────────────────────────────────────────────────────
 
+  /// Checks if a YAML line defines the given label key in any format:
+  /// "- key=val", "- \"key=val\"", "key: val", "- key: val", etc.
+  static bool _lineMatchesLabelKey(String line, String key) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) return false;
+    final clean = trimmed
+        .replaceAll('"', '')
+        .replaceAll("'", "")
+        .replaceAll(RegExp(r'^-\s*'), '')
+        .trim();
+
+    if (clean.startsWith('$key=') || clean.startsWith('$key:') || clean == key) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Extracts the value of a label line given its key.
+  static String _extractLabelValue(String line, String key) {
+    final trimmed = line.trim();
+    final clean = trimmed
+        .replaceAll('"', '')
+        .replaceAll("'", "")
+        .replaceAll(RegExp(r'^-\s*'), '')
+        .trim();
+
+    if (clean.startsWith('$key=')) {
+      return clean.substring(key.length + 1).trim();
+    }
+    if (clean.startsWith('$key:')) {
+      return clean.substring(key.length + 1).trim();
+    }
+    return '';
+  }
+
+  /// Checks whether the target service at cursor offset has the specified label key.
+  /// If [expectedValue] is provided, also verifies that the value matches.
+  static bool hasLabel(String yaml, int cursorOffset, String key, [String? expectedValue]) {
+    final lines = yaml.split('\n');
+    final srv = _findTargetService(lines, cursorOffset);
+    if (srv == null) return false;
+
+    final labelsBlock = _findSubBlock(lines, srv.startLine, srv.endLine, 'labels');
+    if (labelsBlock == null) return false;
+
+    for (int i = labelsBlock.keyLine + 1; i <= labelsBlock.endLine; i++) {
+      final line = lines[i];
+      if (_lineMatchesLabelKey(line, key)) {
+        if (expectedValue == null) return true;
+        final val = _extractLabelValue(line, key);
+        if (val == expectedValue || val == '"$expectedValue"' || val == "'$expectedValue'") {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Checks whether all entries in the list are active in the target service.
+  static bool hasAllLabels(String yaml, int cursorOffset, List<MapEntry<String, String>> labels) {
+    if (labels.isEmpty) return false;
+    for (final e in labels) {
+      if (!hasLabel(yaml, cursorOffset, e.key, e.value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Removes the specified label keys from the target service.
+  /// If the labels block becomes completely empty, removes the "labels:" header too.
+  static MergeResult removeLabels(
+    String yaml,
+    int cursorOffset,
+    List<String> keysToRemove, {
+    String? categoryTitle,
+  }) {
+    var lines = yaml.split('\n');
+    final srv = _findTargetService(lines, cursorOffset);
+    if (srv == null) {
+      return MergeResult(
+        newYaml: yaml,
+        action: MergeActionType.alreadyExists,
+        message: 'No target service found to remove labels',
+      );
+    }
+
+    final labelsBlock = _findSubBlock(lines, srv.startLine, srv.endLine, 'labels');
+    if (labelsBlock == null) {
+      return MergeResult(
+        newYaml: yaml,
+        action: MergeActionType.alreadyExists,
+        message: 'No labels block in service',
+      );
+    }
+
+    final toRemoveIdxs = <int>{};
+    for (int i = labelsBlock.keyLine + 1; i <= labelsBlock.endLine; i++) {
+      final line = lines[i];
+      for (final k in keysToRemove) {
+        if (_lineMatchesLabelKey(line, k)) {
+          toRemoveIdxs.add(i);
+          break;
+        }
+      }
+    }
+
+    if (toRemoveIdxs.isEmpty) {
+      return MergeResult(
+        newYaml: yaml,
+        action: MergeActionType.alreadyExists,
+        message: '${categoryTitle ?? 'Labels'} were not present in service',
+      );
+    }
+
+    // Filter out lines in descending order
+    final newLines = <String>[];
+    for (int i = 0; i < lines.length; i++) {
+      if (!toRemoveIdxs.contains(i)) {
+        newLines.add(lines[i]);
+      }
+    }
+
+    // Check if the labels block is now empty (only contains whitespace/comments before next block)
+    final newSrv = _findTargetService(newLines, cursorOffset);
+    if (newSrv != null) {
+      final newLabelsBlock = _findSubBlock(newLines, newSrv.startLine, newSrv.endLine, 'labels');
+      if (newLabelsBlock != null) {
+        bool hasItems = false;
+        for (int i = newLabelsBlock.keyLine + 1; i <= newLabelsBlock.endLine; i++) {
+          final t = newLines[i].trim();
+          if (t.isNotEmpty && !t.startsWith('#')) {
+            hasItems = true;
+            break;
+          }
+        }
+        if (!hasItems) {
+          // Remove empty labels block
+          newLines.removeRange(newLabelsBlock.keyLine, newLabelsBlock.endLine + 1);
+        }
+      }
+    }
+
+    return MergeResult(
+      newYaml: newLines.join('\n'),
+      action: MergeActionType.updated,
+      message: 'Removed ${categoryTitle ?? 'labels'} from service',
+    );
+  }
+
+  /// Toggles the specified labels on or off in the target service.
+  /// If all labels are already active, removes them.
+  /// If any label is missing or different, merges them.
+  static MergeResult toggleLabels(
+    String yaml,
+    int cursorOffset,
+    List<MapEntry<String, String>> labels, {
+    String? categoryTitle,
+  }) {
+    if (hasAllLabels(yaml, cursorOffset, labels)) {
+      return removeLabels(
+        yaml,
+        cursorOffset,
+        labels.map((e) => e.key).toList(),
+        categoryTitle: categoryTitle,
+      );
+    } else {
+      return mergeLabels(
+        yaml,
+        cursorOffset,
+        labels,
+        categoryTitle: categoryTitle,
+      );
+    }
+  }
+
+  /// Merges labels into the target service without duplicating keys.
+  /// In-place updates existing keys or appends new keys with correct indentation.
   static MergeResult mergeLabels(
     String yaml,
     int cursorOffset,
@@ -526,10 +704,9 @@ class ComposeSmartMerger {
 
         for (int i = labelsBlock.keyLine + 1; i <= labelsBlock.endLine; i++) {
           final line = lines[i];
-          final clean = line.replaceAll('"', '').replaceAll("'", "").trim();
-          if (clean.contains('$key=')) {
+          if (_lineMatchesLabelKey(line, key)) {
             found = true;
-            final currentVal = clean.split('$key=').last;
+            final currentVal = _extractLabelValue(line, key);
             if (currentVal != val) {
               final indent = line.contains('-') ? line.substring(0, line.indexOf('-')) : '      ';
               lines[i] = '$indent- "$key=$val"';
@@ -540,7 +717,7 @@ class ComposeSmartMerger {
         }
 
         if (!found) {
-          // Append to end of labels block
+          // Append to end of labels block with consistent 6-space indent
           final lastLine = lines[labelsBlock.endLine];
           final indent = lastLine.contains('-') ? lastLine.substring(0, lastLine.indexOf('-')) : '      ';
           lines.insert(labelsBlock.endLine + 1, '$indent- "$key=$val"');

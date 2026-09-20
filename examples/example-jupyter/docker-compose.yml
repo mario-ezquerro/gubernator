@@ -13,6 +13,10 @@ services:
     environment:
       - JUPYTER_TOKEN=gubernator-secret
       - JUPYTER_ENABLE_LAB=yes
+    labels:
+      - "ingress.host=jupyter.gbnt.local"
+      - "gbnt.caddy.port=8888"
+      - "gbnt.node.hostname=gbnt-worker2"
     volumes:
       - jupyter_workspace:/home/jovyan/work
     deploy:
@@ -23,9 +27,4 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == jupyter-stack
-          - ingress.host == jupyter.gbnt.local
-          - node.labels.gbnt.node.hostname == gbnt-worker2
 

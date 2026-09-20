@@ -22,9 +22,6 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == keycloak-sso
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
@@ -54,7 +51,4 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == keycloak-sso
 

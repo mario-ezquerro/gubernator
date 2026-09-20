@@ -12,6 +12,8 @@ services:
       gbnt.slo.window: "30d"
       gbnt.slo.sli.error_query: 'sum(rate(caddy_http_response_status_code_total{status=~"5.."}[5m]))'
       gbnt.slo.sli.total_query: 'sum(rate(caddy_http_response_status_code_total[5m]))'
+      ingress.host: "payment.gbnt.local"
+      gbnt.caddy.port: "8080"
     deploy:
       replicas: 2
       resources:
@@ -21,7 +23,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == sloth-slo-demo
-          - ingress.host == payment.gbnt.local

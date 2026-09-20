@@ -525,14 +525,18 @@ var legionJoinCmd = &cobra.Command{
 					}
 
 					for _, constraint := range t.Constraints {
-						parts := strings.Split(constraint, "==")
-						if len(parts) != 2 {
+						var key, val string
+						if parts := strings.Split(constraint, "=="); len(parts) == 2 {
+							key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+						} else if parts := strings.SplitN(constraint, "=", 2); len(parts) == 2 {
+							key, val = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+						} else {
 							continue
 						}
-						key := strings.TrimSpace(parts[0])
-						val := strings.TrimSpace(parts[1])
+						key = strings.Trim(key, "\"' ")
+						val = strings.Trim(val, "\"' ")
 
-						if key != "ingress.host" && key != "node.labels.gbnt.ingress.host" {
+						if key != "ingress.host" && key != "gbnt.caddy.host" && key != "node.labels.gbnt.ingress.host" {
 							continue
 						}
 

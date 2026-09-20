@@ -30,9 +30,6 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == keycloak-sso
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Keycloak Enterprise Identity & Access Management (IAM)
@@ -65,6 +62,3 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == keycloak-sso

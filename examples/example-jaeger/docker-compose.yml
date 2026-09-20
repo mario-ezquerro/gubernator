@@ -6,6 +6,9 @@ services:
     container_name: jaeger-frontend
     ports:
       - "8080:8080"
+    labels:
+      - "ingress.host=jaeger.gbnt.local"
+      - "gbnt.caddy.port=8080"
     deploy:
       replicas: 1
       resources:
@@ -15,10 +18,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == jaeger-stack
-          - ingress.host == jaeger.gbnt.local
     command: |
       python -c "import http.server, socketserver, urllib.request, json, time, secrets, threading
       def send_otlp_trace(service_name, trace_id, span_id, parent_span_id, span_name, duration_ms, attrs, is_error=False, err_msg=''):

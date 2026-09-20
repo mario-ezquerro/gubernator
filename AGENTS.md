@@ -1479,5 +1479,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Deployed `v2.95.27` across all 3 cluster nodes (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
   - Verified live execution of both Curl and Ping diagnostic modals directly from the Web Dashboard at `http://192.168.252.39:4001/#/coredns`.
 
-
-
+### 134. Major Release v3.0.0 — Unified Labels-First Architecture, Smart Wizard Full YAML Control & Cluster-Wide Compose Modernization (`v3.0.0`)
+* **Unified Labels-First Architecture Paradigm:**
+  - Standardized all container placement, hardware targeting, multi-host distribution strategies, and operational features under standard Docker Compose `labels:` (`gbnt.node.*`, `gbnt.placement.*`, `ingress.*`, `gbnt.caddy.*`, `gbnt.waf.*`, `gbnt.slo.*`, `gbnt.security.*`, `gbnt.autoscaling.*`).
+  - Completely eliminates 4-level deep YAML nesting and fragmented syntax (`deploy.placement.constraints: - "node.role == worker"` vs `deploy.placement.preferences: - spread: node.id`), replacing it with clean, declarative key-value labels (`gbnt.node.role=worker`, `gbnt.node.gpu=nvidia`, `gbnt.node.hostname=<id>`, `gbnt.placement.strategy=spread`).
+  - **100% Backward Compatibility Engine (`internal/api/stack.go`, `internal/autoscaler/autoscaler.go`, `internal/cli/legion.go`):**
+    - Flexible tokenizer `matchSingleNodeConstraint` supporting all standard delimiter styles (`==`, `=`, `:`) across node matching, scheduling, and ingress hostname extraction.
+    - Fully parses and schedules existing compose files utilizing legacy `deploy.placement.constraints` and `deploy.placement.preferences`, seamlessly bridging legacy stacks into v3.0 clusters without regressions.
+    - Enhanced stack deploy options to parse replicas, resources, and placement strategies directly from labels.
+* **Compose Studio & Smart Wizard Full YAML Control (`web-ui/lib/utils/compose_smart_merger.dart`, `web-ui/lib/screens/pages/compose_studio_page.dart`):**
+  - **AST-Like Full YAML Control (Poner y Quitar / Bidirectional Toggle):** Every snippet card in the Smart Wizard now features bidirectional toggle support (`toggleLabels`), in-place value updates, and a dedicated deletion action (`IconButton(Icons.delete_outline)` with `removeLabels`).
+  - **Active State Detection (`isActive` & Green Border):** Smart Wizard continuously analyzes the currently focused service block in the YAML editor to determine which labels are active, displaying a prominent `[✓ ACTIVO]` badge with an emerald border and tinted background.
+  - **Zero Duplication Guarantee:** Hardened regex parser ensures re-clicking or updating a preset modifies the existing key in-place instead of creating duplicate label entries.
+  - **Empty Block Cleanup:** Removing all labels in a service automatically cleans up dangling empty `labels:` key lines and comments.
+  - **Multi-Tab Parity:** Applied across Multi-Host Placement & LB, Autoscaling Engine (CPU & GPU), Caddy Ingress Suite & Threat Shield WAF, Google SRE Sloth SLOs, and Security Gatekeeper.
+  - **Node Pinning & Live Affinity:** Cluster Centurions are dynamically discovered and listed with 1-click pinning/unpinning via `gbnt.node.hostname=<node.id>`.
+  - **Autocompletion Suggestions (`compose_autocomplete.dart`):** Added first-class `gbnt.node.role`, `gbnt.node.gpu`, `gbnt.node.hostname`, and `gbnt.placement.strategy` suggestions while preserving legacy aliases.
+* **Complete Suite & Embedded Blueprint Modernization:**
+  - Modernized all 24 compose examples under `examples/` (`example-pgvector-rag`, `example-wordpress`, `example-keycloak-sso`, `example-deepseek-vllm`, `example-jupyter`, `example-loadbalancer`, `example-slo`, `example-sre`, `example-valkey-sentinel`, `example-gitea-woodpecker`, `example-llama-factory`, `example-kafka-clickhouse`, `example-jaeger`, `example-public-https`).
+  - Modernized all 17 embedded blueprints in `internal/examples/data/*.yml` and starter templates in Compose Studio.

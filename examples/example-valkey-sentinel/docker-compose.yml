@@ -29,11 +29,6 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == valkey-sentinel
-          - ingress.host == master.cache.gbnt.local
-          - gbnt.caddy.port == 6379
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Valkey Read Replica Node (Multi-Node Placement)
@@ -48,6 +43,7 @@ services:
       - "ingress.host=replica.cache.gbnt.local"
       - "gbnt.caddy.port=6379"
       - "gbnt.service.name=valkey-replica"
+      - "gbnt.node.role=worker"
     deploy:
       resources:
         limits:
@@ -56,10 +52,6 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == valkey-sentinel
-          - gbnt.node.role == worker
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Valkey Sentinel High-Availability Quorum Arbiter
@@ -90,8 +82,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 128M
-      placement:
-        constraints:
-          - stack.name == valkey-sentinel
-          - ingress.host == sentinel.cache.gbnt.local
-          - gbnt.caddy.port == 26379

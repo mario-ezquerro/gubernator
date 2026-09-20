@@ -23,6 +23,7 @@ services:
       - /var/contenedores/kafka/data:/tmp/kraft-combined-logs
     labels:
       - "ingress.host=kafka.analytics.gbnt.local"
+      - "gbnt.caddy.port=9092"
       - "gbnt.service.name=kafka-broker"
     deploy:
       resources:
@@ -32,10 +33,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == kafka-clickhouse
-          - ingress.host == kafka.analytics.gbnt.local
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
@@ -57,11 +54,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == kafka-clickhouse
-          - ingress.host == clickhouse.analytics.gbnt.local
-          - gbnt.caddy.port == 8123
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -84,8 +76,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == kafka-clickhouse
-          - ingress.host == ui.analytics.gbnt.local
-          - gbnt.caddy.port == 8080

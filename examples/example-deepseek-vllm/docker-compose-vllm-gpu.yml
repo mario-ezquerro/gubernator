@@ -27,6 +27,7 @@ services:
       - "ingress.host=api.deepseek.gbnt.local"
       - "gbnt.caddy.port=8000"
       - "gbnt.service.name=deepseek-engine"
+      - "gbnt.node.gpu=nvidia"
     deploy:
       resources:
         limits:
@@ -35,12 +36,6 @@ services:
         reservations:
           cpus: "1.0"
           memory: 4G
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - gbnt.node.gpu == nvidia
-          - ingress.host == api.deepseek.gbnt.local
-          - gbnt.caddy.port == 8000
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Open-WebUI Interactive Chat Interface
@@ -68,8 +63,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - ingress.host == chat.deepseek.gbnt.local
-          - gbnt.caddy.port == 8080

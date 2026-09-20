@@ -34,11 +34,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == kubeflow-mlops
-          - ingress.host == minio.kubeflow.gbnt.local
-          - gbnt.caddy.port == 9001
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. MLflow Tracking Server & Model Registry (Metadata & Katib Equivalent)
@@ -76,11 +71,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == kubeflow-mlops
-          - ingress.host == mlflow.kubeflow.gbnt.local
-          - gbnt.caddy.port == 5000
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Interactive JupyterLab & PyTorch Workspaces (Notebook Controller Equivalent)
@@ -112,11 +102,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 1G
-      placement:
-        constraints:
-          - stack.name == kubeflow-mlops
-          - ingress.host == notebooks.kubeflow.gbnt.local
-          - gbnt.caddy.port == 8888
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 4. Model Serving & Inference Gateway (KServe & vLLM Equivalent)
@@ -140,8 +125,3 @@ services:
         reservations:
           cpus: "0.5"
           memory: 1G
-      placement:
-        constraints:
-          - stack.name == kubeflow-mlops
-          - ingress.host == inference.kubeflow.gbnt.local
-          - gbnt.caddy.port == 11434

@@ -24,9 +24,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -48,9 +45,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   ollama-rag:
     image: ollama/ollama:latest
@@ -63,6 +57,7 @@ services:
       - "ingress.host=ollama.rag.gbnt.local"
       - "gbnt.caddy.port=11435"
       - "gbnt.service.name=ollama-rag"
+      - "gbnt.node.role=manager"
     deploy:
       resources:
         limits:
@@ -71,9 +66,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   ollama-init:
     image: curlimages/curl:latest
@@ -89,9 +81,6 @@ services:
         limits:
           cpus: "0.5"
           memory: 128M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   rag-ui:
     image: ghcr.io/open-webui/open-webui:main
@@ -124,6 +113,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag

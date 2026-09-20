@@ -34,6 +34,9 @@ services:
       - N8N_PERSONALIZATION_ENABLED=false
     volumes:
       - /var/contenedores/{{stack.name}}/n8n:/home/node/.n8n
+    labels:
+      - "ingress.host=n8n.gbnt.local"
+      - "gbnt.caddy.port=5678"
     deploy:
       replicas: 1
       resources:
@@ -43,9 +46,5 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == n8n-automation
-          - ingress.host == n8n.gbnt.local
     depends_on:
       - postgres

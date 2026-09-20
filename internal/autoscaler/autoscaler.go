@@ -111,8 +111,11 @@ func ParseAutoscalePolicy(constraints []string) *AutoscalePolicy {
 			} else {
 				policy.Scope = "host"
 			}
-		case "gbnt.placement.strategy":
+		case "gbnt.placement.strategy", "gbnt.placement":
 			placementStrategy = val
+		case "node.hostname", "gbnt.node.hostname", "node.id", "gbnt.node.id":
+			policy.PinnedHost = val
+			policy.SingleHostOnly = true
 		case LabelMetric:
 			if strings.Contains(val, "gpu") || strings.Contains(val, "cuda") || strings.Contains(val, "nvidia") {
 				policy.Metric = "gpu"
@@ -546,44 +549,76 @@ func hasGPUConstraint(constraints []string) bool {
 
 func matchesConstraints(node db.Node, constraints []string) bool {
 	for _, constraint := range constraints {
-		parts := strings.Split(constraint, "==")
-		if len(parts) == 2 {
-			leftSide := strings.TrimSpace(parts[0])
-			val := strings.TrimSpace(parts[1])
+		var leftSide, val string
+		if parts := strings.Split(constraint, "=="); len(parts) == 2 {
+			leftSide = strings.TrimSpace(parts[0])
+			val = strings.TrimSpace(parts[1])
+		} else if parts := strings.SplitN(constraint, "=", 2); len(parts) == 2 {
+			leftSide = strings.TrimSpace(parts[0])
+			val = strings.TrimSpace(parts[1])
+		} else if parts := strings.SplitN(constraint, ":", 2); len(parts) == 2 {
+			leftSide = strings.TrimSpace(parts[0])
+			val = strings.TrimSpace(parts[1])
+		} else {
+			continue
+		}
 
-			// Support node.role == worker / node.role == manager directly
-			if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
-				if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
-					return false
-				}
-				continue
-			}
+		leftSide = strings.ToLower(strings.Trim(leftSide, "\"' "))
+		val = strings.Trim(val, "\"' ")
 
-			// Support node.hostname == ... or node.id == ...
-			if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.id" {
-				if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) && !strings.EqualFold(node.IP, val) {
-					return false
-				}
-				continue
-			}
-
-			if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
-				// Skip non-node-placement constraints
-				continue
-			}
-
-			key := strings.TrimPrefix(leftSide, "node.labels.")
-			nodeVal, exists := node.Labels[key]
-			if !exists {
-				if strings.HasPrefix(key, "gbnt.node.") {
-					nodeVal, exists = node.Labels[strings.TrimPrefix(key, "gbnt.node.")]
-				} else {
-					nodeVal, exists = node.Labels["gbnt.node."+key]
-				}
-			}
-			if !exists || !strings.EqualFold(nodeVal, val) {
+		// Support node.role == worker / node.role == manager directly
+		if leftSide == "node.role" || leftSide == "node.labels.node.role" || leftSide == "node.labels.gbnt.node.role" || leftSide == "gbnt.node.role" {
+			if !strings.EqualFold(node.Role, val) && !strings.EqualFold(node.Labels["gbnt.node.role"], val) {
 				return false
 			}
+			continue
+		}
+
+		// Support node.hostname == ... or node.id == ...
+		if leftSide == "node.hostname" || leftSide == "gbnt.node.hostname" || leftSide == "node.labels.gbnt.node.hostname" || leftSide == "node.id" || leftSide == "gbnt.node.id" {
+			if !strings.EqualFold(node.Labels["gbnt.node.hostname"], val) && !strings.EqualFold(node.ID, val) && !strings.EqualFold(node.IP, val) {
+				return false
+			}
+			continue
+		}
+
+		// GPU affinity
+		if leftSide == "gbnt.node.gpu" || leftSide == "node.gpu" || leftSide == "node.labels.gbnt.node.gpu" {
+			if !strings.EqualFold(node.Labels["gbnt.node.gpu"], val) && !strings.EqualFold(node.Labels["gpu"], val) {
+				return false
+			}
+			continue
+		}
+
+		// Arch affinity
+		if leftSide == "gbnt.node.arch" || leftSide == "node.arch" || leftSide == "node.labels.gbnt.node.arch" {
+			if !strings.EqualFold(node.Labels["gbnt.node.arch"], val) && !strings.EqualFold(node.Labels["arch"], val) {
+				return false
+			}
+			continue
+		}
+
+		// Zone affinity
+		if leftSide == "gbnt.node.zone" || leftSide == "node.zone" || leftSide == "node.labels.gbnt.node.zone" {
+			if !strings.EqualFold(node.Labels["gbnt.node.zone"], val) && !strings.EqualFold(node.Labels["zone"], val) {
+				return false
+			}
+			continue
+		}
+
+		if !strings.HasPrefix(leftSide, "node.labels.") && !strings.HasPrefix(leftSide, "gbnt.node.") {
+			// Skip non-node-placement constraints
+			continue
+		}
+
+		key := strings.TrimPrefix(leftSide, "node.labels.")
+		key = strings.TrimPrefix(key, "gbnt.node.")
+		nodeVal, exists := node.Labels[key]
+		if !exists {
+			nodeVal, exists = node.Labels["gbnt.node."+key]
+		}
+		if !exists || !strings.EqualFold(nodeVal, val) {
+			return false
 		}
 	}
 	return true

@@ -32,6 +32,9 @@ x-ollama: &service-ollama
     - "127.0.0.1::11434"
   volumes:
     - ollama_storage:/root/.ollama
+  labels:
+    - "ingress.host=ollama.gbnt.local"
+    - "gbnt.caddy.port=11434"
   deploy:
     resources:
       limits:
@@ -40,9 +43,6 @@ x-ollama: &service-ollama
       reservations:
         cpus: "0.5"
         memory: 512M
-    placement:
-      constraints:
-        - ingress.host == ollama.gbnt.local
 
 x-init-ollama: &init-ollama
   image: curlimages/curl:latest
@@ -96,6 +96,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels:
+      - "ingress.host=n8n.gbnt.local"
+      - "gbnt.caddy.port=5678"
     deploy:
       resources:
         limits:
@@ -104,10 +107,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == n8n-stack
-          - ingress.host == n8n.gbnt.local
 
   qdrant:
     image: qdrant/qdrant
@@ -119,6 +118,9 @@ services:
       - "127.0.0.1::6333"
     volumes:
       - qdrant_storage:/qdrant/storage
+    labels:
+      - "ingress.host=qdrant.gbnt.local"
+      - "gbnt.caddy.port=6333"
     deploy:
       resources:
         limits:
@@ -127,9 +129,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-      placement:
-        constraints:
-          - ingress.host == qdrant.gbnt.local
 
   ollama:
     <<: *service-ollama

@@ -20,11 +20,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 1G
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - ingress.host == api.deepseek.gbnt.local
-          - gbnt.caddy.port == 11434
 
   chat-ui:
     image: ghcr.io/open-webui/open-webui:main
@@ -50,8 +45,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == deepseek-vllm
-          - ingress.host == chat.deepseek.gbnt.local
-          - gbnt.caddy.port == 8080

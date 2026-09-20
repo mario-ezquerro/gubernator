@@ -28,9 +28,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == scada-dnp3-fuxa
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. DNP3 Outstation 1: Substation Alpha 25 kV RTU (DNP3 Address: 10)
@@ -60,9 +57,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == scada-dnp3-fuxa
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. DNP3 Outstation 2: Solar PV Farm Beta 3 MW Central Inverter (DNP3 Address: 20)
@@ -92,9 +86,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == scada-dnp3-fuxa
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 4. DNP3 Master Station & MQTT Protocol Gateway
@@ -136,9 +127,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == scada-dnp3-fuxa
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 5. FUXA Process Visualization Web SCADA / HMI (frangoteam/FUXA)
@@ -166,8 +154,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == scada-dnp3-fuxa
-          - ingress.host == fuxa.gbnt.local
-          - gbnt.caddy.port == 1881

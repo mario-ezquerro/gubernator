@@ -5,6 +5,10 @@ services:
     image: nginxdemos/hello:plain-text
     ports:
       - "80"
+    labels:
+      - "ingress.host=demo.gbnt.io"
+      - "ingress.email=admin@gbnt.io"
+      - "gbnt.caddy.port=80"
     deploy:
       replicas: 2
       resources:
@@ -14,8 +18,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == public-https-demo
-          - ingress.host == demo.gbnt.io
-          - ingress.email == admin@gbnt.io

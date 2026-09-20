@@ -22,6 +22,8 @@ services:
       gbnt.slo.window: "30d"
       gbnt.slo.indicator: "latency"
       gbnt.slo.latency.threshold: "200ms"
+      ingress.host: "sre-api.gbnt.local"
+      gbnt.caddy.port: "8080"
     deploy:
       replicas: 2
       resources:
@@ -31,7 +33,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == sre-microservice
-          - ingress.host == sre-api.gbnt.local

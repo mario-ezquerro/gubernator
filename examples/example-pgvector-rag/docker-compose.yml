@@ -39,9 +39,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Qdrant High-Performance Vector Database
@@ -66,9 +63,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 512M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 3. Ollama Local LLM & Embedding Engine
@@ -88,6 +82,7 @@ services:
       - "ingress.host=ollama.rag.gbnt.local"
       - "gbnt.caddy.port=11435"
       - "gbnt.service.name=ollama-rag"
+      - "gbnt.node.role=manager"
     deploy:
       resources:
         limits:
@@ -96,9 +91,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 1G
-      placement:
-        constraints:
-          - node.role == manager
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 4. Ollama Model Init — one-shot container that pre-fetches required models.
@@ -130,9 +122,6 @@ services:
         limits:
           cpus: "0.5"
           memory: 128M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 5. RAG Search Web Interface — Open-WebUI
@@ -176,6 +165,3 @@ services:
         reservations:
           cpus: "0.2"
           memory: 256M
-      placement:
-        constraints:
-          - stack.name == pgvector-rag

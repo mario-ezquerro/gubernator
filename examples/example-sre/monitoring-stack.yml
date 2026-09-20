@@ -12,9 +12,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-      placement:
-        constraints:
-          - stack.name == sre-monitoring
 
   grafana:
     image: grafana/grafana:latest

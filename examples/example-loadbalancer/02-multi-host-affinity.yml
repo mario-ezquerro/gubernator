@@ -232,15 +232,13 @@ services:
       - /etc/hostname:/etc/host_hostname:ro
     ports:
       - "8080:8080"
+    labels:
+      - "ingress.host=echo.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.caddy.lb=round_robin"
+      - "gbnt.caddy.health_uri=/health"
+      - "gbnt.caddy.health_interval=2s"
+      - "gbnt.caddy.health_timeout=1s"
+      - "gbnt.placement.strategy=spread"
     deploy:
       replicas: 3
-      placement:
-        preferences:
-          - spread: node.id
-        constraints:
-          - ingress.host == echo.gbnt.local
-          - gbnt.caddy.lb == round_robin
-          - gbnt.caddy.health_uri == /health
-          - gbnt.caddy.health_interval == 2s
-          - gbnt.caddy.health_timeout == 1s
-          - gbnt.placement.strategy == spread

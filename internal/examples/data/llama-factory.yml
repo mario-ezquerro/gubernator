@@ -28,8 +28,3 @@ services:
         reservations:
           cpus: "1.0"
           memory: 4G
-      placement:
-        constraints:
-          - stack.name == llama-factory
-          - ingress.host == llama-factory.gbnt.local
-          - gbnt.caddy.port == 7860

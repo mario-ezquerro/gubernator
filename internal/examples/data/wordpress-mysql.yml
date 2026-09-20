@@ -34,6 +34,9 @@ services:
       WORDPRESS_DB_PASSWORD: admin
     volumes:
       - /var/contenedores/{{stack.name}}/html:/var/www/html
+    labels:
+      - "ingress.host=wordpress.gbnt.local"
+      - "gbnt.caddy.port=80"
     deploy:
       replicas: 1
       resources:
@@ -43,9 +46,5 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-      placement:
-        constraints:
-          - stack.name == wordpress-demo
-          - ingress.host == wordpress.gbnt.local
     depends_on:
       - db

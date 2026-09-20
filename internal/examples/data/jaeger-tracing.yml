@@ -16,6 +16,9 @@ services:
           httpd.serve_forever()"
     ports:
       - "8080"
+    labels:
+      - "ingress.host=tracing-app.gbnt.local"
+      - "gbnt.caddy.port=8080"
     deploy:
       replicas: 1
       resources:
@@ -25,7 +28,3 @@ services:
         reservations:
           cpus: "0.1"
           memory: 64M
-      placement:
-        constraints:
-          - stack.name == jaeger-tracing-demo
-          - ingress.host == tracing-app.gbnt.local

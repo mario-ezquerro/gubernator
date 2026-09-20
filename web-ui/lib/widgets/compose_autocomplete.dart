@@ -148,34 +148,41 @@ class ComposeAutocomplete {
       snippet: '    labels:\n      - "gbnt.security.require-signature=true"\n      - "gbnt.security.max-cve-severity=critical"\n      - "gbnt.security.allow-unfixed-cve=false"\n',
     ),
 
-    // Node Placement & Labels
+    // Node Placement & Labels (Labels-First Architecture v3.0)
     ComposeSnippet(
-      label: 'placement.constraints',
+      label: 'gbnt.node.role',
       category: 'Placement',
-      description: 'Pin service to worker nodes or specific hostnames',
-      icon: Icons.memory,
-      snippet: '      placement:\n        constraints:\n          - "node.role == worker"\n',
+      description: 'Pin service to worker or manager node (Labels-First)',
+      icon: Icons.group_work,
+      snippet: '        - "gbnt.node.role=worker"\n',
     ),
     ComposeSnippet(
-      label: 'placement.spread',
+      label: 'gbnt.node.gpu',
       category: 'Placement',
-      description: 'Anti-affinity: spread service replicas across distinct Centurion nodes',
-      icon: Icons.alt_route,
-      snippet: '      placement:\n        preferences:\n          - spread: node.id\n',
+      description: 'Target Centurions with dedicated GPU accelerator (Labels-First)',
+      icon: Icons.developer_board,
+      snippet: '        - "gbnt.node.gpu=nvidia"\n',
+    ),
+    ComposeSnippet(
+      label: 'gbnt.node.hostname',
+      category: 'Placement',
+      description: 'Pin service to a specific Centurion node ID/hostname',
+      icon: Icons.computer,
+      snippet: '        - "gbnt.node.hostname=node-1"\n',
     ),
     ComposeSnippet(
       label: 'gbnt.placement.strategy',
       category: 'Placement',
-      description: 'Multi-host distributed placement strategy across cluster',
+      description: 'Multi-host distributed placement strategy (spread / anti-affinity)',
       icon: Icons.hub,
       snippet: '        - "gbnt.placement.strategy=spread"\n',
     ),
     ComposeSnippet(
-      label: 'placement.gpu',
+      label: 'placement.constraints (legacy)',
       category: 'Placement',
-      description: 'Target nodes with NVIDIA GPU hardware',
-      icon: Icons.developer_board,
-      snippet: '      placement:\n        constraints:\n          - "gbnt.node.gpu == nvidia"\n',
+      description: 'Legacy Compose deploy.placement.constraints syntax',
+      icon: Icons.memory,
+      snippet: '      placement:\n        constraints:\n          - "node.role == worker"\n',
     ),
 
     // Autoscaling Engine (GPU & CPU, Host & Cluster)
