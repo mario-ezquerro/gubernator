@@ -159,3 +159,36 @@ func CoreDNSDigHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func CoreDNSCurlHandler(c *gin.Context) {
+	var req coredns.CurlRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformCurl(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func CoreDNSPingHandler(c *gin.Context) {
+	var req coredns.PingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformPing(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+

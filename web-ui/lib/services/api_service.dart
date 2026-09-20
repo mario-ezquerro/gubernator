@@ -696,6 +696,114 @@ class ApiService {
     return DNSDigResult(domain: domain, recordType: recordType, status: 'ERROR', queryTimeMs: 0.0, server: '127.0.0.1:5354', answers: [], rawOutput: 'Error connecting to server');
   }
 
+  /// Performs an HTTP/HTTPS curl resolution test from the manager against a domain/host.
+  static Future<DNSCurlResult> performDNSCurl({
+    required String hostname,
+    String ip = '',
+    String protocol = 'http',
+    int port = 0,
+    String path = '/',
+    String method = 'GET',
+    bool followRedirect = true,
+    bool insecure = true,
+    int timeoutSeconds = 5,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/coredns/curl'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'hostname': hostname,
+          'ip': ip,
+          'protocol': protocol,
+          'port': port,
+          'path': path,
+          'method': method,
+          'follow_redirect': followRedirect,
+          'insecure': insecure,
+          'timeout_seconds': timeoutSeconds,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return DNSCurlResult.fromJson(jsonDecode(response.body));
+      }
+      return DNSCurlResult(
+        command: 'curl $protocol://$hostname$path',
+        statusCode: response.statusCode,
+        statusText: 'Server Error (${response.statusCode})',
+        latencyMs: 0.0,
+        headers: '',
+        body: response.body,
+        rawOutput: response.body,
+        targetIp: ip,
+        success: false,
+        error: 'HTTP ${response.statusCode}: ${response.body}',
+      );
+    } catch (e) {
+      return DNSCurlResult(
+        command: 'curl $protocol://$hostname$path',
+        statusCode: 0,
+        statusText: 'Request Failed',
+        latencyMs: 0.0,
+        headers: '',
+        body: e.toString(),
+        rawOutput: 'Network exception connecting to Gubernator API: $e',
+        targetIp: ip,
+        success: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Performs an ICMP reachability / latency ping test against a domain or IP.
+  static Future<DNSPingResult> performDNSPing({
+    required String hostname,
+    String ip = '',
+    int count = 3,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('/api/coredns/ping'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'hostname': hostname,
+          'ip': ip,
+          'count': count,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return DNSPingResult.fromJson(jsonDecode(response.body));
+      }
+      return DNSPingResult(
+        command: 'ping -c $count ${ip.isNotEmpty ? ip : hostname}',
+        target: ip.isNotEmpty ? ip : hostname,
+        packetsSent: count,
+        packetsRecv: 0,
+        packetLoss: 100.0,
+        minLatency: 0.0,
+        avgLatency: 0.0,
+        maxLatency: 0.0,
+        rawOutput: response.body,
+        success: false,
+        error: 'HTTP ${response.statusCode}: ${response.body}',
+      );
+    } catch (e) {
+      return DNSPingResult(
+        command: 'ping -c $count ${ip.isNotEmpty ? ip : hostname}',
+        target: ip.isNotEmpty ? ip : hostname,
+        packetsSent: count,
+        packetsRecv: 0,
+        packetLoss: 100.0,
+        minLatency: 0.0,
+        avgLatency: 0.0,
+        maxLatency: 0.0,
+        rawOutput: 'Network exception connecting to Gubernator API: $e',
+        success: false,
+        error: e.toString(),
+      );
+    }
+  }
+
   /// Fetches the configured base cluster domain.
   static Future<String> fetchClusterDomain() async {
     try {

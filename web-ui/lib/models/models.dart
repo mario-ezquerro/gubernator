@@ -1059,6 +1059,91 @@ class DNSDigResult {
   }
 }
 
+class DNSCurlResult {
+  final String command;
+  final int statusCode;
+  final String statusText;
+  final double latencyMs;
+  final String headers;
+  final String body;
+  final String rawOutput;
+  final String targetIp;
+  final bool success;
+  final String? error;
+
+  DNSCurlResult({
+    required this.command,
+    required this.statusCode,
+    required this.statusText,
+    required this.latencyMs,
+    required this.headers,
+    required this.body,
+    required this.rawOutput,
+    required this.targetIp,
+    required this.success,
+    this.error,
+  });
+
+  factory DNSCurlResult.fromJson(Map<String, dynamic> json) {
+    return DNSCurlResult(
+      command: json['command'] ?? '',
+      statusCode: json['status_code'] ?? 0,
+      statusText: json['status_text'] ?? '',
+      latencyMs: (json['latency_ms'] as num?)?.toDouble() ?? 0.0,
+      headers: json['headers'] ?? '',
+      body: json['body'] ?? '',
+      rawOutput: json['raw_output'] ?? '',
+      targetIp: json['target_ip'] ?? '',
+      success: json['success'] ?? false,
+      error: json['error'],
+    );
+  }
+}
+
+class DNSPingResult {
+  final String command;
+  final String target;
+  final int packetsSent;
+  final int packetsRecv;
+  final double packetLoss;
+  final double minLatency;
+  final double avgLatency;
+  final double maxLatency;
+  final String rawOutput;
+  final bool success;
+  final String? error;
+
+  DNSPingResult({
+    required this.command,
+    required this.target,
+    required this.packetsSent,
+    required this.packetsRecv,
+    required this.packetLoss,
+    required this.minLatency,
+    required this.avgLatency,
+    required this.maxLatency,
+    required this.rawOutput,
+    required this.success,
+    this.error,
+  });
+
+  factory DNSPingResult.fromJson(Map<String, dynamic> json) {
+    return DNSPingResult(
+      command: json['command'] ?? '',
+      target: json['target'] ?? '',
+      packetsSent: json['packets_sent'] ?? 0,
+      packetsRecv: json['packets_recv'] ?? 0,
+      packetLoss: (json['packet_loss'] as num?)?.toDouble() ?? 0.0,
+      minLatency: (json['min_latency'] as num?)?.toDouble() ?? 0.0,
+      avgLatency: (json['avg_latency'] as num?)?.toDouble() ?? 0.0,
+      maxLatency: (json['max_latency'] as num?)?.toDouble() ?? 0.0,
+      rawOutput: json['raw_output'] ?? '',
+      success: json['success'] ?? false,
+      error: json['error'],
+    );
+  }
+}
+
 class CoreDNSStatusInfo {
   final String status;
   final int uptimeSeconds;

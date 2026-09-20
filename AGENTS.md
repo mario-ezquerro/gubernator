@@ -1462,4 +1462,22 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     3. **`All`** (last)
   - Improves UX by immediately presenting application workloads while preserving instant 1-click access to base system stacks and the complete stack inventory.
 
+### 133. CoreDNS Interactive Curl & Ping Diagnostic Suite, Browser Launcher & Quick Actions (`v2.95.27`)
+* **Interactive Resolution & Reachability Diagnostics (`internal/coredns/diagnostics.go`):**
+  - **Backend Curl Execution Engine (`PerformCurl`):** Executes HTTP/HTTPS requests from the cluster manager against target hostnames and IPs. Includes host resolution injection (`--resolve <host>:<port>:<ip>`) to reliably reach internal endpoints (`*.gbnt.local`, `*.gbnt`) even if the manager host's upstream DNS is bypassed. Parses status codes, HTTP protocol version, latency (ms), response headers, response body, and raw curl output.
+  - **Backend Ping Execution Engine (`PerformPing`):** Executes ICMP ping tests from the cluster manager against target hostnames and IPs. Parses packets sent/received, packet loss %, min/avg/max latency, and raw terminal output.
+* **REST & Web APIs (`internal/api/coredns.go`, `internal/api/server.go`, `internal/web/server.go`):**
+  - Registered `POST /v1/coredns/curl` and `POST /api/coredns/curl` accepting `hostname`, `ip`, `protocol`, `port`, `path`, `method`, `follow_redirect`, `insecure`, and `timeout_seconds`.
+  - Registered `POST /v1/coredns/ping` and `POST /api/coredns/ping` accepting `hostname`, `ip`, and `count`.
+* **CoreDNS Web Dashboard Enhancements (`web-ui/lib/screens/pages/coredns_page.dart`):**
+  - **Action Suite Column Header:** Updated the static resolution column to `ACTIONS & RESOLUTION TEST` across both Autodiscovered and Custom Static DNS tables.
+  - **Curl Diagnostic Modal (`_showCurlDialog`):** Interactive modal allowing operators to test HTTP/HTTPS connectivity with custom options (Protocol, Method GET/HEAD, Path, Port, Follow Redirects, Insecure/Self-signed TLS, Timeout), live execution button, status badge, latency display, formatted response headers, response body viewer, and raw curl terminal execution log.
+  - **Ping Diagnostic Modal (`_showPingDialog`):** Interactive modal allowing operators to run ICMP reachability checks with packet count selector, packet loss badge, min/avg/max latency breakdown, and raw ping terminal output.
+  - **Open in Browser Dropdown:** Direct 1-click launcher opening `http://${domain}` or `https://${domain}` in a new browser tab (`html.window.open(url, '_blank')`).
+  - **Quick Copy Dropdown:** 1-click copy menu providing ready-to-run commands: `curl -i http://...`, `curl -k -i https://...`, `ping -c 3 ...`, and HTTP/HTTPS URLs.
+* **Cluster Deployment & Live Verification:**
+  - Deployed `v2.95.27` across all 3 cluster nodes (`gbnt-manager`, `gbnt-worker1`, `gbnt-worker2`).
+  - Verified live execution of both Curl and Ping diagnostic modals directly from the Web Dashboard at `http://192.168.252.39:4001/#/coredns`.
+
+
 

@@ -592,6 +592,8 @@ func StartDashboard() {
 		api.GET("/task/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), taskShellHandler)
 		api.GET("/node/:id/shell", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), nodeShellHandler)
 		api.POST("/coredns/dig", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSDigHandler)
+		api.POST("/coredns/curl", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSCurlHandler)
+		api.POST("/coredns/ping", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), coreDNSPingHandler)
 		api.POST("/caddy/fmt", auth.RequireRole(auth.RoleAdmin, auth.RoleOperator), caddyFmtHandler)
 
 		// Admin-only operations (Security, Nodes, Caddy TLS, CoreDNS config, Update, SLO edit)
@@ -5088,6 +5090,38 @@ func coreDNSDigHandler(c *gin.Context) {
 	}
 
 	res, err := coredns.PerformDig(req.Domain, req.RecordType)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func coreDNSCurlHandler(c *gin.Context) {
+	var req coredns.CurlRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformCurl(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func coreDNSPingHandler(c *gin.Context) {
+	var req coredns.PingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := coredns.PerformPing(req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

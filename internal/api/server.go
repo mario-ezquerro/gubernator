@@ -255,6 +255,8 @@ func Start(ctx context.Context) error {
 			corednsRoute.POST("/custom-records", CreateCustomDNSRecordHandler)
 			corednsRoute.DELETE("/custom-records/:id", DeleteCustomDNSRecordHandler)
 			corednsRoute.POST("/dig", CoreDNSDigHandler)
+			corednsRoute.POST("/curl", CoreDNSCurlHandler)
+			corednsRoute.POST("/ping", CoreDNSPingHandler)
 		}
 
 		scopeRoute := v1.Group("/monitor/scope")

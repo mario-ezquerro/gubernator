@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../utils/clipboard_service.dart';
@@ -215,6 +216,497 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
     }
   }
 
+  void _showCurlDialog(String hostname, String ip) {
+    String selectedProtocol = 'http';
+    String selectedMethod = 'GET';
+    bool followRedirect = true;
+    bool insecure = true;
+    int timeoutSec = 5;
+    bool running = true;
+    DNSCurlResult? curlResult;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final theme = Theme.of(context);
+
+          void runCurl() async {
+            setDialogState(() {
+              running = true;
+            });
+            final res = await ApiService.performDNSCurl(
+              hostname: hostname,
+              ip: ip,
+              protocol: selectedProtocol,
+              method: selectedMethod,
+              followRedirect: followRedirect,
+              insecure: insecure,
+              timeoutSeconds: timeoutSec,
+            );
+            if (context.mounted) {
+              setDialogState(() {
+                curlResult = res;
+                running = false;
+              });
+            }
+          }
+
+          if (curlResult == null && running) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              runCurl();
+            });
+          }
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF58A6FF).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.terminal, color: Color(0xFF58A6FF), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Curl Resolution Test — $hostname',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('Executing from Cluster Manager (Target IP: ${ip.isNotEmpty ? ip : "Dynamic"})',
+                          style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 720,
+              height: 540,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Card(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(value: 'http', label: Text('HTTP')),
+                              ButtonSegment(value: 'https', label: Text('HTTPS')),
+                            ],
+                            selected: {selectedProtocol},
+                            onSelectionChanged: (newVal) {
+                              setDialogState(() {
+                                selectedProtocol = newVal.first;
+                              });
+                              runCurl();
+                            },
+                            style: SegmentedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          DropdownButton<String>(
+                            value: selectedMethod,
+                            isDense: true,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'GET', child: Text('GET')),
+                              DropdownMenuItem(value: 'HEAD', child: Text('HEAD')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => selectedMethod = val);
+                                runCurl();
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: followRedirect,
+                                visualDensity: VisualDensity.compact,
+                                onChanged: (v) {
+                                  setDialogState(() => followRedirect = v ?? true);
+                                  runCurl();
+                                },
+                              ),
+                              const Text('-L (Follow)', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          const Spacer(),
+                          FilledButton.icon(
+                            onPressed: running ? null : runCurl,
+                            icon: running
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.refresh, size: 16),
+                            label: const Text('Re-run Curl'),
+                            style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (curlResult != null) ...[
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (curlResult!.statusCode >= 200 && curlResult!.statusCode < 300)
+                                ? Colors.green.withValues(alpha: 0.2)
+                                : (curlResult!.statusCode >= 300 && curlResult!.statusCode < 400)
+                                    ? Colors.amber.withValues(alpha: 0.2)
+                                    : Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: (curlResult!.statusCode >= 200 && curlResult!.statusCode < 300)
+                                  ? Colors.green
+                                  : (curlResult!.statusCode >= 300 && curlResult!.statusCode < 400)
+                                      ? Colors.amber
+                                      : Colors.red,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            curlResult!.statusCode > 0
+                                ? '${curlResult!.statusCode} ${curlResult!.statusText}'
+                                : (curlResult!.error ?? 'FAILED'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: (curlResult!.statusCode >= 200 && curlResult!.statusCode < 300)
+                                  ? Colors.green
+                                  : (curlResult!.statusCode >= 300 && curlResult!.statusCode < 400)
+                                      ? Colors.amber
+                                      : Colors.red,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Chip(
+                          avatar: const Icon(Icons.timer_outlined, size: 14),
+                          label: Text('${curlResult!.latencyMs.toStringAsFixed(1)} ms'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const SizedBox(width: 8),
+                        Chip(
+                          avatar: const Icon(Icons.dns, size: 14),
+                          label: Text(ip.isNotEmpty ? ip : 'Dynamic DNS'),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 16),
+                          tooltip: 'Copy Curl Command',
+                          onPressed: () {
+                            ClipboardService.copy(curlResult!.command);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied curl command!')),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_new, size: 16),
+                          tooltip: 'Open in Browser ($selectedProtocol://$hostname)',
+                          onPressed: () {
+                            html.window.open('$selectedProtocol://$hostname', '_blank');
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D1117),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      child: running && curlResult == null
+                          ? const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 12),
+                                  Text('Executing curl resolution test from cluster manager...',
+                                      style: TextStyle(fontFamily: 'Courier New', color: Color(0xFF8B949E))),
+                                ],
+                              ),
+                            )
+                          : SelectableText(
+                              curlResult?.rawOutput.isNotEmpty == true
+                                  ? curlResult!.rawOutput
+                                  : (curlResult?.error ?? 'No output returned'),
+                              style: const TextStyle(
+                                fontFamily: 'Courier New',
+                                fontSize: 12,
+                                color: Color(0xFF58A6FF),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              if (curlResult != null)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy Output'),
+                  onPressed: () {
+                    ClipboardService.copy(curlResult!.rawOutput);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Copied curl output to clipboard!')),
+                    );
+                  },
+                ),
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text('Open in Browser ($selectedProtocol)'),
+                onPressed: () {
+                  html.window.open('$selectedProtocol://$hostname', '_blank');
+                },
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showPingDialog(String hostname, String ip) {
+    int packetCount = 3;
+    bool running = true;
+    DNSPingResult? pingResult;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final theme = Theme.of(context);
+
+          void runPing() async {
+            setDialogState(() {
+              running = true;
+            });
+            final res = await ApiService.performDNSPing(
+              hostname: hostname,
+              ip: ip,
+              count: packetCount,
+            );
+            if (context.mounted) {
+              setDialogState(() {
+                pingResult = res;
+                running = false;
+              });
+            }
+          }
+
+          if (pingResult == null && running) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              runPing();
+            });
+          }
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3FB950).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.network_ping, color: Color(0xFF3FB950), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ping Reachability Test — $hostname',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('ICMP Network Reachability (Target: ${ip.isNotEmpty ? ip : hostname})',
+                          style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 680,
+              height: 480,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Card(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Text('Packets:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          DropdownButton<int>(
+                            value: packetCount,
+                            isDense: true,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 1, child: Text('1 packet')),
+                              DropdownMenuItem(value: 3, child: Text('3 packets')),
+                              DropdownMenuItem(value: 5, child: Text('5 packets')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => packetCount = val);
+                                runPing();
+                              }
+                            },
+                          ),
+                          const Spacer(),
+                          FilledButton.icon(
+                            onPressed: running ? null : runPing,
+                            icon: running
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.refresh, size: 16),
+                            label: const Text('Re-run Ping'),
+                            style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (pingResult != null) ...[
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: pingResult!.packetLoss == 0
+                                ? Colors.green.withValues(alpha: 0.2)
+                                : (pingResult!.packetLoss < 50)
+                                    ? Colors.amber.withValues(alpha: 0.2)
+                                    : Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: pingResult!.packetLoss == 0
+                                  ? Colors.green
+                                  : (pingResult!.packetLoss < 50)
+                                      ? Colors.amber
+                                      : Colors.red,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            '${pingResult!.packetLoss.toStringAsFixed(0)}% Packet Loss (${pingResult!.packetsRecv}/${pingResult!.packetsSent})',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: pingResult!.packetLoss == 0
+                                  ? Colors.green
+                                  : (pingResult!.packetLoss < 50)
+                                      ? Colors.amber
+                                      : Colors.red,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (pingResult!.avgLatency > 0)
+                          Chip(
+                            avatar: const Icon(Icons.speed, size: 14),
+                            label: Text('Avg: ${pingResult!.avgLatency.toStringAsFixed(2)} ms'),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        const SizedBox(width: 8),
+                        if (pingResult!.minLatency > 0)
+                          Chip(
+                            label: Text('Min: ${pingResult!.minLatency.toStringAsFixed(2)} ms | Max: ${pingResult!.maxLatency.toStringAsFixed(2)} ms'),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D1117),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      child: running && pingResult == null
+                          ? const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 12),
+                                  Text('Executing ping from cluster manager...',
+                                      style: TextStyle(fontFamily: 'Courier New', color: Color(0xFF8B949E))),
+                                ],
+                              ),
+                            )
+                          : SelectableText(
+                              pingResult?.rawOutput.isNotEmpty == true
+                                  ? pingResult!.rawOutput
+                                  : (pingResult?.error ?? 'No output returned'),
+                              style: const TextStyle(
+                                fontFamily: 'Courier New',
+                                fontSize: 12,
+                                color: Color(0xFF3FB950),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              if (pingResult != null)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy Output'),
+                  onPressed: () {
+                    ClipboardService.copy(pingResult!.rawOutput);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Copied ping output to clipboard!')),
+                    );
+                  },
+                ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showEditClusterDomainDialog(String currentDomain) {
     final controller = TextEditingController(text: currentDomain);
     bool saving = false;
@@ -428,7 +920,7 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
                       DataColumn(label: Text('IP ADDRESS')),
                       DataColumn(label: Text('HOSTNAME (DOMAIN)')),
                       DataColumn(label: Text('TYPE')),
-                      DataColumn(label: Text('TEST RESOLUTION (CURL)')),
+                      DataColumn(label: Text('ACTIONS & RESOLUTION TEST')),
                     ],
                     rows: filteredDns.map((d) {
                       return DataRow(cells: [
@@ -439,16 +931,89 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
                         DataCell(Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SelectableText('curl http://${d.hostname}',
-                                style: TextStyle(fontFamily: 'Courier New', fontSize: 12, color: theme.colorScheme.primary)),
+                            // Curl Dialog Trigger
+                            FilledButton.tonalIcon(
+                              icon: const Icon(Icons.terminal, size: 14, color: Color(0xFF58A6FF)),
+                              label: const Text('Curl', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF58A6FF))),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () => _showCurlDialog(d.hostname, d.ip),
+                            ),
                             const SizedBox(width: 6),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 16),
-                              tooltip: 'Copy curl command',
-                              onPressed: () {
-                                ClipboardService.copy('curl http://${d.hostname}');
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied curl command!')));
+                            // Ping Dialog Trigger
+                            FilledButton.tonalIcon(
+                              icon: const Icon(Icons.network_ping, size: 14, color: Color(0xFF3FB950)),
+                              label: const Text('Ping', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF3FB950))),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              onPressed: () => _showPingDialog(d.hostname, d.ip),
+                            ),
+                            const SizedBox(width: 6),
+                            // Browser Open (HTTP / HTTPS)
+                            PopupMenuButton<String>(
+                              tooltip: 'Open in Browser (HTTP / HTTPS)',
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              onSelected: (proto) {
+                                final url = '$proto://${d.hostname}';
+                                html.window.open(url, '_blank');
                               },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'http',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.http, size: 16, color: Color(0xFFE3B341)),
+                                      const SizedBox(width: 8),
+                                      Text('Open http://${d.hostname}'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'https',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.lock_outline, size: 16, color: Color(0xFF3FB950)),
+                                      const SizedBox(width: 8),
+                                      Text('Open https://${d.hostname}'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Copy Commands Menu
+                            PopupMenuButton<String>(
+                              tooltip: 'Copy Command or URL',
+                              icon: const Icon(Icons.copy, size: 16),
+                              onSelected: (cmd) {
+                                ClipboardService.copy(cmd);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copied: $cmd')));
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'curl -i http://${d.hostname}',
+                                  child: const Text('Copy: curl -i http://...'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'curl -k -i https://${d.hostname}',
+                                  child: const Text('Copy: curl -k -i https://...'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'ping -c 3 ${d.hostname}',
+                                  child: const Text('Copy: ping -c 3 ...'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'http://${d.hostname}',
+                                  child: const Text('Copy HTTP URL'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'https://${d.hostname}',
+                                  child: const Text('Copy HTTPS URL'),
+                                ),
+                              ],
                             ),
                           ],
                         )),
@@ -549,10 +1114,30 @@ class _CoreDnsPageState extends State<CoreDnsPage> with SingleTickerProviderStat
                         DataCell(SelectableText(r.ip, style: const TextStyle(fontFamily: 'Courier New', fontSize: 13))),
                         DataCell(Text('${r.ttl}s')),
                         DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                            tooltip: 'Delete custom record',
-                            onPressed: () => _deleteCustomRecord(r.id),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.terminal, size: 16, color: Color(0xFF58A6FF)),
+                                tooltip: 'Curl Test',
+                                onPressed: () => _showCurlDialog(r.domain, r.ip),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.network_ping, size: 16, color: Color(0xFF3FB950)),
+                                tooltip: 'Ping Test',
+                                onPressed: () => _showPingDialog(r.domain, r.ip),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.open_in_new, size: 16),
+                                tooltip: 'Open in Browser',
+                                onPressed: () => html.window.open('http://${r.domain}', '_blank'),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                tooltip: 'Delete custom record',
+                                onPressed: () => _deleteCustomRecord(r.id),
+                              ),
+                            ],
                           ),
                         ),
                       ]);
