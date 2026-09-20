@@ -14,7 +14,7 @@ import (
 // @host            localhost:4002
 // @BasePath        /
 
-var version = "v3.0.0"
+var version = "v3.0.2"
 
 func init() {
 	for _, p := range []string{"VERSION", "/data/VERSION", "/app/VERSION", "../VERSION"} {

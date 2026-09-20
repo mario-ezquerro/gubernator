@@ -165,7 +165,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               children: const [
                 Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
                 SizedBox(width: 10),
-                Text("Auditoría sincronizada: Todos los marcos regulatorios han sido re-evaluados."),
+                Text("Audit synchronized: All regulatory frameworks have been re-evaluated."),
               ],
             ),
             backgroundColor: const Color(0xFF10B981),
@@ -179,7 +179,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         setState(() => _evaluatingAllCompliance = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error durante la re-evaluación del clúster: $e"),
+            content: Text("Error during cluster re-evaluation: $e"),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -482,7 +482,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         decoration: const InputDecoration(
                           labelText: "Password *",
                           hintText: "Enter password",
-                          helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
+                          helperText: "ENS op.acc.2: Min. 12 characters (uppercase, lowercase, numbers, and symbols)",
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -541,7 +541,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                 Row(
                                   children: [
                                     Text(
-                                      enabled ? "Cuenta Activa" : "Cuenta Suspendida",
+                                      enabled ? "Active Account" : "Suspended Account",
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
@@ -556,7 +556,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        enabled ? "Acceso Permitido" : "Acceso Bloqueado",
+                                        enabled ? "Access Allowed" : "Access Blocked",
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
@@ -569,8 +569,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                 const SizedBox(height: 3),
                                 Text(
                                   enabled
-                                      ? "El usuario puede autenticarse y operar con normalidad."
-                                      : "El usuario NO podrá iniciar sesión en Gubernator hasta que sea reactivado.",
+                                      ? "The user can authenticate and operate normally."
+                                      : "The user will NOT be able to sign in to Gubernator until reactivated.",
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
@@ -581,8 +581,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                           ),
                           Tooltip(
                             message: (user?.username.toLowerCase() == "admin")
-                                ? "La cuenta principal 'admin' no puede ser suspendida"
-                                : (enabled ? "Suspender acceso temporalmente" : "Activar cuenta"),
+                                ? "Primary 'admin' account cannot be suspended"
+                                : (enabled ? "Temporarily suspend access" : "Activate account"),
                             child: Switch(
                               value: enabled,
                               activeColor: Colors.green,
@@ -690,7 +690,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 decoration: const InputDecoration(
                   labelText: "New Password",
                   hintText: "Enter new password",
-                  helperText: "ENS op.acc.2: Mín. 12 caracteres (mayúsculas, minúsculas, números y símbolos)",
+                  helperText: "ENS op.acc.2: Min. 12 characters (uppercase, lowercase, numbers, and symbols)",
                 ),
               ),
               const SizedBox(height: 12),
@@ -746,16 +746,16 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           children: const [
             Icon(Icons.lock_open, color: Colors.green),
             SizedBox(width: 10),
-            Text("Desbloquear Cuenta (ENS op.acc.2)"),
+            Text("Unlock Account (ENS op.acc.2)"),
           ],
         ),
-        content: Text("¿Deseas desbloquear la cuenta de '${user.username}' y restablecer sus ${user.failedLoginAttempts} intentos fallidos?"),
+        content: Text("Do you want to unlock account '${user.username}' and reset its ${user.failedLoginAttempts} failed attempts?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Desbloquear Cuenta"),
+            child: const Text("Unlock Account"),
           ),
         ],
       ),
@@ -764,9 +764,9 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     if (confirm == true) {
       final res = await ApiService.unlockLocalUser(user.id);
       if (res["error"] != null) {
-        _showSnackBar("Error al desbloquear: ${res['error']}", isError: true);
+        _showSnackBar("Error unlocking account: ${res['error']}", isError: true);
       } else {
-        _showSnackBar("Cuenta de '${user.username}' desbloqueada correctamente (ENS op.acc.2)");
+        _showSnackBar("Account '${user.username}' unlocked successfully (ENS op.acc.2)");
         _loadLocalUsers();
       }
     }
@@ -774,7 +774,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
   Future<void> _toggleUserStatus(LocalUser user, bool targetState) async {
     if (user.username.toLowerCase() == "admin" && !targetState) {
-      _showSnackBar("La cuenta de administrador principal 'admin' no puede ser suspendida", isError: true);
+      _showSnackBar("Primary administrator account 'admin' cannot be suspended", isError: true);
       return;
     }
 
@@ -786,13 +786,13 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             children: [
               Icon(Icons.pause_circle_filled, color: Colors.amber, size: 24),
               SizedBox(width: 10),
-              Text("Suspender Usuario Temporalmente"),
+              Text("Temporarily Suspend User"),
             ],
           ),
           content: Text(
-            "¿Deseas suspender temporalmente el acceso del usuario '${user.username}'?\n\n"
-            "El usuario no podrá autenticarse ni acceder a los servicios de Gubernator hasta que vuelva a ser reactivado.\n"
-            "Los datos, roles y configuraciones permanecerán intactos.",
+            "Are you sure you want to temporarily suspend access for user '${user.username}'?\n\n"
+            "The user will not be able to authenticate or access Gubernator services until reactivated.\n"
+            "Data, roles, and configurations will remain intact.",
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
@@ -802,7 +802,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Suspender Acceso"),
+              child: const Text("Suspend Access"),
             ),
           ],
         ),
@@ -812,12 +812,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
     final res = await ApiService.toggleLocalUserStatus(user.id, enabled: targetState);
     if (res["error"] != null) {
-      _showSnackBar("Error al actualizar estado: ${res['error']}", isError: true);
+      _showSnackBar("Error updating account status: ${res['error']}", isError: true);
     } else {
       _showSnackBar(
         targetState
-            ? "Cuenta de '${user.username}' reactivada con éxito"
-            : "Cuenta de '${user.username}' suspendida temporalmente",
+            ? "Account '${user.username}' reactivated successfully"
+            : "Account '${user.username}' temporarily suspended",
       );
       _loadLocalUsers();
     }
@@ -896,12 +896,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        "Paso 1: Escanea el código con Google Authenticator",
+                        "Step 1: Scan the QR code with Google Authenticator",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        "Abre la app Google Authenticator (o cualquier app TOTP compatible) en tu móvil y escanea este código QR:",
+                        "Open Google Authenticator (or any compatible TOTP app) on your mobile device and scan this QR code:",
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 12),
@@ -972,7 +972,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                showManualKey ? "Ocultar clave manual Base32" : "¿No puedes escanear? Ver clave manual Base32",
+                                showManualKey ? "Hide manual Base32 key" : "Can't scan? View manual Base32 key",
                                 style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w500),
                               ),
                             ],
@@ -1003,10 +1003,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                               ),
                               IconButton(
                                 icon: const Icon(Icons.copy, size: 18),
-                                tooltip: "Copiar clave",
+                                tooltip: "Copy secret key",
                                 onPressed: () {
                                   html.window.navigator.clipboard?.writeText(secret);
-                                  _showSnackBar("Clave secreta copiada al portapapeles");
+                                  _showSnackBar("Secret key copied to clipboard");
                                 },
                               ),
                             ],
@@ -1015,12 +1015,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       ],
                       const SizedBox(height: 14),
                       const Text(
-                        "Paso 2: Guarda tus códigos de respaldo (Un solo uso)",
+                        "Step 2: Save your recovery backup codes (Single use)",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        "Si pierdes tu dispositivo, podrás iniciar sesión con cualquiera de estos códigos:",
+                        "If you lose your device, you can sign in using any of these recovery codes:",
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 8),
@@ -1050,10 +1050,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                               alignment: Alignment.centerRight,
                               child: TextButton.icon(
                                 icon: const Icon(Icons.copy, size: 14),
-                                label: const Text("Copiar todos los códigos", style: TextStyle(fontSize: 11)),
+                                label: const Text("Copy all codes", style: TextStyle(fontSize: 11)),
                                 onPressed: () {
                                   html.window.navigator.clipboard?.writeText(backupCodes.join("\n"));
-                                  _showSnackBar("Códigos de respaldo copiados");
+                                  _showSnackBar("Backup recovery codes copied");
                                 },
                               ),
                             ),
@@ -1062,7 +1062,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       ),
                       const SizedBox(height: 14),
                       const Text(
-                        "Paso 3: Verifica el código de 6 dígitos para activar:",
+                        "Step 3: Enter the 6-digit verification code to activate:",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       const SizedBox(height: 8),
@@ -1073,7 +1073,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                         style: const TextStyle(fontSize: 20, letterSpacing: 4, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
                         decoration: const InputDecoration(
                           hintText: "000000",
-                          labelText: "Código TOTP (6 dígitos)",
+                          labelText: "TOTP Code (6 digits)",
                           prefixIcon: Icon(Icons.pin),
                         ),
                       ),
@@ -1094,7 +1094,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   onPressed: enabling ? null : () async {
                     final code = codeCtrl.text.trim();
                     if (code.isEmpty) {
-                      setDialogState(() => error = "Introduce el código generado por tu app");
+                      setDialogState(() => error = "Enter the 6-digit code generated by your app");
                       return;
                     }
                     setDialogState(() {
@@ -1116,11 +1116,11 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     }
                     if (mounted) {
                       Navigator.pop(ctx);
-                      _showSnackBar("MFA activado con éxito para '${user.username}' (ENS op.acc.2)");
+                      _showSnackBar("MFA enabled successfully for '${user.username}' (ENS op.acc.2)");
                       _loadLocalUsers();
                     }
                   },
-                  child: enabling ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text("Verificar y Activar MFA"),
+                  child: enabling ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text("Verify & Enable MFA"),
                 ),
               ],
             );
@@ -1128,7 +1128,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         ),
       );
     } catch (e) {
-      _showSnackBar("Error al iniciar configuración MFA: $e", isError: true);
+      _showSnackBar("Error starting MFA setup: $e", isError: true);
     }
   }
 
@@ -1140,10 +1140,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           children: const [
             Icon(Icons.warning_amber, color: Colors.orange),
             SizedBox(width: 8),
-            Text("Desactivar MFA"),
+            Text("Disable MFA"),
           ],
         ),
-        content: Text("¿Seguro que deseas desactivar el Doble Factor de Autenticación para el usuario '${user.username}'?"),
+        content: Text("Are you sure you want to disable Multi-Factor Authentication for user '${user.username}'?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
           FilledButton(
@@ -1152,15 +1152,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               Navigator.pop(ctx);
               final res = await ApiService.disableMFA(userId: user.id);
               if (res['error'] != null) {
-                _showSnackBar("Error desactivando MFA: ${res['error']}", isError: true);
+                _showSnackBar("Error disabling MFA: ${res['error']}", isError: true);
               } else {
-                _showSnackBar("MFA desactivado para '${user.username}'");
+                _showSnackBar("MFA disabled for '${user.username}'");
                 _loadLocalUsers();
                 _loadComplianceOverview();
                 _loadENSStatus();
               }
             },
-            child: const Text("Desactivar"),
+            child: const Text("Disable"),
           ),
         ],
       ),
@@ -1772,10 +1772,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       DataCell(
                         usr.isLocked
                             ? Tooltip(
-                                message: "Bloqueada por ${usr.failedLoginAttempts} intentos fallidos hasta ${usr.lockedUntil} (ENS op.acc.2)",
+                                message: "Locked due to ${usr.failedLoginAttempts} failed attempts until ${usr.lockedUntil} (ENS op.acc.2)",
                                 child: Chip(
                                   avatar: const Icon(Icons.lock, size: 14, color: Colors.deepOrange),
-                                  label: Text("Bloqueada (${usr.lockRemainingMinutes}m)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange.shade800)),
+                                  label: Text("Locked (${usr.lockRemainingMinutes}m)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange.shade800)),
                                   backgroundColor: Colors.deepOrange.withValues(alpha: 0.15),
                                   padding: EdgeInsets.zero,
                                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1791,7 +1791,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                       color: usr.enabled ? Colors.green : Colors.amber.shade800,
                                     ),
                                     label: Text(
-                                      usr.enabled ? "Activo" : "Suspendido",
+                                      usr.enabled ? "Active" : "Suspended",
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -1805,8 +1805,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                   const SizedBox(width: 8),
                                   Tooltip(
                                     message: usr.username.toLowerCase() == "admin"
-                                        ? "El administrador principal 'admin' no puede ser suspendido"
-                                        : (usr.enabled ? "Clic para suspender temporalmente" : "Clic para reactivar usuario"),
+                                        ? "Primary administrator 'admin' cannot be suspended"
+                                        : (usr.enabled ? "Click to temporarily suspend" : "Click to reactivate user"),
                                     child: Transform.scale(
                                       scale: 0.8,
                                       child: Switch(
@@ -1837,7 +1837,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                             );
                           } else if (isEnforced) {
                             return Tooltip(
-                              message: "MFA obligatorio por política ENS op.acc.6. Se exigirá enrolamiento en el próximo login.",
+                              message: "MFA mandatory under ENS op.acc.6 policy. Enrollment will be enforced on next login.",
                               child: Chip(
                                 avatar: const Icon(Icons.shield_outlined, size: 14, color: Colors.amber),
                                 label: const Text("Pending (ENS)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber)),
@@ -1863,7 +1863,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                           if (usr.isLocked)
                             IconButton(
                               icon: const Icon(Icons.lock_open, size: 18, color: Colors.green),
-                              tooltip: "Desbloquear Cuenta (ENS op.acc.2)",
+                              tooltip: "Unlock Account (ENS op.acc.2)",
                               onPressed: () => _unlockUser(usr),
                             ),
                           IconButton(
@@ -1878,7 +1878,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                                 size: 18,
                                 color: usr.enabled ? Colors.amber.shade800 : Colors.green,
                               ),
-                              tooltip: usr.enabled ? "Suspender Usuario" : "Reactivar Usuario",
+                              tooltip: usr.enabled ? "Suspend User" : "Reactivate User",
                               onPressed: () => _toggleUserStatus(usr, !usr.enabled),
                             ),
                           IconButton(
@@ -2794,12 +2794,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Pista de Auditoría Forense & SIEM (ENS op.mon.1)",
+                    "Forensic Audit Trail & SIEM (ENS op.mon.1)",
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "Registro inmutable con encadenamiento SHA-256 (PrevHash -> Hash) y reenvío Syslog RFC5424/CEF.",
+                    "Immutable ledger with SHA-256 hash chaining (PrevHash -> Hash) and RFC5424/CEF Syslog forwarding.",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
@@ -2818,25 +2818,25 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     icon: _verifyingAudit
                         ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.tealAccent))
                         : const Icon(Icons.verified_user, size: 16),
-                    label: Text(_verifyingAudit ? "Verificando..." : "Verificar Integridad SHA-256", style: const TextStyle(fontSize: 12)),
+                    label: Text(_verifyingAudit ? "Verifying..." : "Verify SHA-256 Integrity", style: const TextStyle(fontSize: 12)),
                     onPressed: _verifyingAudit ? null : _verifyAuditChain,
                   ),
                   // Export Menu
                   PopupMenuButton<String>(
-                    tooltip: "Exportar Pista Forense",
+                    tooltip: "Export Forensic Audit Trail",
                     icon: const Icon(Icons.download, size: 18),
                     onSelected: (fmt) => ApiService.downloadAuditLogsExport(fmt),
                     itemBuilder: (ctx) => const [
-                      PopupMenuItem(value: "csv", child: Text("📥 Exportar como CSV")),
-                      PopupMenuItem(value: "json", child: Text("📥 Exportar como JSON")),
-                      PopupMenuItem(value: "log", child: Text("📥 Exportar como Syslog (RFC 5424)")),
+                      PopupMenuItem(value: "csv", child: Text("📥 Export as CSV")),
+                      PopupMenuItem(value: "json", child: Text("📥 Export as JSON")),
+                      PopupMenuItem(value: "log", child: Text("📥 Export as Syslog (RFC 5424)")),
                     ],
                   ),
                   // Filter dropdown
                   DropdownButton<String>(
                     value: _selectedProviderFilter,
                     items: const [
-                      DropdownMenuItem(value: "", child: Text("Todos los Proveedores")),
+                      DropdownMenuItem(value: "", child: Text("All Identity Providers")),
                       DropdownMenuItem(value: "LOCAL", child: Text("LOCAL")),
                       DropdownMenuItem(value: "ACTIVE_DIRECTORY", child: Text("ACTIVE DIRECTORY")),
                       DropdownMenuItem(value: "OIDC", child: Text("OIDC / SSO")),
@@ -2885,7 +2885,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
-              child: Text("Error cargando auditoría: " + _auditError!, style: const TextStyle(color: Colors.red)),
+              child: Text("Error loading audit trail: " + _auditError!, style: const TextStyle(color: Colors.red)),
             )
           else if (_auditLogs.isEmpty)
             Container(
@@ -2900,9 +2900,9 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 children: [
                   Icon(Icons.assignment_outlined, size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
-                  const Text("No hay registros de auditoría aún", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text("No audit records yet", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
-                  const Text("Las operaciones del clúster e inicios de sesión generarán evidencias automáticas aquí.", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const Text("Cluster operations and authentication attempts will generate cryptographically verified evidence here.", style: TextStyle(color: Colors.grey, fontSize: 13)),
                 ],
               ),
             )
@@ -2944,8 +2944,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   children: [
                     Text(
                       isValid
-                          ? "Pista de Auditoría Forense Criptográficamente Válida (ENS op.mon.1)"
-                          : "¡ALERTA DE SEGURIDAD! Corrupción o Manipulación en Auditoría",
+                          ? "Cryptographically Valid Forensic Audit Trail (ENS op.mon.1)"
+                          : "SECURITY ALERT! Audit Trail Tampering or Hash Corruption Detected",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -2973,8 +2973,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 const SizedBox(height: 4),
                 Text(
                   isValid
-                      ? "Cadena de ${v.verifiedRecords} eventos enlazados consecutivamente (Hash -> PrevHash). Ningún registro ha sido alterado ni eliminado. Último Hash: ${v.lastHash.isEmpty ? 'GÉNESIS' : (v.lastHash.length > 20 ? v.lastHash.substring(0, 20) + '...' : v.lastHash)}"
-                      : "Error de verificación forense: ${v.error}",
+                      ? "Chain of ${v.verifiedRecords} events sequentially linked (Hash -> PrevHash). No records have been altered or deleted. Latest Hash: ${v.lastHash.isEmpty ? 'GENESIS' : (v.lastHash.length > 20 ? v.lastHash.substring(0, 20) + '...' : v.lastHash)}"
+                      : "Forensic verification error: ${v.error}",
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
@@ -3013,7 +3013,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   Icon(Icons.router, color: primaryColor, size: 20),
                   const SizedBox(width: 8),
                   const Text(
-                    "Reenvío de Eventos a SIEM & Controles de Acceso ENS",
+                    "SIEM Event Forwarding & Access Controls (ENS)",
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -3034,8 +3034,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             dense: true,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.shield, color: Color(0xFFF59E0B), size: 22),
-            title: const Text("Exigir Doble Factor (MFA/TOTP) a Cuentas Privilegiadas (ENS op.acc.6)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Obligatorio para roles de Administrador y Operador. Si no tienen TOTP configurado, el sistema forzará su enrolamiento inmediato en el próximo inicio de sesión.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text("Enforce Multi-Factor (MFA/TOTP) for Privileged Accounts (ENS op.acc.6)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Mandatory for Administrator and Operator roles. If TOTP is not configured, the system enforces enrollment on next login.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.mfaEnforcePrivileged,
             onChanged: (val) {
               setState(() {
@@ -3048,8 +3048,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             dense: true,
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.security, color: Colors.teal, size: 22),
-            title: const Text("Exigir Doble Factor (MFA) a Todos los Usuarios del Clúster", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Extiende la directiva de doble factor obligatorio a todos los perfiles y roles del clúster.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text("Enforce Multi-Factor Authentication (MFA) for All Cluster Users", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Extends mandatory MFA policy across all user accounts and roles in the cluster.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.mfaEnforced,
             onChanged: (val) {
               setState(() {
@@ -3065,14 +3065,14 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 child: DropdownButtonFormField<int>(
                   value: [3, 5, 10].contains(cfg.maxFailedLogins) ? cfg.maxFailedLogins : 5,
                   decoration: const InputDecoration(
-                    labelText: "Intentos Fallidos Bloqueo (ENS op.acc.2)",
+                    labelText: "Failed Attempts Lockout (ENS op.acc.2)",
                     isDense: true,
-                    helperText: "Bloquea cuenta tras N intentos erróneos",
+                    helperText: "Locks account after N failed attempts",
                   ),
                   items: const [
-                    DropdownMenuItem(value: 3, child: Text("3 Intentos (Estricto)")),
-                    DropdownMenuItem(value: 5, child: Text("5 Intentos (ENS Medio)")),
-                    DropdownMenuItem(value: 10, child: Text("10 Intentos (Permisivo)")),
+                    DropdownMenuItem(value: 3, child: Text("3 Attempts (Strict)")),
+                    DropdownMenuItem(value: 5, child: Text("5 Attempts (ENS Medium)")),
+                    DropdownMenuItem(value: 10, child: Text("10 Attempts (Permissive)")),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -3088,15 +3088,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 child: DropdownButtonFormField<int>(
                   value: [5, 15, 30, 60].contains(cfg.lockoutDurationMinutes) ? cfg.lockoutDurationMinutes : 15,
                   decoration: const InputDecoration(
-                    labelText: "Duración Bloqueo (Minutos)",
+                    labelText: "Lockout Duration (Minutes)",
                     isDense: true,
-                    helperText: "Enfriamiento antes de rehabilitar",
+                    helperText: "Cool-down period before unlocking",
                   ),
                   items: const [
-                    DropdownMenuItem(value: 5, child: Text("5 minutos")),
-                    DropdownMenuItem(value: 15, child: Text("15 minutos (ENS Medio)")),
-                    DropdownMenuItem(value: 30, child: Text("30 minutos (ENS Alto)")),
-                    DropdownMenuItem(value: 60, child: Text("60 minutos")),
+                    DropdownMenuItem(value: 5, child: Text("5 minutes")),
+                    DropdownMenuItem(value: 15, child: Text("15 minutes (ENS Medio)")),
+                    DropdownMenuItem(value: 30, child: Text("30 minutes (ENS High)")),
+                    DropdownMenuItem(value: 60, child: Text("60 minutes")),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -3112,15 +3112,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 child: DropdownButtonFormField<int>(
                   value: [8, 12, 14, 16].contains(cfg.passwordMinLength) ? cfg.passwordMinLength : 12,
                   decoration: const InputDecoration(
-                    labelText: "Longitud Mínima Contraseña",
+                    labelText: "Minimum Password Length",
                     isDense: true,
-                    helperText: "Longitud exigida por política",
+                    helperText: "Policy enforced length",
                   ),
                   items: const [
-                    DropdownMenuItem(value: 8, child: Text("8 caracteres (Básico)")),
-                    DropdownMenuItem(value: 12, child: Text("12 caracteres (ENS Medio)")),
-                    DropdownMenuItem(value: 14, child: Text("14 caracteres")),
-                    DropdownMenuItem(value: 16, child: Text("16 caracteres (ENS Alto)")),
+                    DropdownMenuItem(value: 8, child: Text("8 characters (Basic)")),
+                    DropdownMenuItem(value: 12, child: Text("12 characters (ENS Medium)")),
+                    DropdownMenuItem(value: 14, child: Text("14 characters")),
+                    DropdownMenuItem(value: 16, child: Text("16 characters (ENS High)")),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -3136,15 +3136,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 child: DropdownButtonFormField<int>(
                   value: [5, 15, 30, 60].contains(cfg.sessionTimeoutMinutes) ? cfg.sessionTimeoutMinutes : 15,
                   decoration: const InputDecoration(
-                    labelText: "Inactividad Sesión (ENS op.acc.2)",
+                    labelText: "Session Inactivity Timeout (ENS op.acc.2)",
                     isDense: true,
-                    helperText: "Cierre automático de sesión",
+                    helperText: "Automatic session logout",
                   ),
                   items: const [
-                    DropdownMenuItem(value: 5, child: Text("5 min (Estricto)")),
-                    DropdownMenuItem(value: 15, child: Text("15 min (ENS Medio/Alto)")),
+                    DropdownMenuItem(value: 5, child: Text("5 min (Strict)")),
+                    DropdownMenuItem(value: 15, child: Text("15 min (ENS Medium/High)")),
                     DropdownMenuItem(value: 30, child: Text("30 min")),
-                    DropdownMenuItem(value: 60, child: Text("60 min (Permisivo)")),
+                    DropdownMenuItem(value: 60, child: Text("60 min (Permissive)")),
                   ],
                   onChanged: (val) {
                     if (val != null) {
@@ -3161,8 +3161,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text("Exigir Complejidad Criptográfica en Contraseñas (CCN-STIC)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Obligatorio combinar mayúsculas, minúsculas, números y símbolos especiales en toda nueva contraseña.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text("Enforce Cryptographic Password Complexity (CCN-STIC)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Requires combining uppercase, lowercase, numbers, and special symbols in all passwords.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.passwordRequireComplexity,
             onChanged: (val) {
               setState(() {
@@ -3175,8 +3175,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            title: const Text("Reenvío de Eventos a SIEM / Syslog Centralizado (ENS op.mon.2)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Transmite en tiempo real accesos, intrusiones y operaciones a tu colector SIEM (Splunk, Wazuh, QRadar, Rsyslog) con severidad RFC5424/CEF.", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            title: const Text("Forward Events to Centralized SIEM / Syslog (ENS op.mon.2)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text("Streams real-time access, intrusion, and orchestration events to your SIEM collector (Splunk, Wazuh, QRadar, Rsyslog) with RFC5424/CEF formatting.", style: TextStyle(fontSize: 11, color: Colors.grey)),
             value: cfg.siemEnabled,
             onChanged: (val) {
               setState(() {
@@ -3195,8 +3195,8 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   child: TextFormField(
                     initialValue: cfg.siemHost,
                     decoration: const InputDecoration(
-                      labelText: "Host / IP del SIEM *",
-                      hintText: "e.g. 192.168.1.50 o siem.corp.local",
+                      labelText: "SIEM Host / IP *",
+                      hintText: "e.g. 192.168.1.50 or siem.corp.local",
                       isDense: true,
                     ),
                     onChanged: (v) {
@@ -3209,7 +3209,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   flex: 1,
                   child: TextFormField(
                     initialValue: cfg.siemPort.toString(),
-                    decoration: const InputDecoration(labelText: "Puerto", hintText: "514", isDense: true),
+                    decoration: const InputDecoration(labelText: "Port", hintText: "514", isDense: true),
                     keyboardType: TextInputType.number,
                     onChanged: (v) {
                       final p = int.tryParse(v.trim()) ?? 514;
@@ -3222,7 +3222,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   flex: 1,
                   child: DropdownButtonFormField<String>(
                     value: cfg.siemProtocol,
-                    decoration: const InputDecoration(labelText: "Protocolo", isDense: true),
+                    decoration: const InputDecoration(labelText: "Protocol", isDense: true),
                     items: const [
                       DropdownMenuItem(value: "UDP", child: Text("UDP")),
                       DropdownMenuItem(value: "TCP", child: Text("TCP")),
@@ -3242,7 +3242,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   flex: 2,
                   child: DropdownButtonFormField<String>(
                     value: cfg.siemFormat,
-                    decoration: const InputDecoration(labelText: "Formato", isDense: true),
+                    decoration: const InputDecoration(labelText: "Format", isDense: true),
                     items: const [
                       DropdownMenuItem(value: "RFC5424", child: Text("RFC5424 (Syslog)")),
                       DropdownMenuItem(value: "CEF", child: Text("CEF (ArcSight)")),
@@ -3269,19 +3269,19 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   icon: _siemTesting
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.send, size: 14),
-                  label: const Text("Probar Envío (Probe)", style: TextStyle(fontSize: 12)),
+                  label: const Text("Test Connection (Probe)", style: TextStyle(fontSize: 12)),
                   onPressed: _siemTesting ? null : () async {
                     setState(() => _siemTesting = true);
                     final res = await ApiService.testSIEMConnection(_siemConfig ?? cfg);
                     if (mounted) {
                       setState(() => _siemTesting = false);
                       if (res['success'] == true) {
-                        final latency = res['latency_ms'] != null ? " en ${res['latency_ms']}ms" : "";
-                        _showSnackBar("✅ Sonda SIEM enviada con éxito$latency: ${res['message']}");
+                        final latency = res['latency_ms'] != null ? " in ${res['latency_ms']}ms" : "";
+                        _showSnackBar("✅ SIEM probe sent successfully$latency: ${res['message']}");
                         _loadSIEMConfig();
                         _loadENSStatus();
                       } else {
-                        _showSnackBar("❌ Error al enviar sonda SIEM: ${res['error'] ?? res['message']}", isError: true);
+                        _showSnackBar("❌ Error sending SIEM probe: ${res['error'] ?? res['message']}", isError: true);
                         _loadSIEMConfig();
                       }
                     }
@@ -3292,20 +3292,20 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 icon: _siemSaving
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save, size: 14),
-                label: const Text("Guardar Configuración de Seguridad"),
+                label: const Text("Save Security Configuration"),
                 onPressed: _siemSaving ? null : () async {
                   setState(() => _siemSaving = true);
                   final res = await ApiService.saveSIEMConfig(_siemConfig ?? cfg);
                   if (mounted) {
                     setState(() => _siemSaving = false);
                     if (res['success'] == true) {
-                      _showSnackBar("Configuración de seguridad y SIEM guardada correctamente");
+                      _showSnackBar("Security and SIEM configuration saved successfully");
                       _loadSIEMConfig();
                       _loadENSStatus();
                       _loadNIS2Status();
                       _loadComplianceOverview();
                     } else {
-                      _showSnackBar("Error al guardar configuración: ${res['error'] ?? 'No se pudo guardar la configuración'}", isError: true);
+                      _showSnackBar("Error saving configuration: ${res['error'] ?? 'Could not save configuration'}", isError: true);
                     }
                   }
                 },
@@ -3329,27 +3329,27 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
       case 'ACTIVE':
         statusColor = const Color(0xFF10B981);
         statusIcon = Icons.check_circle;
-        statusText = "Conexión Activa (En tiempo real)";
+        statusText = "Active Connection (Real-Time)";
         break;
       case 'READY':
         statusColor = const Color(0xFFF59E0B);
         statusIcon = Icons.hourglass_top;
-        statusText = "Preparado (En espera de eventos)";
+        statusText = "Ready (Awaiting Events)";
         break;
       case 'DEGRADED':
         statusColor = const Color(0xFFF97316);
         statusIcon = Icons.warning_amber_rounded;
-        statusText = "Degradado (Fallos detectados)";
+        statusText = "Degraded (Failures Detected)";
         break;
       case 'UNREACHABLE':
         statusColor = const Color(0xFFEF4444);
         statusIcon = Icons.error_outline;
-        statusText = "Inalcanzable (Error de conexión)";
+        statusText = "Unreachable (Connection Error)";
         break;
       default:
         statusColor = Colors.grey;
         statusIcon = Icons.circle_outlined;
-        statusText = "Deshabilitado";
+        statusText = "Disabled";
     }
 
     return Container(
@@ -3368,7 +3368,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               Icon(statusIcon, color: statusColor, size: 16),
               const SizedBox(width: 8),
               Text(
-                "Estado del Enlace SIEM: $statusText",
+                "SIEM Link Status: $statusText",
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor),
               ),
               const Spacer(),
@@ -3398,31 +3398,31 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             children: [
               _buildSIEMMetricChip(
                 icon: Icons.outbox,
-                label: "Eventos Transmitidos",
+                label: "Dispatched Events",
                 value: "${stats?.totalDispatched ?? 0}",
                 color: Colors.blue,
                 isDark: isDark,
               ),
               _buildSIEMMetricChip(
                 icon: Icons.crisis_alert,
-                label: "Alertas de Intrusión (ENS)",
+                label: "Intrusion Alerts (ENS)",
                 value: "${stats?.intrusionAlerts ?? 0}",
                 color: (stats?.intrusionAlerts ?? 0) > 0 ? const Color(0xFFEF4444) : Colors.amber,
                 isDark: isDark,
               ),
               _buildSIEMMetricChip(
                 icon: Icons.error_outline,
-                label: "Fallos de Envío",
+                label: "Dispatch Failures",
                 value: "${stats?.totalFailed ?? 0}",
                 color: (stats?.totalFailed ?? 0) > 0 ? const Color(0xFFEF4444) : Colors.green,
                 isDark: isDark,
               ),
               _buildSIEMMetricChip(
                 icon: Icons.schedule,
-                label: "Último Envío",
+                label: "Last Forwarded",
                 value: stats?.lastDispatchedAt != null
                     ? stats!.lastDispatchedAt!.split("T").join(" ").split(".").first
-                    : "Ninguno",
+                    : "None",
                 color: Colors.purple,
                 isDark: isDark,
               ),
@@ -3442,7 +3442,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      "Último error: ${stats.lastError}",
+                      "Last error: ${stats.lastError}",
                       style: const TextStyle(fontSize: 11, color: Colors.redAccent),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -3769,34 +3769,34 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     IconData postureIcon;
     if (avgScore >= 90.0) {
       postureColor = const Color(0xFF10B981); // emerald green
-      postureLabel = "EJEMPLAR (NIVEL ALTO)";
+      postureLabel = "EXEMPLARY (HIGH TIER)";
       postureIcon = Icons.verified_rounded;
     } else if (avgScore >= 75.0) {
       postureColor = const Color(0xFF3B82F6); // blue
-      postureLabel = "CONFORME (BUEN ESTADO)";
+      postureLabel = "COMPLIANT (HEALTHY)";
       postureIcon = Icons.shield_rounded;
     } else if (avgScore >= 60.0) {
       postureColor = const Color(0xFFF59E0B); // amber
-      postureLabel = "ACEPTABLE (MEJORABLE)";
+      postureLabel = "ACCEPTABLE (NEEDS IMPROVEMENT)";
       postureIcon = Icons.warning_amber_rounded;
     } else {
       postureColor = const Color(0xFFEF4444); // red
-      postureLabel = "RIESGO / DEGRADADO";
+      postureLabel = "RISK / DEGRADED";
       postureIcon = Icons.error_outline_rounded;
     }
 
-    String sourceLabel = "Watchdog Continuo (15m)";
+    String sourceLabel = "Continuous Watchdog (15m)";
     if (source.contains("MFA")) {
-      sourceLabel = "Mutación de MFA en caliente";
+      sourceLabel = "Hot MFA Policy Mutation";
     } else if (source.contains("SECURITY_CONFIG")) {
-      sourceLabel = "Ajuste de Política de Seguridad";
+      sourceLabel = "Security Policy Adjustment";
     } else if (source.contains("MANUAL")) {
-      sourceLabel = "Auditoría Forzada Manual";
+      sourceLabel = "Manual Forced Audit";
     } else if (source == "BOOT_AUDIT" || source == "INIT") {
-      sourceLabel = "Arranque de Clúster";
+      sourceLabel = "Cluster Startup";
     }
 
-    String lastTimeStr = "Evaluando...";
+    String lastTimeStr = "Evaluating...";
     if (overview != null && overview.evaluatedAt.isNotEmpty) {
       final dt = DateTime.tryParse(overview.evaluatedAt)?.toLocal();
       if (dt != null) {
@@ -3914,7 +3914,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                             ),
                             const SizedBox(width: 4),
                             const Text(
-                              "WATCHDOG ACTIVO",
+                              "ACTIVE WATCHDOG",
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w900,
@@ -3945,7 +3945,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       Icon(Icons.schedule_rounded, size: 13, color: isDark ? Colors.white54 : Colors.black45),
                       const SizedBox(width: 4),
                       Text(
-                        "Última evaluación: $lastTimeStr",
+                        "Last evaluated: $lastTimeStr",
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? Colors.white60 : Colors.black54,
@@ -3991,7 +3991,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               _buildComplianceMiniPill(
                 isDark: isDark,
                 standardKey: "ENS",
-                title: "ENS España",
+                title: "ENS Spain",
                 score: ensScore,
                 flagIcon: "🇪🇸",
                 accentColor: const Color(0xFF14B8A6),
@@ -4029,7 +4029,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                   )
                 : const Icon(Icons.shield_outlined, size: 18),
             label: Text(
-              _evaluatingAllCompliance ? "Auditando Clúster..." : "Re-evaluar Todo el Clúster",
+              _evaluatingAllCompliance ? "Auditing Cluster..." : "Re-evaluate Entire Cluster",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             style: ElevatedButton.styleFrom(
@@ -4992,7 +4992,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
     Navigator.of(context, rootNavigator: true).pop();
 
     if (reportContent == null || reportContent.isEmpty) {
-      _showSnackBar("Error al generar el informe técnico ENS", isError: true);
+      _showSnackBar("Error generating ENS technical report", isError: true);
       return;
     }
 
@@ -5010,7 +5010,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  "Informe Técnico de Cumplimiento ENS (RD 311/2022)",
+                  "ENS Technical Compliance Report (RD 311/2022)",
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -5031,7 +5031,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     const Icon(Icons.info_outline, size: 16, color: Colors.grey),
                     const SizedBox(width: 6),
                     Text(
-                      "Evidencia técnica formateada en CommonMark lista para auditorías CCN-STIC",
+                      "Technical evidence formatted in CommonMark ready for CCN-STIC audits",
                       style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black54),
                     ),
                   ],
@@ -5065,10 +5065,10 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           actions: [
             OutlinedButton.icon(
               icon: const Icon(Icons.copy, size: 16),
-              label: const Text("Copiar al Portapapeles"),
+              label: const Text("Copy to Clipboard"),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: reportContent));
-                _showSnackBar("Informe ENS copiado al portapapeles");
+                _showSnackBar("ENS report copied to clipboard");
               },
             ),
             ElevatedButton.icon(
@@ -5077,7 +5077,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 backgroundColor: const Color(0xFF14B8A6),
                 foregroundColor: Colors.white,
               ),
-              label: const Text("Descargar Markdown (.md)"),
+              label: const Text("Download Markdown (.md)"),
               onPressed: () {
                 try {
                   final bytes = utf8.encode(reportContent);
@@ -5090,15 +5090,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     ..setAttribute('download', filename)
                     ..click();
                   html.Url.revokeObjectUrl(url);
-                  _showSnackBar("Informe descargado: $filename");
+                  _showSnackBar("Report downloaded: $filename");
                 } catch (e) {
-                  _showSnackBar("Error al descargar informe: $e", isError: true);
+                  _showSnackBar("Error downloading report: $e", isError: true);
                 }
               },
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text("Cerrar"),
+              child: const Text("Close"),
             ),
           ],
         );
@@ -5114,7 +5114,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text("Evaluando cumplimiento ENS (RD 311/2022)...", style: TextStyle(color: Colors.grey)),
+            Text("Evaluating ENS compliance (RD 311/2022)...", style: TextStyle(color: Colors.grey)),
           ],
         ),
       );
@@ -5134,12 +5134,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             children: [
               const Icon(Icons.error_outline, color: Colors.redAccent, size: 40),
               const SizedBox(height: 12),
-              Text("Error al cargar auditoría ENS: $_ensError", style: const TextStyle(color: Colors.redAccent)),
+              Text("Error loading ENS audit: $_ensError", style: const TextStyle(color: Colors.redAccent)),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _loadENSStatus,
                 icon: const Icon(Icons.refresh),
-                label: const Text("Reintentar"),
+                label: const Text("Retry"),
               ),
             ],
           ),
@@ -5155,9 +5155,9 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           children: [
             const Icon(Icons.shield_outlined, size: 48, color: Colors.grey),
             const SizedBox(height: 12),
-            const Text("No hay datos de auditoría ENS disponibles"),
+            const Text("No ENS audit data available"),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadENSStatus, child: const Text("Evaluar Ahora")),
+            ElevatedButton(onPressed: _loadENSStatus, child: const Text("Evaluate Now")),
           ],
         ),
       );
@@ -5192,7 +5192,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
               padding: const EdgeInsets.all(32),
               alignment: Alignment.center,
               child: Text(
-                "No hay medidas que coincidan con el filtro seleccionado.",
+                "No measures match the selected filter.",
                 style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
               ),
             )
@@ -5238,7 +5238,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 Row(
                   children: [
                     const Text(
-                      "Esquema Nacional de Seguridad (ENS)",
+                      "National Security Framework (ENS - RD 311/2022)",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 10),
@@ -5261,7 +5261,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Auditoría técnica automatizada sobre controles operacionales y de protección del orquestador según directrices CCN-STIC.",
+                  "Automated technical audit of orchestrator operational and protection controls according to CCN-STIC guidelines.",
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white70 : Colors.black54,
@@ -5274,7 +5274,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
           OutlinedButton.icon(
             onPressed: _loadENSStatus,
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text("Refrescar"),
+            label: const Text("Refresh"),
           ),
           const SizedBox(width: 10),
           ElevatedButton.icon(
@@ -5284,7 +5284,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             ),
             onPressed: _openENSReportDialog,
             icon: const Icon(Icons.description_outlined, size: 16),
-            label: const Text("Exportar Informe"),
+            label: const Text("Export Report"),
           ),
         ],
       ),
@@ -5335,7 +5335,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          "CATEGORÍA GLOBAL",
+                          "OVERALL CATEGORY",
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
                         ),
                         Text(categoryEmoji, style: const TextStyle(fontSize: 18)),
@@ -5360,7 +5360,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Estado: ${summary.clusterStatus} • Evaluado",
+                      "Status: ${summary.clusterStatus} • Evaluated",
                       style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black45),
                     ),
                   ],
@@ -5369,15 +5369,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             ),
             const SizedBox(width: 12),
 
-            // KPI 2: BÁSICO Score
+            // KPI 2: BASIC Score
             Expanded(
               child: _buildScoreKPICard(
                 isDark: isDark,
-                title: "NIVEL BÁSICO",
+                title: "BASIC TIER",
                 score: summary.basicoScore,
                 threshold: 100.0,
                 color: const Color(0xFFF59E0B),
-                subtitle: summary.basicoScore >= 100.0 ? "Cumple al 100%" : "Medidas pendientes",
+                subtitle: summary.basicoScore >= 100.0 ? "100% Compliant" : "Pending measures",
               ),
             ),
             const SizedBox(width: 12),
@@ -5386,11 +5386,11 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             Expanded(
               child: _buildScoreKPICard(
                 isDark: isDark,
-                title: "NIVEL MEDIO",
+                title: "MEDIUM TIER",
                 score: summary.medioScore,
                 threshold: 85.0,
                 color: const Color(0xFF10B981),
-                subtitle: summary.medioScore >= 85.0 ? "Supera umbral (≥85%)" : "Calificación parcial",
+                subtitle: summary.medioScore >= 85.0 ? "Passes threshold (≥85%)" : "Partial rating",
               ),
             ),
             const SizedBox(width: 12),
@@ -5399,11 +5399,11 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             Expanded(
               child: _buildScoreKPICard(
                 isDark: isDark,
-                title: "NIVEL ALTO",
+                title: "HIGH TIER",
                 score: summary.altoScore,
                 threshold: 80.0,
                 color: const Color(0xFF14B8A6),
-                subtitle: summary.altoScore >= 80.0 ? "Supera umbral (≥80%)" : "Requisitos pendientes",
+                subtitle: summary.altoScore >= 80.0 ? "Passes threshold (≥80%)" : "Pending requirements",
               ),
             ),
           ],
@@ -5483,28 +5483,28 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         // Counters
         Row(
           children: [
-            _buildCountChip("${summary.totalMeasures} Medidas", Colors.grey, isDark),
+            _buildCountChip("${summary.totalMeasures} Measures", Colors.grey, isDark),
             const SizedBox(width: 8),
-            _buildCountChip("${summary.compliantCount} Cumplen", const Color(0xFF10B981), isDark),
+            _buildCountChip("${summary.compliantCount} Compliant", const Color(0xFF10B981), isDark),
             const SizedBox(width: 8),
-            _buildCountChip("${summary.partialCount} Parciales", const Color(0xFFF59E0B), isDark),
+            _buildCountChip("${summary.partialCount} Partial", const Color(0xFFF59E0B), isDark),
             const SizedBox(width: 8),
-            _buildCountChip("${summary.nonCompliantCount} No Cumplen", const Color(0xFFEF4444), isDark),
+            _buildCountChip("${summary.nonCompliantCount} Non-Compliant", const Color(0xFFEF4444), isDark),
           ],
         ),
 
         // Filter buttons
         Row(
           children: [
-            _buildFilterButton("Todas", "ALL", isDark, primaryColor),
+            _buildFilterButton("All", "ALL", isDark, primaryColor),
             const SizedBox(width: 6),
-            _buildFilterButton("BÁSICO", "BASICO", isDark, primaryColor),
+            _buildFilterButton("BASIC", "BASICO", isDark, primaryColor),
             const SizedBox(width: 6),
-            _buildFilterButton("MEDIO", "MEDIO", isDark, primaryColor),
+            _buildFilterButton("MEDIUM", "MEDIO", isDark, primaryColor),
             const SizedBox(width: 6),
-            _buildFilterButton("ALTO", "ALTO", isDark, primaryColor),
+            _buildFilterButton("HIGH", "ALTO", isDark, primaryColor),
             const SizedBox(width: 6),
-            _buildFilterButton("⚠️ Requieren Acción", "ISSUES", isDark, primaryColor),
+            _buildFilterButton("⚠️ Requires Action", "ISSUES", isDark, primaryColor),
           ],
         ),
       ],
@@ -5559,15 +5559,15 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
 
     if (measure.isCompliant) {
       statusColor = const Color(0xFF10B981);
-      statusLabel = "CUMPLE (100%)";
+      statusLabel = "COMPLIANT (100%)";
       statusIcon = Icons.check_circle_rounded;
     } else if (measure.isPartial) {
       statusColor = const Color(0xFFF59E0B);
-      statusLabel = "PARCIAL (${(measure.score * 100).toInt()}%)";
+      statusLabel = "PARTIAL (${(measure.score * 100).toInt()}%)";
       statusIcon = Icons.warning_amber_rounded;
     } else {
       statusColor = const Color(0xFFEF4444);
-      statusLabel = "NO CUMPLE (0%)";
+      statusLabel = "NON-COMPLIANT (0%)";
       statusIcon = Icons.cancel_rounded;
     }
 
@@ -5654,12 +5654,12 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            "Área: ${measure.area} • Dimensión: ${measure.dimension} • Peso: ${measure.weight.toStringAsFixed(1)}",
+            "Area: ${measure.area} • Dimension: ${measure.dimension} • Weight: ${measure.weight.toStringAsFixed(1)}",
             style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black45),
           ),
         ),
         children: [
-          // Evidencia Técnica Descubierta
+          // Discovered Technical Evidence
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -5678,7 +5678,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                     Icon(Icons.terminal_rounded, size: 15, color: Colors.grey),
                     SizedBox(width: 6),
                     Text(
-                      "Evidencia Técnica Comprobada:",
+                      "Discovered Technical Evidence:",
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
                     ),
                   ],
@@ -5696,7 +5696,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
             ),
           ),
 
-          // Recomendación si no es 100% compliant
+          // Recommendation if not 100% compliant
           if (measure.recommendation.isNotEmpty && !measure.isCompliant) ...[
             const SizedBox(height: 10),
             Container(
@@ -5719,7 +5719,7 @@ class _SecurityPageState extends State<SecurityPage> with SingleTickerProviderSt
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Recomendación Técnica CCN-STIC:",
+                          "Technical Remediation (CCN-STIC):",
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,

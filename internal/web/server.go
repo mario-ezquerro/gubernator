@@ -6994,7 +6994,7 @@ func updateSIEMConfigHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":                     true,
-		"message":                     "Configuración de seguridad y SIEM guardada correctamente",
+		"message":                     "Security and SIEM configuration saved successfully",
 		"config":                      cfg,
 		"id":                          cfg.ID,
 		"mfa_enforced":                cfg.MFAEnforced,
