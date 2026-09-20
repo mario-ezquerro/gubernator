@@ -378,3 +378,241 @@ services:
 ### Single-Host vs. Multi-Host Placement Interaction
 * **Single-Host Containment:** If `gbnt.placement.strategy: single-host` or a pinned node constraint (`node.hostname == ...`) is specified, the autoscaler automatically confines scaling to that single host, overriding any cluster-wide requests to maintain atomic stack placement.
 * **GPU Hardware Affinity:** When `metric: gpu` is configured in `cluster` mode, the scheduler strictly targets nodes with verified NVIDIA GPU hardware, excluding CPU-only Centurions from horizontal scale-out.
+
+---
+
+## 11. Multi-Host Placement, Anti-Affinity & Hardware Affinity
+
+Gubernator supports both atomic stack placement and distributed multi-host scheduling across Centurion nodes.
+
+### A. Replica Anti-Affinity (Spread Strategy)
+To spread service replicas across different physical nodes (e.g. 3 replicas on 3 different hosts), configure either Compose placement preferences or Gubernator labels:
+
+```yaml
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    labels:
+      - "ingress.host=web.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      - "gbnt.placement.strategy=spread"
+    deploy:
+      replicas: 3
+      placement:
+        preferences:
+          - spread: node.id
+        constraints:
+          - "node.role == worker"
+```
+
+* **`spread: node.id`**: Distributes each replica to a distinct Centurion node.
+* **Least-Loaded Fallback**: If the cluster has fewer worker nodes than the desired number of replicas, Gubernator spreads replicas across all available nodes and places extra instances on the least-loaded node.
+
+### B. Hardware & Role Affinity Constraints
+Use `deploy.placement.constraints` to pin workloads to specific nodes:
+
+```yaml
+services:
+  ai-inference:
+    image: vllm/vllm-openai:latest
+    deploy:
+      placement:
+        constraints:
+          # Pin strictly to Centurions with verified NVIDIA GPUs:
+          - "gbnt.node.gpu == nvidia"
+          # Or pin to worker nodes:
+          - "node.role == worker"
+          # Or pin to a specific hostname:
+          - "node.hostname == gbnt-worker-1"
+```
+
+*(See [Multi-Host Placement Documentation](multi-host-scheduling.md) for architecture diagrams and scheduling details).*
+
+---
+
+## 12. Dynamic Caddy Load Balancing & Health Checks
+
+When services run multiple replicas across cluster nodes, Gubernator dynamically configures Caddy Ingress reverse proxying with multi-upstream load balancing and active HTTP health probing:
+
+```yaml
+services:
+  api:
+    image: python:3.11-alpine
+    ports:
+      - "8080:8080"
+    labels:
+      - "ingress.host=api.gbnt.local"
+      - "gbnt.caddy.port=8080"
+      # Load balancing policy:
+      - "gbnt.caddy.lb=round_robin"
+      # Active health check URI:
+      - "gbnt.caddy.health_uri=/health"
+      - "gbnt.caddy.health_interval=5s"
+      - "gbnt.caddy.health_timeout=2s"
+      # Web Application Firewall (Coraza):
+      - "gbnt.waf.enabled=true"
+      - "gbnt.waf.mode=enforce"
+```
+
+### Supported Ingress & Load Balancing Labels
+
+| Label / Constraint | Values | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `ingress.host` / `gbnt.ingress.host` | FQDN domain | None | Domain routed to this service (e.g. `api.gbnt.local` or `demo.fiware.app`). |
+| `gbnt.caddy.port` | Port number | Auto | Explicit container port for Caddy proxying (overrides auto-detection from `ports:`). |
+| `gbnt.caddy.lb` / `ingress.lb` | `round_robin`, `least_conn`, `ip_hash`, `first`, `random` | `round_robin` | Upstream load balancing algorithm across replica nodes. |
+| `gbnt.caddy.health_uri` | Path (e.g. `/health`, `/healthz`) | None | Active health probe URI. Automatically evicts unhealthy upstreams. |
+| `gbnt.caddy.health_interval` | Duration (e.g. `5s`, `10s`) | `5s` | Interval between active health check probes. |
+| `gbnt.caddy.health_timeout` | Duration (e.g. `2s`, `5s`) | `2s` | Probe timeout before marking upstream node down. |
+| `gbnt.caddy.tls` | `internal`, `off` | Auto | Force internal self-signed TLS (`internal`) or disable TLS (`off`). |
+| `gbnt.waf.enabled` | `true`, `false` | `false` | Activates Coraza Web Application Firewall (OWASP CRS). |
+| `gbnt.waf.mode` | `enforce`, `detection` | `enforce` | Blocks malicious payloads (`enforce`) or logs them (`detection`). |
+
+*(See [Caddy Ingress Documentation](caddy.md) for TLS certificate lifecycle and CA trust installation).*
+
+---
+
+## 13. CoreDNS Internal Service Discovery
+
+Gubernator integrates an embedded **CoreDNS** nameserver across the cluster. Every container deployed by Gubernator can resolve internal services via short or fully-qualified DNS names:
+
+```yaml
+services:
+  database:
+    image: postgres:16-alpine
+    hostname: postgres
+    environment:
+      POSTGRES_DB: appdb
+  
+  backend:
+    image: my-backend:latest
+    dns:
+      - "127.0.0.1"
+      - "172.17.0.1"
+    environment:
+      # Resolves dynamically to the postgres container IP on the cluster:
+      DB_HOST: postgres.{{stack.name}}.gbnt
+```
+
+* **DNS Forwarding:** Unresolved external queries (e.g. `google.com`, `github.com`) are automatically forwarded to upstream DNS servers (`8.8.8.8`, `1.1.1.1`).
+* **Format:** `<service>.<stack>.gbnt` resolves to the container's virtual IP.
+
+*(See [CoreDNS Documentation](coredns.md) for DNS zone records and architecture).*
+
+---
+
+## 14. CPU & RAM Resource Limits
+
+To safeguard cluster stability, define hard limits and soft reservations using standard `deploy.resources`:
+
+```yaml
+services:
+  web:
+    image: nginx:alpine
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+```
+
+* **`limits`:** Hard cgroup ceiling. If memory exceeds `512M`, the container is OOM-killed. If CPU exceeds `1.0`, throttling is applied.
+* **`reservations`:** Minimum guaranteed capacity reserved by the scheduler on the host.
+
+---
+
+## 15. Container Healthchecks & Restart Policies
+
+```yaml
+services:
+  api:
+    image: python:3.11-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+```
+
+* **`restart: unless-stopped`:** Automatically restarts the container if it crashes or the Centurion host reboots.
+* **`healthcheck`:** Docker Engine periodically probes the container. The Gubernator dashboard displays health status chips (`healthy`, `unhealthy`, `starting`).
+
+---
+
+## 16. Gubernator Compose Studio (Web IDE & Copilot)
+
+The Gubernator Web Dashboard features a dedicated **Compose Studio** (`/#/studio`) designed for effortless authoring with zero memorization of syntax or labels:
+
+### Core Studio Capabilities
+1. **Target Service Header:** Shows which service is currently targeted with live line range indicators (`[✓ ACTIVO • L14]`).
+2. **10 Visual Copilot Tabs:**
+   - **Docker:** Ports, volumes, restart policy, environment, healthchecks.
+   - **Resources:** One-click presets (Micro, Standard, High-Load, Custom).
+   - **Autoscale:** CPU & GPU autoscaling toggles with scope and cooldowns.
+   - **Caddy:** Ingress routing, load balancing algorithms, health check probes.
+   - **CoreDNS:** Cluster DNS injection and internal domain resolution.
+   - **SLO:** Sloth Google SRE multi-burn-rate error budget templates.
+   - **Security & WAF:** Cosign cryptographic signing, CVE thresholds, WAF Coraza.
+   - **Placement & LB:** Worker/Manager affinity, GPU affinity, Spread anti-affinity.
+   - **Storage:** Shared `/var/contenedores/` pool mounts, named volumes.
+   - **Templates:** Production POC blueprints ready for instant deployment.
+3. **Decoupled One-Click Actions:**
+   - **Green Check / Add:** Injects or toggles configuration cleanly.
+   - **Red Trash Button:** Safely removes the target configuration without touching any surrounding YAML headers or service blocks.
+4. **Soft Gutter & Syntax Styling:** JetBrains Mono typography, soft line numbers, and clean dark/light themes.
+
+---
+
+## 17. Master Reference Cheat Sheet: All Labels & Directives
+
+| Category | Label / Directive | Valid Values | Default | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Stack Naming** | `deploy.placement.constraints: stack.name == <name>` | String | First service / auto | Sets the unique stack identifier. |
+| **Stack Naming** | `name: <name>` | String | Directory name | Native Compose stack name attribute. |
+| **Ingress** | `ingress.host: <domain>` | Hostname / FQDN | None | Domain routing (local internal TLS or public Let's Encrypt). |
+| **Ingress** | `ingress.email: <email>` | Email string | None | Contact email for Let's Encrypt ACME notifications. |
+| **Ingress** | `ingress.tls: <mode>` | `internal`, `off` | Auto | Force self-signed root CA or disable TLS. |
+| **Caddy LB** | `gbnt.caddy.port: <port>` | Integer port | Auto from `ports:` | Target upstream container port for proxying. |
+| **Caddy LB** | `gbnt.caddy.lb: <algo>` | `round_robin`, `least_conn`, `ip_hash` | `round_robin` | Upstream load balancing policy across replicas. |
+| **Caddy Health** | `gbnt.caddy.health_uri: <path>` | `/health`, `/healthz`, `/` | None | Active HTTP probe path for upstream eviction. |
+| **Caddy Health** | `gbnt.caddy.health_interval: <dur>` | `2s`, `5s`, `10s` | `5s` | Interval between active health check probes. |
+| **Caddy Health** | `gbnt.caddy.health_timeout: <dur>` | `1s`, `2s`, `5s` | `2s` | Active probe timeout before marking node down. |
+| **WAF** | `gbnt.waf.enabled: <bool>` | `true`, `false` | `false` | Coraza Web Application Firewall protection. |
+| **WAF** | `gbnt.waf.mode: <mode>` | `enforce`, `detection` | `enforce` | Action mode for detected web attack vectors. |
+| **Placement** | `gbnt.placement.strategy: <strat>` | `spread`, `single-host` | `spread` | Multi-host spread vs single-node atomic placement. |
+| **Placement** | `deploy.placement.preferences: spread: node.id` | N/A | None | Distributes replicas across distinct Centurion hosts. |
+| **Placement** | `deploy.placement.constraints: node.role == worker` | `worker`, `manager` | None | Restricts container execution to specific node roles. |
+| **Hardware** | `deploy.placement.constraints: gbnt.node.gpu == nvidia` | `nvidia` | None | Restricts container scheduling to GPU-equipped Centurions. |
+| **Hardware** | `deploy.placement.constraints: node.hostname == <host>` | Node hostname | None | Pins container to an exact physical Centurion host. |
+| **Autoscale** | `gbnt.autoscaling.enable: <bool>` | `true`, `false` | `false` | Enables declarative horizontal autoscaling. |
+| **Autoscale** | `gbnt.autoscaling.metric: <type>` | `cpu`, `gpu` | `cpu` | Utilization metric monitored for scaling decisions. |
+| **Autoscale** | `gbnt.autoscaling.scope: <scope>` | `cluster`, `host` | `host` | Scale across multiple Centurions or on the local node. |
+| **Autoscale** | `gbnt.autoscaling.target: <pct>` | Integer `1` to `100` | `80` | Target utilization percentage threshold. |
+| **Autoscale** | `gbnt.autoscaling.min: <num>` | Integer `>= 1` | `1` | Minimum replica floor during low traffic. |
+| **Autoscale** | `gbnt.autoscaling.max: <num>` | Integer `>= 1` | `5` | Maximum replica ceiling during high traffic. |
+| **Autoscale** | `gbnt.autoscaling.cooldown: <dur>` | `30s`, `45s`, `60s` | `60s` | Evaluation cooldown between scaling operations. |
+| **Security** | `gbnt.security.require-signature: <bool>` | `true`, `false` | `false` | Admission policy requiring valid Cosign digital signature. |
+| **Security** | `gbnt.security.max-cve-severity: <sev>` | `critical`, `high`, `medium`, `none` | `none` | Maximum tolerated CVE vulnerability severity. |
+| **Security** | `gbnt.security.allow-unfixed-cve: <bool>` | `true`, `false` | `true` | Allows or blocks images with CVEs having no vendor patch. |
+| **Security** | `gbnt.security.signer: <identity>` | Key identity string | None | Restricts admission to images signed by a specific entity. |
+| **Sloth SLO** | `gbnt.slo.enable: <bool>` | `true`, `false` | `false` | Enables Google SRE Sloth SLO tracking & error budgets. |
+| **Sloth SLO** | `gbnt.slo.target: <pct>` | `99.0`, `99.9`, `99.99` | `99.9` | Target availability objective percentage. |
+| **Sloth SLO** | `gbnt.slo.window: <window>` | `30d`, `7d`, `90d` | `30d` | Rolling error budget evaluation window. |
+| **Sloth SLO** | `gbnt.slo.indicator: <ind>` | `availability`, `latency` | `availability` | Service Level Indicator metric type. |
+| **Sloth SLO** | `gbnt.slo.latency.threshold: <lat>` | `200ms`, `500ms`, `1s` | `200ms` | Latency objective threshold. |
+| **Storage** | `volumes: - /var/contenedores/...` | Host directory mount | None | Persistent mobility mount root across Centurion nodes. |
+| **Resources** | `deploy.resources.limits.cpus: "<num>"` | Float string (e.g. `"1.0"`) | None | Hard CPU core limit. |
+| **Resources** | `deploy.resources.limits.memory: <size>` | Size string (e.g. `512M`) | None | Hard RAM memory ceiling (OOM limit). |
+| **Resources** | `deploy.resources.reservations.cpus: "<num>"` | Float string (e.g. `"0.25"`) | None | Soft guaranteed CPU reservation for scheduler. |
+| **Resources** | `deploy.resources.reservations.memory: <size>` | Size string (e.g. `128M`) | None | Soft guaranteed RAM reservation for scheduler. |
+| **DNS** | `dns: ["127.0.0.1", "172.17.0.1"]` | IP list | Host DNS | Injects cluster CoreDNS nameserver into container. |
+| **Restart** | `restart: unless-stopped` | `always`, `unless-stopped`, `on-failure`, `no` | `no` | Container process lifecycle restart behavior. |
+| **Health** | `healthcheck.test: ["CMD-SHELL", "..."]` | Command array | None | In-container health verification probe. |
+

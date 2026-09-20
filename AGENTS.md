@@ -1498,3 +1498,28 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Complete Suite & Embedded Blueprint Modernization:**
   - Modernized all 24 compose examples under `examples/` (`example-pgvector-rag`, `example-wordpress`, `example-keycloak-sso`, `example-deepseek-vllm`, `example-jupyter`, `example-loadbalancer`, `example-slo`, `example-sre`, `example-valkey-sentinel`, `example-gitea-woodpecker`, `example-llama-factory`, `example-kafka-clickhouse`, `example-jaeger`, `example-public-https`).
   - Modernized all 17 embedded blueprints in `internal/examples/data/*.yml` and starter templates in Compose Studio.
+
+### 135. Compose Studio Safe Deletion, Web DOM Sync Guard & Comprehensive Documentation (`v3.0.1`)
+* **Flutter Web DOM/IME Stale Sync Protection (`GbntCodeController`):**
+  - Resolved Flutter Web's hidden DOM `<textarea>` desync issue where clicking outside the editor emitted stale text values causing upstream diffing to truncate the first 12 lines of the YAML document.
+  - Implemented `GbntCodeController` with `suppressStaleWebUpdates` flag that temporarily blocks stale browser DOM/IME update events during and immediately following programmatic smart merges.
+  - Overrode `String get text => fullText` to ensure all 95+ AST queries across Compose Studio always access the complete, un-truncated YAML document regardless of folded ranges.
+* **Isolated Action Buttons & Gesture Decoupling in Snippet Cards (`_buildSnippetCard`):**
+  - Completely decoupled the card body's `InkWell` tap area from the trailing action buttons.
+  - Placed the dedicated **Red Trash Button** (`IconButton` with red-accented container, border, and tooltip) into an independent sibling container outside the card body, eliminating pointer event bubbling and double-trigger collisions.
+  - Prevents the card's `onTap` (`toggleLabels`) from firing when clicking the delete button (`removeLabels`), ensuring pure, safe label deletions.
+* **Target Service Header & Live Line Range Indicators:**
+  - Interactive service header bar (`_buildTargetServiceHeader`) displaying the currently targeted service (`[inference (L2-L21) ▼]`) and its active labels block range (`[🏷️ labels: L6-L18]`).
+  - Snippet cards display live line indicator chips (`[✓ ACTIVO • L18]`) connecting visual Copilot cards directly to the corresponding YAML line numbers.
+* **Soft Editor Gutter & Syntax Styling:**
+  - Integrated `GutterStyle` in `CodeField` with JetBrains Mono 12px, soft contrast backgrounds (`#13171F` dark, `#F1F5F9` light), right-aligned line numbers, and error markers.
+* **Comprehensive Compose & Orchestration Documentation Suite (`docs/compose.md`, `docs/index.md`):**
+  - Thoroughly expanded `docs/compose.md` with dedicated sections and practical YAML examples for:
+    1. Multi-Host Placement, Anti-Affinity Spread (`spread: node.id`) & Hardware/Role Affinity (`gbnt.node.gpu=nvidia`, `node.role=worker`).
+    2. Dynamic Caddy Load Balancing algorithms (`round_robin`, `least_conn`, `ip_hash`), active HTTP health checks (`gbnt.caddy.health_uri`), and WAF protection (`gbnt.waf.*`).
+    3. CoreDNS Internal Service Discovery & local cluster `.gbnt` naming.
+    4. CPU & RAM Resource limits and scheduler reservations (`deploy.resources`).
+    5. Container healthchecks and restart policies.
+    6. Compose Studio Web IDE & Copilot guide (the 10 visual tabs).
+    7. **Master Reference Cheat Sheet Table:** Complete exhaustive matrix mapping all 40+ Gubernator labels, constraints, and directives with valid values, defaults, and links to specialized guides.
+  - Updated `docs/index.md` with direct navigation links under a new **Orchestration, Compose & Networking** category.

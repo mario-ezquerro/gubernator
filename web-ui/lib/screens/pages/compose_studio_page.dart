@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,8 +54,33 @@ class ComposeStudioPage extends StatefulWidget {
   State<ComposeStudioPage> createState() => _ComposeStudioPageState();
 }
 
+/// Enhanced CodeController that suppresses stale Flutter Web DOM/IME text update events
+/// during programmatic fullText / smart merge updates, preventing upstream character truncation.
+class GbntCodeController extends CodeController {
+  GbntCodeController({
+    super.text,
+    super.language,
+    super.namedSectionParser,
+    super.readOnlySectionNames,
+  });
+
+  bool suppressStaleWebUpdates = false;
+
+  @override
+  String get text => fullText;
+
+  @override
+  set value(TextEditingValue newValue) {
+    if (suppressStaleWebUpdates) {
+      // Drop any stale IME / DOM textarea events emitted during programmatic updates
+      return;
+    }
+    super.value = newValue;
+  }
+}
+
 class _ComposeStudioPageState extends State<ComposeStudioPage> {
-  late CodeController _codeController;
+  late GbntCodeController _codeController;
   final TextEditingController _nameController = TextEditingController(text: 'my-app');
   String _selectedStackId = 'new'; // 'new' or stack ID
   String _selectedNode = 'auto';
@@ -622,6 +646,17 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   final FocusNode _editorFocusNode = FocusNode();
   String _lastSelectedText = '';
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
+  String? _selectedTargetService;
+
+  /// Returns the current active target service name (or the first service in the document).
+  String get _effectiveTargetService {
+    final services = ComposeSmartMerger.getServiceNames(_codeController.text);
+    if (services.isEmpty) return '';
+    if (_selectedTargetService != null && services.contains(_selectedTargetService)) {
+      return _selectedTargetService!;
+    }
+    return services.first;
+  }
 
   models.CoreDNSStatusInfo? _corednsInfo;
 
@@ -659,6 +694,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       dnsServers: [dnsIp],
       searchDomains: [domain, 'gbnt'],
       allServices: allServices,
+      targetServiceName: _effectiveTargetService,
     );
     _applySmartMerge(res);
   }
@@ -675,7 +711,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     super.initState();
     _loadCoreDNSInfo();
     _originalYaml = _defaultTemplate;
-    _codeController = CodeController(
+    _codeController = GbntCodeController(
       text: _defaultTemplate,
       language: yaml,
     );
@@ -727,12 +763,21 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     _contextMenuSub = html.document.onContextMenu.listen(_onBrowserContextMenu);
   }
 
-  /// Captures selection changes into memory WITHOUT calling setState.
+  /// Captures selection changes and active service context.
   void _onCodeChanged() {
     final sel = _codeController.selection;
     if (sel.isValid && !sel.isCollapsed && sel.start >= 0 && sel.end <= _codeController.text.length && sel.start < sel.end) {
       _lastSelection = sel;
       _lastSelectedText = _codeController.text.substring(sel.start, sel.end);
+    }
+    final offset = sel.baseOffset;
+    if (offset >= 0) {
+      final detected = ComposeSmartMerger.detectServiceAtOffset(_codeController.text, offset);
+      if (detected != null && detected != _selectedTargetService) {
+        setState(() {
+          _selectedTargetService = detected;
+        });
+      }
     }
   }
 
@@ -1085,7 +1130,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       setState(() {
         _selectedStackId = 'new';
         _nameController.text = 'my-app';
-        _codeController.text = _defaultTemplate;
+        _codeController.fullText = _defaultTemplate;
         _originalYaml = _defaultTemplate;
       });
       return;
@@ -1102,7 +1147,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       final yamlContent = await ApiService.getStackCompose(stack.id);
       if (mounted) {
         setState(() {
-          _codeController.text = yamlContent;
+          _codeController.fullText = yamlContent;
           _originalYaml = yamlContent;
           _loadingYaml = false;
         });
@@ -1121,7 +1166,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     final snippet = _starterTemplates[templateKey];
     if (snippet != null) {
       setState(() {
-        _codeController.text = snippet;
+        _codeController.fullText = snippet;
         _originalYaml = snippet;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1183,7 +1228,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         reader.onLoadEnd.listen((e) {
           final text = reader.result as String;
           setState(() {
-            _codeController.text = text;
+            _codeController.fullText = text;
             if (_selectedStackId == 'new') {
               _nameController.text = sanitizedName;
             }
@@ -1201,7 +1246,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
       builder: (ctx) => ServerStackPickerDialog(
         onSelect: (name, yaml) {
           setState(() {
-            _codeController.text = yaml;
+            _codeController.fullText = yaml;
             if (_selectedStackId == 'new') {
               _nameController.text = name;
             }
@@ -1221,7 +1266,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         nodes: widget.state.nodes,
         onOpenInStudio: (name, yaml) {
           setState(() {
-            _codeController.text = yaml;
+            _codeController.fullText = yaml;
             if (_selectedStackId == 'new') {
               _nameController.text = name;
             }
@@ -1331,7 +1376,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
               );
               if (!remapRes.success) throw Exception(remapRes.error);
               if (remapRes.remappedCompose != null && remapRes.remappedCompose!.isNotEmpty) {
-                _codeController.text = remapRes.remappedCompose!;
+                _codeController.fullText = remapRes.remappedCompose!;
               }
             } else if (action == PortConflictAction.force) {
               setState(() => _deploying = true);
@@ -1385,8 +1430,21 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
   }
 
   void _applySmartMerge(MergeResult result) {
+    // 1. Temporarily suppress stale DOM/IME updates from Web platform
+    _codeController.suppressStaleWebUpdates = true;
+    _editorFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+
     setState(() {
-      _codeController.text = result.newYaml;
+      _codeController.fullText = result.newYaml;
+      _codeController.selection = const TextSelection.collapsed(offset: -1);
+    });
+
+    // 2. Re-enable user input events once the browser event loop has processed the click
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        _codeController.suppressStaleWebUpdates = false;
+      }
     });
 
     IconData icon;
@@ -1429,6 +1487,132 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         ),
       );
     }
+  }
+
+  Widget _buildTargetServiceHeader(ThemeData theme, bool isDark) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _codeController,
+      builder: (context, val, _) {
+        final services = ComposeSmartMerger.getServiceNames(val.text);
+        final currentTarget = _effectiveTargetService;
+        final labelsRange = currentTarget.isNotEmpty ? ComposeSmartMerger.getLabelsLineRange(val.text, currentTarget) : null;
+
+        if (services.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            color: isDark ? const Color(0xFF1E222B) : const Color(0xFFF1F5F9),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: Colors.orange.shade400),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No se detectaron servicios en el YAML. Escribe "services:" para habilitar las opciones.',
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141923) : const Color(0xFFF0FDF4),
+            border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFBBF7D0))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.alt_route, size: 14, color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7)),
+              const SizedBox(width: 6),
+              Text(
+                'SERVICIO DESTINO:',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Dropdown selector
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF38BDF8).withValues(alpha: 0.5) : const Color(0xFF0284C7).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: services.contains(currentTarget) ? currentTarget : services.first,
+                    isDense: true,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                    ),
+                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    items: services.map((s) {
+                      final range = ComposeSmartMerger.getServiceLineRange(val.text, s);
+                      final rangeStr = range != null ? ' (L${range.startLine}-L${range.endLine})' : '';
+                      return DropdownMenuItem<String>(
+                        value: s,
+                        child: Text('$s$rangeStr'),
+                      );
+                    }).toList(),
+                    onChanged: (newService) {
+                      if (newService != null) {
+                        setState(() {
+                          _selectedTargetService = newService;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (labelsRange != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '🏷️ labels: L${labelsRange.startLine}-L${labelsRange.endLine}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    '🏷️ sin labels',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildCopilotPanel(ThemeData theme) {
@@ -1577,6 +1761,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
             ),
             const Divider(height: 1),
 
+            // Target Service Header (Shows currently targeted service and line range)
+            _buildTargetServiceHeader(theme, isDark),
+            const Divider(height: 1),
+
           // Content
           Expanded(
             child: ListView(
@@ -1591,7 +1779,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '⚡ GPU AI/Inference Cluster Autoscale',
                     subtitle: 'Target 80% GPU utilization across GPU Centurions (Min: 1, Max: 4)',
                     icon: Icons.developer_board,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'gpu'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'gpu', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.autoscaling.metric', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -1603,9 +1792,10 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.autoscaling.target', '80'),
                           MapEntry('gbnt.autoscaling.min', '1'),
                           MapEntry('gbnt.autoscaling.max', '4'),
-                          MapEntry('gbnt.autoscaling.cooldown', '60s'),
+                          MapEntry('gbnt.autoscaling.cooldown', '45s'),
                         ],
                         categoryTitle: 'GPU Cluster Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -1622,6 +1812,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           'gbnt.autoscaling.cooldown',
                         ],
                         categoryTitle: 'GPU Cluster Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1629,8 +1820,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '🚀 CPU High-Load Web Autoscale (Cluster)',
                     subtitle: 'Target 75% CPU load distributed across active cluster nodes (Min: 2, Max: 8)',
                     icon: Icons.speed,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu') &&
-                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'cluster'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu', _effectiveTargetService) &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'cluster', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.autoscaling.metric', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -1645,6 +1837,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.autoscaling.cooldown', '60s'),
                         ],
                         categoryTitle: 'CPU Cluster Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -1661,6 +1854,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           'gbnt.autoscaling.cooldown',
                         ],
                         categoryTitle: 'CPU Cluster Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1668,8 +1862,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '💻 Single-Host CPU Autoscale (Local Host)',
                     subtitle: 'Target 85% CPU load strictly on the same host node (Min: 1, Max: 3)',
                     icon: Icons.computer,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu') &&
-                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'host'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.metric', 'cpu', _effectiveTargetService) &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.autoscaling.scope', 'host', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.autoscaling.metric', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -1684,6 +1879,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.autoscaling.cooldown', '60s'),
                         ],
                         categoryTitle: 'Single-Host Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -1700,6 +1896,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           'gbnt.autoscaling.cooldown',
                         ],
                         categoryTitle: 'Single-Host Autoscaling',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1724,6 +1921,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '128M',
                         cpuReserve: '0.05',
                         memReserve: '32M',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1739,6 +1937,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '512M',
                         cpuReserve: '0.25',
                         memReserve: '128M',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1754,6 +1953,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '2G',
                         cpuReserve: '0.5',
                         memReserve: '512M',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1769,6 +1969,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '4G',
                         cpuReserve: '1.0',
                         memReserve: '1G',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1784,6 +1985,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '8G',
                         cpuReserve: '2.0',
                         memReserve: '2G',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1914,6 +2116,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                 memLimit: _customLimitRam,
                                 cpuReserve: _customReserveCpu,
                                 memReserve: _customReserveRam,
+                                targetServiceName: _effectiveTargetService,
                               ));
                             },
                           ),
@@ -1937,6 +2140,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         ['80:80', '443:443'],
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1949,6 +2153,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         ['5432:5432'],
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1961,6 +2166,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         r'/var/contenedores/${STACK_NAME}/data:/data',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1973,6 +2179,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         './config.yml:/etc/app/config.yml:ro',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -1988,6 +2195,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         memLimit: '1G',
                         cpuReserve: '0.5',
                         memReserve: '256M',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2000,6 +2208,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         'unless-stopped',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2016,6 +2225,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('LOG_LEVEL', 'info'),
                           MapEntry('DB_HOST', 'db'),
                         ],
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2028,6 +2238,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         testCmd: 'http://localhost:8080/health',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2042,8 +2253,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Standard HTTP Ingress',
                     subtitle: 'ingress.host=app.gbnt.local & port=80',
                     icon: Icons.public,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'ingress.host') &&
-                        !ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'ingress.host', null, _effectiveTargetService) &&
+                        !ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'ingress.host', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2053,6 +2265,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.caddy.port', '80'),
                         ],
                         categoryTitle: 'Caddy HTTP Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2061,6 +2274,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['ingress.host', 'gbnt.caddy.port'],
                         categoryTitle: 'Caddy HTTP Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2068,7 +2282,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Ingress + Threat Shield WAF (Enforce)',
                     subtitle: 'Expose host with active L7 WAF blocking OWASP attacks (403)',
                     icon: Icons.shield,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.waf.mode', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2080,6 +2295,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.waf.mode', 'enforce'),
                         ],
                         categoryTitle: 'Caddy WAF Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2088,6 +2304,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['ingress.host', 'gbnt.caddy.port', 'gbnt.waf.enabled', 'gbnt.waf.mode'],
                         categoryTitle: 'Caddy WAF Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2095,7 +2312,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Threat Shield WAF (Detection / Audit)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Log & inspect only)',
                     icon: Icons.remove_red_eye_outlined,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.waf.mode', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2105,6 +2323,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.waf.mode', 'detection'),
                         ],
                         categoryTitle: 'WAF Detection Mode',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2113,6 +2332,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
                         categoryTitle: 'WAF Detection Mode',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2120,7 +2340,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Internal TLS Ingress',
                     subtitle: 'Automatic Caddy internal certificate',
                     icon: Icons.lock,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.tls', 'internal'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.tls', 'internal', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.caddy.tls', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2131,6 +2352,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.caddy.tls', 'internal'),
                         ],
                         categoryTitle: 'Caddy TLS Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2139,6 +2361,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['ingress.host', 'gbnt.caddy.port', 'gbnt.caddy.tls'],
                         categoryTitle: 'Caddy TLS Ingress',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2201,6 +2424,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         dnsServers: [_clusterCoreDnsIp, '8.8.8.8', '1.1.1.1'],
                         searchDomains: [_clusterDomain, 'gbnt'],
                         allServices: false,
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2215,6 +2439,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         dnsServers: [],
                         searchDomains: [_clusterDomain, 'gbnt'],
                         allServices: false,
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2229,7 +2454,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: '99.9% High Availability SLO',
                     subtitle: '30-day window availability budget',
                     icon: Icons.speed,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.target', '99.9'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.target', '99.9', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.slo.target', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2240,6 +2466,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.slo.window', '30d'),
                         ],
                         categoryTitle: '99.9% Availability SLO',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2248,6 +2475,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.slo.enable', 'gbnt.slo.target', 'gbnt.slo.window'],
                         categoryTitle: '99.9% Availability SLO',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2255,7 +2483,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Latency < 200ms Threshold',
                     subtitle: 'Triggers multi-burn alerts on slow requests',
                     icon: Icons.timer,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.indicator', 'latency'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.slo.indicator', 'latency', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.slo.indicator', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2267,6 +2496,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.slo.latency.threshold', '200ms'),
                         ],
                         categoryTitle: 'Latency SLO',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2275,6 +2505,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.slo.enable', 'gbnt.slo.target', 'gbnt.slo.indicator', 'gbnt.slo.latency.threshold'],
                         categoryTitle: 'Latency SLO',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2289,7 +2520,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Threat Shield WAF (Enforce Mode)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=enforce (Blocks SQLi, XSS, RCE with 403)',
                     icon: Icons.shield,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'enforce', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.waf.mode', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2299,6 +2531,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.waf.mode', 'enforce'),
                         ],
                         categoryTitle: 'Threat Shield WAF',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2307,6 +2540,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
                         categoryTitle: 'Threat Shield WAF',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2314,7 +2548,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Threat Shield WAF (Detection / Audit)',
                     subtitle: 'gbnt.waf.enabled=true & gbnt.waf.mode=detection (Non-blocking SIEM logs)',
                     icon: Icons.policy_outlined,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.mode', 'detection', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.waf.mode', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2324,6 +2559,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.waf.mode', 'detection'),
                         ],
                         categoryTitle: 'WAF Audit Mode',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2332,6 +2568,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.waf.enabled', 'gbnt.waf.mode'],
                         categoryTitle: 'WAF Audit Mode',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2339,7 +2576,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Enforce Cryptographic Signatures',
                     subtitle: 'Blocks deployment if image is not Cosign-signed (Zero-Trust)',
                     icon: Icons.verified_user,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.security.require-signature', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2348,6 +2586,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.security.require-signature', 'true'),
                         ],
                         categoryTitle: 'Signature Gatekeeper',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2356,6 +2595,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.security.require-signature'],
                         categoryTitle: 'Signature Gatekeeper',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2363,7 +2603,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Block Critical CVE Vulnerabilities',
                     subtitle: 'Rejects images with unpatched critical CVEs (CVSS >= 9.0)',
                     icon: Icons.security,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'critical'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'critical', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.security.max-cve-severity', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2372,6 +2613,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.security.max-cve-severity', 'critical'),
                         ],
                         categoryTitle: 'Critical CVE Policy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2380,6 +2622,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.security.max-cve-severity'],
                         categoryTitle: 'Critical CVE Policy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2387,7 +2630,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Block High & Critical CVEs',
                     subtitle: 'Stricter threshold rejecting both High and Critical CVEs',
                     icon: Icons.shield_outlined,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'high'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.max-cve-severity', 'high', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.security.max-cve-severity', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2396,6 +2640,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.security.max-cve-severity', 'high'),
                         ],
                         categoryTitle: 'High CVE Policy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2404,6 +2649,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.security.max-cve-severity'],
                         categoryTitle: 'High CVE Policy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2411,8 +2657,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Full Zero-Trust & WAF Shield Suite',
                     subtitle: 'Signature check + critical CVE block + Threat Shield WAF enforce',
                     icon: Icons.verified,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true') &&
-                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.security.require-signature', 'true', _effectiveTargetService) &&
+                        ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.waf.enabled', 'true', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.security.require-signature', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2425,6 +2672,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.waf.mode', 'enforce'),
                         ],
                         categoryTitle: 'Zero-Trust & WAF Suite',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2439,6 +2687,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           'gbnt.waf.mode',
                         ],
                         categoryTitle: 'Zero-Trust & WAF Suite',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2496,13 +2745,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Anti-Affinity Spread Strategy',
                     subtitle: 'gbnt.placement.strategy=spread (Multi-Host)',
                     icon: Icons.alt_route,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.placement.strategy', 'spread'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.placement.strategy', 'spread', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.placement.strategy', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.placement.strategy', 'spread')],
                         categoryTitle: 'Spread Strategy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2511,6 +2762,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.placement.strategy', 'gbnt.placement'],
                         categoryTitle: 'Spread Strategy',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2521,13 +2773,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Round Robin Policy (Default)',
                     subtitle: 'gbnt.caddy.lb=round_robin',
                     icon: Icons.balance,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'round_robin'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'round_robin', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.caddy.lb', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.caddy.lb', 'round_robin')],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2536,6 +2790,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2543,13 +2798,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Least Connections Policy',
                     subtitle: 'gbnt.caddy.lb=least_conn',
                     icon: Icons.speed,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'least_conn'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'least_conn', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.caddy.lb', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.caddy.lb', 'least_conn')],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2558,6 +2815,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2565,13 +2823,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'IP Hash (Sticky Sessions)',
                     subtitle: 'gbnt.caddy.lb=ip_hash',
                     icon: Icons.pin_drop,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'ip_hash'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.lb', 'ip_hash', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.caddy.lb', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.caddy.lb', 'ip_hash')],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2580,6 +2840,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.caddy.lb'],
                         categoryTitle: 'Caddy Load Balancing',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2587,7 +2848,8 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Active Health Check Probe',
                     subtitle: 'gbnt.caddy.health_uri=/health (5s interval)',
                     icon: Icons.health_and_safety,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.health_uri'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.caddy.health_uri', null, _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.caddy.health_uri', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
@@ -2597,6 +2859,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                           MapEntry('gbnt.caddy.health_interval', '5s'),
                         ],
                         categoryTitle: 'Caddy Health Check',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2605,6 +2868,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.caddy.health_uri', 'gbnt.caddy.health_interval'],
                         categoryTitle: 'Caddy Health Check',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2615,13 +2879,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Worker Nodes Only',
                     subtitle: 'gbnt.node.role=worker (Labels-First)',
                     icon: Icons.group_work,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'worker'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'worker', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.node.role', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.node.role', 'worker')],
                         categoryTitle: 'Worker Role Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2630,6 +2896,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.node.role', 'node.role'],
                         categoryTitle: 'Worker Role Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2637,13 +2904,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'Manager Node Only',
                     subtitle: 'gbnt.node.role=manager (Labels-First)',
                     icon: Icons.star,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'manager'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.role', 'manager', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.node.role', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.node.role', 'manager')],
                         categoryTitle: 'Manager Role Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2652,6 +2921,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.node.role', 'node.role'],
                         categoryTitle: 'Manager Role Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2659,13 +2929,15 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                     title: 'NVIDIA GPU Accelerated Node',
                     subtitle: 'gbnt.node.gpu=nvidia (Labels-First)',
                     icon: Icons.developer_board,
-                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.gpu', 'nvidia'),
+                    isActive: ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.gpu', 'nvidia', _effectiveTargetService),
+                    activeLine: ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.node.gpu', targetServiceName: _effectiveTargetService),
                     onTap: () {
                       _applySmartMerge(ComposeSmartMerger.toggleLabels(
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         const [MapEntry('gbnt.node.gpu', 'nvidia')],
                         categoryTitle: 'GPU Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                     onRemove: () {
@@ -2674,6 +2946,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.selection.baseOffset,
                         const ['gbnt.node.gpu', 'node.gpu'],
                         categoryTitle: 'GPU Affinity',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2681,7 +2954,9 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   const Text('Active Cluster Nodes (Pinning via Labels):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   ...widget.state.nodes.map((node) {
-                    final isPinned = ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.hostname', node.id);
+                    final isPinned = ComposeSmartMerger.hasLabel(_codeController.text, _codeController.selection.baseOffset, 'gbnt.node.hostname', node.id, _effectiveTargetService);
+                    final pinLine = ComposeSmartMerger.getLabelLine(_codeController.text, 'gbnt.node.hostname', targetServiceName: _effectiveTargetService);
+                    final pinLineStr = pinLine != null ? ' • L$pinLine' : '';
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       shape: RoundedRectangleBorder(
@@ -2710,7 +2985,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                   color: const Color(0xFF10B981).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: const Text('ANCLADO', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                                child: Text('ANCLADO$pinLineStr', style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
                               ),
                             ],
                           ],
@@ -2722,7 +2997,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                             color: isPinned ? const Color(0xFF10B981) : Theme.of(context).colorScheme.primary,
                             size: 18,
                           ),
-                          tooltip: isPinned ? 'Desanclar de ${node.id}' : 'Anclar a ${node.id}',
+                          tooltip: isPinned ? 'Desanclar de ${node.id}$pinLineStr' : 'Anclar a ${node.id}',
                           onPressed: () {
                             if (isPinned) {
                               _applySmartMerge(ComposeSmartMerger.removeLabels(
@@ -2730,6 +3005,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                 _codeController.selection.baseOffset,
                                 const ['gbnt.node.hostname', 'node.hostname'],
                                 categoryTitle: 'Node Pinning',
+                                targetServiceName: _effectiveTargetService,
                               ));
                             } else {
                               _applySmartMerge(ComposeSmartMerger.mergeLabels(
@@ -2737,6 +3013,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                 _codeController.selection.baseOffset,
                                 [MapEntry('gbnt.node.hostname', node.id)],
                                 categoryTitle: 'Pin to ${node.id}',
+                                targetServiceName: _effectiveTargetService,
                               ));
                             }
                           },
@@ -2760,6 +3037,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         r'/var/contenedores/${STACK_NAME}/data:/data',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2772,6 +3050,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                         _codeController.text,
                         _codeController.selection.baseOffset,
                         r'/var/contenedores/${STACK_NAME}/db:/var/lib/db',
+                        targetServiceName: _effectiveTargetService,
                       ));
                     },
                   ),
@@ -2805,9 +3084,11 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
     required VoidCallback onTap,
     bool isActive = false,
     VoidCallback? onRemove,
+    int? activeLine,
   }) {
     final theme = Theme.of(context);
     const activeColor = Color(0xFF10B981);
+    final lineStr = activeLine != null ? ' • L$activeLine' : '';
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 10),
@@ -2819,73 +3100,116 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
         ),
       ),
       color: isActive ? activeColor.withValues(alpha: 0.04) : null,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (isActive ? activeColor : theme.colorScheme.primary).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(icon, size: 18, color: isActive ? activeColor : theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            // Left & Center Area: Tappable card body
+            Expanded(
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: (isActive ? activeColor : theme.colorScheme.primary).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        if (isActive) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: activeColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
+                        child: Icon(icon, size: 18, color: isActive ? activeColor : theme.colorScheme.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Icon(Icons.check, size: 10, color: activeColor),
-                                SizedBox(width: 2),
-                                Text('ACTIVO', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: activeColor)),
+                                Flexible(
+                                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                                ),
+                                if (isActive) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: activeColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check, size: 10, color: activeColor),
+                                        const SizedBox(width: 2),
+                                        Text('ACTIVO$lineStr', style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: activeColor)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
-                          ),
-                        ],
-                      ],
+                            const SizedBox(height: 2),
+                            Text(subtitle, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Trailing Action Area: Completely separate from the card's InkWell
+            if (isActive && onRemove != null) ...[
+              Tooltip(
+                message: 'Quitar configuración del YAML$lineStr',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: onRemove,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3), width: 1),
+                      ),
+                      child: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
                     ),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                  ],
+                  ),
                 ),
               ),
-              if (isActive && onRemove != null) ...[
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                  tooltip: 'Quitar configuración (Eliminar del YAML)',
-                  onPressed: onRemove,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                ),
-                const SizedBox(width: 4),
-              ],
-              Icon(
-                isActive ? Icons.check_circle : Icons.add,
-                size: 16,
-                color: isActive ? activeColor : theme.colorScheme.primary,
-              ),
+              const SizedBox(width: 6),
             ],
-          ),
+
+            Tooltip(
+              message: isActive ? 'Ya configurado en el YAML$lineStr (Click para alternar)' : 'Añadir configuración al YAML',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: onTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: (isActive ? activeColor : theme.colorScheme.primary).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      isActive ? Icons.check_circle : Icons.add_circle_outline,
+                      size: 16,
+                      color: isActive ? activeColor : theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -3682,7 +4006,7 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                   label: const Text('Reset'),
                   onPressed: () {
                     setState(() {
-                      _codeController.text = _originalYaml;
+                      _codeController.fullText = _originalYaml;
                     });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('YAML reset to original'), duration: Duration(seconds: 1)),
@@ -3922,11 +4246,31 @@ class _ComposeStudioPageState extends State<ComposeStudioPage> {
                                       child: Container(
                                         width: double.infinity,
                                         height: double.infinity,
-                                        color: isDark ? const Color(0xFF272822) : const Color(0xFFF8F8F8),
+                                        color: isDark ? const Color(0xFF1A1F29) : const Color(0xFFFDFDFE),
                                         child: CodeField(
                                           controller: _codeController,
                                           focusNode: _editorFocusNode,
-                                          textStyle: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+                                          gutterStyle: GutterStyle(
+                                            width: 54.0,
+                                            margin: 10.0,
+                                            textAlign: TextAlign.right,
+                                            background: isDark ? const Color(0xFF13171F) : const Color(0xFFF1F5F9),
+                                            textStyle: TextStyle(
+                                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                                              fontFamily: 'JetBrains Mono',
+                                              fontSize: 12,
+                                            ),
+                                            showLineNumbers: true,
+                                            showErrors: true,
+                                            showFoldingHandles: true,
+                                          ),
+                                          textStyle: TextStyle(
+                                            fontFamily: 'JetBrains Mono',
+                                            fontSize: 13.5,
+                                            height: 1.55,
+                                            letterSpacing: 0.3,
+                                            color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
+                                          ),
                                           expands: true,
                                         ),
                                       ),

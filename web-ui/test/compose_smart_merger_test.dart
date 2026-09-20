@@ -288,4 +288,81 @@ void main() {
       expect(res!.newYaml.contains('/var/contenedores/\${STACK_NAME}/data:/data'), isTrue);
     });
   });
+
+  group('ComposeSmartMerger - Target Service & Safe Label Removal', () {
+    const multiServiceCompose = '''services:
+  echo:
+    image: hashicorp/http-echo:latest
+    command: ["-text=hello"]
+    ports:
+      - "5678:5678"
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_PASSWORD=secret
+''';
+
+    test('getServiceNames returns all service identifiers in order', () {
+      final services = ComposeSmartMerger.getServiceNames(multiServiceCompose);
+      expect(services, equals(['echo', 'db']));
+    });
+
+    test('detectServiceAtOffset detects service correctly based on cursor offset', () {
+      final echoOffset = multiServiceCompose.indexOf('http-echo');
+      final dbOffset = multiServiceCompose.indexOf('postgres');
+
+      expect(ComposeSmartMerger.detectServiceAtOffset(multiServiceCompose, echoOffset), equals('echo'));
+      expect(ComposeSmartMerger.detectServiceAtOffset(multiServiceCompose, dbOffset), equals('db'));
+    });
+
+    test('toggleLabels adds labels to specific target service without affecting others', () {
+      final res = ComposeSmartMerger.toggleLabels(
+        multiServiceCompose,
+        0,
+        const [
+          MapEntry('ingress.host', 'echo.gbnt.local'),
+          MapEntry('gbnt.caddy.port', '5678'),
+        ],
+        targetServiceName: 'echo',
+      );
+
+      expect(res.action, equals(MergeActionType.inserted));
+      expect(res.newYaml.startsWith('services:\n  echo:\n'), isTrue);
+      expect(ComposeSmartMerger.hasLabel(res.newYaml, 0, 'ingress.host', 'echo.gbnt.local', 'echo'), isTrue);
+      expect(ComposeSmartMerger.hasLabel(res.newYaml, 0, 'ingress.host', 'echo.gbnt.local', 'db'), isFalse);
+      expect(ComposeSmartMerger.getLabelLine(res.newYaml, 'ingress.host', targetServiceName: 'echo'), isNotNull);
+    });
+
+    test('removeLabels safely removes labels and cleans up empty labels block without corrupting YAML header', () {
+      // Step 1: Add label to echo
+      final withLabel = ComposeSmartMerger.toggleLabels(
+        multiServiceCompose,
+        0,
+        const [MapEntry('gbnt.waf.mode', 'enforce')],
+        targetServiceName: 'echo',
+      );
+
+      expect(ComposeSmartMerger.hasLabel(withLabel.newYaml, 0, 'gbnt.waf.mode', 'enforce', 'echo'), isTrue);
+
+      // Step 2: Remove label from echo (simulating user clicking trash icon)
+      final removed = ComposeSmartMerger.removeLabels(
+        withLabel.newYaml,
+        0,
+        const ['gbnt.waf.mode'],
+        targetServiceName: 'echo',
+      );
+
+      expect(removed.action, equals(MergeActionType.updated));
+      // Verify YAML header and structure is 100% intact!
+      expect(removed.newYaml.startsWith('services:\n  echo:\n    image: hashicorp/http-echo:latest'), isTrue);
+      expect(removed.newYaml.contains('command: ["-text=hello"]'), isTrue);
+      expect(removed.newYaml.contains('ports:'), isTrue);
+      expect(removed.newYaml.contains('db:'), isTrue);
+      // Verify label is gone
+      expect(ComposeSmartMerger.hasLabel(removed.newYaml, 0, 'gbnt.waf.mode', 'enforce', 'echo'), isFalse);
+      // Verify labels block is removed when empty
+      expect(removed.newYaml.contains('labels:'), isFalse);
+    });
+  });
 }
+

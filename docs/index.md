@@ -184,6 +184,16 @@ While `./gbnt serve` is running, access:
 - [Web UI](web-ui.md) — Dashboard features and usage
 - [Examples](examples.md) — Step-by-step tutorials from basic to SRE-grade
 
+### Orchestration, Compose & Networking
+- [Compose & Smart Studio Reference](compose.md) — Exhaustive Docker Compose reference, auto-naming, dynamic variables, Studio IDE, and master labels cheat sheet
+- [Multi-Host Placement & Scheduling](multi-host-scheduling.md) — Distributed replica anti-affinity (`spread: node.id`), GPU/node affinity, and Caddy multi-upstream load balancing
+- [Caddy Ingress Suite](caddy.md) — Dynamic reverse proxy, Let's Encrypt / ZeroSSL automatic HTTPS, internal CA trust, WAF (Coraza), and active health checks
+- [CoreDNS Discovery](coredns.md) — Embedded DNS cluster resolver, auto-updating container records, and upstream forwarders
+- [Declarative Autoscaling](autoscaling.md) — Horizontal scaling engine driven by CPU and NVIDIA GPU metrics with cluster vs host scopes
+- [Sloth SRE SLO Engine](slo.md) — Google SRE multi-burn-rate alerts, error budgets, and Prometheus recording rules
+- [Persistent Storage & Backups](storage-backups.md) — Shared Granaries (`/var/contenedores/`), Docker Named Volumes, `/etc/fstab` auto-mount, and compressed point-in-time backups
+- [GlusterFS Distributed Storage](glusterfs.md) — 3-way mirrored replica pools, peer discovery, and self-healing storage
+
 ### Compliance & Security Suite
 - [Compliance Hub Overview](compliance.md) — Executive matrix and regulatory posture across standards
 - [ISO/IEC 27001:2022 (Annex A)](iso27001.md) — 24 Technological & Organizational controls, Posture Grade (`A+` to `D`), and SoA export

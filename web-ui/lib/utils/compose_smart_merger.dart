@@ -93,30 +93,125 @@ class ComposeSmartMerger {
     return services;
   }
 
-  /// Resolves the target service bounds in the Compose document based on cursor offset.
-  static _ServiceBounds? _findTargetService(List<String> lines, int cursorOffset) {
+  /// Returns the names of all services defined under `services:` in the Compose document.
+  static List<String> getServiceNames(String yaml) {
+    final lines = yaml.split('\n');
+    return _findAllServices(lines).map((s) => s.name).toList();
+  }
+
+  /// Detects which service bounds contains the given cursor character offset.
+  static String? detectServiceAtOffset(String yaml, int cursorOffset) {
+    if (cursorOffset < 0) return null;
+    final lines = yaml.split('\n');
     final services = _findAllServices(lines);
     if (services.isEmpty) return null;
 
-    // Calculate cursor line number
     int cursorLine = 0;
     int acc = 0;
     for (int i = 0; i < lines.length; i++) {
-      acc += lines[i].length + 1; // +1 for newline
+      acc += lines[i].length + 1;
       if (cursorOffset < acc) {
         cursorLine = i;
         break;
       }
     }
 
-    // Try finding service enclosing cursor
     for (final s in services) {
       if (cursorLine >= s.startLine && cursorLine <= s.endLine) {
-        return s;
+        return s.name;
+      }
+    }
+    return null;
+  }
+
+  /// Returns 1-indexed (startLine, endLine) range for the given service.
+  static ({int startLine, int endLine})? getServiceLineRange(String yaml, String serviceName) {
+    final lines = yaml.split('\n');
+    final services = _findAllServices(lines);
+    for (final s in services) {
+      if (s.name == serviceName) {
+        return (startLine: s.startLine + 1, endLine: s.endLine + 1);
+      }
+    }
+    return null;
+  }
+
+  /// Returns 1-indexed (startLine, endLine) range for the `labels:` block in the target service.
+  static ({int startLine, int endLine})? getLabelsLineRange(String yaml, String serviceName) {
+    final lines = yaml.split('\n');
+    final services = _findAllServices(lines);
+    for (final s in services) {
+      if (s.name == serviceName) {
+        final block = _findSubBlock(lines, s.startLine, s.endLine, 'labels');
+        if (block != null) {
+          return (startLine: block.keyLine + 1, endLine: block.endLine + 1);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Returns the 1-indexed line number where a specific label key is defined in the target service.
+  static int? getLabelLine(
+    String yaml,
+    String key, {
+    String? targetServiceName,
+    int cursorOffset = -1,
+  }) {
+    final lines = yaml.split('\n');
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
+    if (srv == null) return null;
+
+    final labelsBlock = _findSubBlock(lines, srv.startLine, srv.endLine, 'labels');
+    if (labelsBlock == null) return null;
+
+    for (int i = labelsBlock.keyLine + 1; i <= labelsBlock.endLine; i++) {
+      if (_lineMatchesLabelKey(lines[i], key)) {
+        return i + 1;
+      }
+    }
+    return null;
+  }
+
+  /// Resolves the target service bounds in the Compose document based on service name or cursor offset.
+  static _ServiceBounds? _findTargetService(
+    List<String> lines,
+    int cursorOffset, [
+    String? targetServiceName,
+  ]) {
+    final services = _findAllServices(lines);
+    if (services.isEmpty) return null;
+
+    // 1. Explicit target service name takes priority
+    if (targetServiceName != null && targetServiceName.isNotEmpty) {
+      for (final s in services) {
+        if (s.name == targetServiceName) {
+          return s;
+        }
       }
     }
 
-    // Default to first service
+    // 2. Calculate cursor line number
+    if (cursorOffset >= 0) {
+      int cursorLine = 0;
+      int acc = 0;
+      for (int i = 0; i < lines.length; i++) {
+        acc += lines[i].length + 1; // +1 for newline
+        if (cursorOffset < acc) {
+          cursorLine = i;
+          break;
+        }
+      }
+
+      // Try finding service enclosing cursor
+      for (final s in services) {
+        if (cursorLine >= s.startLine && cursorLine <= s.endLine) {
+          return s;
+        }
+      }
+    }
+
+    // 3. Default to first service
     return services.first;
   }
 
@@ -160,9 +255,10 @@ class ComposeSmartMerger {
     required String memLimit,
     required String cpuReserve,
     required String memReserve,
+    String? targetServiceName,
   }) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       // Fallback: append snippet
@@ -270,9 +366,9 @@ class ComposeSmartMerger {
   // 2. RESTART POLICY: (Singleton - Updates in-place)
   // ──────────────────────────────────────────────────────────────────────────
 
-  static MergeResult mergeRestartPolicy(String yaml, int cursorOffset, String policy) {
+  static MergeResult mergeRestartPolicy(String yaml, int cursorOffset, String policy, {String? targetServiceName}) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       final snippet = '    restart: $policy\n';
@@ -324,9 +420,10 @@ class ComposeSmartMerger {
     String interval = '10s',
     String timeout = '5s',
     int retries = 3,
+    String? targetServiceName,
   }) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     final healthcheckLines = <String>[
       '    healthcheck:',
@@ -526,11 +623,17 @@ class ComposeSmartMerger {
     return '';
   }
 
-  /// Checks whether the target service at cursor offset has the specified label key.
+  /// Checks whether the target service has the specified label key.
   /// If [expectedValue] is provided, also verifies that the value matches.
-  static bool hasLabel(String yaml, int cursorOffset, String key, [String? expectedValue]) {
+  static bool hasLabel(
+    String yaml,
+    int cursorOffset,
+    String key, [
+    String? expectedValue,
+    String? targetServiceName,
+  ]) {
     final lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
     if (srv == null) return false;
 
     final labelsBlock = _findSubBlock(lines, srv.startLine, srv.endLine, 'labels');
@@ -550,10 +653,15 @@ class ComposeSmartMerger {
   }
 
   /// Checks whether all entries in the list are active in the target service.
-  static bool hasAllLabels(String yaml, int cursorOffset, List<MapEntry<String, String>> labels) {
+  static bool hasAllLabels(
+    String yaml,
+    int cursorOffset,
+    List<MapEntry<String, String>> labels, [
+    String? targetServiceName,
+  ]) {
     if (labels.isEmpty) return false;
     for (final e in labels) {
-      if (!hasLabel(yaml, cursorOffset, e.key, e.value)) {
+      if (!hasLabel(yaml, cursorOffset, e.key, e.value, targetServiceName)) {
         return false;
       }
     }
@@ -567,9 +675,10 @@ class ComposeSmartMerger {
     int cursorOffset,
     List<String> keysToRemove, {
     String? categoryTitle,
+    String? targetServiceName,
   }) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
     if (srv == null) {
       return MergeResult(
         newYaml: yaml,
@@ -606,7 +715,7 @@ class ComposeSmartMerger {
       );
     }
 
-    // Filter out lines in descending order
+    // Filter out lines in order
     final newLines = <String>[];
     for (int i = 0; i < lines.length; i++) {
       if (!toRemoveIdxs.contains(i)) {
@@ -615,7 +724,7 @@ class ComposeSmartMerger {
     }
 
     // Check if the labels block is now empty (only contains whitespace/comments before next block)
-    final newSrv = _findTargetService(newLines, cursorOffset);
+    final newSrv = _findTargetService(newLines, cursorOffset, targetServiceName);
     if (newSrv != null) {
       final newLabelsBlock = _findSubBlock(newLines, newSrv.startLine, newSrv.endLine, 'labels');
       if (newLabelsBlock != null) {
@@ -628,8 +737,11 @@ class ComposeSmartMerger {
           }
         }
         if (!hasItems) {
-          // Remove empty labels block
-          newLines.removeRange(newLabelsBlock.keyLine, newLabelsBlock.endLine + 1);
+          // Remove empty labels: header safely without touching other lines
+          newLines.removeAt(newLabelsBlock.keyLine);
+          if (newLabelsBlock.keyLine < newLines.length && newLines[newLabelsBlock.keyLine].trim().isEmpty) {
+            newLines.removeAt(newLabelsBlock.keyLine);
+          }
         }
       }
     }
@@ -649,13 +761,15 @@ class ComposeSmartMerger {
     int cursorOffset,
     List<MapEntry<String, String>> labels, {
     String? categoryTitle,
+    String? targetServiceName,
   }) {
-    if (hasAllLabels(yaml, cursorOffset, labels)) {
+    if (hasAllLabels(yaml, cursorOffset, labels, targetServiceName)) {
       return removeLabels(
         yaml,
         cursorOffset,
         labels.map((e) => e.key).toList(),
         categoryTitle: categoryTitle,
+        targetServiceName: targetServiceName,
       );
     } else {
       return mergeLabels(
@@ -663,6 +777,7 @@ class ComposeSmartMerger {
         cursorOffset,
         labels,
         categoryTitle: categoryTitle,
+        targetServiceName: targetServiceName,
       );
     }
   }
@@ -674,9 +789,10 @@ class ComposeSmartMerger {
     int cursorOffset,
     List<MapEntry<String, String>> labels, {
     String? categoryTitle,
+    String? targetServiceName,
   }) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       final labelLines = ['    labels:'];
@@ -763,9 +879,9 @@ class ComposeSmartMerger {
   // 6. VOLUMES: Multi-mount Collection (Appends without duplicate sections)
   // ──────────────────────────────────────────────────────────────────────────
 
-  static MergeResult mergeVolumeMount(String yaml, int cursorOffset, String mount) {
+  static MergeResult mergeVolumeMount(String yaml, int cursorOffset, String mount, {String? targetServiceName}) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       final snippet = '    volumes:\n      - $mount\n';
@@ -819,9 +935,9 @@ class ComposeSmartMerger {
   // 7. PORTS: Multi-port Collection (Appends without duplicate sections)
   // ──────────────────────────────────────────────────────────────────────────
 
-  static MergeResult mergePorts(String yaml, int cursorOffset, List<String> ports) {
+  static MergeResult mergePorts(String yaml, int cursorOffset, List<String> ports, {String? targetServiceName}) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       final portLines = ['    ports:'];
@@ -890,9 +1006,9 @@ class ComposeSmartMerger {
   // 8. ENVIRONMENT VARIABLES: (Smart Key-Value Merge)
   // ──────────────────────────────────────────────────────────────────────────
 
-  static MergeResult mergeEnvironment(String yaml, int cursorOffset, List<MapEntry<String, String>> envVars) {
+  static MergeResult mergeEnvironment(String yaml, int cursorOffset, List<MapEntry<String, String>> envVars, {String? targetServiceName}) {
     var lines = yaml.split('\n');
-    final srv = _findTargetService(lines, cursorOffset);
+    final srv = _findTargetService(lines, cursorOffset, targetServiceName);
 
     if (srv == null) {
       final envLines = ['    environment:'];
@@ -964,6 +1080,7 @@ class ComposeSmartMerger {
     required List<String> dnsServers,
     List<String>? searchDomains,
     bool allServices = false,
+    String? targetServiceName,
   }) {
     var lines = yaml.split('\n');
     final allSrvs = _findAllServices(lines);
@@ -988,7 +1105,7 @@ class ComposeSmartMerger {
 
     final targetServices = allServices
         ? allSrvs.reversed.toList()
-        : [_findTargetService(lines, cursorOffset)!];
+        : [_findTargetService(lines, cursorOffset, targetServiceName)!];
 
     bool anyModified = false;
     final messages = <String>[];
