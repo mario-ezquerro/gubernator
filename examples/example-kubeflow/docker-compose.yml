@@ -11,7 +11,7 @@ services:
   # 1. MinIO S3 Object Storage (Kubeflow S3 Artifact & Dataset Store)
   # ─────────────────────────────────────────────────────────────────────────────
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -76,7 +76,7 @@ services:
   # 3. Interactive JupyterLab & PyTorch Workspaces (Notebook Controller Equivalent)
   # ─────────────────────────────────────────────────────────────────────────────
   jupyter-workspace:
-    image: quay.io/jupyter/pytorch-notebook:latest
+    image: quay.io/jupyter/minimal-notebook:latest
     restart: unless-stopped
     environment:
       - JUPYTER_TOKEN=gubernator-secret

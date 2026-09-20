@@ -21,13 +21,16 @@ services:
       - "gbnt.caddy.port=11434"
       - "gbnt.service.name=deepseek-engine"
     deploy:
+      placement:
+        constraints:
+          - "gbnt.node.hostname==gbnt-worker1"
       resources:
         limits:
           cpus: "2.0"
-          memory: 3G
+          memory: 2G
         reservations:
           cpus: "0.5"
-          memory: 1G
+          memory: 512M
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Open-WebUI Interactive Chat Interface
@@ -49,10 +52,13 @@ services:
       - "gbnt.caddy.port=8080"
       - "gbnt.service.name=deepseek-chat"
     deploy:
+      placement:
+        constraints:
+          - "gbnt.node.hostname==gbnt-worker2"
       resources:
         limits:
           cpus: "1.0"
-          memory: 1G
+          memory: 2G
         reservations:
           cpus: "0.2"
           memory: 256M

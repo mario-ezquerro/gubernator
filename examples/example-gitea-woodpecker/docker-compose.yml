@@ -20,7 +20,7 @@ services:
       - GITEA__server__SSH_PORT=2222
       - GITEA__security__INSTALL_LOCK=true
     ports:
-      - "3000:3000"
+      - "3001:3000"
       - "2222:22"
     volumes:
       - /var/contenedores/gitea/data:/data

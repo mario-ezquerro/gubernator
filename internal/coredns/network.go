@@ -64,8 +64,12 @@ func ConnectContainer(containerName string) error {
 		return nil
 	}
 
-	if err := exec.Command("docker", "network", "connect", NetworkName, containerName).Run(); err != nil {
-		return fmt.Errorf("failed to connect %s to %s: %w", containerName, NetworkName, err)
+	if out, err := exec.Command("docker", "network", "connect", NetworkName, containerName).CombinedOutput(); err != nil {
+		outStr := strings.ToLower(string(out))
+		if strings.Contains(outStr, "already exists") || strings.Contains(outStr, "already connected") {
+			return nil
+		}
+		return fmt.Errorf("failed to connect %s to %s: %s (%w)", containerName, NetworkName, strings.TrimSpace(string(out)), err)
 	}
 
 	fmt.Printf("🔗 Container '%s' connected to '%s' (CoreDNS *.gbnt available).\n", containerName, NetworkName)

@@ -155,37 +155,50 @@ func GenerateCaddyfile() {
 				} else if t.ContainerIP != "" {
 					targetIP = t.ContainerIP
 				}
-				// If no explicit caddyPort, route to published host port on worker
-				if caddyPort == "" && len(svc.Ports) > 0 {
+				// Determine reachable upstream port on the worker host:
+				// If the container published a public host port on the worker, route to it.
+				// Otherwise, route to the worker node's Caddy Ingress on port 80.
+				hasPublicHostPort := false
+				if len(svc.Ports) > 0 {
 					for _, portSpec := range svc.Ports {
 						spec := strings.TrimSpace(portSpec)
 						if idx := strings.Index(spec, "/"); idx != -1 {
 							spec = spec[:idx]
 						}
 						parts := strings.Split(spec, ":")
-						var hostPort string
+						var bindHost, hostPort string
 						if len(parts) == 2 {
 							hostPort = strings.TrimSpace(parts[0])
 						} else if len(parts) == 3 {
+							bindHost = strings.TrimSpace(parts[0])
 							hostPort = strings.TrimSpace(parts[1])
 						}
-						if hostPort != "" && hostPort != "80" && hostPort != "443" {
-							targetPort = hostPort
-							break
+						if hostPort != "" && bindHost != "127.0.0.1" && bindHost != "localhost" {
+							if caddyPort == "" || caddyPort == defaultPort {
+								targetPort = hostPort
+								hasPublicHostPort = true
+								break
+							}
 						}
 					}
 				}
-			}
-
-			// Safety check: Prevent Caddy from reverse proxying to its own listening port 80/443 on the same host
-			var node db.Node
-			isHostIP := targetIP == "127.0.0.1"
-			if err := db.DB.Where("id = ? OR ip = ?", t.NodeID, targetIP).First(&node).Error; err == nil {
-				if node.IP == targetIP {
-					isHostIP = true
+				if !hasPublicHostPort {
+					// No public host port published on the worker node.
+					// Route traffic to the worker node's Caddy Ingress on port 80,
+					// which locally routes the virtual host to the container IP.
+					targetPort = "80"
 				}
 			}
-			if isHostIP && (targetPort == "80" || targetPort == "443") {
+
+			// Safety check: Prevent Caddy from reverse proxying to its own listening port 80/443 on the Manager host
+			var mgrNode db.Node
+			isLocalManagerHost := targetIP == "127.0.0.1" || targetIP == "localhost"
+			if err := db.DB.Where("role = ? OR id = ?", "manager", "node-local-manager").First(&mgrNode).Error; err == nil && mgrNode.IP != "" {
+				if mgrNode.IP == targetIP {
+					isLocalManagerHost = true
+				}
+			}
+			if isLocalManagerHost && (targetPort == "80" || targetPort == "443") {
 				if t.ContainerIP != "" && t.ContainerIP != targetIP {
 					targetIP = t.ContainerIP
 					targetPort = defaultPort

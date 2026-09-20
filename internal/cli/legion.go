@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -536,12 +537,21 @@ var legionJoinCmd = &cobra.Command{
 						key = strings.Trim(key, "\"' ")
 						val = strings.Trim(val, "\"' ")
 
-						if key != "ingress.host" && key != "gbnt.caddy.host" && key != "node.labels.gbnt.ingress.host" {
+						if key != "ingress.host" && key != "gbnt.caddy.host" && key != "node.labels.gbnt.ingress.host" && key != "gbnt.ingress.host" {
 							continue
 						}
 
 						port := "80"
-						if len(t.Ports) > 0 {
+						for _, c := range t.Constraints {
+							if strings.HasPrefix(c, "gbnt.caddy.port=") || strings.HasPrefix(c, "ingress.port=") {
+								pVal := strings.SplitN(c, "=", 2)[1]
+								if strings.TrimSpace(pVal) != "" {
+									port = strings.TrimSpace(pVal)
+									break
+								}
+							}
+						}
+						if port == "80" && len(t.Ports) > 0 {
 							p := t.Ports[0]
 							parts := strings.Split(p, ":")
 							lastPart := parts[len(parts)-1]
@@ -566,16 +576,17 @@ var legionJoinCmd = &cobra.Command{
 						tlsDirective = "\ttls internal\n"
 					}
 					caddyfileContent += fmt.Sprintf(
-						"%s {\n%s\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
-						host, tlsDirective, strings.Join(upstreams, " "),
+						"http://%s, %s {\n%s\treverse_proxy %s {\n\t\tlb_policy round_robin\n\t}\n}\n\n",
+						host, host, tlsDirective, strings.Join(upstreams, " "),
 					)
 				}
 
 				if len(hostOrder) == 0 {
-					caddyfileContent += ":80 {\n\trespond \"Gubernator Worker Caddy Ingress is running!\" 200\n}\n"
+					caddyfileContent += "http://:80 {\n\trespond \"Gubernator Worker Caddy Ingress is running!\" 200\n}\n"
 				}
 
 				caddyfilePath := caddy.CaddyfilePath()
+				_ = os.MkdirAll(filepath.Dir(caddyfilePath), 0755)
 				currContent, _ := os.ReadFile(caddyfilePath)
 				if string(currContent) != caddyfileContent {
 					if err := os.WriteFile(caddyfilePath, []byte(caddyfileContent), 0644); err == nil {

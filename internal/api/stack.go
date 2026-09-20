@@ -103,7 +103,16 @@ func (c *CommandVal) UnmarshalYAML(value *yaml.Node) error {
 		if err := value.Decode(&list); err != nil {
 			return err
 		}
-		*c = CommandVal(strings.Join(list, " "))
+		var parts []string
+		for _, item := range list {
+			if strings.ContainsAny(item, " \t\n\"'") {
+				escaped := strings.ReplaceAll(item, "'", "'\\''")
+				parts = append(parts, fmt.Sprintf("'%s'", escaped))
+			} else {
+				parts = append(parts, item)
+			}
+		}
+		*c = CommandVal(strings.Join(parts, " "))
 		return nil
 	}
 	return nil
@@ -931,6 +940,12 @@ func DeployStackWithOptions(stackName string, composeRawInput string, targetNode
 		var allStackConstraints []string
 		for _, srvDef := range compose.Services {
 			allStackConstraints = append(allStackConstraints, srvDef.Deploy.Placement.Constraints...)
+			for k, v := range srvDef.Labels {
+				allStackConstraints = append(allStackConstraints, fmt.Sprintf("%s=%s", k, v))
+			}
+			for k, v := range srvDef.Deploy.Labels {
+				allStackConstraints = append(allStackConstraints, fmt.Sprintf("%s=%s", k, v))
+			}
 		}
 
 		// 2. Select the optimal node for the ENTIRE Stack (balances stacks across hosts)

@@ -200,9 +200,10 @@ func executeRemoteWorkerTask(task db.Task, svc db.Service, node db.Node) {
 	for _, v := range svc.Volumes {
 		parts := strings.Split(v, ":")
 		if len(parts) > 0 && strings.HasPrefix(parts[0], "/") {
-			prepCmds = append(prepCmds, fmt.Sprintf("sudo mkdir -p '%s' && sudo chmod 777 '%s'", parts[0], parts[0]))
+			prepCmds = append(prepCmds, fmt.Sprintf("if [ ! -f '%s' ]; then sudo mkdir -p '%s' && sudo chmod 777 '%s' 2>/dev/null || true; fi", parts[0], parts[0], parts[0]))
 		}
 	}
+	prepCmds = append(prepCmds, fmt.Sprintf("sudo docker rm -f '%s' 2>/dev/null || true", containerName))
 	prepCmds = append(prepCmds, strings.Join(dockerArgs, " "))
 	runCmd := strings.Join(prepCmds, " && ")
 	runSSHArgs := append(append([]string{}, sshArgs...), fmt.Sprintf("ubuntu@%s", node.IP), runCmd)

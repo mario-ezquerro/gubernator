@@ -6,7 +6,7 @@ services:
     image: traefik/whoami:latest
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8088:80"
     labels:
       - "ingress.host=whoami.gbnt.local"
       - "gbnt.caddy.port=80"

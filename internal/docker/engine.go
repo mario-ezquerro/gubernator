@@ -65,6 +65,9 @@ func SetDefaultDNS(dns string) {
 func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 	containerName = "gbnt-" + cfg.TaskID
 
+	// Remove any existing container with the same name before starting to prevent conflict errors
+	_ = exec.Command("docker", "rm", "-f", containerName).Run()
+
 	restartPolicy := cfg.Restart
 	if restartPolicy == "" {
 		restartPolicy = "unless-stopped"
@@ -167,15 +170,21 @@ func StartContainer(cfg ContainerConfig) (containerName, ip string, err error) {
 		fmt.Printf("⚠️  docker: failed to connect %s to gbnt-net: %v\n", containerName, connErr)
 	}
 
-	// Fetch container IP in gbnt-net
-	ipCmd := exec.Command("docker", "inspect", "-f", fmt.Sprintf("{{(index .NetworkSettings.Networks \"%s\").IPAddress}}", coredns.NetworkName), containerName)
+	// Fetch container IP in gbnt-net (with fallback to default bridge network)
+	ipCmd := exec.Command("docker", "inspect", "-f", fmt.Sprintf("{{if index .NetworkSettings.Networks \"%s\"}}{{(index .NetworkSettings.Networks \"%s\").IPAddress}}{{else}}{{.NetworkSettings.IPAddress}}{{end}}", coredns.NetworkName, coredns.NetworkName), containerName)
 	var out bytes.Buffer
 	ipCmd.Stdout = &out
 	if err = ipCmd.Run(); err != nil {
-		return containerName, "", fmt.Errorf("container started but failed to inspect IP on gbnt-net: %w", err)
+		// Fallback: try root IPAddress
+		fallbackCmd := exec.Command("docker", "inspect", "-f", "{{.NetworkSettings.IPAddress}}", containerName)
+		var fbOut bytes.Buffer
+		fallbackCmd.Stdout = &fbOut
+		if fbErr := fallbackCmd.Run(); fbErr == nil {
+			ip = strings.TrimSpace(fbOut.String())
+		}
+	} else {
+		ip = strings.TrimSpace(out.String())
 	}
-
-	ip = strings.TrimSpace(out.String())
 
 	return containerName, ip, nil
 }
