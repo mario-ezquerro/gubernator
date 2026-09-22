@@ -73,6 +73,7 @@ for NODE in gbnt-manager gbnt-worker1 gbnt-worker2; do
   multipass exec "$NODE" -- sudo usermod -aG docker ubuntu
   multipass exec "$NODE" -- sudo mkdir -p /data/glusterfs/brick1 /var/contenedores
   multipass exec "$NODE" -- sudo chmod 0777 /data/glusterfs/brick1 /var/contenedores
+  multipass exec "$NODE" -- sudo docker pull alpine:latest || true
 done
 
 echo "🔑 5. Setting up unified SSH keys across cluster..."
@@ -140,10 +141,47 @@ EOF"
 multipass exec gbnt-manager -- sudo mkdir -p /home/ubuntu/data
 multipass exec gbnt-manager -- sudo systemctl daemon-reload
 multipass exec gbnt-manager -- sudo systemctl enable --now gbnt-manager.service
+
+# Export API token in bash profiles and configure ~/.gbntctl/config for CLI convenience
+multipass exec gbnt-manager -- sudo bash -c '
+mkdir -p /home/ubuntu/.gbntctl /root/.gbntctl
+cat << "EOF" > /home/ubuntu/.gbntctl/config
+current-context: local
+contexts:
+  - name: local
+    server: http://localhost:4000
+    token: my-gubernator-api-token
+EOF
+cp /home/ubuntu/.gbntctl/config /root/.gbntctl/config
+chown -R ubuntu:ubuntu /home/ubuntu/.gbntctl
+chmod 600 /home/ubuntu/.gbntctl/config /root/.gbntctl/config
+'
+
+for WORKER in gbnt-worker1 gbnt-worker2; do
+  multipass exec "$WORKER" -- sudo bash -c "
+mkdir -p /home/ubuntu/.gbntctl /root/.gbntctl
+cat << 'EOF' > /home/ubuntu/.gbntctl/config
+current-context: cluster
+contexts:
+  - name: cluster
+    server: http://$MGR_PRIMARY_IP:4000
+    token: my-gubernator-api-token
+EOF
+cp /home/ubuntu/.gbntctl/config /root/.gbntctl/config
+chown -R ubuntu:ubuntu /home/ubuntu/.gbntctl
+chmod 600 /home/ubuntu/.gbntctl/config /root/.gbntctl/config
+"
+done
+
+for NODE in gbnt-manager gbnt-worker1 gbnt-worker2; do
+  multipass exec "$NODE" -- bash -c "echo 'export GBNT_API_TOKEN=my-gubernator-api-token' >> /home/ubuntu/.bashrc"
+  multipass exec "$NODE" -- sudo bash -c "echo 'export GBNT_API_TOKEN=my-gubernator-api-token' >> /root/.bashrc"
+done
+
 sleep 6
 
 echo "🔑 8. Getting cluster join token..."
-JOIN_TOKEN=$(multipass exec gbnt-manager -- /home/ubuntu/gbnt legion join-token 2>/dev/null | grep -oE '[a-f0-9]{32}' | head -n 1 || true)
+JOIN_TOKEN=$(multipass exec gbnt-manager -- env GBNT_API_TOKEN=my-gubernator-api-token /usr/local/bin/gbnt legion join-token 2>/dev/null | grep -oE '[a-f0-9]{32}' | head -n 1 || true)
 if [ -z "$JOIN_TOKEN" ]; then
   JOIN_TOKEN="d04de109ec96411d1fd7672e04725244"
 fi
@@ -161,7 +199,7 @@ Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-ExecStart=/home/ubuntu/gbnt legion join --manager http://$MGR_PRIMARY_IP:4000 --token $JOIN_TOKEN --api-token my-gubernator-api-token
+ExecStart=/usr/local/bin/gbnt legion join --manager http://$MGR_PRIMARY_IP:4000 --token $JOIN_TOKEN --api-token my-gubernator-api-token
 Restart=always
 RestartSec=5s
 LimitNOFILE=65536
@@ -178,6 +216,9 @@ sleep 4
 multipass exec gbnt-manager -- sudo gluster peer probe 10.10.100.25 || true
 multipass exec gbnt-manager -- sudo gluster peer probe 10.10.100.26 || true
 multipass exec gbnt-manager -- sudo gluster peer status
+
+echo "📊 11. Initializing SRE monitoring stack (Prometheus, Grafana, Loki, cAdvisor, Jaeger)..."
+multipass exec gbnt-manager -- env GBNT_API_TOKEN=my-gubernator-api-token /usr/local/bin/gbnt monitor init || true
 
 echo "=============================================================================="
 echo "🎉 Clean 3-node cluster ready!"
