@@ -393,26 +393,34 @@ func seedInitialLocalUser() {
 	var userCount int64
 	DB.Model(&LocalUser{}).Count(&userCount)
 	if userCount == 0 {
-		hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+		adminPass := os.Getenv("GBNT_WEB_PASSWORD")
+		if adminPass == "" {
+			adminPass = "admin"
+		}
+		adminUser := os.Getenv("GBNT_WEB_USER")
+		if adminUser == "" {
+			adminUser = "admin"
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
 		if err != nil {
 			slog.Error("failed to hash default admin password", "err", err)
 			return
 		}
-		adminUser := LocalUser{
+		user := LocalUser{
 			ID:           "usr-admin-default",
-			Username:     "admin",
+			Username:     adminUser,
 			PasswordHash: string(hash),
 			DisplayName:  "Default Administrator",
-			Email:        "admin@gubernator.local",
+			Email:        adminUser + "@gubernator.local",
 			Role:         "admin",
 			Enabled:      true,
 			CreatedAt:    time.Now(),
 			UpdatedAt:    time.Now(),
 		}
-		if err := DB.Create(&adminUser).Error; err != nil {
+		if err := DB.Create(&user).Error; err != nil {
 			slog.Error("failed to seed initial local admin user", "err", err)
 		} else {
-			slog.Info("initial local admin user seeded (username: admin)")
+			slog.Info("initial local admin user seeded", "username", adminUser)
 		}
 	}
 }

@@ -109,19 +109,6 @@ func ExtractUserSession(c *gin.Context) *UserSession {
 			}
 		}
 	}
-
-	// 6. Seamless Local Web Dashboard Fallback (Single-tenant mode without LDAP)
-	var activeLDAPCount int64
-	if db.DB != nil {
-		_ = db.DB.Model(&db.LDAPConfig{}).Where("enabled = ?", true).Count(&activeLDAPCount).Error
-	}
-	if activeLDAPCount == 0 {
-		// In standard single-tenant mode without LDAP, grant Admin session for web dashboard operations
-		adminSession := GenerateLocalAdminSession("admin")
-		c.Set(ContextUserKey, &adminSession)
-		return &adminSession
-	}
-
 	return nil
 }
 

@@ -112,6 +112,7 @@ done
 
 echo "👑 7. Starting Gubernator Manager service on gbnt-manager..."
 MGR_PRIMARY_IP=$(multipass info gbnt-manager | grep -E 'IPv4' | awk '{print $2}')
+ADMIN_PASSWORD="${GBNT_ADMIN_PASSWORD:-admin}"
 multipass exec gbnt-manager -- sudo bash -c "cat << 'EOF' > /etc/systemd/system/gbnt-manager.service
 [Unit]
 Description=Gubernator Orchestrator Manager
@@ -127,7 +128,7 @@ Environment=\"GBNT_HOST_IP=$MGR_PRIMARY_IP\"
 Environment=\"GBNT_DATA_DIR=/home/ubuntu/data\"
 Environment=\"GBNT_WEB=true\"
 Environment=\"GBNT_WEB_USER=admin\"
-Environment=\"GBNT_WEB_PASSWORD=admin\"
+Environment=\"GBNT_WEB_PASSWORD=$ADMIN_PASSWORD\"
 Environment=\"GBNT_MONITOR=true\"
 ExecStart=/home/ubuntu/gbnt serve
 Restart=always
@@ -223,5 +224,5 @@ multipass exec gbnt-manager -- env GBNT_API_TOKEN=my-gubernator-api-token /usr/l
 echo "=============================================================================="
 echo "🎉 Clean 3-node cluster ready!"
 echo "👑 Manager URL: http://$MGR_PRIMARY_IP:4001"
-echo "🔐 Credentials: admin / admin"
+echo "🔐 Credentials: admin / $ADMIN_PASSWORD"
 echo "=============================================================================="
