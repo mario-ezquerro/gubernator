@@ -43,49 +43,125 @@ var workerMonitorServices = []monitorService{
 	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
 }
 
-// RegisterInDB registers the monitoring containers as special stacks in the
+// RegisterInDB registers the active SRE monitoring containers as special stacks in the
 // Gubernator database so they appear in the Flutter dashboard (Manager + Workers).
 func RegisterInDB(database *gorm.DB) error {
+	if database == nil {
+		return nil
+	}
+	activeID := GetActiveProfile()
+	profile := GetProfileByID(activeID)
+	if profile == nil {
+		for _, p := range predefinedProfiles {
+			if p.ID == DefaultProfileID {
+				profile = &p
+				break
+			}
+		}
+	}
+	if profile == nil && len(predefinedProfiles) > 0 {
+		profile = &predefinedProfiles[0]
+	}
+	if profile != nil {
+		return RegisterInDBWithProfile(database, *profile)
+	}
+	return nil
+}
+
+// RegisterInDBWithProfile registers the given SRE profile containers into the DB cleanly,
+// removing any duplicate or orphaned legacy tasks, setting correct ports and container IPs.
+func RegisterInDBWithProfile(database *gorm.DB, profile SREProfile) error {
+	if database == nil {
+		return nil
+	}
 	now := time.Now()
 
-	// 1) Register Manager SRE Stack
+	// 1) Purge any legacy/rogue duplicate manager tasks and services
+	database.Where("id LIKE ?", "task-gbnt-monitor-%").Delete(&db.Task{})
+	database.Where("id LIKE ?", "task-sre-%").Delete(&db.Task{})
+	database.Where("service_id LIKE ?", SREStackID+"-%").Delete(&db.Task{})
+	database.Where("service_id LIKE ?", "sre-monitor-%").Delete(&db.Task{})
+	database.Where("id LIKE ?", SREStackID+"-%").Delete(&db.Service{})
+	database.Where("id LIKE ?", "sre-svc-gbnt-monitor-%").Delete(&db.Service{})
+
+	// 2) Register or update Manager SRE Stack
 	var existingMgrStack db.Stack
+	stackDisplayName := fmt.Sprintf("[SRE] Monitor — %s", profile.Name)
 	if err := database.First(&existingMgrStack, "id = ?", SREStackID).Error; err != nil {
 		managerStack := db.Stack{
 			ID:             SREStackID,
-			Name:           SREStackName,
-			RawComposeFile: "# Managed by Gubernator SRE Engine\n# Manager Node Monitoring Stack",
+			Name:           stackDisplayName,
+			RawComposeFile: fmt.Sprintf("# Managed by Gubernator SRE Engine\n# Profile: %s (%s)\n# %s", profile.ID, profile.Name, profile.Subtitle),
 			CreatedAt:      now,
 			UpdatedAt:      now,
 		}
 		database.Create(&managerStack)
+	} else {
+		database.Model(&existingMgrStack).Updates(map[string]interface{}{
+			"name":             stackDisplayName,
+			"raw_compose_file": fmt.Sprintf("# Managed by Gubernator SRE Engine\n# Profile: %s (%s)\n# %s", profile.ID, profile.Name, profile.Subtitle),
+			"updated_at":       now,
+		})
 	}
 
-	for _, ms := range managerMonitorServices {
-		serviceID := "sre-svc-mgr-" + ms.Name
+	// 3) Register / update canonical services and tasks for this profile
+	activeServiceIDs := make(map[string]bool)
+	activeTaskIDs := make(map[string]bool)
+
+	for _, cName := range profile.Containers {
+		meta := getMonitorServiceMeta(cName)
+		serviceID := "sre-svc-mgr-" + meta.Name
+		taskID := "sre-task-mgr-" + meta.Name
+		activeServiceIDs[serviceID] = true
+		activeTaskIDs[taskID] = true
+
+		status := "dead"
+		image := meta.Image
+		ports := meta.Ports
+
+		// Inspect container for live status and image
+		inspectOut, inspectErr := exec.Command("docker", "inspect", "-f", "{{.State.Status}}|{{.Config.Image}}", cName).Output()
+		if inspectErr == nil {
+			parts := strings.Split(strings.TrimSpace(string(inspectOut)), "|")
+			if len(parts) >= 1 && parts[0] != "" {
+				if parts[0] == "running" {
+					status = "running"
+				} else {
+					status = parts[0]
+				}
+			}
+			if len(parts) >= 2 && parts[1] != "" {
+				image = parts[1]
+			}
+		}
+
+		// Extract live dynamic port bindings if container is running
+		if livePorts := getLiveContainerPorts(cName); len(livePorts) > 0 {
+			ports = livePorts
+		}
+
 		var existingService db.Service
 		if err := database.First(&existingService, "id = ?", serviceID).Error; err != nil {
 			service := db.Service{
 				ID:              serviceID,
 				StackID:         SREStackID,
-				Name:            ms.Name,
-				Image:           ms.Image,
+				Name:            meta.Name,
+				Image:           image,
 				DesiredReplicas: 1,
-				Ports:           ms.Ports,
+				Ports:           ports,
 				CreatedAt:       now,
 				UpdatedAt:       now,
 			}
 			database.Create(&service)
+		} else {
+			existingService.Name = meta.Name
+			existingService.Image = image
+			existingService.Ports = ports
+			existingService.UpdatedAt = now
+			database.Save(&existingService)
 		}
 
-		containerIP := getContainerIP(ms.ContainerName)
-		status := "dead"
-		inspectOut, inspectErr := exec.Command("docker", "inspect", "-f", "{{.State.Status}}", ms.ContainerName).Output()
-		if inspectErr == nil && strings.TrimSpace(string(inspectOut)) == "running" {
-			status = "running"
-		}
-
-		taskID := "sre-task-mgr-" + ms.Name
+		containerIP := getContainerIP(cName)
 		var existingTask db.Task
 		if err := database.First(&existingTask, "id = ?", taskID).Error; err != nil {
 			task := db.Task{
@@ -94,29 +170,50 @@ func RegisterInDB(database *gorm.DB) error {
 				NodeID:        "node-local-manager",
 				Status:        status,
 				ContainerIP:   containerIP,
-				ContainerName: ms.ContainerName,
+				ContainerName: cName,
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}
 			database.Create(&task)
 		} else {
 			database.Model(&existingTask).Updates(map[string]interface{}{
-				"status":       status,
-				"container_ip": containerIP,
-				"updated_at":   now,
+				"service_id":     serviceID,
+				"status":         status,
+				"container_ip":   containerIP,
+				"container_name": cName,
+				"error":          "",
+				"updated_at":     now,
 			})
 		}
 	}
 
-	// 2) Sync active Worker SRE Stacks
+	// 4) Prune any manager SRE services or tasks that are not part of the active profile
+	var existingMgrSvcs []db.Service
+	database.Where("stack_id = ?", SREStackID).Find(&existingMgrSvcs)
+	for _, s := range existingMgrSvcs {
+		if !activeServiceIDs[s.ID] {
+			database.Where("service_id = ?", s.ID).Delete(&db.Task{})
+			database.Delete(&s)
+		}
+	}
+
+	var existingMgrTasks []db.Task
+	database.Where("id LIKE 'sre-task-mgr-%' AND node_id = ?", "node-local-manager").Find(&existingMgrTasks)
+	for _, t := range existingMgrTasks {
+		if !activeTaskIDs[t.ID] {
+			database.Delete(&t)
+		}
+	}
+
+	// 5) Sync active Worker SRE Stacks
 	SyncWorkerSreStacks(database)
 
-	// 3) Sync Network Topology stacks if Scope is running
+	// 6) Sync Network Topology stacks if Scope is running
 	if IsScopeRunning() {
 		RegisterScopeStackInDB(database)
 	}
 
-	fmt.Println("📋 Manager and Worker SRE stacks registered in dashboard database.")
+	fmt.Printf("📋 Manager SRE stack [%s] and Worker stacks synced in database (clean 1-to-1 registration).\n", profile.Name)
 	return nil
 }
 
@@ -397,11 +494,17 @@ func UnregisterScopeStackFromDB(database *gorm.DB) {
 
 // UnregisterFromDB removes all SRE monitoring stacks from the database.
 func UnregisterFromDB(database *gorm.DB) {
+	if database == nil {
+		return
+	}
 	var services []db.Service
 	database.Where("stack_id LIKE 'sre-%'").Find(&services)
 	for _, s := range services {
 		database.Where("service_id = ?", s.ID).Delete(&db.Task{})
 	}
+	database.Where("service_id LIKE 'sre-%'").Delete(&db.Task{})
+	database.Where("id LIKE 'sre-task-%'").Delete(&db.Task{})
+	database.Where("id LIKE 'task-gbnt-monitor-%'").Delete(&db.Task{})
 	database.Where("stack_id LIKE 'sre-%'").Delete(&db.Service{})
 	database.Where("id LIKE 'sre-%'").Delete(&db.Stack{})
 }
@@ -413,11 +516,83 @@ func getContainerIP(name string) string {
 	if err != nil {
 		return ""
 	}
-	ips := strings.Fields(strings.TrimSpace(string(out)))
+	raw := strings.TrimSpace(string(out))
+	if raw == "" {
+		return ""
+	}
+	if strings.Contains(strings.ToLower(raw), "invalid") {
+		return getManagerHostIP()
+	}
+	ips := strings.Fields(raw)
 	for _, ip := range ips {
-		if ip != "" && ip != "invalid" && !strings.Contains(ip, "invalid") {
+		if ip != "" && !strings.EqualFold(ip, "invalid") && !strings.EqualFold(ip, "ip") && !strings.Contains(strings.ToLower(ip), "invalid") {
 			return ip
 		}
 	}
-	return ""
+	return getManagerHostIP()
+}
+
+// getLiveContainerPorts extracts active host:container port mappings from docker inspect.
+func getLiveContainerPorts(name string) []string {
+	out, err := exec.Command("docker", "inspect", "--format",
+		"{{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{$conf0 := index $conf 0}}{{$conf0.HostPort}}:{{$p}} {{end}}{{end}}",
+		name).Output()
+	if err != nil {
+		return nil
+	}
+	raw := strings.TrimSpace(string(out))
+	if raw == "" {
+		return nil
+	}
+	var ports []string
+	seen := make(map[string]bool)
+	for _, entry := range strings.Fields(raw) {
+		clean := strings.TrimSuffix(entry, "/tcp")
+		clean = strings.TrimSuffix(clean, "/udp")
+		if clean != "" && !seen[clean] {
+			seen[clean] = true
+			ports = append(ports, clean)
+		}
+	}
+	return ports
+}
+
+// getMonitorServiceMeta returns standard service metadata (clean name, image, default ports)
+// for any monitoring container across all SRE profiles.
+func getMonitorServiceMeta(cName string) monitorService {
+	switch cName {
+	case CadvisorName:
+		return monitorService{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}}
+	case NodeExporterName:
+		return monitorService{Name: "node-exporter", ContainerName: NodeExporterName, Image: "prom/node-exporter:latest", Ports: []string{"9100:9100"}}
+	case PrometheusName:
+		return monitorService{Name: "prometheus", ContainerName: PrometheusName, Image: "prom/prometheus:latest", Ports: []string{"9090:9090"}}
+	case LokiName:
+		return monitorService{Name: "loki", ContainerName: LokiName, Image: "grafana/loki:latest", Ports: []string{"3100:3100"}}
+	case PromtailName:
+		return monitorService{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}}
+	case GrafanaName:
+		return monitorService{Name: "grafana", ContainerName: GrafanaName, Image: "grafana/grafana:latest", Ports: []string{"3000:3000"}}
+	case JaegerName:
+		return monitorService{Name: "jaeger", ContainerName: JaegerName, Image: "jaegertracing/all-in-one:latest", Ports: []string{"4317:4317", "4318:4318", "16686:16686"}}
+	case "gbnt-monitor-victoriametrics":
+		return monitorService{Name: "victoriametrics", ContainerName: cName, Image: "victoriametrics/victoria-metrics:latest", Ports: []string{"8428:8428"}}
+	case "gbnt-monitor-victorialogs":
+		return monitorService{Name: "victorialogs", ContainerName: cName, Image: "victoriametrics/victoria-logs:latest", Ports: []string{"9428:9428"}}
+	case "gbnt-monitor-fluentbit":
+		return monitorService{Name: "fluentbit", ContainerName: cName, Image: "fluent/fluent-bit:latest", Ports: []string{}}
+	case "gbnt-monitor-clickhouse":
+		return monitorService{Name: "clickhouse", ContainerName: cName, Image: "clickhouse/clickhouse-server:latest", Ports: []string{"8123:8123", "9000:9000"}}
+	case "gbnt-monitor-otel-collector":
+		return monitorService{Name: "otel-collector", ContainerName: cName, Image: "otel/opentelemetry-collector-contrib:latest", Ports: []string{"4317:4317", "4318:4318"}}
+	case "gbnt-monitor-opensearch":
+		return monitorService{Name: "opensearch", ContainerName: cName, Image: "opensearchproject/opensearch:latest", Ports: []string{"9200:9200"}}
+	case "gbnt-monitor-vector-forwarder":
+		return monitorService{Name: "vector-forwarder", ContainerName: cName, Image: "timberio/vector:latest-alpine", Ports: []string{}}
+	default:
+		clean := strings.TrimPrefix(cName, "gbnt-monitor-")
+		clean = strings.TrimPrefix(clean, "gbnt-")
+		clean = strings.TrimPrefix(clean, "monitor-")
+		return monitorService{Name: clean, ContainerName: cName, Image: "unknown", Ports: []string{}}
+	}
 }

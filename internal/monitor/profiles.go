@@ -3,7 +3,6 @@ package monitor
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -561,70 +560,5 @@ func deployExternalForwarderStack() error {
 
 // RegisterProfileInDB registers the profile containers into Gubernator SQLite database.
 func RegisterProfileInDB(database *gorm.DB, profile SREProfile) error {
-	now := time.Now()
-
-	// Update or create Manager SRE Stack
-	var existingMgrStack db.Stack
-	stackDisplayName := fmt.Sprintf("[SRE] Monitor — %s", profile.Name)
-	if err := database.First(&existingMgrStack, "id = ?", SREStackID).Error; err != nil {
-		managerStack := db.Stack{
-			ID:             SREStackID,
-			Name:           stackDisplayName,
-			RawComposeFile: fmt.Sprintf("# Managed by Gubernator SRE Engine\n# Profile: %s (%s)\n# %s", profile.ID, profile.Name, profile.Subtitle),
-			CreatedAt:      now,
-			UpdatedAt:      now,
-		}
-		database.Create(&managerStack)
-	} else {
-		database.Model(&existingMgrStack).Updates(map[string]interface{}{
-			"name":             stackDisplayName,
-			"raw_compose_file": fmt.Sprintf("# Managed by Gubernator SRE Engine\n# Profile: %s (%s)\n# %s", profile.ID, profile.Name, profile.Subtitle),
-			"updated_at":       now,
-		})
-	}
-
-	// Clear old manager SRE tasks and services
-	database.Where("service_id LIKE ?", SREStackID+"-%").Delete(&db.Task{})
-	database.Where("stack_id = ?", SREStackID).Delete(&db.Service{})
-
-	// Register current profile containers
-	for _, cName := range profile.Containers {
-		out, err := exec.Command("docker", "inspect", "-f", "{{.State.Status}}|{{.Config.Image}}", cName).Output()
-		status := "stopped"
-		image := "unknown"
-		if err == nil {
-			parts := strings.Split(strings.TrimSpace(string(out)), "|")
-			if len(parts) >= 1 && parts[0] != "" {
-				status = parts[0]
-			}
-			if len(parts) >= 2 && parts[1] != "" {
-				image = parts[1]
-			}
-		}
-
-		serviceID := fmt.Sprintf("%s-%s", SREStackID, cName)
-		svc := db.Service{
-			ID:              serviceID,
-			StackID:         SREStackID,
-			Name:            cName,
-			Image:           image,
-			DesiredReplicas: 1,
-			CreatedAt:       now,
-			UpdatedAt:       now,
-		}
-		database.Create(&svc)
-
-		task := db.Task{
-			ID:            fmt.Sprintf("task-%s", cName),
-			ServiceID:     serviceID,
-			NodeID:        "node-local-manager",
-			Status:        status,
-			ContainerName: cName,
-			CreatedAt:     now,
-			UpdatedAt:     now,
-		}
-		database.Create(&task)
-	}
-
-	return nil
+	return RegisterInDBWithProfile(database, profile)
 }

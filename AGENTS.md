@@ -1523,3 +1523,17 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
     6. Compose Studio Web IDE & Copilot guide (the 10 visual tabs).
     7. **Master Reference Cheat Sheet Table:** Complete exhaustive matrix mapping all 40+ Gubernator labels, constraints, and directives with valid values, defaults, and links to specialized guides.
   - Updated `docs/index.md` with direct navigation links under a new **Orchestration, Compose & Networking** category.
+
+### 136. SRE Stack Registration Unification & Deduplication Engine (`v3.0.6`)
+* **Unified Profile-Aware DB Registration (`internal/monitor/register.go`, `internal/monitor/profiles.go`):**
+  - Consolidated dual diverging registration paths (`RegisterInDB` and `RegisterProfileInDB`) into a single source of truth (`RegisterInDBWithProfile`).
+  - Eliminates container and task duplication in `[SRE] Monitor` where both `sre-svc-mgr-<name>` / `sre-task-mgr-<name>` and `sre-monitor-stack-gbnt-monitor-<name>` / `task-gbnt-monitor-<name>` were previously created simultaneously.
+* **Automatic Legacy & Orphan Task Pruning:**
+  - Dynamic cleanup queries automatically purge obsolete `task-gbnt-monitor-%`, `task-sre-%`, and `sre-monitor-stack-%` records from SQLite.
+  - Prunes services and tasks when switching between profiles (e.g., from balanced 7-container stack to ultra-light 6-container stack).
+* **Port Mapping & Host Network IP Fixes:**
+  - Dynamic inspection via `getLiveContainerPorts` and metadata mapping ensures all monitoring containers have human-friendly names (`cadvisor`, `node-exporter`, `prometheus`, `loki`, `promtail`, `grafana`, `jaeger`) and accurate exposed host ports (`8081:8080`, `9100:9100`, `9090:9090`, `3100:3100`, `3000:3000`, `4317:4317, 4318:4318, 16686:16686`).
+  - Fixed `getContainerIP` bug that produced `"IP"` for host-networked containers (like `node-exporter`), now correctly falling back to the manager node IP.
+* **Automated Regression Suite:**
+  - Added `TestRegisterInDBWithProfile_Deduplication` in `internal/monitor/profiles_test.go` verifying 1-to-1 container registration, port retention, and clean legacy pruning.
+
