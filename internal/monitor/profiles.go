@@ -160,7 +160,7 @@ var predefinedProfiles = []SREProfile{
 
 // activeProfileFile returns the path to the active profile marker.
 func activeProfileFile() string {
-	return filepath.Join(MonitorConfigDir(), "active_profile")
+	return filepath.Join(ConfigDir(), "active_profile")
 }
 
 // GetActiveProfile returns the current active profile ID (defaults to "cloud-native").
@@ -177,7 +177,7 @@ func GetActiveProfile() string {
 
 // SetActiveProfile persists the active profile ID to disk.
 func SetActiveProfile(id string) error {
-	dir := MonitorConfigDir()
+	dir := ConfigDir()
 	_ = os.MkdirAll(dir, 0755)
 	return os.WriteFile(activeProfileFile(), []byte(strings.TrimSpace(id)), 0644)
 }
@@ -458,7 +458,7 @@ func deployEnterpriseStack() error {
 	}
 
 	// Prepare OpenSearch Dashboards config with CSP rules allowing embedding in Gubernator web UI
-	osdConfigDir := filepath.Join(MonitorConfigDir(), "opensearch-dashboards")
+	osdConfigDir := filepath.Join(ConfigDir(), "opensearch-dashboards")
 	_ = os.MkdirAll(osdConfigDir, 0755)
 	osdConfigFile := filepath.Join(osdConfigDir, "opensearch_dashboards.yml")
 	osdConfig := `server.host: '0.0.0.0'
@@ -482,7 +482,7 @@ csp.warnLegacyBrowsers: false
 	}
 
 	// Prepare Fluent Bit config and parsers for OpenSearch log shipping
-	fbConfigDir := filepath.Join(MonitorConfigDir(), "fluentbit")
+	fbConfigDir := filepath.Join(ConfigDir(), "fluentbit")
 	_ = os.MkdirAll(fbConfigDir, 0755)
 
 	parsersConfigFile := filepath.Join(fbConfigDir, "parsers.conf")

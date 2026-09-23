@@ -26,7 +26,7 @@ func WriteConfigs(workerTargets []string) error {
 	if len(workerTargets) == 0 {
 		workerTargets = getWorkerIPs()
 	}
-	dir := MonitorConfigDir()
+	dir := ConfigDir()
 
 	dirs := []string{
 		filepath.Join(dir, "prometheus"),
@@ -345,7 +345,7 @@ func getWorkerIPs() []string {
 // writes it to disk, and if the Prometheus container is running, copies it in and sends SIGHUP.
 func UpdatePrometheusConfig() error {
 	ips := getWorkerIPs()
-	dir := MonitorConfigDir()
+	dir := ConfigDir()
 	promDir := filepath.Join(dir, "prometheus")
 	if err := os.MkdirAll(promDir, 0755); err != nil {
 		return fmt.Errorf("failed to create prometheus directory: %w", err)

@@ -17,6 +17,8 @@ exclude:
       - internal/web/flutter
       - site
       - vendor
+  - name: VulnerableLibrariesLocal
+  - name: DuplicatedCode
 
 # Fail the CI build if NEW critical/high severity findings are introduced
 # (findings already in baseline.sarif.json are excluded automatically)

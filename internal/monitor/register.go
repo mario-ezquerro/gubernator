@@ -15,8 +15,6 @@ import (
 const (
 	// SREStackID is the fixed stack ID used for the Manager SRE monitoring stack in the DB.
 	SREStackID = "sre-monitor-stack"
-	// SREStackName is the display name for the Manager SRE stack in the dashboard.
-	SREStackName = "[SRE] Monitor (Manager)"
 )
 
 // monitorService describes a monitoring container for DB registration.
@@ -25,16 +23,6 @@ type monitorService struct {
 	ContainerName string
 	Image         string
 	Ports         []string
-}
-
-var managerMonitorServices = []monitorService{
-	{Name: "cadvisor", ContainerName: CadvisorName, Image: "gcr.io/cadvisor/cadvisor:latest", Ports: []string{"8081:8080"}},
-	{Name: "node-exporter", ContainerName: NodeExporterName, Image: "prom/node-exporter:latest", Ports: []string{"9100:9100"}},
-	{Name: "prometheus", ContainerName: PrometheusName, Image: "prom/prometheus:latest", Ports: []string{"9090:9090"}},
-	{Name: "loki", ContainerName: LokiName, Image: "grafana/loki:latest", Ports: []string{"3100:3100"}},
-	{Name: "promtail", ContainerName: PromtailName, Image: "grafana/promtail:latest", Ports: []string{}},
-	{Name: "grafana", ContainerName: GrafanaName, Image: "grafana/grafana:latest", Ports: []string{"3000:3000"}},
-	{Name: "jaeger", ContainerName: JaegerName, Image: "jaegertracing/all-in-one:latest", Ports: []string{"4317:4317", "4318:4318", "16686:16686"}},
 }
 
 var workerMonitorServices = []monitorService{

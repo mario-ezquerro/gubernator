@@ -279,7 +279,7 @@ func Status() {
 // populateConfigVolumes creates Docker named volumes and copies config files into them
 // using a temporary alpine container. This works whether gbnt runs on the host or inside a container.
 func populateConfigVolumes() error {
-	dir := MonitorConfigDir()
+	dir := ConfigDir()
 
 	type volCopy struct {
 		volume   string

@@ -262,7 +262,7 @@ func parsePingOutput(res *PingResult, raw string) {
 
 	// Packets: "3 packets transmitted, 3 received, 0% packet loss"
 	// or macOS: "3 packets transmitted, 3 packets received, 0.0% packet loss"
-	pktRe := regexp.MustCompile(`(\d+)\s+packets transmitted,\s+(\d+)\s+(?:packets\s+)?received,\s+([\d\.]+)%\s+packet loss`)
+	pktRe := regexp.MustCompile(`(\d+)\s+packets transmitted,\s+(\d+)\s+(?:packets\s+)?received,\s+([\d.]+)%\s+packet loss`)
 	if m := pktRe.FindStringSubmatch(raw); len(m) >= 4 {
 		if sent, err := strconv.Atoi(m[1]); err == nil {
 			res.PacketsSent = sent
@@ -277,7 +277,7 @@ func parsePingOutput(res *PingResult, raw string) {
 
 	// RTT: "rtt min/avg/max/mdev = 0.028/0.034/0.038/0.004 ms"
 	// or macOS: "round-trip min/avg/max/stddev = 0.028/0.034/0.038/0.004 ms"
-	rttRe := regexp.MustCompile(`(?:rtt|round-trip)\s+(?:min/avg/max/\w+)\s*=\s*([\d\.]+)/([\d\.]+)/([\d\.]+)`)
+	rttRe := regexp.MustCompile(`(?:rtt|round-trip)\s+min/avg/max/\w+\s*=\s*([\d.]+)/([\d.]+)/([\d.]+)`)
 	if m := rttRe.FindStringSubmatch(raw); len(m) >= 4 {
 		if minVal, err := strconv.ParseFloat(m[1], 64); err == nil {
 			res.MinLatency = minVal
