@@ -66,6 +66,7 @@ class _AppShellState extends State<AppShell> {
   String? _tasksFilterStack;
   bool _sidebarCollapsed = false;
   bool _fetching = false;
+  bool _hasPromptedUpdate = false;
 
   // Cached singleton instances for platform-view / iframe pages to eliminate DOM re-creation
   late final Widget _grafanaPage = const GrafanaPage(key: ValueKey('page-grafana-singleton'));
@@ -109,12 +110,21 @@ class _AppShellState extends State<AppShell> {
     try {
       final data = await ApiService.fetchState();
       if (mounted) {
+        final shouldPrompt = data.updateAvailable && !_hasPromptedUpdate;
         setState(() {
           _state = data;
           _loading = false;
           _error = null;
           _lastRefresh = DateTime.now();
         });
+        if (shouldPrompt) {
+          _hasPromptedUpdate = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showUpdateDialog();
+            }
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

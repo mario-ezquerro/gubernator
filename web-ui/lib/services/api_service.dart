@@ -878,8 +878,8 @@ class ApiService {
   /// Fetches latest release check from backend /api/system/update/check with optional force refresh.
   static Future<Map<String, dynamic>> fetchUpdateCheck({bool force = false}) async {
     try {
-      final url = force ? '/api/system/update/check?force=true' : '/api/system/update/check';
-      final response = await http.get(Uri.parse(url));
+      final url = force ? '/api/update/check?force=true' : '/api/update/check';
+      final response = await http.get(Uri.parse(url), headers: authHeaders);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
