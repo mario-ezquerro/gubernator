@@ -1,0 +1,1732 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../cis-docker/">
+      
+      
+        <link rel="next" href="../nis2/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>ISO/IEC 27001:2022 (Annex A) - Gubernator Orchestrator (v3.0.7)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#isoiec-270012022-annex-a-container-cloud-compliance-suite" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v3.0.7)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v3.0.7)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v3.0.7)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ISO/IEC 27001:2022 (Annex A)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../compliance/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compliance & Security
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ebpf/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v3.0.7)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v3.0.7)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v3.0.7)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../architecture/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance Hub Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Digital Operational Resilience Act (EU DORA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cis-docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIS Docker Benchmark (v1.6.0)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ISO/IEC 27001:2022 (Annex A)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ISO/IEC 27001:2022 (Annex A)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-architecture-compliance-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🏛️ 1. Architecture &amp; Compliance Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-evaluated-annex-a-controls-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📋 2. Evaluated Annex A Controls Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-scoring-methodology-posture-grade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧮 3. Scoring Methodology &amp; Posture Grade
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧮 3. Scoring Methodology &amp; Posture Grade">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#posture-grade-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Posture Grade Scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-cli-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        💻 4. CLI Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="💻 4. CLI Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-terminal-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Terminal Audit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statement-of-applicability-soa-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Statement of Applicability (SoA) Report
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#json-export-for-cicd-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON Export for CI/CD Pipelines
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-rest-api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 5. REST API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🌐 5. REST API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-get-live-compliance-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Get Live Compliance Assessment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-export-statement-of-applicability-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Export Statement of Applicability Report
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-flutter-web-ui-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖥️ 6. Flutter Web UI Dashboard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🖥️ 6. Flutter Web UI Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dashboard-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nis2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    European NIS 2 Directive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Esquema Nacional de Seguridad (ENS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth-rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Active Directory, LDAP & RBAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image Security, SBOM & Gatekeeper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../caddy-waf/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Caddy WAF & Threat Shield
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../ebpf/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../examples/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="isoiec-270012022-annex-a-container-cloud-compliance-suite">🌐 ISO/IEC 27001:2022 Annex A Container &amp; Cloud Compliance Suite</h1>
+<p>Gubernator features a continuous, automated compliance engine built directly into its core to evaluate and enforce <strong>ISO/IEC 27001:2022 Annex A</strong> controls across distributed container environments and cloud infrastructure.</p>
+<p>This guide details the technical implementation, Annex A control mappings, real-time scoring algorithm, CLI commands, REST endpoints, and formal Statement of Applicability (SoA) generation.</p>
+<hr />
+<h2 id="1-architecture-compliance-overview">🏛️ 1. Architecture &amp; Compliance Overview</h2>
+<p>ISO/IEC 27001:2022 restructured information security controls into four comprehensive themes (A.5 Organizational, A.6 People, A.7 Physical, and A.8 Technological). Gubernator automates the evaluation of the <strong>24 critical technological and organizational controls</strong> directly governing cloud container orchestration, cluster networking, access management, cryptographic key lifecycles, and resilient operational telemetry.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌────────────────────────────────────────────────────────────────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│               GUBERNATOR ISO/IEC 27001:2022 ENGINE                     │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├───────────────────────────────────┬────────────────────────────────────┤
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│ Theme A.5: Organizational         │ Theme A.8: Technological           │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│ • A.5.15 Access Control Policy    │ • A.8.1  User Endpoint &amp; MFA       │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│ • A.5.23 Cloud Services Security  │ • A.8.2  Privileged Access Rights  │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│ • A.5.29 ICT Readiness Continuity │ • A.8.3  Access Restriction        │
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│ • A.5.30 Continuity Redundancies  │ • A.8.7  Protection vs Malware     │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│                                   │ • A.8.8  Vulnerability Management  │
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│                                   │ • A.8.9  Configuration Management  │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│                                   │ • A.8.12 Data Leakage Prevention   │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│                                   │ • A.8.13 Information Backup        │
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│                                   │ • A.8.15 Logging &amp; Audit Chain     │
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│                                   │ • A.8.16 Monitoring Activities     │
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│                                   │ • A.8.17 Clock Synchronization     │
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│                                   │ • A.8.20 Network Ingress Security  │
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│                                   │ • A.8.21 Network Service Security  │
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│                                   │ • A.8.22 Network Segregation       │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│                                   │ • A.8.24 Cryptography &amp; Cosign     │
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│                                   │ • A.8.25 Secure Development SDLC   │
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│                                   │ • A.8.26 App Security Containment  │
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│                                   │ • A.8.28 Supply Chain &amp; SBOMs      │
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│                                   │ • A.8.31 Separation of Dev/Prod    │
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│                                   │ • A.8.32 Change Management Audit   │
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>└───────────────────────────────────┴────────────────────────────────────┘
+</span></code></pre></div>
+<hr />
+<h2 id="2-evaluated-annex-a-controls-matrix">📋 2. Evaluated Annex A Controls Matrix</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Control ID</th>
+<th style="text-align: left;">Theme</th>
+<th style="text-align: left;">Title</th>
+<th style="text-align: left;">Compliance Target</th>
+<th style="text-align: left;">Discovered Cluster Telemetry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>A.5.15</strong></td>
+<td style="text-align: left;">A.5 Org</td>
+<td style="text-align: left;">Access Control Policy</td>
+<td style="text-align: left;">RBAC Separation</td>
+<td style="text-align: left;">Validates distinct admin, operator, and auditor roles</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.5.23</strong></td>
+<td style="text-align: left;">A.5 Org</td>
+<td style="text-align: left;">Cloud Services Security</td>
+<td style="text-align: left;">Isolated API Ports</td>
+<td style="text-align: left;">Port 4000 Bearer token auth, Port 4001 JWT session isolation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.5.29</strong></td>
+<td style="text-align: left;">A.5 Org</td>
+<td style="text-align: left;">ICT Readiness Continuity</td>
+<td style="text-align: left;">Scheduled Backups</td>
+<td style="text-align: left;">Scheduled cron backup policies across cluster volumes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.5.30</strong></td>
+<td style="text-align: left;">A.5 Org</td>
+<td style="text-align: left;">Redundancy Requirements</td>
+<td style="text-align: left;">Multi-Host Resilience</td>
+<td style="text-align: left;">Multi-node Centurion cluster topology verification</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.1</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Secure Authentication &amp; MFA</td>
+<td style="text-align: left;">TOTP MFA &amp; Lockout</td>
+<td style="text-align: left;">Enforces MFA, &lt;=5 failed logins, &lt;=15 min session timeout</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.2</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Privileged Access Rights</td>
+<td style="text-align: left;">Restricted Admins</td>
+<td style="text-align: left;">Limits full admin accounts to designated personnel</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.3</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Information Access Restriction</td>
+<td style="text-align: left;">Stack Segregation</td>
+<td style="text-align: left;">Docker bridge network namespace isolation and label affinity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.7</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Protection Against Malware</td>
+<td style="text-align: left;">Vulnerability Defense</td>
+<td style="text-align: left;">Container CVE vulnerability scanning and Gatekeeper admission</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.8</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Vulnerability Management</td>
+<td style="text-align: left;">Critical CVE Threshold</td>
+<td style="text-align: left;">Gates deployments on unpatched Critical CVEs (CVSS &gt;= 9.0)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.9</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Configuration Management</td>
+<td style="text-align: left;">Declarative Tracking</td>
+<td style="text-align: left;">Versioned Compose state tracking and drift detection</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.12</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Data Leakage Prevention</td>
+<td style="text-align: left;">Masking &amp; Redaction</td>
+<td style="text-align: left;">Automated redaction of sensitive tokens and env variables</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.13</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Information Backup</td>
+<td style="text-align: left;">AES-256-GCM Backups</td>
+<td style="text-align: left;">PBKDF2 key derivation and SHA-256 integrity verification</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.15</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Logging &amp; Immutable Records</td>
+<td style="text-align: left;">SHA-256 Chain &amp; SIEM</td>
+<td style="text-align: left;">Blockchain-style cryptographic hash chaining and Syslog RFC 5424</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.16</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Monitoring Activities</td>
+<td style="text-align: left;">Continuous Observability</td>
+<td style="text-align: left;">Prometheus metrics, health probes, Loki logs, and Jaeger tracing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.17</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Clock Synchronization</td>
+<td style="text-align: left;">NTP Consensus</td>
+<td style="text-align: left;">Cluster node time synchronization verification</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.20</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Network Security &amp; Ingress</td>
+<td style="text-align: left;">Automated TLS Ingress</td>
+<td style="text-align: left;">Caddy reverse proxy automated ACME TLS and CoreDNS discovery</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.21</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Security of Network Services</td>
+<td style="text-align: left;">Join-Token Authorization</td>
+<td style="text-align: left;">Cryptographic node join tokens and mutual API authentication</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.22</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Segregation of Networks</td>
+<td style="text-align: left;">Container Isolation</td>
+<td style="text-align: left;">Subnet-isolated Docker bridge networks per application stack</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.24</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Use of Cryptography</td>
+<td style="text-align: left;">ECDSA Image Signing</td>
+<td style="text-align: left;">Cosign ECDSA P-256 keys, TLS 1.3 in transit, AES-GCM at rest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.25</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Secure Development Life Cycle</td>
+<td style="text-align: left;">Pre-Flight Validation</td>
+<td style="text-align: left;">Compose syntax linting, Gatekeeper admission verification</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.26</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Application Security Requirements</td>
+<td style="text-align: left;">Runtime Containment</td>
+<td style="text-align: left;">Enforces no-new-privileges, capability dropping, non-root user</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.28</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Supply Chain Security</td>
+<td style="text-align: left;">CycloneDX/SPDX SBOMs</td>
+<td style="text-align: left;">Automated dependency software bill of materials and license audit</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.31</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Separation of Environments</td>
+<td style="text-align: left;">Staging / Prod Isolation</td>
+<td style="text-align: left;">Hardware labels (<code>gbnt.node.env</code>) and placement constraints</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>A.8.32</strong></td>
+<td style="text-align: left;">A.8 Tech</td>
+<td style="text-align: left;">Change Management</td>
+<td style="text-align: left;">Deployment Auditing</td>
+<td style="text-align: left;">Immutable deployment audit records with rollback capabilities</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-scoring-methodology-posture-grade">🧮 3. Scoring Methodology &amp; Posture Grade</h2>
+<p>Each control is evaluated dynamically as <strong><code>COMPLIANT</code></strong> (100%), <strong><code>PARTIAL</code></strong> (60–85%), or <strong><code>NON_COMPLIANT</code></strong> (0–25%):</p>
+<p>$$\text{Overall Readiness Score (\%)} = \frac{1}{N} \sum_{i=1}^{N} \text{Score}_i$$</p>
+<p>Theme scores are calculated independently for <strong>Theme A.5</strong> (Organizational) and <strong>Theme A.8</strong> (Technological).</p>
+<h3 id="posture-grade-scale">Posture Grade Scale</h3>
+<ul>
+<li><strong>Grade A+ (&gt;= 95%):</strong> Pristine compliance posture across all Annex A themes.</li>
+<li><strong>Grade A (&gt;= 85%):</strong> Production-ready compliance; minimal non-critical gaps.</li>
+<li><strong>Grade B (&gt;= 75%):</strong> Good security baseline; several defense-in-depth controls require attention.</li>
+<li><strong>Grade C (&gt;= 60%):</strong> Noticeable configuration gaps; remediation recommended.</li>
+<li><strong>Grade D (&lt; 60%):</strong> Critical non-compliance; immediate remediation required.</li>
+</ul>
+<hr />
+<h2 id="4-cli-usage">💻 4. CLI Usage</h2>
+<p>The <code>gbnt</code> CLI provides native commands to inspect ISO/IEC 27001 readiness directly from your terminal:</p>
+<h3 id="quick-terminal-audit">Quick Terminal Audit</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gbnt<span class="w"> </span>iso27001
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>=========================================================================================
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>🌐  ISO/IEC 27001:2022 | ANNEX A COMPLIANCE AUDIT
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>=========================================================================================
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  Posture Grade:         A
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  Overall Readiness:     92.4%
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  Theme A.5 (Org):       95.0%
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  Theme A.8 (Tech):      91.9%
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  Controls Evaluated:    24 (20 Compliant, 4 Partial, 0 Non-Compliant)
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>-----------------------------------------------------------------------------------------
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>CONTROL    THEME                STATUS       TITLE                      EVIDENCE                  
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>-----------------------------------------------------------------------------------------
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>A.5.15     A.5 Organizational   ✅ COMPLIANT Access Control Policy &amp;... Role-Based Access Cont...
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>A.5.23     A.5 Organizational   ✅ COMPLIANT Information Security fo... Cluster API secured on...
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>A.5.29     A.5 Organizational   ✅ COMPLIANT Information Security Re... 1 automated backup sch...
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>A.5.30     A.5 Organizational   ✅ COMPLIANT ICT Readiness for Redun... Multi-node HA cluster ...
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>A.8.1      A.8 Technological    ✅ COMPLIANT User Endpoint Devices &amp;... Account lockout (3 att...
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>A.8.7      A.8 Technological    ✅ COMPLIANT Protection Against Malw... 1 container image vuln...
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>A.8.8      A.8 Technological    ✅ COMPLIANT Management of Technical... Continuous vulnerabili...
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>A.8.9      A.8 Technological    ✅ COMPLIANT Configuration Managemen... All 3 stacks authored ...
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>A.8.13     A.8 Technological    ✅ COMPLIANT Information Backup      1 total backups creat...
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>A.8.15     A.8 Technological    ✅ COMPLIANT Logging                 120 audit events reco...
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>A.8.16     A.8 Technological    ✅ COMPLIANT Monitoring Activities   Integrated SRE observ...
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>A.8.20     A.8 Technological    ✅ COMPLIANT Network Security        Automated Caddy Ingre...
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>A.8.24     A.8 Technological    ✅ COMPLIANT Use of Cryptography     1 Cosign ECDSA P-256 ...
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>A.8.28     A.8 Technological    ✅ COMPLIANT Secure Coding &amp; Supply ... 1 Software Bill of Mat...
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>=========================================================================================
+</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>Tip: Run 'gbnt iso27001 --report' to display the formal Statement of Applicability (SoA).
+</span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>Tip: Run 'gbnt iso27001 --theme a8' or 'gbnt iso27001 --status partial' to filter.
+</span></code></pre></div>
+<h3 id="filtering-controls">Filtering Controls</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Filter by Technological controls (Theme A.8)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>gbnt<span class="w"> </span>iso27001<span class="w"> </span>--theme<span class="w"> </span>a8
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Filter by Organizational controls (Theme A.5)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>gbnt<span class="w"> </span>iso27001<span class="w"> </span>--theme<span class="w"> </span>a5
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Filter by status</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>gbnt<span class="w"> </span>iso27001<span class="w"> </span>--status<span class="w"> </span>partial
+</span></code></pre></div>
+<h3 id="statement-of-applicability-soa-report">Statement of Applicability (SoA) Report</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gbnt<span class="w"> </span>iso27001<span class="w"> </span>--report
+</span></code></pre></div>
+<h3 id="json-export-for-cicd-pipelines">JSON Export for CI/CD Pipelines</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gbnt<span class="w"> </span>iso27001<span class="w"> </span>--format<span class="w"> </span>json
+</span></code></pre></div>
+<hr />
+<h2 id="5-rest-api-reference">🌐 5. REST API Reference</h2>
+<p>All endpoints are authenticated via Bearer token on Port 4000:</p>
+<h3 id="1-get-live-compliance-assessment">1. Get Live Compliance Assessment</h3>
+<div class="language-http highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="err">GET /v1/security/iso27001/status</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="err">Authorization: Bearer &lt;GBNT_API_TOKEN&gt;</span>
+</span></code></pre></div>
+<p><strong>Response (<code>200 OK</code>):</strong>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">"evaluated_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-09-13T15:00:00Z"</span><span class="p">,</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">"standard_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ISO/IEC 27001:2022"</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">"total_controls"</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">"compliant_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">"partial_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">"non_compliant_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="nt">"overall_score"</span><span class="p">:</span><span class="w"> </span><span class="mf">92.4</span><span class="p">,</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="nt">"theme_a5_score"</span><span class="p">:</span><span class="w"> </span><span class="mf">95.0</span><span class="p">,</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">  </span><span class="nt">"theme_a8_score"</span><span class="p">:</span><span class="w"> </span><span class="mf">91.9</span><span class="p">,</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="nt">"posture_grade"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A"</span><span class="p">,</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">  </span><span class="nt">"statement_of_applicability"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ISO/IEC 27001:2022 Statement of Applicability: 24 Controls Evaluated (20 Compliant, 4 Partial, 0 Non-Compliant). Readiness Score: 92.4% (Grade A)."</span><span class="p">,</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">  </span><span class="nt">"controls"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">      </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A.5.15"</span><span class="p">,</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">      </span><span class="nt">"theme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A.5 Organizational"</span><span class="p">,</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">      </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Access Control Policy &amp; Least Privilege"</span><span class="p">,</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Access to information and other associated assets shall be restricted in accordance with the established topic-specific policy on access control."</span><span class="p">,</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="w">      </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"COMPLIANT"</span><span class="p">,</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="w">      </span><span class="nt">"score"</span><span class="p">:</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="w">      </span><span class="nt">"weight"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="w">      </span><span class="nt">"evidence"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Role-Based Access Control enforced across 3 users. Admin, operator, and audit roles segregated."</span><span class="p">,</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="w">      </span><span class="nt">"remediation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ensure distinct operator and auditor accounts exist in addition to administrator."</span><span class="p">,</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="w">      </span><span class="nt">"audit"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Inspect /v1/auth/users or LDAP group mappings to ensure least privilege role separation."</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="w">  </span><span class="p">]</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="p">}</span>
+</span></code></pre></div></p>
+<h3 id="2-export-statement-of-applicability-report">2. Export Statement of Applicability Report</h3>
+<div class="language-http highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="err">GET /v1/security/iso27001/report?format=text</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="err">Authorization: Bearer &lt;GBNT_API_TOKEN&gt;</span>
+</span></code></pre></div>
+<hr />
+<h2 id="6-flutter-web-ui-dashboard">🖥️ 6. Flutter Web UI Dashboard</h2>
+<p>Access the interactive dashboard by navigating to:
+<strong>Security &amp; Directory</strong> ➔ <strong>Compliance &amp; Regulatory Suite</strong> ➔ <strong>🌐 ISO/IEC 27001:2022 (Annex A)</strong>.</p>
+<h3 id="dashboard-capabilities">Dashboard Capabilities</h3>
+<ol>
+<li><strong>Header Banner:</strong> Displays current compliance standard with <strong>"Re-Audit"</strong> and <strong>"Export SoA Report"</strong> buttons.</li>
+<li><strong>4 Executive KPI Cards:</strong></li>
+<li><strong>POSTURE GRADE:</strong> Instant letter grade badge (<code>A+</code>, <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>) with qualitative verdict.</li>
+<li><strong>READINESS SCORE:</strong> Overall percentage readiness bar.</li>
+<li><strong>THEME A.5 (ORGANIZATIONAL):</strong> Dedicated progress gauge for organizational governance controls.</li>
+<li><strong>THEME A.8 (TECHNOLOGICAL):</strong> Dedicated progress gauge for technical container &amp; infrastructure controls.</li>
+<li><strong>Interactive Filter Bar:</strong> Filter controls by Theme (<code>All (24)</code>, <code>A.5</code>, <code>A.8</code>) and Status (<code>All</code>, <code>Action Required</code>, <code>Compliant</code>, <code>Partial</code>, <code>Non-Compliant</code>).</li>
+<li><strong>Interactive Remediation Dialog:</strong> Clicking <strong>"Remediation"</strong> on any card opens an inspection modal showing:</li>
+<li>Formal ISO requirement description.</li>
+<li>Discovered cluster configuration evidence.</li>
+<li>Prescriptive step-by-step remediation advice with one-click clipboard copy.</li>
+<li>Exact auditor verification procedure.</li>
+<li><strong>Report Export:</strong> Instantly download the official Statement of Applicability as Plain Text (<code>.txt</code>) or JSON (<code>.json</code>) for audit submissions.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
