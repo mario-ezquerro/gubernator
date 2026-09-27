@@ -11,7 +11,9 @@ import '../../widgets/autoscale_dialog.dart';
 import '../../widgets/save_server_stack_dialog.dart';
 import '../../widgets/save_pc_stack_dialog.dart';
 import '../../utils/clipboard_service.dart';
-import '../../utils/download_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../widgets/shell_dialog.dart';
+import '../../widgets/common_widgets.dart';
 
 /// Legions page — full-width stacks table with all actions.
 class LegionsPage extends StatefulWidget {
@@ -40,6 +42,7 @@ class _LegionsPageState extends State<LegionsPage> {
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
   final Set<String> _processingStackIds = {};
+  final Set<String> _expandedStackIds = {};
 
   bool _isBaseStack(StackModel s) {
     final id = s.id.toLowerCase();
@@ -201,6 +204,225 @@ class _LegionsPageState extends State<LegionsPage> {
         backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
         duration: const Duration(seconds: 3),
       ),
+    );
+  }
+
+  String _timeAgo(String iso) {
+    if (iso.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final diff = DateTime.now().difference(dt);
+      if (diff.inDays > 0) return 'Up ${diff.inDays} days';
+      if (diff.inHours > 0) return 'Up ${diff.inHours} hours';
+      if (diff.inMinutes > 0) return 'Up ${diff.inMinutes} mins';
+      return 'Up ${diff.inSeconds} secs';
+    } catch (_) {
+      return '-';
+    }
+  }
+
+  Future<void> _taskAction(String id, String action) async {
+    final ok = await ApiService.taskAction(id, action);
+    if (ok) {
+      _showSnackBar('Container $action executed successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to $action container.', isError: true);
+    }
+  }
+
+  Future<void> _stopTask(String id) async {
+    final ok = await ApiService.taskAction(id, 'stop');
+    if (ok) {
+      _showSnackBar('Container stopped successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to stop container.', isError: true);
+    }
+  }
+
+  Future<void> _deleteTask(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Container'),
+        content: const Text('Are you sure you want to remove this container?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ok = await ApiService.deleteTask(id);
+    if (ok) {
+      _showSnackBar('Container removed successfully.');
+      widget.onRefresh();
+    } else {
+      _showSnackBar('Failed to remove container.', isError: true);
+    }
+  }
+
+  Future<void> _viewTaskLogs(String id) async {
+    try {
+      final logs = await ApiService.taskLogs(id);
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Container Logs'),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            color: Colors.black,
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              child: Text(
+                logs.isEmpty ? 'No logs available.' : logs,
+                style: const TextStyle(fontFamily: 'Courier New', color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ),
+      );
+    } catch (e) {
+      _showSnackBar(e.toString(), isError: true);
+    }
+  }
+
+  Future<void> _viewTaskInspect(String id) async {
+    try {
+      final inspectData = await ApiService.taskInspect(id);
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Container Details (Inspect)'),
+          content: Container(
+            width: double.maxFinite,
+            height: 400,
+            color: Colors.grey[900],
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                inspectData,
+                style: const TextStyle(fontFamily: 'Courier New', color: Colors.greenAccent, fontSize: 12),
+              ),
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        ),
+      );
+    } catch (e) {
+      _showSnackBar(e.toString(), isError: true);
+    }
+  }
+
+  void _viewTaskShell(String id, String name) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => ShellDialog(taskId: id, containerName: name),
+    );
+  }
+
+  void _showTaskAutoscaleDialog(Task t) {
+    final svc = widget.state.services.where((s) => s.id == t.serviceId).firstOrNull;
+    final stack = widget.state.stacks.where((st) => st.id == svc?.stackId).firstOrNull;
+    showDialog(
+      context: context,
+      builder: (ctx) => AutoscaleControlDialog(
+        stack: stack,
+        service: svc,
+        onSaved: widget.onRefresh,
+      ),
+    );
+  }
+
+  Widget _buildPortsCell(Service? svc, Node? node) {
+    if (svc == null || svc.ports.isEmpty) {
+      return const Text('-', style: TextStyle(color: Colors.grey));
+    }
+    final nodeIp = (node != null && node.ip.isNotEmpty) ? node.ip : 'localhost';
+    final host = (nodeIp == '127.0.0.1') ? 'localhost' : nodeIp;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: svc.ports.map((portMapping) {
+        final hostPort = portMapping.split(':').first;
+        final url = 'http://$host:$hostPort';
+        return Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: ActionChip(
+            avatar: Icon(Icons.open_in_new, size: 13, color: Theme.of(context).colorScheme.primary),
+            label: Text(portMapping,
+                style: TextStyle(fontSize: 11, fontFamily: 'Courier New', fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary)),
+            tooltip: url,
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } else {
+                _showSnackBar('Could not open $url', isError: true);
+              }
+            },
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildTaskActions(Task t) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 18),
+      tooltip: 'Container Actions',
+      onSelected: (value) {
+        switch (value) {
+          case 'autoscale': _showTaskAutoscaleDialog(t); break;
+          case 'shell': _viewTaskShell(t.id, t.containerName); break;
+          case 'logs': _viewTaskLogs(t.id); break;
+          case 'inspect': _viewTaskInspect(t.id); break;
+          case 'pause': _taskAction(t.id, 'pause'); break;
+          case 'unpause': _taskAction(t.id, 'unpause'); break;
+          case 'restart': _taskAction(t.id, 'restart'); break;
+          case 'start': _taskAction(t.id, 'start'); break;
+          case 'stop': _stopTask(t.id); break;
+          case 'delete': _deleteTask(t.id); break;
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'autoscale',
+          child: ListTile(
+            leading: Icon(Icons.bolt, size: 18, color: Color(0xFFA855F7)),
+            title: Text('Autoscale Settings'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        if (t.status == 'running')
+          const PopupMenuItem<String>(value: 'shell', child: ListTile(leading: Icon(Icons.terminal, size: 18), title: Text('Shell'), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'logs', child: ListTile(leading: Icon(Icons.notes, size: 18), title: Text('Logs'), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'inspect', child: ListTile(leading: Icon(Icons.info_outline, size: 18), title: Text('View Details'), contentPadding: EdgeInsets.zero)),
+        const PopupMenuDivider(),
+        if (t.status == 'running')
+          const PopupMenuItem<String>(value: 'pause', child: ListTile(leading: Icon(Icons.pause, size: 18), title: Text('Pause'), contentPadding: EdgeInsets.zero))
+        else if (t.status == 'paused')
+          const PopupMenuItem<String>(value: 'unpause', child: ListTile(leading: Icon(Icons.play_arrow, size: 18), title: Text('Resume'), contentPadding: EdgeInsets.zero))
+        else
+          const PopupMenuItem<String>(value: 'start', child: ListTile(leading: Icon(Icons.play_arrow, size: 18), title: Text('Start'), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'restart', child: ListTile(leading: Icon(Icons.refresh, size: 18), title: Text('Restart'), contentPadding: EdgeInsets.zero)),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(value: 'stop', child: ListTile(leading: Icon(Icons.stop_circle, size: 18, color: Colors.orange), title: Text('Stop', style: TextStyle(color: Colors.orange)), contentPadding: EdgeInsets.zero)),
+        const PopupMenuItem<String>(value: 'delete', child: ListTile(leading: Icon(Icons.delete, size: 18, color: Colors.red), title: Text('Remove', style: TextStyle(color: Colors.red)), contentPadding: EdgeInsets.zero)),
+      ],
     );
   }
 
@@ -600,10 +822,10 @@ class _LegionsPageState extends State<LegionsPage> {
     if (_sortColumnIndex != null) {
       Comparable Function(StackModel s) getField;
       switch (_sortColumnIndex) {
-        case 0: getField = (s) => s.id; break;
-        case 1: getField = (s) => s.name; break;
-        case 2: getField = (s) => s.nodeId; break;
-        case 3: getField = (s) => s.createdAt; break;
+        case 1: getField = (s) => s.id; break;
+        case 2: getField = (s) => s.name; break;
+        case 4: getField = (s) => s.nodeId; break;
+        case 5: getField = (s) => s.createdAt; break;
         default: getField = (s) => s.id;
       }
       filteredStacks.sort((a, b) {
@@ -742,6 +964,36 @@ class _LegionsPageState extends State<LegionsPage> {
                             sortAscending: _sortAscending,
                             columns: [
                               DataColumn(
+                                label: Tooltip(
+                                  message: _expandedStackIds.isEmpty ? 'Expand all stacks' : 'Collapse all stacks',
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        if (_expandedStackIds.length >= filteredStacks.length && filteredStacks.isNotEmpty) {
+                                          _expandedStackIds.clear();
+                                        } else {
+                                          _expandedStackIds.addAll(filteredStacks.map((s) => s.id));
+                                        }
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                                      ),
+                                      child: Icon(
+                                        _expandedStackIds.isEmpty ? Icons.unfold_more : Icons.unfold_less,
+                                        size: 15,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataColumn(
                                 label: const Text('ID'),
                                 onSort: (col, asc) => setState(() {
                                   _sortColumnIndex = col;
@@ -773,351 +1025,13 @@ class _LegionsPageState extends State<LegionsPage> {
                               const DataColumn(label: Text('CONTAINERS')),
                               const DataColumn(label: Text('ACTIONS')),
                             ],
-                            rows: filteredStacks.map((s) {
-                              final isBase = _isBaseStack(s);
-                              final stackTasks = widget.state.tasks.where((t) {
-                                final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
-                                return svc?.stackId == s.id;
-                              }).toList();
-                              final runningCount = stackTasks.where((t) => t.status == 'running').length;
-
-                              return DataRow(cells: [
-                                DataCell(Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SelectableText(
-                                      s.id.length > 8 ? s.id.substring(0, 8) : s.id,
-                                      style: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    IconButton(
-                                      icon: const Icon(Icons.copy, size: 14),
-                                      tooltip: 'Copy full ID',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () {
-                                        ClipboardService.copy(s.id);
-                                        _showSnackBar('Copied Stack ID to clipboard!');
-                                      },
-                                    ),
-                                  ],
-                                )),
-                                DataCell(
-                                   InkWell(
-                                     onTap: () => widget.onViewStackContainers?.call(s.name),
-                                     borderRadius: BorderRadius.circular(4),
-                                     child: Tooltip(
-                                       message: isBase
-                                           ? 'Base Infrastructure Stack: ${s.name}'
-                                           : 'Deployed Application: ${s.name}',
-                                       child: Padding(
-                                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                         child: Row(
-                                           mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             Icon(
-                                               isBase ? Icons.foundation : Icons.rocket_launch,
-                                               size: 16,
-                                               color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
-                                             ),
-                                             const SizedBox(width: 6),
-                                             Container(
-                                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                               decoration: BoxDecoration(
-                                                 color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
-                                                 borderRadius: BorderRadius.circular(4),
-                                                 border: Border.all(
-                                                   color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.4),
-                                                 ),
-                                               ),
-                                               child: Text(
-                                                 isBase ? 'BASE' : 'APP',
-                                                 style: TextStyle(
-                                                   fontSize: 10,
-                                                   fontWeight: FontWeight.bold,
-                                                   color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
-                                                 ),
-                                               ),
-                                             ),
-                                             const SizedBox(width: 6),
-                                             Text(
-                                               s.name,
-                                               style: TextStyle(
-                                                 fontWeight: FontWeight.w600,
-                                                 color: Theme.of(context).colorScheme.primary,
-                                                 decoration: TextDecoration.underline,
-                                                 decorationStyle: TextDecorationStyle.dotted,
-                                               ),
-                                             ),
-                                             const SizedBox(width: 4),
-                                             Icon(
-                                               Icons.arrow_forward_rounded,
-                                               size: 13,
-                                               color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                                             ),
-                                           ],
-                                         ),
-                                       ),
-                                     ),
-                                   ),
-                                 ),
-                                 DataCell(
-                                   Builder(builder: (context) {
-                                     final autoSvc = s.primaryAutoscaleService(widget.state.services);
-                                     if (autoSvc == null || !autoSvc.isAutoscalingEnabled) {
-                                       return Tooltip(
-                                         message: 'Autoscaling: Disabled\nClick to configure & enable horizontal autoscaling (GPU/CPU)',
-                                         child: InkWell(
-                                           onTap: () => _showAutoscaleDialog(s),
-                                           borderRadius: BorderRadius.circular(4),
-                                           child: Container(
-                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                             decoration: BoxDecoration(
-                                               color: Colors.grey.withValues(alpha: 0.1),
-                                               borderRadius: BorderRadius.circular(4),
-                                               border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-                                             ),
-                                             child: const Row(
-                                               mainAxisSize: MainAxisSize.min,
-                                               children: [
-                                                 Icon(Icons.bolt, size: 12, color: Colors.grey),
-                                                 SizedBox(width: 4),
-                                                 Text(
-                                                   'Off',
-                                                   style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
-                                                 ),
-                                               ],
-                                             ),
-                                           ),
-                                         ),
-                                       );
-                                     }
-
-                                     final isGPU = autoSvc.autoscaleMetric == 'gpu';
-                                     final isCluster = autoSvc.autoscaleScope == 'cluster';
-                                     final color = isGPU ? const Color(0xFFA855F7) : const Color(0xFF06B6D4);
-                                     final icon = isGPU ? Icons.developer_board : Icons.speed;
-                                     final metricLabel = isGPU ? 'GPU' : 'CPU';
-                                     final scopeLabel = isCluster ? 'Cluster' : 'Host';
-
-                                     final tooltipMsg = 'Autoscaling Enabled (Service: ${autoSvc.name})\n'
-                                         '• Metric: $metricLabel (Target: ${autoSvc.autoscaleTarget.toStringAsFixed(0)}%)\n'
-                                         '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
-                                         '• Replicas: Min ${autoSvc.autoscaleMin} / Max ${autoSvc.autoscaleMax}'
-                                         '${isGPU ? "\n• Hardware Affinity: Centurions with NVIDIA GPU" : ""}\n'
-                                         'Click to manage & adjust autoscaling settings';
-
-                                     return Tooltip(
-                                       message: tooltipMsg,
-                                       child: InkWell(
-                                         onTap: () => _showAutoscaleDialog(s),
-                                         borderRadius: BorderRadius.circular(6),
-                                         child: Container(
-                                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                           decoration: BoxDecoration(
-                                             color: color.withValues(alpha: 0.15),
-                                             borderRadius: BorderRadius.circular(6),
-                                             border: Border.all(color: color.withValues(alpha: 0.5)),
-                                           ),
-                                           child: Row(
-                                             mainAxisSize: MainAxisSize.min,
-                                             children: [
-                                               Icon(Icons.bolt, size: 13, color: color),
-                                               const SizedBox(width: 3),
-                                               Icon(icon, size: 13, color: color),
-                                               const SizedBox(width: 4),
-                                               Text(
-                                                 '$metricLabel • $scopeLabel',
-                                                 style: TextStyle(
-                                                   fontSize: 11,
-                                                   fontWeight: FontWeight.bold,
-                                                   color: color,
-                                                   fontFamily: 'Courier New',
-                                                 ),
-                                               ),
-                                             ],
-                                           ),
-                                         ),
-                                       ),
-                                     );
-                                   }),
-                                 ),
-                                 DataCell(
-                                   Builder(builder: (context) {
-                                      final hostNode = widget.state.nodes.where((n) => n.id == s.nodeId || (s.nodeId.isNotEmpty && n.ip == s.nodeId)).firstOrNull;
-                                      final isMgr = hostNode != null ? hostNode.role.toLowerCase() == 'manager' : false;
-                                      final hostLabel = hostNode != null 
-                                          ? (hostNode.labels['gbnt.node.hostname'] ?? hostNode.id)
-                                          : (s.nodeId.isNotEmpty ? s.nodeId : 'Auto / Cluster');
-                                      final hostIp = hostNode?.ip ?? '';
-                                      final color = isMgr ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8);
-
-                                      return Tooltip(
-                                        message: hostNode != null
-                                            ? 'Running on ${hostNode.role.toUpperCase()} ($hostLabel - $hostIp)\nClick to migrate to another host'
-                                            : 'Click to migrate to a specific Centurion host',
-                                        child: InkWell(
-                                          onTap: () => _showMigrateStackDialog(s),
-                                          borderRadius: BorderRadius.circular(6),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: color.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: color.withValues(alpha: 0.3)),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  isMgr ? Icons.shield : Icons.computer,
-                                                  size: 13,
-                                                  color: color,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  hostLabel,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Courier New',
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: color,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Icon(Icons.swap_horiz, size: 12, color: color.withValues(alpha: 0.7)),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                 DataCell(Text(_formatDate(s.createdAt))),
-                                 DataCell(
-                                   InkWell(
-                                     onTap: () => widget.onViewStackContainers?.call(s.name),
-                                     borderRadius: BorderRadius.circular(10),
-                                     child: Tooltip(
-                                       message: runningCount > 0
-                                           ? 'Running $runningCount/${stackTasks.length} containers for ${s.name}'
-                                           : 'Stopped (0/${stackTasks.length} containers) for ${s.name}',
-                                       child: Container(
-                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                         decoration: BoxDecoration(
-                                           color: runningCount > 0
-                                               ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                               : const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                                           borderRadius: BorderRadius.circular(10),
-                                           border: Border.all(
-                                             color: runningCount > 0
-                                                 ? const Color(0xFF10B981).withValues(alpha: 0.3)
-                                                 : const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                                           ),
-                                         ),
-                                         child: Row(
-                                           mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             Icon(
-                                               runningCount > 0 ? Icons.play_arrow : Icons.stop,
-                                               size: 12,
-                                               color: runningCount > 0
-                                                   ? const Color(0xFF10B981)
-                                                   : const Color(0xFFF59E0B),
-                                             ),
-                                             const SizedBox(width: 4),
-                                             Text(
-                                               runningCount > 0
-                                                   ? '$runningCount/${stackTasks.length}'
-                                                   : 'Stopped (${stackTasks.length})',
-                                               style: TextStyle(
-                                                 fontSize: 12,
-                                                 fontWeight: FontWeight.w600,
-                                                 color: runningCount > 0
-                                                     ? const Color(0xFF10B981)
-                                                     : const Color(0xFFF59E0B),
-                                               ),
-                                             ),
-                                             const SizedBox(width: 4),
-                                             Icon(
-                                               Icons.visibility_outlined,
-                                               size: 12,
-                                               color: runningCount > 0
-                                                   ? const Color(0xFF10B981)
-                                                   : const Color(0xFFF59E0B),
-                                             ),
-                                           ],
-                                         ),
-                                       ),
-                                     ),
-                                   ),
-                                 ),
-                                DataCell(Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Dynamic Stop / Start Button
-                                    if (_processingStackIds.contains(s.id))
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 6),
-                                        child: SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        ),
-                                      )
-                                    else if (runningCount > 0)
-                                      _actionBtn(
-                                        Icons.stop_circle_outlined,
-                                        'Stop Stack (Stop all containers)',
-                                        const Color(0xFFF59E0B),
-                                        () => _stopStack(s.id, s.name),
-                                      )
-                                    else
-                                      _actionBtn(
-                                        Icons.play_circle_filled,
-                                        'Start Stack (Start compose)',
-                                        const Color(0xFF10B981),
-                                        () => _startStack(s.id, s.name),
-                                      ),
-                                    _actionBtn(Icons.receipt_long, 'View Stack Logs & Placement Errors',
-                                        const Color(0xFF8B5CF6), () => _showStackLogsDialog(s)),
-                                    _actionBtn(Icons.schema_outlined, 'View Schema',
-                                        const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
-                                    _actionBtn(Icons.code, 'Edit YAML',
-                                        const Color(0xFFF97316), () => _openComposeEditor(s)),
-                                    _actionBtn(Icons.download, 'Download docker-compose.yml to local PC',
-                                        const Color(0xFF388BFD), () => _downloadStackYaml(s)),
-                                    _actionBtn(Icons.dns_outlined, 'Save to Master Server (~/.gbnt/stacks/)',
-                                        const Color(0xFF2EA043), () => _saveStackToServer(s)),
-                                    isBase
-                                        ? const SizedBox(width: 36)
-                                        : _actionBtn(Icons.copy, 'Duplicate',
-                                            const Color(0xFF10B981), () => _duplicateStack(s)),
-                                    _actionBtn(Icons.refresh, 'Restart Stack (Restart all containers)',
-                                        const Color(0xFF3B82F6), () => _restartStack(s.id, s.name)),
-                                    _actionBtn(Icons.rocket_launch, 'Redeploy Stack (Recreate containers)',
-                                        const Color(0xFFD29922), () => _redeployStack(s.id)),
-                                    _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
-                                        const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),
-                                    _actionBtn(Icons.bolt, 'Autoscale Settings (GPU / CPU)',
-                                        const Color(0xFFA855F7), () => _showAutoscaleDialog(s)),
-                                    if (!isBase)
-                                      _actionBtn(Icons.swap_horiz, 'Change Target Host',
-                                          const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
-                                    _actionBtn(
-                                      Icons.delete,
-                                      (s.id == 'core-gbnt-stack' || s.name.toLowerCase().contains('core-gbnt'))
-                                          ? 'Restart Core (Does not delete)'
-                                          : (s.id == 'sre-monitor-stack' || s.name.toLowerCase().contains('monitor'))
-                                              ? 'Stop Monitor (Keeps stack)'
-                                              : 'Delete',
-                                      const Color(0xFFEF4444),
-                                      () => _deleteStack(s.id, s.name),
-                                    ),
-                                  ],
-                                )),
-                              ]);
-                            }).toList(),
+                            rows: [
+                              for (final s in filteredStacks) ...[
+                                _buildStackRow(s, theme),
+                                if (_expandedStackIds.contains(s.id))
+                                  ..._buildContainerRowsForStack(s, theme),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -1129,6 +1043,675 @@ class _LegionsPageState extends State<LegionsPage> {
         ),
       ),
     );
+  }
+
+  DataRow _buildStackRow(StackModel s, ThemeData theme) {
+    final isExpanded = _expandedStackIds.contains(s.id);
+    final isBase = _isBaseStack(s);
+    final stackTasks = widget.state.tasks.where((t) {
+      final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+      return svc?.stackId == s.id;
+    }).toList();
+    final runningCount = stackTasks.where((t) => t.status == 'running').length;
+
+    return DataRow(
+      key: ValueKey('stack-${s.id}'),
+      cells: [
+        // 0. EXPAND TOGGLE (matching user screenshot)
+        DataCell(
+          Tooltip(
+            message: isExpanded
+                ? 'Collapse containers for ${s.name}'
+                : 'Expand containers (${stackTasks.length}) for ${s.name}',
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  if (isExpanded) {
+                    _expandedStackIds.remove(s.id);
+                  } else {
+                    _expandedStackIds.add(s.id);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: isExpanded
+                        ? const Color(0xFF38BDF8)
+                        : theme.colorScheme.primary.withValues(alpha: 0.6),
+                    width: 1.2,
+                  ),
+                  color: isExpanded
+                      ? const Color(0xFF38BDF8).withValues(alpha: 0.12)
+                      : Colors.transparent,
+                ),
+                child: Center(
+                  child: AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: isExpanded ? const Color(0xFF38BDF8) : theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // 1. Stack ID
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SelectableText(
+              s.id.length > 8 ? s.id.substring(0, 8) : s.id,
+              style: const TextStyle(fontFamily: 'Courier New', fontSize: 13),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.copy, size: 14),
+              tooltip: 'Copy full ID',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () {
+                ClipboardService.copy(s.id);
+                _showSnackBar('Copied Stack ID to clipboard!');
+              },
+            ),
+          ],
+        )),
+        // 2. NAME (with green dot + icon + badge + name)
+        DataCell(
+          InkWell(
+            onTap: () => widget.onViewStackContainers?.call(s.name),
+            borderRadius: BorderRadius.circular(4),
+            child: Tooltip(
+              message: isBase
+                  ? 'Base Infrastructure Stack: ${s.name}'
+                  : 'Deployed Application: ${s.name}',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: runningCount > 0 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (runningCount > 0 ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      isBase ? Icons.foundation : Icons.rocket_launch,
+                      size: 16,
+                      color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: (isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8)).withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        isBase ? 'BASE' : 'APP',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isBase ? const Color(0xFF8B5CF6) : const Color(0xFF38BDF8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      s.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                        decorationStyle: TextDecorationStyle.dotted,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 13,
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // 3. AUTOSCALE
+        DataCell(
+          Builder(builder: (context) {
+            final autoSvc = s.primaryAutoscaleService(widget.state.services);
+            if (autoSvc == null || !autoSvc.isAutoscalingEnabled) {
+              return Tooltip(
+                message: 'Autoscaling: Disabled\nClick to configure & enable horizontal autoscaling (GPU/CPU)',
+                child: InkWell(
+                  onTap: () => _showAutoscaleDialog(s),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt, size: 12, color: Colors.grey),
+                        SizedBox(width: 4),
+                        Text(
+                          'Off',
+                          style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final isGPU = autoSvc.autoscaleMetric == 'gpu';
+            final isCluster = autoSvc.autoscaleScope == 'cluster';
+            final color = isGPU ? const Color(0xFFA855F7) : const Color(0xFF06B6D4);
+            final icon = isGPU ? Icons.developer_board : Icons.speed;
+            final metricLabel = isGPU ? 'GPU' : 'CPU';
+            final scopeLabel = isCluster ? 'Cluster' : 'Host';
+
+            final tooltipMsg = 'Autoscaling Enabled (Service: ${autoSvc.name})\n'
+                '• Metric: $metricLabel (Target: ${autoSvc.autoscaleTarget.toStringAsFixed(0)}%)\n'
+                '• Scope: ${isCluster ? "All Nodes (Cluster)" : "Single Host (Local)"}\n'
+                '• Replicas: Min ${autoSvc.autoscaleMin} / Max ${autoSvc.autoscaleMax}'
+                '${isGPU ? "\n• Hardware Affinity: Centurions with NVIDIA GPU" : ""}\n'
+                'Click to manage & adjust autoscaling settings';
+
+            return Tooltip(
+              message: tooltipMsg,
+              child: InkWell(
+                onTap: () => _showAutoscaleDialog(s),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: color.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt, size: 13, color: color),
+                      const SizedBox(width: 3),
+                      Icon(icon, size: 13, color: color),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$metricLabel • $scopeLabel',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'Courier New',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        // 4. HOST NODE
+        DataCell(
+          Builder(builder: (context) {
+            final hostNode = widget.state.nodes.where((n) => n.id == s.nodeId || (s.nodeId.isNotEmpty && n.ip == s.nodeId)).firstOrNull;
+            final isMgr = hostNode != null ? hostNode.role.toLowerCase() == 'manager' : false;
+            final hostLabel = hostNode != null
+                ? (hostNode.labels['gbnt.node.hostname'] ?? hostNode.id)
+                : (s.nodeId.isNotEmpty ? s.nodeId : 'Auto / Cluster');
+            final hostIp = hostNode?.ip ?? '';
+            final color = isMgr ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8);
+
+            return Tooltip(
+              message: hostNode != null
+                  ? 'Running on ${hostNode.role.toUpperCase()} ($hostLabel - $hostIp)\nClick to migrate to another host'
+                  : 'Click to migrate to a specific Centurion host',
+              child: InkWell(
+                onTap: () => _showMigrateStackDialog(s),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isMgr ? Icons.shield : Icons.computer,
+                        size: 13,
+                        color: color,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        hostLabel,
+                        style: TextStyle(
+                          fontFamily: 'Courier New',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.swap_horiz, size: 12, color: color.withValues(alpha: 0.7)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        // 5. CREATED
+        DataCell(Text(_formatDate(s.createdAt))),
+        // 6. CONTAINERS
+        DataCell(
+          InkWell(
+            onTap: () => widget.onViewStackContainers?.call(s.name),
+            borderRadius: BorderRadius.circular(10),
+            child: Tooltip(
+              message: runningCount > 0
+                  ? 'Running $runningCount/${stackTasks.length} containers for ${s.name}'
+                  : 'Stopped (0/${stackTasks.length} containers) for ${s.name}',
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: runningCount > 0
+                      ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: runningCount > 0
+                        ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                        : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      runningCount > 0 ? Icons.play_arrow : Icons.stop,
+                      size: 12,
+                      color: runningCount > 0
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFF59E0B),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      runningCount > 0
+                          ? '$runningCount/${stackTasks.length}'
+                          : 'Stopped (${stackTasks.length})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: runningCount > 0
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFF59E0B),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.visibility_outlined,
+                      size: 12,
+                      color: runningCount > 0
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFF59E0B),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // 7. ACTIONS
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dynamic Stop / Start Button
+            if (_processingStackIds.contains(s.id))
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else if (runningCount > 0)
+              _actionBtn(
+                Icons.stop_circle_outlined,
+                'Stop Stack (Stop all containers)',
+                const Color(0xFFF59E0B),
+                () => _stopStack(s.id, s.name),
+              )
+            else
+              _actionBtn(
+                Icons.play_circle_filled,
+                'Start Stack (Start compose)',
+                const Color(0xFF10B981),
+                () => _startStack(s.id, s.name),
+              ),
+            _actionBtn(Icons.receipt_long, 'View Stack Logs & Placement Errors',
+                const Color(0xFF8B5CF6), () => _showStackLogsDialog(s)),
+            _actionBtn(Icons.schema_outlined, 'View Schema',
+                const Color(0xFFFB923C), () => _showStackDiagramDialog(s)),
+            _actionBtn(Icons.code, 'Edit YAML',
+                const Color(0xFFF97316), () => _openComposeEditor(s)),
+            _actionBtn(Icons.download, 'Download docker-compose.yml to local PC',
+                const Color(0xFF388BFD), () => _downloadStackYaml(s)),
+            _actionBtn(Icons.dns_outlined, 'Save to Master Server (~/.gbnt/stacks/)',
+                const Color(0xFF2EA043), () => _saveStackToServer(s)),
+            isBase
+                ? const SizedBox(width: 36)
+                : _actionBtn(Icons.copy, 'Duplicate',
+                    const Color(0xFF10B981), () => _duplicateStack(s)),
+            _actionBtn(Icons.refresh, 'Restart Stack (Restart all containers)',
+                const Color(0xFF3B82F6), () => _restartStack(s.id, s.name)),
+            _actionBtn(Icons.rocket_launch, 'Redeploy Stack (Recreate containers)',
+                const Color(0xFFD29922), () => _redeployStack(s.id)),
+            _actionBtn(Icons.auto_fix_high, 'Reconcile Stack (Purge dead containers & align replicas)',
+                const Color(0xFF06B6D4), () => _reconcileStack(s.id, s.name)),
+            _actionBtn(Icons.bolt, 'Autoscale Settings (GPU / CPU)',
+                const Color(0xFFA855F7), () => _showAutoscaleDialog(s)),
+            if (!isBase)
+              _actionBtn(Icons.swap_horiz, 'Change Target Host',
+                  const Color(0xFF3B82F6), () => _showMigrateStackDialog(s)),
+            _actionBtn(
+              Icons.delete,
+              (s.id == 'core-gbnt-stack' || s.name.toLowerCase().contains('core-gbnt'))
+                  ? 'Restart Core (Does not delete)'
+                  : (s.id == 'sre-monitor-stack' || s.name.toLowerCase().contains('monitor'))
+                      ? 'Stop Monitor (Keeps stack)'
+                      : 'Delete',
+              const Color(0xFFEF4444),
+              () => _deleteStack(s.id, s.name),
+            ),
+          ],
+        )),
+      ],
+    );
+  }
+
+  List<DataRow> _buildContainerRowsForStack(StackModel s, ThemeData theme) {
+    final stackTasks = widget.state.tasks.where((t) {
+      final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+      return svc?.stackId == s.id;
+    }).toList();
+
+    if (stackTasks.isEmpty) {
+      return [
+        DataRow(
+          key: ValueKey('stack-${s.id}-empty'),
+          color: WidgetStateProperty.all(theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.1)),
+          cells: [
+            const DataCell(SizedBox.shrink()),
+            const DataCell(Text('-')),
+            DataCell(
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      'No active containers running for this stack',
+                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const DataCell(Text('-')),
+            const DataCell(Text('-')),
+            const DataCell(Text('-')),
+            const DataCell(Text('-')),
+            const DataCell(Text('-')),
+          ],
+        )
+      ];
+    }
+
+    return stackTasks.map((t) {
+      final svc = widget.state.services.where((sv) => sv.id == t.serviceId).firstOrNull;
+      final node = widget.state.nodes.where((n) => n.id == t.nodeId).firstOrNull;
+      final isRunning = t.status == 'running';
+      final isPaused = t.status == 'paused';
+      final isDead = t.status == 'dead' || t.status == 'exited';
+
+      final statusDotColor = isRunning
+          ? const Color(0xFF10B981)
+          : (isPaused ? const Color(0xFFF59E0B) : (isDead ? const Color(0xFFEF4444) : Colors.grey));
+
+      final containerDisplayName = t.containerName.isNotEmpty ? t.containerName : (svc?.name ?? 'container');
+
+      return DataRow(
+        key: ValueKey('container-${t.id}'),
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return theme.colorScheme.primary.withValues(alpha: 0.08);
+          }
+          return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.14);
+        }),
+        cells: [
+          // 0. Blank space under parent toggle column (matching screenshot)
+          const DataCell(SizedBox.shrink()),
+          // 1. ID
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.view_in_ar, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                const SizedBox(width: 4),
+                SelectableText(
+                  t.id.length > 8 ? t.id.substring(0, 8) : t.id,
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 12),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 12),
+                  tooltip: 'Copy Container ID',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    ClipboardService.copy(t.id);
+                    _showSnackBar('Copied Container ID!');
+                  },
+                ),
+              ],
+            ),
+          ),
+          // 2. NAME (Indented with green dot + container/service name, exactly like screenshot)
+          DataCell(
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: statusDotColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: statusDotColor.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        containerDisplayName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      if (svc?.image != null && svc!.image.isNotEmpty)
+                        Text(
+                          svc.image,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: 'Courier New',
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 3. AUTOSCALE
+          DataCell(
+            Builder(builder: (context) {
+              if (svc == null || !svc.isAutoscalingEnabled) {
+                return Tooltip(
+                  message: 'Autoscaling: Disabled\nClick to configure autoscaling',
+                  child: InkWell(
+                    onTap: () => _showTaskAutoscaleDialog(t),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt, size: 10, color: Colors.grey),
+                          SizedBox(width: 2),
+                          Text('Off', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+              final isGPU = svc.autoscaleMetric == 'gpu';
+              final isCluster = svc.autoscaleScope == 'cluster';
+              final color = isGPU ? const Color(0xFFA855F7) : const Color(0xFF06B6D4);
+              return Tooltip(
+                message: 'Autoscaling (${svc.name}): ${isGPU ? "GPU" : "CPU"} • ${isCluster ? "Cluster" : "Host"}\nClick to manage',
+                child: InkWell(
+                  onTap: () => _showTaskAutoscaleDialog(t),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: color.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt, size: 10, color: color),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${isGPU ? "GPU" : "CPU"} • ${isCluster ? "Cluster" : "Host"}',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color, fontFamily: 'Courier New'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          // 4. HOST NODE
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  node?.role.toLowerCase() == 'manager' ? Icons.shield : Icons.computer,
+                  size: 13,
+                  color: node?.role.toLowerCase() == 'manager' ? const Color(0xFFF59E0B) : const Color(0xFF38BDF8),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  node != null ? (node.labels['gbnt.node.hostname'] ?? node.id) : t.nodeId,
+                  style: const TextStyle(fontFamily: 'Courier New', fontSize: 11),
+                ),
+                if (node != null && node.ip.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '(${node.ip})',
+                    style: TextStyle(fontSize: 10, fontFamily: 'Courier New', color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // 5. CREATED / UPTIME
+          DataCell(
+            Text(
+              _timeAgo(t.createdAt),
+              style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
+            ),
+          ),
+          // 6. CONTAINERS / PORTS & STATUS
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                StatusBadge(label: t.status),
+                if (svc != null && svc.ports.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  _buildPortsCell(svc, node),
+                ],
+              ],
+            ),
+          ),
+          // 7. ACTIONS
+          DataCell(_buildTaskActions(t)),
+        ],
+      );
+    }).toList();
   }
 }
 

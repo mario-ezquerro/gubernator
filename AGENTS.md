@@ -1547,4 +1547,15 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
   - Excluded `VulnerableLibrariesLocal` and `DuplicatedCode` from Qodana inspection rules.
   - Prevents false-positive build failures from indirect dependencies pinned for Sloth compatibility (`github.com/prometheus/prometheus v0.310.0`) and standard HTTP handler patterns across line shifts.
 
+### 138. Interactive Stack Row Expansion & Container Hierarchy in Legions (`v3.0.8`)
+* **Interactive Chevron Expand/Collapse (`web-ui/lib/screens/pages/legions_page.dart`):**
+  - Added an interactive expand/collapse button (`>`) at the beginning of each stack row in the Legions (Stacks) table matching container dashboard aesthetics.
+  - Smooth 90-degree animated rotation (`AnimatedRotation`, 180ms) transforming `>` into a downward `v` inside a styled rounded box with cyan/sky border (`0xFF38BDF8`).
+  - Stacks default to collapsed state (single line per stack), expanding on demand to reveal child container sub-rows.
+  - Added global expand-all / collapse-all header button (`Icons.unfold_more` / `Icons.unfold_less`) in the table header.
+* **Child Container Sub-Rows Hierarchy:**
+  - Expanded child rows display all container tasks belonging to the stack with indented status dots and container names (`api`, `file4base-web`, `file4base-postgres`) matching the Containers (`TasksPage`) tab.
+  - Retains full parity with container management: Container ID with copy button, autoscale configuration chips, target Centurion host node, uptime (`Up X hours`), clickable port chips opening `http://<nodeIP>:<port>`, and container action dropdowns (Shell, Logs, Inspect, Autoscale, Start, Stop, Restart, Pause/Unpause, Remove).
+
+
 
