@@ -227,22 +227,12 @@ else
 fi
 multipass exec gbnt-manager -- sudo gluster peer status || true
 
-echo "🛰  11. Deploying Weave Scope topology (app on manager :$SCOPE_PORT, probe on workers)..."
-multipass exec gbnt-manager -- sudo docker rm -f gbnt-wave-scope 2>/dev/null || true
-multipass exec gbnt-manager -- sudo docker run -d --name gbnt-wave-scope --restart always \
-  --network host --pid host --privileged \
-  -v /var/run/docker.sock:/var/run/docker.sock -v /sys/kernel/debug:/sys/kernel/debug \
-  "$SCOPE_IMAGE" --probe.docker=true --app.http.address=:$SCOPE_PORT || echo "⚠️  Scope app failed (continuing)"
-for WORKER in "${WORKERS[@]}"; do
-  multipass exec "$WORKER" -- sudo docker rm -f gbnt-wave-scope 2>/dev/null || true
-  multipass exec "$WORKER" -- sudo docker run -d --name gbnt-wave-scope --restart always \
-    --network host --pid host --privileged \
-    -v /var/run/docker.sock:/var/run/docker.sock -v /sys/kernel/debug:/sys/kernel/debug \
-    "$SCOPE_IMAGE" --probe.docker=true "$MGR_PRIMARY_IP:$SCOPE_PORT" || echo "⚠️  Scope probe failed on $WORKER (continuing)"
-done
-
-echo "📊 12. Initializing SRE monitoring stack (Prometheus, Grafana, Loki, cAdvisor, Jaeger)..."
+echo "📊 11. Initializing SRE monitoring stack (Prometheus, Grafana, Loki, cAdvisor, Jaeger)..."
 multipass exec gbnt-manager -- env GBNT_API_TOKEN="$API_TOKEN" /usr/local/bin/gbnt monitor init || true
+
+echo "🛰  12. Enabling native Weave Scope topology ($SCOPE_IMAGE on :$SCOPE_PORT)..."
+multipass exec gbnt-manager -- curl -fsS -X POST -H "Authorization: Bearer $API_TOKEN" \
+  http://localhost:4000/v1/monitor/scope/enable || echo "⚠️  Scope enable failed (continuing)"
 
 sleep 5
 echo "🏛  Cluster nodes:"
