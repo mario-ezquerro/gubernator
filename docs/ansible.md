@@ -28,7 +28,7 @@ graph TD
    - Creates and starts systemd units (`gbnt-manager.service` and `gbnt-worker.service`).
    - Automatically retrieves the join token on Manager and registers Centurion Workers.
 4. **Wave Scope Topology Visualization**:
-   - Deploys `marioezquerro/scope:latest` with host PID and network namespaces to provide instant container and network topology mapping on port `:4040`.
+   - Deploys `cloudresources/scope:latest` with host PID and network namespaces to provide instant container and network topology mapping on port `:4040`.
 5. **SRE Observability**:
    - Automatically executes `gbnt monitor init` on the Manager to spin up Grafana, Loki, Prometheus, and Jaeger.
 

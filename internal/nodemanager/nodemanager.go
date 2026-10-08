@@ -172,7 +172,7 @@ func SyncWorkerToken(nodeID string) error {
 	}
 
 	// Remote command to update worker daemon
-	remoteCmd := fmt.Sprintf(`sudo docker rm -f gbnt-worker 2>/dev/null; sudo docker run -d --name gbnt-worker --restart unless-stopped --net host -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token %s --api-token %s --manager %s`,
+	remoteCmd := fmt.Sprintf(`sudo docker rm -f gbnt-worker 2>/dev/null; sudo docker run -d --name gbnt-worker --restart unless-stopped --net host -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token %s --api-token %s --manager %s`,
 		joinToken, apiToken, managerAddr)
 
 	sshArgs = append(sshArgs, fmt.Sprintf("ubuntu@%s", targetIP), "sh", "-c", remoteCmd)

@@ -332,7 +332,7 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 			ID:              serviceID,
 			StackID:         mgrStackID,
 			Name:            "weave-scope",
-			Image:           "marioezquerro/scope:latest",
+			Image:           "cloudresources/scope:latest",
 			DesiredReplicas: 1,
 			Ports:           []string{"4040:4040"},
 			CreatedAt:       now,
@@ -340,7 +340,7 @@ func RegisterScopeStackInDB(database *gorm.DB) {
 		}
 		database.Create(&service)
 	} else {
-		database.Model(&existingService).Update("image", "marioezquerro/scope:latest")
+		database.Model(&existingService).Update("image", "cloudresources/scope:latest")
 	}
 
 	status := "dead"
@@ -432,7 +432,7 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 				ID:              serviceID,
 				StackID:         stackID,
 				Name:            "weave-scope-probe",
-				Image:           "marioezquerro/scope:latest",
+				Image:           "cloudresources/scope:latest",
 				Command:         cmdStr,
 				DesiredReplicas: 1,
 				Ports:           []string{},
@@ -443,7 +443,7 @@ func SyncWorkerScopeStacks(database *gorm.DB) {
 		} else {
 			database.Model(&existingService).Updates(map[string]interface{}{
 				"command": cmdStr,
-				"image":   "marioezquerro/scope:latest",
+				"image":   "cloudresources/scope:latest",
 			})
 		}
 

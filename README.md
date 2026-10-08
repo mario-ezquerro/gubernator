@@ -1,7 +1,7 @@
 # <img src="docs/gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
 [![GitHub Release](https://img.shields.io/github/v/release/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/releases)
-[![Docker Image](https://img.shields.io/docker/v/marioezquerro/gubernator?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/repository/docker/marioezquerro/gubernator/general)
+[![Docker Image](https://img.shields.io/docker/v/cloudresources/gubernator?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/repository/docker/cloudresources/gubernator/general)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/go.mod)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mario-ezquerro/gubernator?style=flat-square)](https://goreportcard.com/report/github.com/mario-ezquerro/gubernator)
 [![License](https://img.shields.io/github/license/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/blob/main/LICENSE)
@@ -11,8 +11,8 @@
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/pulls)
 [![GitHub stars](https://img.shields.io/github/stars/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/network)
-[![Docker Pulls](https://img.shields.io/docker/pulls/marioezquerro/gubernator?style=flat-square&logo=docker)](https://hub.docker.com/r/marioezquerro/gubernator)
-[![Docker Image Size](https://img.shields.io/docker/image-size/marioezquerro/gubernator/latest?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/r/marioezquerro/gubernator)
+[![Docker Pulls](https://img.shields.io/docker/pulls/cloudresources/gubernator?style=flat-square&logo=docker)](https://hub.docker.com/r/cloudresources/gubernator)
+[![Docker Image Size](https://img.shields.io/docker/image-size/cloudresources/gubernator/latest?style=flat-square&color=blue&logo=docker)](https://hub.docker.com/r/cloudresources/gubernator)
 [![Go Reference](https://img.shields.io/badge/go-reference-blue?style=flat-square&logo=go)](https://pkg.go.dev/github.com/mario-ezquerro/gubernator)
 [![GitHub contributors](https://img.shields.io/github/contributors/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator/graphs/contributors)
 [![GitHub repo size](https://img.shields.io/github/repo-size/mario-ezquerro/gubernator?style=flat-square)](https://github.com/mario-ezquerro/gubernator)
@@ -83,10 +83,10 @@ Alternatively, you can run Gubernator using Docker via the included multi-stage 
   We use `docker buildx` to compile for `linux/amd64` (Intel/AMD), `linux/arm64` (macOS Apple Silicon & Raspberry Pi 4+), and `linux/arm/v7` (32-bit Raspberry Pi):
   ```bash
   # Build and check compilation for all targets:
-  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest .
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cloudresources/gubernator:latest .
 
   # Build and push to Docker Hub:
-  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest --push .
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cloudresources/gubernator:latest --push .
   ```
 
 
@@ -107,7 +107,7 @@ docker run -d \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
   -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 > **Important:** The `-v gubernator-data:/data` and `-v gubernator-home:/root/.gbnt` volumes persist your database and configuration files (CoreDNS and SRE stack) across container restarts. This is where Gubernator stores nodes, stacks, tokens, and all configurations. Without them, the cluster state is lost on restart. The `-e GBNT_MONITOR=true` and `-e GBNT_WEB=true` enable the SRE monitoring stack and the Web Dashboard respectively on startup.
@@ -235,7 +235,7 @@ sudo docker run -d --name gbnt-worker \
     --restart unless-stopped \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /data:/data \
-    marioezquerro/gubernator:latest legion join \
+    cloudresources/gubernator:latest legion join \
     --token <JOIN_TOKEN> \
     --manager http://<MANAGER-IP>:4000 \
     --api-token <API_TOKEN>
@@ -476,7 +476,7 @@ docker run -d \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
   -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 ---

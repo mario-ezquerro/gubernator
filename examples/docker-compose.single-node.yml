@@ -21,7 +21,7 @@ name: gubernator
 
 services:
   gbnt-manager:
-    image: marioezquerro/gubernator:latest
+    image: cloudresources/gubernator:latest
     container_name: gbnt-manager
     restart: unless-stopped
     command: serve

@@ -12,11 +12,11 @@ Gubernator must be compatible with multiple CPU architectures to run seamlessly 
 
 2. **Docker Buildx Usage:** Always document and use `docker buildx` for multi-platform builds. The recommended command for compiling all platforms without pushing to a registry (for validation/testing) is:
    ```bash
-   docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest .
+   docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cloudresources/gubernator:latest .
    ```
    To build, tag, and push the multi-architecture image directly to Docker Hub:
    ```bash
-   docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest --push .
+   docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cloudresources/gubernator:latest --push .
    ```
 
 3. **CI/CD Pipeline Integration:** Ensure any automation or GitHub Actions workflows for building container images use setup-buildx-action and compile for all three target platforms.

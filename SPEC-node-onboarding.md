@@ -62,7 +62,7 @@ flowchart TD
 * **Mechanism**:
   1. Worker executes `curl -fsSL http://<MANAGER-IP>:4001/api/node/join.sh | sudo bash -s -- --manager http://<MANAGER-IP>:4000 --token <JOIN_TOKEN> --api-token <API_TOKEN>`.
   2. Script verifies or installs Docker CE Engine (`curl -fsSL https://get.docker.com | sudo sh`).
-  3. Launches container `marioezquerro/gubernator:latest legion join` or native binary.
+  3. Launches container `cloudresources/gubernator:latest legion join` or native binary.
   4. Worker registers with `POST /v1/node/join` and starts heartbeat (10s) and task executor (5s) background loops.
 
 ### 3.2 Workflow B: Remote SSH Provisioning & Live Terminal Console
@@ -76,7 +76,7 @@ flowchart TD
   2. **Hardware Discovery**: Runs `hostname && uname -m && nproc && free -m`.
   3. **Cluster Registry**: Inserts or updates `db.Node` record in SQLite.
   4. **Docker Engine Check**: Verifies Docker CE runtime, auto-installing if absent.
-  5. **Worker Agent Deployment**: Runs `marioezquerro/gubernator:latest legion join`.
+  5. **Worker Agent Deployment**: Runs `cloudresources/gubernator:latest legion join`.
   6. **System Stacks Bootstrap**: Spawns `CORE-GBNT` (Caddy Ingress) and `[SRE] Monitor` (Promtail, Node-Exporter, cAdvisor).
   7. **Aqueducts & Telemetry**: Updates CoreDNS zone records and reloads Prometheus scrape configuration.
 
@@ -91,7 +91,7 @@ flowchart TD
     - docker.io
   runcmd:
     - systemctl enable --now docker
-    - sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token <JOIN_TOKEN> --manager http://<MANAGER-IP>:4000 --api-token <API_TOKEN>
+    - sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token <JOIN_TOKEN> --manager http://<MANAGER-IP>:4000 --api-token <API_TOKEN>
   ```
 
 ---
@@ -109,7 +109,7 @@ flowchart TD
     "api_token": "my-gubernator-api-token",
     "manager_public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICMkCVTvynh2z8bAgMV9MydLFld39yQ+D0H5/Q3m2TMJ",
     "one_liner_cmd": "curl -fsSL http://192.168.252.31:4001/api/node/join.sh | sudo bash -s -- --manager http://192.168.252.31:4000 --token a5de2fa005093ed6d9957017f275682a --api-token my-gubernator-api-token",
-    "docker_cmd": "sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token a5de2fa005093ed6d9957017f275682a --manager http://192.168.252.31:4000 --api-token my-gubernator-api-token",
+    "docker_cmd": "sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token a5de2fa005093ed6d9957017f275682a --manager http://192.168.252.31:4000 --api-token my-gubernator-api-token",
     "cli_cmd": "sudo gbnt legion join --token a5de2fa005093ed6d9957017f275682a --manager http://192.168.252.31:4000 --api-token my-gubernator-api-token",
     "cloud_init_yaml": "#cloud-config\n..."
   }

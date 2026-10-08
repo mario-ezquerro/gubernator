@@ -35051,7 +35051,7 @@ akh:function akh(){var _=this
 _.d=!0
 _.r=_.f=_.e=!1
 _.w=""
-_.x="marioezquerro/scope:latest"
+_.x="cloudresources/scope:latest"
 _.y=""
 _.z=0
 _.c=_.a=null},
@@ -136808,7 +136808,7 @@ r.e=J.e(p.h(q,"enabled"),!0)
 s=p.h(q,"url")
 r.w=s==null?"":s
 s=p.h(q,"image")
-r.x=s==null?"marioezquerro/scope:latest":s
+r.x=s==null?"cloudresources/scope:latest":s
 q=p.h(q,"image_id")
 r.y=q==null?"":q
 r.d=!1
@@ -147073,7 +147073,7 @@ q=r+":4000"
 p=(a0?e:a.c.length!==0)===!0?a.c:f.a.c.z
 o=(a0?e:a.d.length!==0)===!0?a.d:f.a.c.Q
 n=(a0?e:a.f.length!==0)===!0?a.f:"curl -fsSL "+(r+":4001")+"/api/node/join.sh | sudo bash -s -- --manager "+q+" --token "+p+" --api-token "+o
-m=(a0?e:a.r.length!==0)===!0?a.r:"sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token "+p+" --manager "+q+" --api-token "+o
+m=(a0?e:a.r.length!==0)===!0?a.r:"sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token "+p+" --manager "+q+" --api-token "+o
 l=(a0?e:a.w.length!==0)===!0?a.w:"sudo gbnt legion join --token "+p+" --manager "+q+" --api-token "+o
 k=(a0?e:a.x.length!==0)===!0?a.x:"#cloud-config\npackage_upgrade: true\npackages:\n  - curl\n  - docker.io\nruncmd:\n  - systemctl enable --now docker\n  - "+m+"\n"
 a=A.i(16)

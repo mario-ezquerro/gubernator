@@ -11,7 +11,7 @@ import (
 const (
 	ScopeContainerName = "gbnt-monitor-scope"
 	ScopePort          = "4040"
-	ScopeImage         = "marioezquerro/scope:latest"
+	ScopeImage         = "cloudresources/scope:latest"
 )
 
 // ScopeStatusResponse holds the status information for Weave Scope.
@@ -87,7 +87,7 @@ func EnableScope() error {
 		return nil
 	}
 
-	fmt.Println("\n🕸️  Deploying Network Topology (marioezquerro/scope)...")
+	fmt.Println("\n🕸️  Deploying Network Topology (cloudresources/scope)...")
 
 	// Pull latest image to ensure the most updated image is used
 	_ = exec.Command("docker", "pull", ScopeImage).Run()
@@ -122,7 +122,7 @@ func EnableScope() error {
 
 // UpdateScopeImage pulls the latest image from Docker Hub and recreates Scope container.
 func UpdateScopeImage() (string, error) {
-	fmt.Println("\n🔄 Pulling latest marioezquerro/scope:latest from Docker Hub...")
+	fmt.Println("\n🔄 Pulling latest cloudresources/scope:latest from Docker Hub...")
 	pullOut, err := exec.Command("docker", "pull", ScopeImage).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to pull image: %w (output: %s)", err, string(pullOut))

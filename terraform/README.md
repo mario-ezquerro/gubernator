@@ -94,7 +94,7 @@ In a single command, Ansible will:
 1. Load kernel modules (`overlay`, `br_netfilter`, `nf_conntrack`) and configure `sysctl`.
 2. Install official **Docker CE** and optimize `/etc/docker/daemon.json`.
 3. Deploy the **Gubernator Manager** service and automatically register all **Centurion Workers**.
-4. Launch **Wave Scope** (`marioezquerro/scope:latest`) with host networking for live cluster topology.
+4. Launch **Wave Scope** (`cloudresources/scope:latest`) with host networking for live cluster topology.
 5. Spin up the **SRE Observability stack** (Grafana, Loki, Prometheus, Jaeger, cAdvisor).
 
 ---

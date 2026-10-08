@@ -135,7 +135,7 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 * **Multi-Distribution Automation:** Complete automated provisioning suite in `ansible/` supporting Debian/Ubuntu (20.04/22.04/24.04, 11/12) and RedHat/Rocky/AlmaLinux/Fedora (8/9).
 * **System Hardening & Kernel Tuning:** Automates loading of container & overlay modules (`overlay`, `br_netfilter`, `nf_conntrack`), sysctl network tuning (`net.bridge.bridge-nf-call-iptables`, `net.ipv4.ip_forward`), and firewall port rules (UFW / Firewalld).
 * **Docker CE Engine Automation:** Official GPG keys/repositories setup, daemon.json log rotation tuning (`10m`, `3` files), user group permissions, and service persistence.
-* **Weave Net & Wave Scope Integration:** Deploys containerized Weave Scope probe & app (`marioezquerro/scope:latest`) with host PID/network sharing for full cluster topology mapping.
+* **Weave Net & Wave Scope Integration:** Deploys containerized Weave Scope probe & app (`cloudresources/scope:latest`) with host PID/network sharing for full cluster topology mapping.
 * **Full Stack Orchestration:** Configures systemd units (`gbnt-manager.service`, `gbnt-worker.service`), automatic join token discovery, and executes SRE Observability stack setup (`gbnt monitor init`).
 
 ### 16. Multi-Cloud Terraform Infrastructure Suite (`v2.23.0`)
@@ -1559,3 +1559,7 @@ To ensure Gubernator can handle real-world, production-ready deployments, the fo
 
 
 
+### 139. `cloudresources` Docker Hub Registry Migration & 2-Node Multipass Lab (`v3.1.0`)
+* **Official Registry:** All custom-built Gubernator images are now published under the Docker Hub organization **`cloudresources`** (`cloudresources/gubernator`, `cloudresources/scope`) instead of `marioezquerro/*`. Any new custom container image MUST be pushed to `cloudresources/<name>` (multi-arch: `linux/amd64,linux/arm64,linux/arm/v7`).
+* **Code-wide Update:** Worker join commands (API, Web, SSH node onboarding), Weave Scope deployment, Flutter dashboard, Ansible vars, CI workflow (`docker.yml`), Compose files and docs reference `cloudresources/*`. The Image Signing gatekeeper trusts both `cloudresources/` and legacy `marioezquerro/` prefixes.
+* **2-Node Lab Script:** `scripts/recreate-cluster-2nodes.sh` provisions `gbnt-manager` + `gbnt-worker1` on Multipass (Docker CE, GlusterFS, SSH mesh, systemd services, Weave Scope, SRE monitor stack). Supports `GBNT_REUSE_VMS=1`, SSH readiness wait, and automatic GlusterFS peering fallback to the primary network when TCP over the bridged Wi-Fi storage NIC is blocked.

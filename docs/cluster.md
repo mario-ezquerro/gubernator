@@ -151,7 +151,7 @@ sudo docker run -d --name gbnt-worker \
     --restart unless-stopped \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /data:/data \
-    marioezquerro/gubernator:latest legion join \
+    cloudresources/gubernator:latest legion join \
     --token <JOIN_TOKEN> \
     --manager http://<MANAGER-IP>:4000 \
     --api-token <API_TOKEN>
@@ -212,7 +212,7 @@ packages:
   - docker.io
 runcmd:
   - systemctl enable --now docker
-  - sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token <JOIN_TOKEN> --manager http://<MANAGER-IP>:4000 --api-token <API_TOKEN>
+  - sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token <JOIN_TOKEN> --manager http://<MANAGER-IP>:4000 --api-token <API_TOKEN>
 ```
 
 ---

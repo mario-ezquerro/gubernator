@@ -29,7 +29,7 @@ flutter:
 
 ## docker: build and tag the Docker image for the current platform
 docker:
-	docker build -t marioezquerro/gubernator:$(VERSION) -t marioezquerro/gubernator:latest .
+	docker build -t cloudresources/gubernator:$(VERSION) -t cloudresources/gubernator:latest .
 
 ## clean: remove the compiled binary
 clean:

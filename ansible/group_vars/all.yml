@@ -34,7 +34,7 @@ enable_firewall_rules: true
 
 # Wave Scope (Network & Container Topology)
 enable_wave_scope: true
-wave_scope_image: "marioezquerro/scope:latest"
+wave_scope_image: "cloudresources/scope:latest"
 wave_scope_port: 4040
 
 # SRE Observability Stack (cAdvisor, Prometheus, Grafana, Loki, Promtail, Jaeger)

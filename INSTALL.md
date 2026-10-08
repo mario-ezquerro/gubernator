@@ -138,7 +138,7 @@ The SSH keys live in `/data/ssh/` which is inside the `/data` volume. **Always m
 docker run -d --name gbnt-manager \
   -v gubernator-data:/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 ---
@@ -177,7 +177,7 @@ multipass exec gbnt-manager -- sudo docker run -d \
   -e GBNT_WEB_PASSWORD=admin \
   -v /data:/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 ### 4. Get Tokens
@@ -204,7 +204,7 @@ multipass exec gbnt-worker1 -- sudo docker run -d \
   --restart unless-stopped \
   -v /data:/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  marioezquerro/gubernator:latest \
+  cloudresources/gubernator:latest \
   legion join --token <JOIN_TOKEN> --api-token <API_TOKEN> --manager http://<MANAGER_IP>:4000
 ```
 

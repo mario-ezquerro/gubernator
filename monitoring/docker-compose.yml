@@ -14,7 +14,7 @@ services:
 
   gubernator:
     image: gubernator:latest          # use local image built from Dockerfile
-    # image: marioezquerro/gubernator:latest   # or pull from Docker Hub
+    # image: cloudresources/gubernator:latest   # or pull from Docker Hub
     container_name: gbnt-monitored
     ports:
       - "4000:4000"   # CLI / REST API

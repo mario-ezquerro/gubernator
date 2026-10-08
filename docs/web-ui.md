@@ -27,7 +27,7 @@ docker run -d \
   -e GBNT_WEB_USER=admin \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_API_TOKEN=admin \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 Then open: **[http://localhost:4001](http://localhost:4001)**

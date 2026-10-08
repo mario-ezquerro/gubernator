@@ -23,7 +23,7 @@ Automated Ansible playbooks and roles to prepare bare-metal or virtualized Linux
   * Configures and starts systemd units (`gbnt-manager.service` and `gbnt-worker.service`).
   * Automatically retrieves the join token on Manager and registers Centurion Workers.
 * **Wave Scope Topology Probe**:
-  * Deploys containerized Weave Scope probe & app (`marioezquerro/scope:latest`) with host PID/network sharing.
+  * Deploys containerized Weave Scope probe & app (`cloudresources/scope:latest`) with host PID/network sharing.
 * **SRE Observability**:
   * Triggers `gbnt monitor init` on the Manager for one-command deployment of Grafana (`:3000`), Loki (`:3100`), Prometheus (`:9090`), and Jaeger (`:16686`).
 

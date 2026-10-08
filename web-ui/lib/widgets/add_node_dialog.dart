@@ -158,7 +158,7 @@ class _AddNodeDialogState extends State<AddNodeDialog> with SingleTickerProvider
 
     final dockerCmd = _joinInfo?.dockerCmd.isNotEmpty == true
         ? _joinInfo!.dockerCmd
-        : 'sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token $joinToken --manager $managerHttp --api-token $apiToken';
+        : 'sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token $joinToken --manager $managerHttp --api-token $apiToken';
 
     final cliCmd = _joinInfo?.cliCmd.isNotEmpty == true
         ? _joinInfo!.cliCmd

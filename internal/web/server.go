@@ -3662,7 +3662,7 @@ func nodeAddHandler(c *gin.Context) {
 		"sudo docker rm -f gbnt-worker 2>/dev/null || true; "+
 			"sudo docker run -d --name gbnt-worker --network host --restart unless-stopped "+
 			"-v /var/run/docker.sock:/var/run/docker.sock -v /data:/data "+
-			"marioezquerro/gubernator:latest legion join --token %s --manager http://%s:4000 --api-token %s",
+			"cloudresources/gubernator:latest legion join --token %s --manager http://%s:4000 --api-token %s",
 		joinToken, managerIP, apiToken,
 	)
 
@@ -3726,7 +3726,7 @@ func nodeJoinInfoHandler(c *gin.Context) {
 	oneLiner := fmt.Sprintf("curl -fsSL %s/api/node/join.sh | sudo bash -s -- --manager %s --token %s --api-token %s",
 		webHTTP, managerHTTP, joinToken, apiToken)
 
-	dockerCmd := fmt.Sprintf("sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data marioezquerro/gubernator:latest legion join --token %s --manager %s --api-token %s",
+	dockerCmd := fmt.Sprintf("sudo docker run -d --name gbnt-worker --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /data:/data cloudresources/gubernator:latest legion join --token %s --manager %s --api-token %s",
 		joinToken, managerHTTP, apiToken)
 
 	cliCmd := fmt.Sprintf("sudo gbnt legion join --token %s --manager %s --api-token %s",
@@ -3813,7 +3813,7 @@ sudo docker run -d --name gbnt-worker \
   --restart unless-stopped \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /data:/data \
-  marioezquerro/gubernator:latest legion join --token "$JOIN_TOKEN" --manager "$MANAGER_URL" --api-token "$API_TOKEN"
+  cloudresources/gubernator:latest legion join --token "$JOIN_TOKEN" --manager "$MANAGER_URL" --api-token "$API_TOKEN"
 
 echo "✅ Centurion successfully registered and joined the Legion!"
 `, managerHTTP, joinToken, apiToken)

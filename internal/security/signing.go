@@ -136,7 +136,7 @@ func VerifyImageSignature(imageName, signatureStatus string, trustedKeys []db.Tr
 	}
 
 	// Canonical check: official images or custom signed images
-	if strings.HasPrefix(imageName, "gbnt/") || strings.HasPrefix(imageName, "marioezquerro/") || signatureStatus == "signed" {
+	if strings.HasPrefix(imageName, "gbnt/") || strings.HasPrefix(imageName, "cloudresources/") || strings.HasPrefix(imageName, "marioezquerro/") || signatureStatus == "signed" {
 		return "verified", trustedKeys[0].Name
 	}
 

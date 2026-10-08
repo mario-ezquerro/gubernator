@@ -17,7 +17,7 @@ class _ScopePageState extends State<ScopePage> {
   bool _actionInProgress = false;
   bool _updatingImage = false;
   String _scopeUrl = '';
-  String _image = 'marioezquerro/scope:latest';
+  String _image = 'cloudresources/scope:latest';
   String _imageId = '';
   int _iframeRefreshCount = 0;
 
@@ -48,7 +48,7 @@ class _ScopePageState extends State<ScopePage> {
         setState(() {
           _enabled = res['enabled'] == true;
           _scopeUrl = res['url'] ?? '';
-          _image = res['image'] ?? 'marioezquerro/scope:latest';
+          _image = res['image'] ?? 'cloudresources/scope:latest';
           _imageId = res['image_id'] ?? '';
           _loading = false;
           _registerScopeIframe();

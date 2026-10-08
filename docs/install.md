@@ -99,7 +99,7 @@ You can run Gubernator inside Docker using the multi-stage `Dockerfile`.
 
 * **For multiple architectures (Intel, macOS, Raspberry Pi) using buildx:**
   ```bash
-  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t marioezquerro/gubernator:latest .
+  docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cloudresources/gubernator:latest .
   ```
 
 ### Run the Container
@@ -117,7 +117,7 @@ docker run -d \
   -e GBNT_WEB_PASSWORD=admin \
   -e GBNT_MONITOR=true \
   -e GBNT_DNS_FORWARDERS="8.8.8.8 1.1.1.1" \
-  marioezquerro/gubernator:latest serve
+  cloudresources/gubernator:latest serve
 ```
 
 > **Important:** The `-v gubernator-data:/data` and `-v gubernator-home:/root/.gbnt` volumes persist your database and configuration files. Without them, the cluster state is lost on restart.

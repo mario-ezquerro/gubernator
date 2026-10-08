@@ -89,7 +89,7 @@ func NodeAddHandler(c *gin.Context) {
 			--restart unless-stopped \
 			-v /var/run/docker.sock:/var/run/docker.sock \
 			-v /data:/data \
-			marioezquerro/gubernator:latest \
+			cloudresources/gubernator:latest \
 			legion join --token %s --manager http://%s:4000 --api-token %s
 	`, joinToken, managerIP, apiToken)
 
