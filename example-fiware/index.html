@@ -1,0 +1,1678 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A lightweight, hybrid container orchestrator built in Go — simplicity of Swarm, flexibility of Nomad.">
+      
+      
+        <meta name="author" content="Mario Ezquerro">
+      
+      
+      
+        <link rel="prev" href="../example-scada-dnp3/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../gubernator-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>FIWARE Smart City (NGSI-v2) - Gubernator Orchestrator (v3.2.4)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#example-fiware-smart-city-digital-twin-platform-ngsi-v2" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Gubernator Orchestrator (v3.2.4)" class="md-header__button md-logo" aria-label="Gubernator Orchestrator (v3.2.4)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Gubernator Orchestrator (v3.2.4)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FIWARE Smart City (NGSI-v2)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../compliance/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compliance & Security
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ebpf/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Observability
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Gubernator Orchestrator (v3.2.4)" class="md-nav__button md-logo" aria-label="Gubernator Orchestrator (v3.2.4)" data-md-component="logo">
+      
+  <img src="../gubernator-icon.png" alt="logo">
+
+    </a>
+    Gubernator Orchestrator (v3.2.4)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mario-ezquerro/gubernator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mario-ezquerro/gubernator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href=".." class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../architecture/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & UI
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../compliance/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & Security
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../cli/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../ebpf/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-wordpress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WordPress
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-sre/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRE Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-slo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Service Level Objectives (SLO)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-n8n/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI & Automation (n8n)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-jupyter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Development (Jupyter)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-llama-factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LLM Visual Fine-Tuning (LLaMA-Factory)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-jupyter-llm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JupyterLab PyTorch LLM Lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-kubeflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubeflow MLOps Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-public-https/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Public Domain HTTPS (Let's Encrypt)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example-scada-dnp3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Industrial SCADA & DNP3 (FUXA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIWARE Smart City (NGSI-v2)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIWARE Smart City (NGSI-v2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-fiware-generic-enablers-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core FIWARE Generic Enablers Included
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#standardized-fiware-smart-data-models-provisioned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standardized FIWARE Smart Data Models Provisioned
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-deploy-the-fiware-stack-on-gubernator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Deploy the FIWARE Stack on Gubernator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 1: Deploy the FIWARE Stack on Gubernator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-one-click-deployment-via-web-ui-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: One-Click Deployment via Web UI (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-deployment-via-gbnt-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Deployment via gbnt CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-verify-coredns-caddy-ingress-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Verify CoreDNS &amp; Caddy Ingress Alignment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-explore-the-smart-city-digital-twin-control-center" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Explore the Smart City Digital Twin Control Center
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-query-the-fiware-orion-ngsi-v2-api-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Query the FIWARE Orion NGSI-v2 API Directly
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Query the FIWARE Orion NGSI-v2 API Directly">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-check-orion-version-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Check Orion Version &amp; Health
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-list-all-digital-twin-entities-simplified-keyvalues-representation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. List All Digital Twin Entities (Simplified keyValues Representation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-filter-entities-by-type-airqualityobserved-or-geo-query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Filter Entities by Type (AirQualityObserved) or Geo-Query
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-send-an-ultralight-20-sensor-measurement-to-fiware-iot-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Send an Ultralight 2.0 Sensor Measurement to FIWARE IoT Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-inspect-registered-iot-devices-in-the-iot-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Inspect Registered IoT Devices in the IoT Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-clean-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Clean Up
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="example-fiware-smart-city-digital-twin-platform-ngsi-v2">Example FIWARE — Smart City &amp; Digital Twin Platform (NGSI-v2)</h1>
+<p>This guide walks you through deploying the flagship <strong>Open Source FIWARE Catalogue</strong> (<a href="https://fiware.org/catalogue/">fiware.org/catalogue</a>) Smart City &amp; Digital Twin platform on <strong>Gubernator (<code>gbnt</code>)</strong>.</p>
+<p>FIWARE is the European open-source standard framework for Smart Cities, Smart Industry, Smart Energy, and Digital Twins, built around the <strong>OMA NGSI-v2 / NGSI-LD Context Management API</strong> and standardized <strong>Smart Data Models</strong>.</p>
+<hr />
+<h2 id="architecture-overview">Architecture Overview</h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌────────────────────────────────────────────────────────────────────────────────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                              GUBERNATOR CLUSTER (gbnt-net)                             │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│                                                                                        │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  ┌──────────────────────────────┐         Ultralight 2.0 HTTP (:7896)                  │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  │  FIWARE Smart City UI &amp;      │ ───────────────────────────────────────┐             │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  │  IoT Telemetry Simulator     │                                        ▼             │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  │  (https://fiware.gbnt.local) │         Northbound Admin (:4041)  ┌────────────────┐ │
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│  │  Port 8088 -&gt; 8080           │ ────────────────────────────────► │  FIWARE IoT    │ │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│  └──────────────┬───────────────┘                                   │  Agent UL 2.0  │ │
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│                 │                                                   │  (iot-agent)   │ │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│                 │ NGSI-v2 REST API (:1026)                          └───────┬────────┘ │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│                 │ (GET /v2/entities, PATCH /v2/entities/:id/attrs)          │          │
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│                 ▼                                                           │ NGSI-v2  │
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│  ┌──────────────────────────────┐                                           │ Updates  │
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│  │  FIWARE Orion Context Broker │ ◄─────────────────────────────────────────┘          │
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│  │  (orion.fiware.gbnt.local)   │                                                      │
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│  │  telefonicaiot/fiware-orion  │ ───────────► ┌─────────────────────────────────────┐ │
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│  └──────────────────────────────┘   :27017     │  MongoDB 6.0 (mongo-db)             │ │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│                                                │  /var/contenedores/.../mongo-data   │ │
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│                                                └─────────────────────────────────────┘ │
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>└────────────────────────────────────────────────────────────────────────────────────────┘
+</span></code></pre></div>
+<h3 id="core-fiware-generic-enablers-included">Core FIWARE Generic Enablers Included</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Service</th>
+<th style="text-align: left;">Official Image</th>
+<th style="text-align: left;">Role in FIWARE Catalogue</th>
+<th style="text-align: left;">Ports</th>
+<th style="text-align: left;">Ingress Domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>orion</code></strong></td>
+<td style="text-align: left;"><code>telefonicaiot/fiware-orion:3.10.0</code></td>
+<td style="text-align: left;"><strong>Core Context Management</strong>: Implements the standard <strong>OMA NGSI-v2</strong> REST API to store, query, update, and subscribe to real-time Digital Twin context entities.</td>
+<td style="text-align: left;"><code>1026:1026</code></td>
+<td style="text-align: left;"><code>https://orion.fiware.gbnt.local</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>iot-agent</code></strong></td>
+<td style="text-align: left;"><code>fiware/iotagent-ul:1.22.0</code></td>
+<td style="text-align: left;"><strong>IoT Agents (Interface with IoT)</strong>: Bridges southbound IoT sensors speaking <strong>OMA Ultralight 2.0</strong> (<code>t\|22.5\|h\|48.0</code>) over HTTP (<code>:7896</code>) into NGSI-v2 entities in Orion (<code>:4041</code> Northbound).</td>
+<td style="text-align: left;"><code>4041:4041</code>, <code>7896:7896</code></td>
+<td style="text-align: left;"><code>https://iot-agent.fiware.gbnt.local</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>mongo-db</code></strong></td>
+<td style="text-align: left;"><code>mongo:6.0</code></td>
+<td style="text-align: left;"><strong>Context &amp; Device Backing Store</strong>: Persists Orion context entities, subscriptions, service groups, and IoT device registries on <code>/var/contenedores</code> (Granaries).</td>
+<td style="text-align: left;"><code>27017</code> (internal)</td>
+<td style="text-align: left;"><code>mongo-db.fiware-smart-city.gbnt</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>fiware-smart-city</code></strong></td>
+<td style="text-align: left;"><code>python:3.11-slim</code></td>
+<td style="text-align: left;"><strong>Smart City Digital Twin Control Center</strong>: Interactive web UI (<code>:8088</code>) and real-time telemetry simulator provisioning and streaming 6 Smart Data Models every 4 seconds.</td>
+<td style="text-align: left;"><code>8088:8080</code></td>
+<td style="text-align: left;"><code>https://fiware.gbnt.local</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="standardized-fiware-smart-data-models-provisioned">Standardized FIWARE Smart Data Models Provisioned</h2>
+<p>Upon startup, the <code>fiware-smart-city</code> service automatically registers an Ultralight 2.0 Service Group (<code>apikey: fiware-gbnt-iot-key</code>), provisions southbound IoT devices, and creates <strong>6 standardized Smart Data Models</strong> under <code>Fiware-Service: smartcity</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Entity ID (URN)</th>
+<th style="text-align: left;">Smart Data Model Type</th>
+<th style="text-align: left;">Protocol</th>
+<th style="text-align: left;">Live Attributes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:WeatherObserved:madrid-sol-01</code></td>
+<td style="text-align: left;"><code>WeatherObserved</code></td>
+<td style="text-align: left;">Ultralight 2.0 (<code>:7896</code>) + NGSI-v2</td>
+<td style="text-align: left;"><code>temperature</code> (°C), <code>relativeHumidity</code> (%), <code>atmosphericPressure</code> (hPa), <code>windSpeed</code> (m/s), <code>uvIndexMax</code>, <code>location</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:AirQualityObserved:madrid-castellana-01</code></td>
+<td style="text-align: left;"><code>AirQualityObserved</code></td>
+<td style="text-align: left;">Ultralight 2.0 (<code>:7896</code>) + NGSI-v2</td>
+<td style="text-align: left;"><code>no2</code> (µg/m³), <code>pm10</code> (µg/m³), <code>pm25</code> (µg/m³), <code>co2</code> (ppm), <code>airQualityIndex</code>, <code>airQualityLevel</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:TrafficFlowObserved:gran-via-east-01</code></td>
+<td style="text-align: left;"><code>TrafficFlowObserved</code></td>
+<td style="text-align: left;">NGSI-v2 (<code>:1026</code>)</td>
+<td style="text-align: left;"><code>intensity</code> (veh/h), <code>occupancy</code> (%), <code>averageVehicleSpeed</code> (km/h), <code>congested</code> (Boolean)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:Streetlight:retiro-led-01</code></td>
+<td style="text-align: left;"><code>Streetlight</code></td>
+<td style="text-align: left;">NGSI-v2 (<code>:1026</code>)</td>
+<td style="text-align: left;"><code>powerState</code> (<code>on</code>/<code>off</code>/<code>low</code>), <code>status</code>, <code>illuminanceLevel</code> (0–1.0), <code>powerConsumption</code> (W), <code>lampTechnology</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:ThreePhaseAcMeasurement:cibeles-solar-01</code></td>
+<td style="text-align: left;"><code>ThreePhaseAcMeasurement</code></td>
+<td style="text-align: left;">NGSI-v2 (<code>:1026</code>)</td>
+<td style="text-align: left;"><code>activePower</code> (kW), <code>solarGenerationKw</code> (kW), <code>gridFrequency</code> (Hz), <code>batterySocPct</code> (%), <code>voltage</code> (V)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>urn:ngsi-ld:WaterQualityObserved:manzanares-01</code></td>
+<td style="text-align: left;"><code>WaterQualityObserved</code></td>
+<td style="text-align: left;">NGSI-v2 (<code>:1026</code>)</td>
+<td style="text-align: left;"><code>ph</code>, <code>dissolvedOxygen</code> (mg/L), <code>turbidity</code> (NTU), <code>temperature</code> (°C), <code>conductivity</code> (µS/cm)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="step-1-deploy-the-fiware-stack-on-gubernator">Step 1: Deploy the FIWARE Stack on Gubernator</h2>
+<p>You can deploy the stack in one click from the <strong>Gubernator Web UI</strong> or via the <strong>CLI</strong>.</p>
+<h3 id="option-a-one-click-deployment-via-web-ui-recommended">Option A: One-Click Deployment via Web UI (Recommended)</h3>
+<ol>
+<li>Open the Gubernator Dashboard at <code>http://&lt;manager-ip&gt;:4001</code>.</li>
+<li>Navigate to <strong>Legions (Stacks)</strong> in the left sidebar.</li>
+<li>Click the <strong>POC Examples</strong> button in the top toolbar.</li>
+<li>Filter by <strong>IoT &amp; Industrial SCADA</strong> and select <strong>FIWARE Smart City &amp; Digital Twin (Orion Context Broker + IoT Agent NGSI-v2)</strong>.</li>
+<li>Optionally choose a target Centurion node (or leave as <strong>Auto-Schedule</strong>) and click <strong>Deploy Example</strong>.</li>
+</ol>
+<h3 id="option-b-deployment-via-gbnt-cli">Option B: Deployment via <code>gbnt</code> CLI</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Deploy directly from the built-in POC library:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>gbnt<span class="w"> </span>examples<span class="w"> </span>deploy<span class="w"> </span>fiware-smart-city
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Or deploy from the standalone compose file:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>deploy<span class="w"> </span>-n<span class="w"> </span>fiware-smart-city<span class="w"> </span>-c<span class="w"> </span>examples/example-fiware/docker-compose.yml
+</span></code></pre></div>
+<blockquote>
+<p>[!NOTE]
+Gubernator automatically exports <code>/var/contenedores/fiware-smart-city/fiware_smart_city.py</code> on the Manager and synchronizes it to remote Centurion Worker nodes via SSH even if GlusterFS is not mounted.</p>
+</blockquote>
+<hr />
+<h2 id="step-2-verify-coredns-caddy-ingress-alignment">Step 2: Verify CoreDNS &amp; Caddy Ingress Alignment</h2>
+<p>Once the 4 containers reach <code>running</code> state, Gubernator's <strong>Aqueducts</strong> subsystem automatically aligns <strong>CoreDNS</strong> and <strong>Caddy Ingress</strong> with the exact node IP where each service is running:</p>
+<ul>
+<li><code>https://fiware.gbnt.local</code> ➔ Routes to <code>fiware-smart-city:8080</code> (Smart City Digital Twin Control Center)</li>
+<li><code>https://orion.fiware.gbnt.local</code> ➔ Routes to <code>orion:1026</code> (FIWARE Orion Context Broker NGSI-v2 API)</li>
+<li><code>https://iot-agent.fiware.gbnt.local</code> ➔ Routes to <code>iot-agent:4041</code> (FIWARE IoT Agent Northbound API)</li>
+</ul>
+<p>Check the active tasks via CLI:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gbnt<span class="w"> </span>task<span class="w"> </span>ls
+</span></code></pre></div>
+<hr />
+<h2 id="step-3-explore-the-smart-city-digital-twin-control-center">Step 3: Explore the Smart City Digital Twin Control Center</h2>
+<p>Open <strong><code>https://fiware.gbnt.local</code></strong> (or <code>http://&lt;node-ip&gt;:8088</code>) in your browser:</p>
+<ol>
+<li><strong>Live NGSI-v2 Entity Cards</strong>: Watch real-time telemetry updates every 3 seconds from all 6 Smart City Digital Twin entities stored in Orion Context Broker.</li>
+<li><strong>Interactive Actuation &amp; Scenarios</strong>:</li>
+<li><strong>Streetlight Dimmer &amp; Power Control</strong>: Switch <code>urn:ngsi-ld:Streetlight:retiro-led-01</code> between <strong>ON (100% LED)</strong>, <strong>ECO Mode (40% Dimmed)</strong>, and <strong>OFF</strong> — this sends a live <code>POST /v2/entities/.../attrs</code> actuation command directly to FIWARE Orion.</li>
+<li><strong>Simulate Rush Hour Traffic</strong>: Triggers a traffic congestion spike on Gran Vía (<code>intensity: 2450 veh/h</code>, <code>occupancy: 91%</code>, <code>congested: true</code>) and an NO₂/PM2.5 alert on Paseo de la Castellana.</li>
+<li><strong>Send Ultralight 2.0 Burst</strong>: Sends raw <code>t|...|h|...</code> Ultralight 2.0 frames to <code>http://iot-agent:7896/iot/d</code> to observe Southbound-to-Northbound translation in real time.</li>
+<li><strong>Built-in NGSI-v2 Raw JSON Inspector</strong>: Switch between <code>GET /v2/entities (KeyValues)</code> and <code>GET /v2/entities (Full NGSI-v2)</code> right from the bottom console.</li>
+</ol>
+<hr />
+<h2 id="step-4-query-the-fiware-orion-ngsi-v2-api-directly">Step 4: Query the FIWARE Orion NGSI-v2 API Directly</h2>
+<p>You can interact with the <strong>FIWARE Orion Context Broker</strong> directly using <code>curl</code>, Postman, or external microservices:</p>
+<h3 id="1-check-orion-version-health">1. Check Orion Version &amp; Health</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>https://orion.fiware.gbnt.local/version
+</span></code></pre></div>
+<h3 id="2-list-all-digital-twin-entities-simplified-keyvalues-representation">2. List All Digital Twin Entities (Simplified <code>keyValues</code> Representation)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Fiware-Service: smartcity"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">     </span>-H<span class="w"> </span><span class="s2">"Fiware-ServicePath: /"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">     </span><span class="s2">"https://orion.fiware.gbnt.local/v2/entities?options=keyValues"</span>
+</span></code></pre></div>
+<h3 id="3-filter-entities-by-type-airqualityobserved-or-geo-query">3. Filter Entities by Type (<code>AirQualityObserved</code>) or Geo-Query</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Fiware-Service: smartcity"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">     </span>-H<span class="w"> </span><span class="s2">"Fiware-ServicePath: /"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">     </span><span class="s2">"https://orion.fiware.gbnt.local/v2/entities?type=AirQualityObserved&amp;options=keyValues"</span>
+</span></code></pre></div>
+<h3 id="4-send-an-ultralight-20-sensor-measurement-to-fiware-iot-agent">4. Send an Ultralight 2.0 Sensor Measurement to FIWARE IoT Agent</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="s2">"http://&lt;node-ip&gt;:7896/iot/d?k=fiware-gbnt-iot-key&amp;i=weather001"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: text/plain"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>-d<span class="w"> </span><span class="s2">"t|26.4|h|41.0|p|1015.2|w|3.8|uv|7"</span>
+</span></code></pre></div>
+<h3 id="5-inspect-registered-iot-devices-in-the-iot-agent">5. Inspect Registered IoT Devices in the IoT Agent</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-H<span class="w"> </span><span class="s2">"fiware-service: smartcity"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">     </span>-H<span class="w"> </span><span class="s2">"fiware-servicepath: /"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">     </span><span class="s2">"https://iot-agent.fiware.gbnt.local/iot/devices"</span>
+</span></code></pre></div>
+<hr />
+<h2 id="step-5-clean-up">Step 5: Clean Up</h2>
+<p>To stop and remove the FIWARE Smart City stack:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gbnt<span class="w"> </span>stack<span class="w"> </span>rm<span class="w"> </span>fiware-smart-city
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.prune", "navigation.top", "toc.integrate", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
