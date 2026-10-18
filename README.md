@@ -1,3 +1,14 @@
+> [!IMPORTANT]
+> ## 📦 Repository Moved / Repositorio Movido
+> **Gubernator (`gbnt`)** has officially moved to the **[@gubernator-org](https://github.com/gubernator-org)** organization:
+> - 👉 **New Official Repository:** [https://github.com/gubernator-org/gubernator](https://github.com/gubernator-org/gubernator)
+> - 📖 **New Documentation (GitHub Pages):** [https://gubernator-org.github.io/gubernator/](https://gubernator-org.github.io/gubernator/)
+> - 📦 **New Releases & Binaries:** [https://github.com/gubernator-org/gubernator/releases](https://github.com/gubernator-org/gubernator/releases)
+>
+> *This legacy repository is archived and read-only. All active development, releases, issues, and documentation now live at [`gubernator-org/gubernator`](https://github.com/gubernator-org/gubernator).*
+
+---
+
 # <img src="docs/gubernator-icon.png" alt="Gubernator Icon" width="40" style="vertical-align: middle;"> Gubernator (gbnt)
 
 [![GitHub Release](https://img.shields.io/github/v/release/gubernator-org/gubernator?style=flat-square)](https://github.com/gubernator-org/gubernator/releases)
